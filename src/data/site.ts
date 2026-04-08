@@ -41,8 +41,8 @@ export const siteConfig = {
     amazonAuthor: "https://www.amazon.com/author/littlechubbypress"
   },
   brandAssets: {
-    logoMark: "/images/brand/logo-mark.svg",
-    logoLockup: "/images/brand/logo-lockup.svg",
+    logoMark: "/images/brand/logo-mark.png",
+    logoLockup: "/images/brand/logo-lockup.png",
     ogCover: "/images/brand/og-cover.svg"
   },
   newsletter: {

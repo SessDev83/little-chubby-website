@@ -35,7 +35,6 @@ const heroLogoAlt = lang === "es"
   <section class="hero page-section">
     <div class="container hero-layout surface-card" style="padding: clamp(1.1rem, 2.6vw, 2rem);">
       <div>
-        <span class="hero-kicker">{text.heroKicker}</span>
         <h1 class="hero-title">
           {siteConfig.penName}
           <br />
@@ -54,9 +53,9 @@ const heroLogoAlt = lang === "es"
           src={siteConfig.brandAssets.logoLockup}
           alt={heroLogoAlt}
           loading="eager"
-          width="920"
-          height="280"
-          style="border-radius: 1rem; border: 1px solid var(--line); background: #fffdf8;"
+          width="540"
+          height="540"
+          style="border-radius: 1rem; border: 1px solid var(--line); background: #fffdf8; max-width: 280px; height: auto;"
         />
       </div>
     </div>
