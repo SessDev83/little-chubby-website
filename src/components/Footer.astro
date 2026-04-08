@@ -14,7 +14,7 @@ const year = new Date().getFullYear();
 
 <footer class="site-footer">
   <div class="container site-footer-shell">
-    <div>
+    <div class="footer-info">
       <a class="footer-brand" href={`/${lang}/`}>
         <img src={siteConfig.brandAssets.logoMark} alt={siteConfig.brandName} width="52" height="52" />
         <span>{siteConfig.brandName}</span>
@@ -23,17 +23,29 @@ const year = new Date().getFullYear();
       <p class="footer-small">© {year} {siteConfig.brandName}</p>
     </div>
 
-    <nav class="footer-links" aria-label="Footer">
-      <a href={`/${lang}/books/`}>{text.navBooks}</a>
-      <a href={`/${lang}/blog/`}>{text.navBlog}</a>
-      <a href={`/${lang}/lottery/`}>{lang === "es" ? "Sorteo" : "Giveaway"}</a>
-      <a href={`/${lang}/gallery/`}>{text.navGallery}</a>
-      <a href={`/${lang}/newsletter/`}>{text.navNewsletter}</a>
-      <a href={`/${lang}/contact/`}>{text.navContact}</a>
-      <a href={`/${lang}/about/`}>{text.navAbout}</a>
-      <a href={`/${lang}/privacy/`}>{text.navPrivacy}</a>
-      <a href={siteConfig.social.instagram} target="_blank" rel="noopener noreferrer">Instagram</a>
-      <a href={siteConfig.social.facebook} target="_blank" rel="noopener noreferrer">Facebook</a>
+    <nav class="footer-columns" aria-label="Footer">
+      <div class="footer-col">
+        <h4 class="footer-col-title">{lang === "es" ? "Explorar" : "Explore"}</h4>
+        <a href={`/${lang}/books/`}>{text.navBooks}</a>
+        <a href={`/${lang}/blog/`}>{text.navBlog}</a>
+        <a href={`/${lang}/about/`}>{text.navAbout}</a>
+      </div>
+      <div class="footer-col">
+        <h4 class="footer-col-title">{lang === "es" ? "Comunidad" : "Community"}</h4>
+        <a href={`/${lang}/lottery/`}>{lang === "es" ? "Sorteo" : "Giveaway"}</a>
+        <a href={`/${lang}/gallery/`}>{text.navGallery}</a>
+        <a href={`/${lang}/newsletter/`}>{text.navNewsletter}</a>
+      </div>
+      <div class="footer-col">
+        <h4 class="footer-col-title">{lang === "es" ? "Conectar" : "Connect"}</h4>
+        <a href={`/${lang}/contact/`}>{text.navContact}</a>
+        <a href={siteConfig.social.instagram} target="_blank" rel="noopener noreferrer">Instagram</a>
+        <a href={siteConfig.social.facebook} target="_blank" rel="noopener noreferrer">Facebook</a>
+      </div>
     </nav>
+  </div>
+
+  <div class="container footer-bottom">
+    <a href={`/${lang}/privacy/`}>{text.navPrivacy}</a>
   </div>
 </footer>

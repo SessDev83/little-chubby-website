@@ -721,9 +721,13 @@ main {
 }
 
 .site-footer-shell {
-  padding-block: 1.8rem;
+  padding-block: 2rem;
   display: grid;
-  gap: 0.9rem;
+  gap: 1.5rem;
+}
+
+.footer-info {
+  /* brand block */
 }
 
 .footer-brand {
@@ -741,17 +745,56 @@ main {
   height: 2.1rem;
 }
 
-.footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem 0.9rem;
+.footer-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
 }
 
-.footer-links a {
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.footer-col-title {
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 800;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--brand-brown);
+  margin: 0 0 0.25rem;
+}
+
+.footer-col a {
   color: var(--brand-blue);
   text-decoration: none;
-  font-weight: 700;
   font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 600;
+  font-size: 0.92rem;
+  transition: color 0.2s ease;
+}
+
+.footer-col a:hover {
+  color: var(--accent-gold);
+}
+
+.footer-bottom {
+  border-top: 1px solid var(--line);
+  padding-block: 0.8rem;
+  text-align: center;
+}
+
+.footer-bottom a {
+  color: var(--text-muted, #888);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+}
+
+.footer-bottom a:hover {
+  color: var(--brand-blue);
 }
 
 .footer-small {
@@ -789,8 +832,9 @@ main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .footer-links {
-    justify-content: center;
+  .footer-columns {
+    grid-template-columns: 1fr;
+    text-align: center;
   }
 
   .site-footer-shell {
@@ -822,7 +866,12 @@ main {
 
   .site-footer-shell {
     grid-template-columns: 1fr auto;
-    align-items: end;
+    align-items: start;
+  }
+
+  .footer-columns {
+    grid-template-columns: repeat(3, auto);
+    gap: 2rem;
   }
 }
 
