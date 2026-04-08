@@ -1,0 +1,77 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { supabase, ADMIN_EMAILS, getServiceClient } from "../../lib/supabase";
+
+// Check auth
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
+
+let user = null;
+
+if (accessToken && refreshToken) {
+  const { data: sessionData } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  user = sessionData?.user ?? null;
+}
+
+if (!user || !ADMIN_EMAILS.includes(user.email ?? "")) {
+  return Astro.redirect("/es/login/");
+}
+
+const serviceClient = getServiceClient();
+
+// Stats
+const { count: usersCount } = await serviceClient
+  .from("profiles")
+  .select("*", { count: "exact", head: true });
+
+const currentMonth = new Date().toISOString().slice(0, 7);
+
+const { count: entriesCount } = await serviceClient
+  .from("lottery_entries")
+  .select("*", { count: "exact", head: true })
+  .eq("month", currentMonth);
+
+const { count: winnersCount } = await serviceClient
+  .from("lottery_winners")
+  .select("*", { count: "exact", head: true });
+---
+
+<BaseLayout lang="en" title="Admin Dashboard | Little Chubby Press" description="Admin dashboard" pathname="/admin/">
+  <section class="page-section container">
+    <h1>Admin Dashboard</h1>
+    <p>Welcome, {user.email}</p>
+
+    <div class="admin-stats" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(12rem,1fr)); gap:1rem; margin-top:2rem;">
+      <div class="surface-card" style="padding:1.4rem; text-align:center;">
+        <div style="font-size:2rem; font-weight:700; color:var(--brand-blue); font-family:'Baloo 2',sans-serif;">
+          {usersCount ?? 0}
+        </div>
+        <div style="color:var(--ink-soft);">Registered Users</div>
+      </div>
+
+      <div class="surface-card" style="padding:1.4rem; text-align:center;">
+        <div style="font-size:2rem; font-weight:700; color:var(--brand-green); font-family:'Baloo 2',sans-serif;">
+          {entriesCount ?? 0}
+        </div>
+        <div style="color:var(--ink-soft);">Entries This Month ({currentMonth})</div>
+      </div>
+
+      <div class="surface-card" style="padding:1.4rem; text-align:center;">
+        <div style="font-size:2rem; font-weight:700; color:var(--accent-gold); font-family:'Baloo 2',sans-serif;">
+          {winnersCount ?? 0}
+        </div>
+        <div style="color:var(--ink-soft);">Total Winners</div>
+      </div>
+    </div>
+
+    <nav style="display:flex; gap:1rem; margin-top:2rem; flex-wrap:wrap;">
+      <a href="/admin/users/" class="btn btn-primary">Manage Users</a>
+      <a href="/admin/lottery/" class="btn btn-primary">Lottery Draw</a>
+    </nav>
+  </section>
+</BaseLayout>

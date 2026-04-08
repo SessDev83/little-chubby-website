@@ -1,0 +1,120 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getLangFromParam, ui } from "../../data/i18n";
+import type { Lang } from "../../data/i18n";
+import { supabase } from "../../lib/supabase";
+
+const lang = getLangFromParam(Astro.params.lang) as Lang;
+const text = ui[lang];
+const pathname = `/${lang}/profile/`;
+
+// Get current session from cookie
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
+
+let user = null;
+let profile: { display_name: string | null; lang_pref: string } | null = null;
+let saveMessage = "";
+
+if (accessToken && refreshToken) {
+  const { data: sessionData } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  user = sessionData?.user ?? null;
+}
+
+// Handle magic link callback — extract tokens from hash
+// This is handled client-side, see script below
+
+if (!user) {
+  return Astro.redirect(`/${lang}/login/`);
+}
+
+// Fetch profile
+const { data: profileData } = await supabase
+  .from("profiles")
+  .select("display_name, lang_pref")
+  .eq("id", user.id)
+  .single();
+
+profile = profileData;
+
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  const displayName = formData.get("display_name")?.toString().trim() || "";
+  const langPref = formData.get("lang_pref")?.toString().trim() || "es";
+
+  await supabase
+    .from("profiles")
+    .update({ display_name: displayName, lang_pref: langPref })
+    .eq("id", user.id);
+
+  profile = { display_name: displayName, lang_pref: langPref };
+  saveMessage = text.profileSaved;
+}
+---
+
+<BaseLayout lang={lang} title={text.profileMetaTitle} description={text.profileHeading} pathname={pathname}>
+  <section class="page-section container">
+    <div class="auth-card surface-card">
+      <div class="section-head" style="text-align:center;">
+        <h1>{text.profileHeading}</h1>
+        <p>{user.email}</p>
+      </div>
+
+      {saveMessage && (
+        <p class="auth-message success">{saveMessage}</p>
+      )}
+
+      <form method="POST" class="form-grid">
+        <div class="form-group">
+          <label for="display_name">{text.profileDisplayName}</label>
+          <input
+            type="text"
+            id="display_name"
+            name="display_name"
+            value={profile?.display_name || ""}
+            autocomplete="name"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="lang_pref">{text.profileLangPref}</label>
+          <select id="lang_pref" name="lang_pref" style="width:100%; border-radius:0.8rem; border:1px solid var(--line); background:var(--surface); padding:0.7rem 0.82rem; font:inherit;">
+            <option value="es" selected={profile?.lang_pref === "es"}>Español</option>
+            <option value="en" selected={profile?.lang_pref === "en"}>English</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;">
+          {text.profileSave}
+        </button>
+      </form>
+
+      <div style="margin-top:1.5rem; text-align:center;">
+        <a href={`/${lang}/logout/`} class="btn btn-secondary">{text.navLogout}</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .auth-card {
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: 2rem 1.6rem;
+  }
+
+  .auth-message.success {
+    text-align: center;
+    padding: 0.8rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    background: rgba(92, 150, 80, 0.14);
+    color: var(--brand-green);
+    border: 1px solid rgba(92, 150, 80, 0.3);
+  }
+</style>

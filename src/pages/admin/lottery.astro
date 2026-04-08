@@ -1,0 +1,189 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { supabase, ADMIN_EMAILS, getServiceClient } from "../../lib/supabase";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
+let user = null;
+
+if (accessToken && refreshToken) {
+  const { data: sessionData } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  user = sessionData?.user ?? null;
+}
+
+if (!user || !ADMIN_EMAILS.includes(user.email ?? "")) {
+  return Astro.redirect("/es/login/");
+}
+
+const serviceClient = getServiceClient();
+const currentMonth = new Date().toISOString().slice(0, 7);
+
+let drawResult = "";
+let drawError = "";
+
+// Handle POST — draw a winner
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  const action = formData.get("action")?.toString();
+  const month = formData.get("month")?.toString() || currentMonth;
+  const bookTitle = formData.get("book_title")?.toString() || "";
+
+  if (action === "draw") {
+    // Check if already drawn for this month
+    const { data: existing } = await serviceClient
+      .from("lottery_winners")
+      .select("id")
+      .eq("month", month)
+      .maybeSingle();
+
+    if (existing) {
+      drawError = `A winner has already been drawn for ${month}.`;
+    } else {
+      // Get all entries for the month
+      const { data: entries } = await serviceClient
+        .from("lottery_entries")
+        .select("user_id")
+        .eq("month", month);
+
+      if (!entries || entries.length === 0) {
+        drawError = `No entries found for ${month}.`;
+      } else {
+        // Pick random winner
+        const randomIdx = Math.floor(Math.random() * entries.length);
+        const winnerId = entries[randomIdx].user_id;
+
+        const { error } = await serviceClient
+          .from("lottery_winners")
+          .insert({
+            user_id: winnerId,
+            month,
+            book_title: bookTitle || null,
+          });
+
+        if (error) {
+          drawError = `Error: ${error.message}`;
+        } else {
+          // Get winner info
+          const { data: winner } = await serviceClient
+            .from("profiles")
+            .select("email, display_name")
+            .eq("id", winnerId)
+            .single();
+
+          drawResult = `Winner: ${winner?.display_name || winner?.email} (from ${entries.length} entries)`;
+        }
+      }
+    }
+  }
+}
+
+// Get entries for current month
+const { data: monthEntries, count: entriesCount } = await serviceClient
+  .from("lottery_entries")
+  .select("user_id, profiles!inner(email, display_name)", { count: "exact" })
+  .eq("month", currentMonth);
+
+// Get all winners
+const { data: winners } = await serviceClient
+  .from("lottery_winners")
+  .select("month, book_title, notified, profiles!inner(email, display_name)")
+  .order("month", { ascending: false });
+---
+
+<BaseLayout lang="en" title="Lottery | Admin" description="Lottery management" pathname="/admin/lottery/">
+  <section class="page-section container">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+      <h1>Lottery Management</h1>
+      <a href="/admin/" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
+    <!-- Draw Section -->
+    <div class="surface-card" style="padding:1.6rem; margin-top:2rem;">
+      <h2>Draw Winner for {currentMonth}</h2>
+      <p style="margin:0.5rem 0;">Current entries: <strong>{entriesCount ?? 0}</strong></p>
+
+      {drawResult && (
+        <p style="padding:0.8rem; border-radius:0.5rem; background:rgba(92,150,80,0.14); color:var(--brand-green); border:1px solid rgba(92,150,80,0.3); margin:1rem 0;">
+          🎉 {drawResult}
+        </p>
+      )}
+
+      {drawError && (
+        <p style="padding:0.8rem; border-radius:0.5rem; background:rgba(220,50,50,0.08); color:#8f1f18; border:1px solid rgba(220,50,50,0.25); margin:1rem 0;">
+          {drawError}
+        </p>
+      )}
+
+      <form method="POST" style="display:flex; gap:0.8rem; align-items:end; flex-wrap:wrap; margin-top:1rem;">
+        <input type="hidden" name="action" value="draw" />
+        <input type="hidden" name="month" value={currentMonth} />
+        <div class="form-group" style="flex:1; min-width:12rem;">
+          <label for="book_title" style="font-family:'Baloo 2',sans-serif; font-weight:700;">Prize Book Title</label>
+          <input type="text" id="book_title" name="book_title" placeholder="e.g. Animal Kingdom" />
+        </div>
+        <button type="submit" class="btn btn-primary">🎲 Draw Winner</button>
+      </form>
+    </div>
+
+    <!-- Current Month Entries -->
+    {monthEntries && monthEntries.length > 0 && (
+      <div style="margin-top:2rem;">
+        <h2>Entries for {currentMonth} ({monthEntries.length})</h2>
+        <div style="overflow-x:auto; margin-top:1rem;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--line); text-align:left;">
+                <th style="padding:0.6rem 0.8rem;">#</th>
+                <th style="padding:0.6rem 0.8rem;">Email</th>
+                <th style="padding:0.6rem 0.8rem;">Name</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthEntries.map((e: any, i: number) => (
+                <tr style="border-bottom:1px solid var(--line);">
+                  <td style="padding:0.6rem 0.8rem;">{i + 1}</td>
+                  <td style="padding:0.6rem 0.8rem;">{(e.profiles as any)?.email}</td>
+                  <td style="padding:0.6rem 0.8rem;">{(e.profiles as any)?.display_name || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+
+    <!-- Winners History -->
+    {winners && winners.length > 0 && (
+      <div style="margin-top:2rem;">
+        <h2>Winners History</h2>
+        <div style="overflow-x:auto; margin-top:1rem;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+            <thead>
+              <tr style="border-bottom:2px solid var(--line); text-align:left;">
+                <th style="padding:0.6rem 0.8rem;">Month</th>
+                <th style="padding:0.6rem 0.8rem;">Winner</th>
+                <th style="padding:0.6rem 0.8rem;">Book</th>
+                <th style="padding:0.6rem 0.8rem;">Notified</th>
+              </tr>
+            </thead>
+            <tbody>
+              {winners.map((w: any) => (
+                <tr style="border-bottom:1px solid var(--line);">
+                  <td style="padding:0.6rem 0.8rem; font-weight:700; color:var(--brand-blue);">{w.month}</td>
+                  <td style="padding:0.6rem 0.8rem;">{(w.profiles as any)?.display_name || (w.profiles as any)?.email}</td>
+                  <td style="padding:0.6rem 0.8rem;">{w.book_title || "—"}</td>
+                  <td style="padding:0.6rem 0.8rem;">{w.notified ? "✓" : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+  </section>
+</BaseLayout>

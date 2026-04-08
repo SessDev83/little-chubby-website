@@ -1,0 +1,35 @@
+---
+export const prerender = false;
+
+import { supabase } from "../../../lib/supabase";
+import { getLangFromParam } from "../../../data/i18n";
+import type { Lang } from "../../../data/i18n";
+
+const lang = getLangFromParam(Astro.params.lang) as Lang;
+
+const accessToken = Astro.url.searchParams.get("access_token");
+const refreshToken = Astro.url.searchParams.get("refresh_token");
+
+if (accessToken && refreshToken) {
+  // Set auth cookies
+  Astro.cookies.set("sb-access-token", accessToken, {
+    path: "/",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+  });
+  Astro.cookies.set("sb-refresh-token", refreshToken, {
+    path: "/",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+
+  return Astro.redirect(`/${lang}/profile/`);
+}
+
+// If no tokens, redirect to login
+return Astro.redirect(`/${lang}/login/`);
+---

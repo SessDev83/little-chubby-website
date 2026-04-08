@@ -1,0 +1,14 @@
+---
+export const prerender = false;
+
+import { getLangFromParam } from "../../data/i18n";
+import type { Lang } from "../../data/i18n";
+
+const lang = getLangFromParam(Astro.params.lang) as Lang;
+
+// Clear auth cookies
+Astro.cookies.delete("sb-access-token", { path: "/" });
+Astro.cookies.delete("sb-refresh-token", { path: "/" });
+
+return Astro.redirect(`/${lang}/`);
+---

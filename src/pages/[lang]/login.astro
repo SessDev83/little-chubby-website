@@ -1,0 +1,94 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getLangFromParam, ui } from "../../data/i18n";
+import type { Lang } from "../../data/i18n";
+import { supabase } from "../../lib/supabase";
+
+const lang = getLangFromParam(Astro.params.lang) as Lang;
+const text = ui[lang];
+const pathname = `/${lang}/login/`;
+
+// Check if user is already logged in
+const { data: { session } } = await supabase.auth.getSession();
+
+let message = "";
+let messageType: "success" | "error" | "" = "";
+
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  const email = formData.get("email")?.toString().trim() || "";
+
+  if (email) {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${Astro.url.origin}/${lang}/auth/callback/`,
+      },
+    });
+
+    if (error) {
+      message = text.loginError;
+      messageType = "error";
+    } else {
+      message = text.loginCheckEmail;
+      messageType = "success";
+    }
+  }
+}
+---
+
+<BaseLayout lang={lang} title={text.loginMetaTitle} description={text.loginSubheading} pathname={pathname}>
+  <section class="page-section container">
+    <div class="auth-card surface-card">
+      <div class="section-head" style="text-align:center;">
+        <h1>{text.loginHeading}</h1>
+        <p>{text.loginSubheading}</p>
+      </div>
+
+      {message && (
+        <p class={`auth-message ${messageType}`}>{message}</p>
+      )}
+
+      {messageType !== "success" && (
+        <form method="POST" class="form-grid">
+          <div class="form-group">
+            <label for="email">{text.loginEmailLabel}</label>
+            <input type="email" id="email" name="email" required autocomplete="email" />
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;">
+            {text.loginSubmit}
+          </button>
+        </form>
+      )}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .auth-card {
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: 2rem 1.6rem;
+  }
+
+  .auth-message {
+    text-align: center;
+    padding: 0.8rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .auth-message.success {
+    background: rgba(92, 150, 80, 0.14);
+    color: var(--brand-green);
+    border: 1px solid rgba(92, 150, 80, 0.3);
+  }
+
+  .auth-message.error {
+    background: rgba(220, 50, 50, 0.08);
+    color: #8f1f18;
+    border: 1px solid rgba(220, 50, 50, 0.25);
+  }
+</style>

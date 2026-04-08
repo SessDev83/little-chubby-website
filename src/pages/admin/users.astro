@@ -1,0 +1,63 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { supabase, ADMIN_EMAILS, getServiceClient } from "../../lib/supabase";
+
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
+let user = null;
+
+if (accessToken && refreshToken) {
+  const { data: sessionData } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  user = sessionData?.user ?? null;
+}
+
+if (!user || !ADMIN_EMAILS.includes(user.email ?? "")) {
+  return Astro.redirect("/es/login/");
+}
+
+const serviceClient = getServiceClient();
+
+const { data: profiles } = await serviceClient
+  .from("profiles")
+  .select("id, email, display_name, lang_pref, is_admin, created_at")
+  .order("created_at", { ascending: false });
+---
+
+<BaseLayout lang="en" title="Users | Admin" description="User management" pathname="/admin/users/">
+  <section class="page-section container">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+      <h1>Users ({profiles?.length ?? 0})</h1>
+      <a href="/admin/" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
+    <div style="margin-top:1.5rem; overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+        <thead>
+          <tr style="border-bottom:2px solid var(--line); text-align:left;">
+            <th style="padding:0.6rem 0.8rem; font-family:'Baloo 2',sans-serif;">Email</th>
+            <th style="padding:0.6rem 0.8rem; font-family:'Baloo 2',sans-serif;">Name</th>
+            <th style="padding:0.6rem 0.8rem; font-family:'Baloo 2',sans-serif;">Lang</th>
+            <th style="padding:0.6rem 0.8rem; font-family:'Baloo 2',sans-serif;">Admin</th>
+            <th style="padding:0.6rem 0.8rem; font-family:'Baloo 2',sans-serif;">Joined</th>
+          </tr>
+        </thead>
+        <tbody>
+          {profiles?.map((p) => (
+            <tr style="border-bottom:1px solid var(--line);">
+              <td style="padding:0.6rem 0.8rem;">{p.email}</td>
+              <td style="padding:0.6rem 0.8rem;">{p.display_name || "—"}</td>
+              <td style="padding:0.6rem 0.8rem;">{p.lang_pref}</td>
+              <td style="padding:0.6rem 0.8rem;">{p.is_admin ? "✓" : ""}</td>
+              <td style="padding:0.6rem 0.8rem;">{new Date(p.created_at).toLocaleDateString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</BaseLayout>

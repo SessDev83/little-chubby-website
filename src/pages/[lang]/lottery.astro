@@ -1,0 +1,154 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getLangFromParam, ui } from "../../data/i18n";
+import type { Lang } from "../../data/i18n";
+import { supabase } from "../../lib/supabase";
+
+const lang = getLangFromParam(Astro.params.lang) as Lang;
+const text = ui[lang];
+const pathname = `/${lang}/lottery/`;
+
+// Check auth
+const accessToken = Astro.cookies.get("sb-access-token")?.value;
+const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
+
+let user = null;
+let isEntered = false;
+let entryMessage = "";
+
+if (accessToken && refreshToken) {
+  const { data: sessionData } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  user = sessionData?.user ?? null;
+}
+
+const currentMonth = new Date().toISOString().slice(0, 7); // '2026-04'
+
+if (user) {
+  // Check if already entered this month
+  const { data: existing } = await supabase
+    .from("lottery_entries")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("month", currentMonth)
+    .maybeSingle();
+
+  if (existing) {
+    isEntered = true;
+  }
+
+  // Handle entry
+  if (Astro.request.method === "POST" && !isEntered) {
+    const { error } = await supabase
+      .from("lottery_entries")
+      .insert({ user_id: user.id, month: currentMonth });
+
+    if (!error) {
+      isEntered = true;
+      entryMessage = text.lotteryEntered;
+    }
+  }
+}
+
+// Fetch past winners
+const { data: winners } = await supabase
+  .from("lottery_winners")
+  .select("month, book_title, profiles!inner(display_name)")
+  .order("month", { ascending: false })
+  .limit(12);
+---
+
+<BaseLayout
+  lang={lang}
+  title={text.lotteryMetaTitle}
+  description={text.lotteryDescription}
+  pathname={pathname}
+  breadcrumbs={[
+    { name: text.navHome, url: `/${lang}/` },
+    { name: text.lotteryHeading, url: pathname }
+  ]}
+>
+  <section class="page-section container">
+    <div class="section-head" style="text-align:center; max-width:40rem; margin:0 auto 2rem;">
+      <h1>{text.lotteryHeading}</h1>
+      <p>{text.lotteryDescription}</p>
+    </div>
+
+    <div class="auth-card surface-card" style="max-width:28rem; margin:0 auto; padding:2rem 1.6rem; text-align:center;">
+      {!user ? (
+        <div>
+          <p>{text.lotteryNotLoggedIn}</p>
+          <a href={`/${lang}/login/`} class="btn btn-primary">{text.navLogin}</a>
+        </div>
+      ) : isEntered ? (
+        <p class="auth-message success">{entryMessage || text.lotteryEntered}</p>
+      ) : (
+        <form method="POST">
+          <button type="submit" class="btn btn-primary" style="width:100%;">
+            {lang === "es" ? "Participar este mes" : "Enter this month"}
+          </button>
+        </form>
+      )}
+    </div>
+
+    {winners && winners.length > 0 && (
+      <div style="max-width:40rem; margin:2.5rem auto 0;">
+        <h2 style="text-align:center; margin-bottom:1rem;">{text.lotteryWinnersTitle}</h2>
+        <div class="winners-list">
+          {winners.map((w: any) => (
+            <div class="winner-row">
+              <span class="winner-month">{w.month}</span>
+              <span class="winner-name">{(w.profiles as any)?.display_name || "—"}</span>
+              <span class="winner-book">{w.book_title || ""}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </section>
+</BaseLayout>
+
+<style>
+  .auth-message.success {
+    padding: 0.8rem;
+    border-radius: 0.5rem;
+    background: rgba(92, 150, 80, 0.14);
+    color: var(--brand-green);
+    border: 1px solid rgba(92, 150, 80, 0.3);
+  }
+
+  .winners-list {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .winner-row {
+    display: grid;
+    grid-template-columns: 6rem 1fr 1fr;
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    font-size: 0.95rem;
+  }
+
+  .winner-month {
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    color: var(--brand-blue);
+  }
+
+  .winner-name {
+    color: var(--brand-brown);
+    font-weight: 700;
+  }
+
+  .winner-book {
+    color: var(--ink-soft);
+  }
+</style>

@@ -56,6 +56,19 @@ const bookCardLabels = {
 
   <section class="page-section">
     <div class="container">
+      <div class="lottery-banner surface-card" style="text-align:center; padding:1.4rem; border:2px dashed var(--accent-gold); border-radius:var(--radius-lg);">
+        <p style="font-family:'Baloo 2',sans-serif; font-weight:700; font-size:1.15rem; color:var(--brand-brown); margin:0 0 0.6rem;">
+          🎉 {text.lotteryBanner}
+        </p>
+        <a href={`/${lang}/lottery/`} class="btn btn-primary" style="font-size:0.92rem;">
+          {lang === "es" ? "Participar ahora" : "Enter now"}
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container">
       <div class="section-head">
         <h2>{text.homeFeaturedBooks}</h2>
         <p>{siteConfig.longBio[lang]}</p>
