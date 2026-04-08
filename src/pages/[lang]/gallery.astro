@@ -1,0 +1,136 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getLangFromParam, ui } from "../../data/i18n";
+import type { Lang } from "../../data/i18n";
+import { supabase } from "../../lib/supabase";
+import { books } from "../../data/books";
+
+const lang = getLangFromParam(Astro.params.lang) as Lang;
+const text = ui[lang];
+const pathname = `/${lang}/gallery/`;
+
+const bookMap = Object.fromEntries(books.map(b => [b.id, b.title[lang]]));
+const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
+
+// Fetch approved reviews from the public gallery view
+const { data: gallery } = await supabase
+  .from("gallery_feed")
+  .select("id, book_id, photo_url, rating, review_text, featured, submitted_at, display_name")
+  .limit(60);
+
+const items = gallery ?? [];
+---
+
+<BaseLayout
+  lang={lang}
+  title={text.galleryMetaTitle}
+  description={text.galleryDescription}
+  pathname={pathname}
+  breadcrumbs={[
+    { name: text.navHome, url: `/${lang}/` },
+    { name: text.galleryHeading, url: pathname }
+  ]}
+>
+  <section class="page-section container">
+    <div class="section-head" style="text-align:center; max-width:42rem; margin:0 auto 2rem;">
+      <h1>{text.galleryHeading}</h1>
+      <p>{text.galleryDescription}</p>
+    </div>
+
+    {items.length === 0 ? (
+      <p style="text-align:center; color:var(--ink-soft);">{text.galleryEmpty}</p>
+    ) : (
+      <div class="gallery-grid">
+        {items.map((item: any) => (
+          <article class={`gallery-card ${item.featured ? "featured" : ""}`}>
+            {item.featured && <span class="featured-badge">{text.galleryFeatured}</span>}
+            <img src={item.photo_url} alt={bookMap[item.book_id] || item.book_id} class="gallery-img" loading="lazy" />
+            <div class="gallery-body">
+              <strong class="gallery-book">{bookMap[item.book_id] || item.book_id}</strong>
+              <span class="gallery-stars">{stars(item.rating)}</span>
+              {item.review_text && <p class="gallery-text">{item.review_text}</p>}
+              <span class="gallery-author">— {item.display_name}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
+
+    <div style="text-align:center; margin-top:2.5rem;">
+      <a href={`/${lang}/lottery/`} class="btn btn-primary">📸 {text.shareYourBook}</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 1.4rem;
+  }
+  .gallery-card {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    overflow: hidden;
+    position: relative;
+    transition: box-shadow 0.2s;
+  }
+  .gallery-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  .gallery-card.featured {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 2px rgba(211,164,66,0.2);
+  }
+  .featured-badge {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: var(--accent-gold);
+    color: #fff;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    z-index: 1;
+  }
+  .gallery-img {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    display: block;
+  }
+  .gallery-body {
+    padding: 0.8rem 1rem;
+  }
+  .gallery-book {
+    display: block;
+    font-size: 0.95rem;
+    margin-bottom: 0.15rem;
+  }
+  .gallery-stars {
+    color: var(--accent-gold);
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+  .gallery-text {
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    margin: 0 0 0.3rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .gallery-author {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+</style>

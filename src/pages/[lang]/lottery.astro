@@ -4,20 +4,18 @@ export const prerender = false;
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
-import { supabase } from "../../lib/supabase";
+import { supabase, getServiceClient } from "../../lib/supabase";
+import { books } from "../../data/books";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
 const pathname = `/${lang}/lottery/`;
 
-// Check auth
+// ── Auth ─────────────────────────────────────────────
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
 const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
 
 let user = null;
-let isEntered = false;
-let entryMessage = "";
-
 if (accessToken && refreshToken) {
   const { data: sessionData } = await supabase.auth.setSession({
     access_token: accessToken,
@@ -26,40 +24,157 @@ if (accessToken && refreshToken) {
   user = sessionData?.user ?? null;
 }
 
-const currentMonth = new Date().toISOString().slice(0, 7); // '2026-04'
+const sc = getServiceClient();
+
+// ── User state ───────────────────────────────────────
+let myReviews: { id: string; book_id: string; photo_url: string; rating: number; review_text: string; status: string; submitted_at: string }[] = [];
+let pendingClaim: any = null;
+let shareMsg = "";
+let shareMsgType: "success" | "error" | "" = "";
+let claimMsg = "";
 
 if (user) {
-  // Check if already entered this month
-  const { data: existing } = await supabase
-    .from("lottery_entries")
-    .select("id")
+  // Get user's reviews
+  const { data: reviewData } = await supabase
+    .from("book_reviews")
+    .select("id, book_id, photo_url, rating, review_text, status, submitted_at")
     .eq("user_id", user.id)
-    .eq("month", currentMonth)
+    .order("submitted_at", { ascending: false });
+  myReviews = reviewData ?? [];
+
+  // Check for unclaimed win
+  const { data: winData } = await supabase
+    .from("lottery_winners")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("claimed", false)
+    .gt("claim_deadline", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
+  pendingClaim = winData;
 
-  if (existing) {
-    isEntered = true;
-  }
+  // ── Handle POST actions ──────────────────────────
+  if (Astro.request.method === "POST") {
+    const formData = await Astro.request.formData();
+    const action = formData.get("action")?.toString();
 
-  // Handle entry
-  if (Astro.request.method === "POST" && !isEntered) {
-    const { error } = await supabase
-      .from("lottery_entries")
-      .insert({ user_id: user.id, month: currentMonth });
+    if (action === "share_book") {
+      const bookId = formData.get("book_id")?.toString() || "";
+      const rating = parseInt(formData.get("rating")?.toString() || "0", 10);
+      const reviewText = formData.get("review_text")?.toString().trim() || "";
+      const showGallery = formData.get("show_in_gallery") === "on";
+      const photo = formData.get("photo") as File | null;
 
-    if (!error) {
-      isEntered = true;
-      entryMessage = text.lotteryEntered;
+      // Validate — client-side JS compresses to JPEG before submit
+      // Server enforces 500 KB hard limit as safety net
+      const MAX_BYTES = 500 * 1024; // 500 KB
+      const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+      if (!photo || photo.size === 0) {
+        shareMsg = text.shareInvalidType;
+        shareMsgType = "error";
+      } else if (photo.size > MAX_BYTES) {
+        shareMsg = text.shareTooLarge;
+        shareMsgType = "error";
+      } else if (!ALLOWED_TYPES.includes(photo.type)) {
+        shareMsg = text.shareInvalidType;
+        shareMsgType = "error";
+      } else if (!bookId || rating < 1 || rating > 5) {
+        shareMsg = text.loginError;
+        shareMsgType = "error";
+      } else {
+        // Always save as .jpg (client already compressed to JPEG)
+        const filePath = `${user.id}/${bookId}.jpg`;
+        const arrayBuf = await photo.arrayBuffer();
+        const buffer = new Uint8Array(arrayBuf);
+
+        const { error: uploadError } = await sc.storage
+          .from("book-photos")
+          .upload(filePath, buffer, { contentType: "image/jpeg", upsert: true });
+
+        if (uploadError) {
+          shareMsg = text.loginError;
+          shareMsgType = "error";
+        } else {
+          const { data: urlData } = sc.storage.from("book-photos").getPublicUrl(filePath);
+          const photoUrl = urlData.publicUrl;
+
+          const { error: insertError } = await sc
+            .from("book_reviews")
+            .insert({
+              user_id: user.id,
+              book_id: bookId,
+              photo_url: photoUrl,
+              rating,
+              review_text: reviewText,
+              show_in_gallery: showGallery,
+            });
+
+          if (insertError?.code === "23505") {
+            shareMsg = text.shareAlreadyReviewed;
+            shareMsgType = "error";
+          } else if (insertError) {
+            shareMsg = text.loginError;
+            shareMsgType = "error";
+          } else {
+            shareMsg = text.shareSuccess;
+            shareMsgType = "success";
+            // Refresh reviews
+            const { data: refreshed } = await supabase
+              .from("book_reviews")
+              .select("id, book_id, photo_url, rating, review_text, status, submitted_at")
+              .eq("user_id", user.id)
+              .order("submitted_at", { ascending: false });
+            myReviews = refreshed ?? [];
+          }
+        }
+      }
+    }
+
+    if (action === "claim" && pendingClaim) {
+      const bookChosen = formData.get("book_chosen")?.toString() || "";
+      const shippingName = formData.get("shipping_name")?.toString().trim() || "";
+      const shippingAddress = formData.get("shipping_address")?.toString().trim() || "";
+
+      if (bookChosen && shippingName && shippingAddress) {
+        await supabase
+          .from("lottery_winners")
+          .update({
+            book_chosen: bookChosen,
+            shipping_name: shippingName,
+            shipping_address: shippingAddress,
+            claimed: true,
+          })
+          .eq("id", pendingClaim.id);
+
+        claimMsg = text.claimSuccess;
+        pendingClaim = null;
+      }
     }
   }
 }
 
-// Fetch past winners
-const { data: winners } = await supabase
-  .from("lottery_winners")
-  .select("month, book_title, profiles!inner(display_name)")
-  .order("month", { ascending: false })
+// Compute tickets: each approved review = 5 tickets
+const approvedCount = myReviews.filter(r => r.status === "approved").length;
+const totalTickets = approvedCount * 5;
+
+// Books already reviewed (to exclude from dropdown)
+const reviewedBookIds = new Set(myReviews.map(r => r.book_id));
+
+// ── Public winners ───────────────────────────────────
+const { data: publicWinners } = await supabase
+  .from("lottery_winners_public")
+  .select("month, book_chosen, display_name")
   .limit(12);
+
+// Book helpers
+const bookOptions = books.map(b => ({ id: b.id, title: b.title[lang] }));
+const availableBooks = bookOptions.filter(b => !reviewedBookIds.has(b.id));
+const bookMap = Object.fromEntries(bookOptions.map(b => [b.id, b.title]));
+
+// Star helper
+const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 ---
 
 <BaseLayout
@@ -73,37 +188,177 @@ const { data: winners } = await supabase
   ]}
 >
   <section class="page-section container">
-    <div class="section-head" style="text-align:center; max-width:40rem; margin:0 auto 2rem;">
+    <!-- Header -->
+    <div class="section-head" style="text-align:center; max-width:42rem; margin:0 auto 2rem;">
       <h1>{text.lotteryHeading}</h1>
       <p>{text.lotteryDescription}</p>
     </div>
 
-    <div class="auth-card surface-card" style="max-width:28rem; margin:0 auto; padding:2rem 1.6rem; text-align:center;">
-      {!user ? (
-        <div>
-          <p>{text.lotteryNotLoggedIn}</p>
-          <a href={`/${lang}/login/`} class="btn btn-primary">{text.navLogin}</a>
-        </div>
-      ) : isEntered ? (
-        <p class="auth-message success">{entryMessage || text.lotteryEntered}</p>
-      ) : (
-        <form method="POST">
-          <button type="submit" class="btn btn-primary" style="width:100%;">
-            {lang === "es" ? "Participar este mes" : "Enter this month"}
-          </button>
-        </form>
-      )}
+    <!-- How It Works -->
+    <div class="lottery-steps surface-card" style="max-width:42rem; margin:0 auto 2rem; padding:1.6rem;">
+      <h2 style="text-align:center; margin-bottom:1rem;">{text.lotteryHowItWorks}</h2>
+      <ol class="steps-list">
+        <li><span class="step-num">1</span>{text.lotteryStep1}</li>
+        <li><span class="step-num">2</span>{text.lotteryStep2}</li>
+        <li><span class="step-num">3</span>{text.lotteryStep3}</li>
+      </ol>
     </div>
 
-    {winners && winners.length > 0 && (
-      <div style="max-width:40rem; margin:2.5rem auto 0;">
+    {!user ? (
+      <!-- Not logged in -->
+      <div class="surface-card" style="max-width:28rem; margin:0 auto; padding:2rem 1.6rem; text-align:center;">
+        <p>{text.lotteryNotLoggedIn}</p>
+        <a href={`/${lang}/login/`} class="btn btn-primary">{text.navLogin}</a>
+      </div>
+    ) : (
+      <div style="max-width:42rem; margin:0 auto;">
+
+        {/* ── Pending claim banner ── */}
+        {pendingClaim && !claimMsg && (
+          <div class="surface-card claim-card">
+            <h2>🎉 {text.claimTitle}</h2>
+            <p>{text.claimInstructions}</p>
+            <form method="POST" class="form-grid">
+              <input type="hidden" name="action" value="claim" />
+              <div class="form-group">
+                <label for="book_chosen">{text.claimBookChoice}</label>
+                <select id="book_chosen" name="book_chosen" class="form-select" required>
+                  <option value="">—</option>
+                  {bookOptions.map(b => (
+                    <option value={b.id}>{b.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="shipping_name">{text.claimShippingName}</label>
+                <input type="text" id="shipping_name" name="shipping_name" required />
+              </div>
+              <div class="form-group">
+                <label for="shipping_address">{text.claimShippingAddress}</label>
+                <textarea id="shipping_address" name="shipping_address" rows="3" required></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%;">{text.claimSubmit}</button>
+            </form>
+          </div>
+        )}
+
+        {claimMsg && (
+          <p class="msg msg-success">{claimMsg}</p>
+        )}
+
+        {/* ── Tickets summary ── */}
+        <div class="surface-card" style="padding:1.4rem; margin-bottom:1.5rem; text-align:center;">
+          <h2>{text.lotteryTickets}: <strong style="color:var(--brand-blue);">{totalTickets}</strong></h2>
+          {totalTickets === 0 && <p style="color:var(--ink-soft);">{text.lotteryNoTickets}</p>}
+          {approvedCount > 0 && (
+            <p style="color:var(--ink-soft);">
+              {approvedCount} {approvedCount === 1 ? "libro" : "libros"} × 5 = {totalTickets} boletos
+            </p>
+          )}
+        </div>
+
+        {/* ── Share Your Book Form ── */}
+        {availableBooks.length > 0 && (
+          <div class="surface-card" style="padding:1.6rem; margin-bottom:1.5rem;">
+            <h2 style="margin-bottom:1rem;">📸 {text.shareYourBook}</h2>
+
+            {shareMsg && (
+              <p class={`msg ${shareMsgType === "success" ? "msg-success" : "msg-error"}`}>{shareMsg}</p>
+            )}
+
+            <form method="POST" enctype="multipart/form-data" class="form-grid">
+              <input type="hidden" name="action" value="share_book" />
+
+              <div class="form-group">
+                <label for="book_id">{text.shareBookLabel}</label>
+                <select id="book_id" name="book_id" class="form-select" required>
+                  <option value="">—</option>
+                  {availableBooks.map(b => (
+                    <option value={b.id}>{b.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="photo">{text.sharePhotoLabel}</label>
+                <input
+                  type="file"
+                  id="photo"
+                  name="photo"
+                  accept="image/jpeg,image/png,image/webp"
+                  required
+                  class="file-input"
+                />
+                <small style="color:var(--ink-soft);">{text.sharePhotoHint}</small>
+                <small id="photoStatus" class="photo-status" style="display:none;"></small>
+              </div>
+
+              <div class="form-group">
+                <label>{text.shareRatingLabel}</label>
+                <div class="star-picker" id="starPicker">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <label class="star-label">
+                      <input type="radio" name="rating" value={n.toString()} required />
+                      <span class="star-icon">★</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="review_text">{text.shareReviewLabel}</label>
+                <textarea
+                  id="review_text"
+                  name="review_text"
+                  rows="3"
+                  placeholder={text.shareReviewPlaceholder}
+                ></textarea>
+              </div>
+
+              <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
+                <input type="checkbox" id="show_in_gallery" name="show_in_gallery" checked />
+                <label for="show_in_gallery" style="margin:0; font-size:0.95rem;">{text.shareGalleryOptIn}</label>
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="width:100%;">{text.shareSubmit}</button>
+            </form>
+          </div>
+        )}
+
+        {/* ── My Reviews ── */}
+        {myReviews.length > 0 && (
+          <div class="surface-card" style="padding:1.4rem; margin-bottom:1.5rem;">
+            <h2 style="margin-bottom:1rem;">{text.myReviews}</h2>
+            <div class="reviews-list">
+              {myReviews.map(r => (
+                <div class="review-row">
+                  <img src={r.photo_url} alt="" class="review-thumb" loading="lazy" />
+                  <div class="review-info">
+                    <strong>{bookMap[r.book_id] || r.book_id}</strong>
+                    <span class="review-stars">{stars(r.rating)}</span>
+                    {r.review_text && <p class="review-text-preview">{r.review_text}</p>}
+                  </div>
+                  <span class={`review-status status-${r.status}`}>
+                    {r.status === "pending" ? text.reviewPending : r.status === "approved" ? text.reviewApproved : text.reviewRejected}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* ── Past Winners ── */}
+    {publicWinners && publicWinners.length > 0 && (
+      <div style="max-width:42rem; margin:2.5rem auto 0;">
         <h2 style="text-align:center; margin-bottom:1rem;">{text.lotteryWinnersTitle}</h2>
         <div class="winners-list">
-          {winners.map((w: any) => (
+          {publicWinners.map((w: any) => (
             <div class="winner-row">
               <span class="winner-month">{w.month}</span>
-              <span class="winner-name">{(w.profiles as any)?.display_name || "—"}</span>
-              <span class="winner-book">{w.book_title || ""}</span>
+              <span class="winner-name">{w.display_name || "—"}</span>
+              <span class="winner-book">{w.book_chosen ? bookMap[w.book_chosen] || w.book_chosen : ""}</span>
             </div>
           ))}
         </div>
@@ -112,20 +367,260 @@ const { data: winners } = await supabase
   </section>
 </BaseLayout>
 
+<script is:inline>
+  document.addEventListener("DOMContentLoaded", () => {
+    // ── Star picker ──────────────────────────────
+    const picker = document.getElementById("starPicker");
+    if (picker) {
+      const labels = picker.querySelectorAll(".star-label");
+      labels.forEach((label, i) => {
+        label.addEventListener("mouseenter", () => {
+          labels.forEach((l, j) => l.classList.toggle("hovered", j <= i));
+        });
+        label.addEventListener("mouseleave", () => {
+          labels.forEach(l => l.classList.remove("hovered"));
+        });
+        const radio = label.querySelector("input");
+        if (radio) {
+          radio.addEventListener("change", () => {
+            labels.forEach((l, j) => l.classList.toggle("selected", j <= i));
+          });
+        }
+      });
+    }
+
+    // ── Client-side image compression ────────────
+    // Resizes to max 800px, converts to JPEG 0.7 quality
+    // Result: ~80-150 KB instead of 3-8 MB phone photos
+    const MAX_DIM = 800;
+    const JPEG_QUALITY = 0.7;
+    const MAX_BYTES = 500 * 1024; // 500 KB
+
+    const fileInput = document.getElementById("photo");
+    const status = document.getElementById("photoStatus");
+
+    function compressImage(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          let w = img.width, h = img.height;
+          if (w > MAX_DIM || h > MAX_DIM) {
+            const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+            w = Math.round(w * ratio);
+            h = Math.round(h * ratio);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(
+            (blob) => blob ? resolve(blob) : reject(new Error("Compression failed")),
+            "image/jpeg",
+            JPEG_QUALITY
+          );
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Invalid image")); };
+        img.src = url;
+      });
+    }
+
+    if (fileInput) {
+      fileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (status) {
+          status.style.display = "block";
+          status.textContent = "⏳ Compressing...";
+          status.className = "photo-status";
+        }
+        try {
+          const blob = await compressImage(file);
+          if (blob.size > MAX_BYTES) {
+            if (status) {
+              status.textContent = "❌ Still too large after compression. Try a smaller photo.";
+              status.className = "photo-status photo-error";
+            }
+            e.target.value = "";
+            return;
+          }
+          // Replace the file input with the compressed version
+          const compressed = new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
+          const dt = new DataTransfer();
+          dt.items.add(compressed);
+          e.target.files = dt.files;
+          const kb = Math.round(blob.size / 1024);
+          if (status) {
+            status.textContent = "✅ " + kb + " KB — ready to upload";
+            status.className = "photo-status photo-ok";
+          }
+        } catch (err) {
+          if (status) {
+            status.textContent = "❌ Could not process image.";
+            status.className = "photo-status photo-error";
+          }
+          e.target.value = "";
+        }
+      });
+    }
+  });
+</script>
+
 <style>
-  .auth-message.success {
+  .steps-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.8rem;
+  }
+  .steps-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-size: 1.02rem;
+  }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--brand-blue);
+    color: #fff;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .claim-card {
+    padding: 1.6rem;
+    margin-bottom: 1.5rem;
+    border: 2px solid var(--accent-gold);
+  }
+  .msg {
     padding: 0.8rem;
     border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  .msg-success {
     background: rgba(92, 150, 80, 0.14);
     color: var(--brand-green);
     border: 1px solid rgba(92, 150, 80, 0.3);
   }
+  .msg-error {
+    background: rgba(220, 50, 50, 0.08);
+    color: #8f1f18;
+    border: 1px solid rgba(220, 50, 50, 0.25);
+  }
+  .form-select {
+    width: 100%;
+    border-radius: 0.8rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 0.7rem 0.82rem;
+    font: inherit;
+  }
+  .file-input {
+    width: 100%;
+    padding: 0.5rem 0;
+    font: inherit;
+  }
+  .photo-status {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  .photo-ok { color: var(--brand-green); }
+  .photo-error { color: #8f1f18; }
 
-  .winners-list {
-    display: grid;
-    gap: 0.5rem;
+  /* Star picker */
+  .star-picker {
+    display: flex;
+    gap: 0.2rem;
+    font-size: 1.8rem;
+    cursor: pointer;
+  }
+  .star-label {
+    cursor: pointer;
+    transition: transform 0.12s;
+  }
+  .star-label input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .star-icon {
+    color: var(--line);
+    transition: color 0.15s;
+  }
+  .star-label.hovered .star-icon,
+  .star-label.selected .star-icon {
+    color: var(--accent-gold);
+  }
+  .star-label:hover {
+    transform: scale(1.15);
   }
 
+  /* Reviews list */
+  .reviews-list {
+    display: grid;
+    gap: 0.8rem;
+  }
+  .review-row {
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    padding: 0.6rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+  }
+  .review-thumb {
+    width: 3.5rem;
+    height: 3.5rem;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+  }
+  .review-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .review-info strong {
+    display: block;
+    font-size: 0.95rem;
+  }
+  .review-stars {
+    color: var(--accent-gold);
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
+  }
+  .review-text-preview {
+    margin: 0.2rem 0 0;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .review-status {
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .status-pending { background: rgba(211, 164, 66, 0.15); color: var(--accent-gold); }
+  .status-approved { background: rgba(92, 150, 80, 0.14); color: var(--brand-green); }
+  .status-rejected { background: rgba(220, 50, 50, 0.08); color: #8f1f18; }
+  .winners-list { display: grid; gap: 0.5rem; }
   .winner-row {
     display: grid;
     grid-template-columns: 6rem 1fr 1fr;
@@ -136,19 +631,7 @@ const { data: winners } = await supabase
     border: 1px solid var(--line);
     font-size: 0.95rem;
   }
-
-  .winner-month {
-    font-family: "Baloo 2", sans-serif;
-    font-weight: 700;
-    color: var(--brand-blue);
-  }
-
-  .winner-name {
-    color: var(--brand-brown);
-    font-weight: 700;
-  }
-
-  .winner-book {
-    color: var(--ink-soft);
-  }
+  .winner-month { font-family: "Baloo 2", sans-serif; font-weight: 700; color: var(--brand-blue); }
+  .winner-name { color: var(--brand-brown); font-weight: 700; }
+  .winner-book { color: var(--ink-soft); }
 </style>

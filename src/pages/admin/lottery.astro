@@ -3,6 +3,7 @@ export const prerender = false;
 
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { supabase, ADMIN_EMAILS, getServiceClient } from "../../lib/supabase";
+import { books } from "../../data/books";
 
 const accessToken = Astro.cookies.get("sb-access-token")?.value;
 const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
@@ -20,164 +21,279 @@ if (!user || !ADMIN_EMAILS.includes(user.email ?? "")) {
   return Astro.redirect("/es/login/");
 }
 
-const serviceClient = getServiceClient();
+const sc = getServiceClient();
 const currentMonth = new Date().toISOString().slice(0, 7);
 
 let drawResult = "";
 let drawError = "";
+let configMsg = "";
+let reviewMsg = "";
 
-// Handle POST — draw a winner
+// ── Get or create this month's config ────────────────
+let { data: config } = await sc
+  .from("lottery_config")
+  .select("*")
+  .eq("month", currentMonth)
+  .maybeSingle();
+
+if (!config) {
+  await sc.from("lottery_config").insert({ month: currentMonth });
+  const { data: fresh } = await sc.from("lottery_config").select("*").eq("month", currentMonth).single();
+  config = fresh;
+}
+
+// ── Handle POST actions ──────────────────────────────
 if (Astro.request.method === "POST") {
   const formData = await Astro.request.formData();
   const action = formData.get("action")?.toString();
-  const month = formData.get("month")?.toString() || currentMonth;
-  const bookTitle = formData.get("book_title")?.toString() || "";
+
+  if (action === "save_config") {
+    const maxWinners = parseInt(formData.get("max_winners")?.toString() || "3", 10);
+    const winnerPct = parseFloat(formData.get("winner_pct")?.toString() || "1");
+    const minPurchases = parseInt(formData.get("min_purchases")?.toString() || "0", 10);
+
+    await sc.from("lottery_config").update({
+      max_winners: maxWinners,
+      winner_pct: winnerPct,
+      min_purchases: minPurchases,
+    }).eq("month", currentMonth);
+
+    config = { ...config!, max_winners: maxWinners, winner_pct: winnerPct, min_purchases: minPurchases };
+    configMsg = "Config saved.";
+  }
+
+  if (action === "approve_review" || action === "reject_review") {
+    const reviewId = formData.get("review_id")?.toString();
+    const newStatus = action === "approve_review" ? "approved" : "rejected";
+    const reviewerNote = formData.get("reviewer_note")?.toString() || "";
+
+    await sc.from("book_reviews").update({
+      status: newStatus,
+      reviewed_at: new Date().toISOString(),
+      reviewer_note: reviewerNote,
+    }).eq("id", reviewId);
+
+    reviewMsg = `Review ${newStatus}.`;
+  }
+
+  if (action === "toggle_featured") {
+    const reviewId = formData.get("review_id")?.toString();
+    const featured = formData.get("featured") === "true";
+    await sc.from("book_reviews").update({ featured: !featured }).eq("id", reviewId);
+    reviewMsg = "Featured status updated.";
+  }
 
   if (action === "draw") {
-    // Check if already drawn for this month
-    const { data: existing } = await serviceClient
-      .from("lottery_winners")
-      .select("id")
-      .eq("month", month)
-      .maybeSingle();
+    // Each user with ≥1 approved review gets 5 tickets per approved book
+    const { data: reviews } = await sc
+      .from("book_reviews")
+      .select("user_id")
+      .eq("status", "approved");
 
-    if (existing) {
-      drawError = `A winner has already been drawn for ${month}.`;
+    if (!reviews || reviews.length === 0) {
+      drawError = "No approved reviews — nobody is eligible.";
     } else {
-      // Get all entries for the month
-      const { data: entries } = await serviceClient
-        .from("lottery_entries")
+      // Count approved reviews per user → tickets = count × 5
+      const ticketMap = new Map<string, number>();
+      for (const r of reviews) {
+        ticketMap.set(r.user_id, (ticketMap.get(r.user_id) || 0) + 5);
+      }
+
+      // Filter: min_purchases requirement
+      const minReq = config?.min_purchases ?? 0;
+      const eligible = [...ticketMap.entries()].filter(([, tickets]) => tickets >= minReq * 5);
+
+      // Exclude users who already won this month
+      const { data: existingWinners } = await sc
+        .from("lottery_winners")
         .select("user_id")
-        .eq("month", month);
+        .eq("month", currentMonth);
+      const alreadyWonIds = new Set((existingWinners ?? []).map(w => w.user_id));
 
-      if (!entries || entries.length === 0) {
-        drawError = `No entries found for ${month}.`;
+      const pool = eligible.filter(([uid]) => !alreadyWonIds.has(uid));
+
+      if (pool.length === 0) {
+        drawError = "No eligible users (check min requirements or all already won).";
       } else {
-        // Pick random winner
-        const randomIdx = Math.floor(Math.random() * entries.length);
-        const winnerId = entries[randomIdx].user_id;
+        const pctWinners = Math.ceil(pool.length * ((config?.winner_pct ?? 1) / 100));
+        const numToDraw = Math.min(pctWinners, config?.max_winners ?? 3, pool.length);
 
-        const { error } = await serviceClient
-          .from("lottery_winners")
-          .insert({
-            user_id: winnerId,
-            month,
-            book_title: bookTitle || null,
-          });
-
-        if (error) {
-          drawError = `Error: ${error.message}`;
+        if (numToDraw <= 0) {
+          drawError = "Winner count resolves to 0. Check config.";
         } else {
-          // Get winner info
-          const { data: winner } = await serviceClient
-            .from("profiles")
-            .select("email, display_name")
-            .eq("id", winnerId)
-            .single();
+          // Build weighted pool
+          const weightedPool: string[] = [];
+          for (const [uid, tickets] of pool) {
+            for (let i = 0; i < tickets; i++) {
+              weightedPool.push(uid);
+            }
+          }
 
-          drawResult = `Winner: ${winner?.display_name || winner?.email} (from ${entries.length} entries)`;
+          // Draw unique winners
+          const winnerIds = new Set<string>();
+          let attempts = 0;
+          while (winnerIds.size < numToDraw && attempts < weightedPool.length * 10) {
+            const idx = Math.floor(Math.random() * weightedPool.length);
+            winnerIds.add(weightedPool[idx]);
+            attempts++;
+          }
+
+          const drawn: string[] = [];
+          const claimDeadline = new Date();
+          claimDeadline.setDate(claimDeadline.getDate() + 14);
+
+          for (const winnerId of winnerIds) {
+            const { error } = await sc.from("lottery_winners").insert({
+              user_id: winnerId,
+              month: currentMonth,
+              claim_deadline: claimDeadline.toISOString(),
+            });
+            if (!error) {
+              const { data: profile } = await sc.from("profiles").select("email, display_name").eq("id", winnerId).single();
+              drawn.push(profile?.display_name || profile?.email || winnerId);
+            }
+          }
+
+          drawResult = `Drew ${drawn.length} winner(s): ${drawn.join(", ")} — from ${pool.length} eligible users, ${weightedPool.length} weighted tickets`;
         }
       }
     }
   }
 }
 
-// Get entries for current month
-const { data: monthEntries, count: entriesCount } = await serviceClient
-  .from("lottery_entries")
-  .select("user_id, profiles!inner(email, display_name)", { count: "exact" })
-  .eq("month", currentMonth);
+// ── Data for display ─────────────────────────────────
+const { data: pendingReviews } = await sc
+  .from("book_reviews")
+  .select("id, book_id, photo_url, rating, review_text, featured, submitted_at, profiles!inner(email, display_name)")
+  .eq("status", "pending")
+  .order("submitted_at", { ascending: true });
 
-// Get all winners
-const { data: winners } = await serviceClient
+const { count: totalApproved } = await sc
+  .from("book_reviews")
+  .select("*", { count: "exact", head: true })
+  .eq("status", "approved");
+
+// Unique users with approved reviews
+const { data: approvedUsers } = await sc
+  .from("book_reviews")
+  .select("user_id")
+  .eq("status", "approved");
+const uniqueUserIds = new Set((approvedUsers ?? []).map(r => r.user_id));
+
+const { data: winners } = await sc
   .from("lottery_winners")
-  .select("month, book_title, notified, profiles!inner(email, display_name)")
-  .order("month", { ascending: false });
+  .select("month, book_chosen, claimed, shipping_name, shipping_address, claim_deadline, notified, profiles!inner(email, display_name)")
+  .order("month", { ascending: false })
+  .limit(50);
+
+const bookMap = Object.fromEntries(books.map(b => [b.id, b.title.en]));
+const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 ---
 
-<BaseLayout lang="en" title="Lottery | Admin" description="Lottery management" pathname="/admin/lottery/">
+<BaseLayout lang="en" title="Lottery & Reviews | Admin" description="Review + lottery management" pathname="/admin/lottery/">
   <section class="page-section container">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-      <h1>Lottery Management</h1>
-      <a href="/admin/" class="btn btn-secondary">← Back to Dashboard</a>
+      <h1>Lottery & Reviews</h1>
+      <a href="/admin/" class="btn btn-secondary">← Dashboard</a>
     </div>
 
-    <!-- Draw Section -->
+    {/* ── Config ── */}
     <div class="surface-card" style="padding:1.6rem; margin-top:2rem;">
-      <h2>Draw Winner for {currentMonth}</h2>
-      <p style="margin:0.5rem 0;">Current entries: <strong>{entriesCount ?? 0}</strong></p>
-
-      {drawResult && (
-        <p style="padding:0.8rem; border-radius:0.5rem; background:rgba(92,150,80,0.14); color:var(--brand-green); border:1px solid rgba(92,150,80,0.3); margin:1rem 0;">
-          🎉 {drawResult}
-        </p>
-      )}
-
-      {drawError && (
-        <p style="padding:0.8rem; border-radius:0.5rem; background:rgba(220,50,50,0.08); color:#8f1f18; border:1px solid rgba(220,50,50,0.25); margin:1rem 0;">
-          {drawError}
-        </p>
-      )}
-
-      <form method="POST" style="display:flex; gap:0.8rem; align-items:end; flex-wrap:wrap; margin-top:1rem;">
-        <input type="hidden" name="action" value="draw" />
-        <input type="hidden" name="month" value={currentMonth} />
-        <div class="form-group" style="flex:1; min-width:12rem;">
-          <label for="book_title" style="font-family:'Baloo 2',sans-serif; font-weight:700;">Prize Book Title</label>
-          <input type="text" id="book_title" name="book_title" placeholder="e.g. Animal Kingdom" />
+      <h2>Config for {currentMonth}</h2>
+      {configMsg && <p class="msg-ok">{configMsg}</p>}
+      <form method="POST" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(10rem,1fr)); gap:1rem; margin-top:1rem;">
+        <input type="hidden" name="action" value="save_config" />
+        <div class="form-group">
+          <label>Max winners</label>
+          <input type="number" name="max_winners" value={config?.max_winners ?? 3} min="1" max="50" />
         </div>
-        <button type="submit" class="btn btn-primary">🎲 Draw Winner</button>
+        <div class="form-group">
+          <label>Winner % of pool</label>
+          <input type="number" name="winner_pct" value={config?.winner_pct ?? 1} min="0.1" max="100" step="0.1" />
+        </div>
+        <div class="form-group">
+          <label>Min reviews required</label>
+          <input type="number" name="min_purchases" value={config?.min_purchases ?? 0} min="0" />
+        </div>
+        <button type="submit" class="btn btn-secondary">Save Config</button>
       </form>
     </div>
 
-    <!-- Current Month Entries -->
-    {monthEntries && monthEntries.length > 0 && (
+    {/* ── Draw ── */}
+    <div class="surface-card" style="padding:1.6rem; margin-top:1.5rem;">
+      <h2>Draw — {currentMonth}</h2>
+      <p>Approved reviews: <strong>{totalApproved ?? 0}</strong> · Eligible users: <strong>{uniqueUserIds.size}</strong></p>
+
+      {drawResult && <p class="msg-ok">🎉 {drawResult}</p>}
+      {drawError && <p class="msg-err">{drawError}</p>}
+
+      <form method="POST" style="margin-top:1rem;">
+        <input type="hidden" name="action" value="draw" />
+        <button type="submit" class="btn btn-primary">🎲 Draw Winners</button>
+      </form>
+    </div>
+
+    {/* ── Pending Reviews ── */}
+    {pendingReviews && pendingReviews.length > 0 && (
       <div style="margin-top:2rem;">
-        <h2>Entries for {currentMonth} ({monthEntries.length})</h2>
-        <div style="overflow-x:auto; margin-top:1rem;">
-          <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
-            <thead>
-              <tr style="border-bottom:2px solid var(--line); text-align:left;">
-                <th style="padding:0.6rem 0.8rem;">#</th>
-                <th style="padding:0.6rem 0.8rem;">Email</th>
-                <th style="padding:0.6rem 0.8rem;">Name</th>
-              </tr>
-            </thead>
-            <tbody>
-              {monthEntries.map((e: any, i: number) => (
-                <tr style="border-bottom:1px solid var(--line);">
-                  <td style="padding:0.6rem 0.8rem;">{i + 1}</td>
-                  <td style="padding:0.6rem 0.8rem;">{(e.profiles as any)?.email}</td>
-                  <td style="padding:0.6rem 0.8rem;">{(e.profiles as any)?.display_name || "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <h2>Pending Reviews ({pendingReviews.length})</h2>
+        {reviewMsg && <p class="msg-ok">{reviewMsg}</p>}
+        <div class="review-queue">
+          {pendingReviews.map((r: any) => (
+            <div class="review-card-admin">
+              <img src={r.photo_url} alt="" class="review-img-admin" loading="lazy" />
+              <div class="review-details">
+                <strong>{(r.profiles as any)?.display_name || (r.profiles as any)?.email}</strong>
+                <span class="review-book-name">{bookMap[r.book_id] || r.book_id}</span>
+                <span class="review-stars-admin">{stars(r.rating)}</span>
+                {r.review_text && <p class="review-text-admin">{r.review_text}</p>}
+                <small style="color:var(--ink-soft);">{new Date(r.submitted_at).toLocaleDateString()}</small>
+              </div>
+              <div class="review-actions">
+                <form method="POST">
+                  <input type="hidden" name="action" value="approve_review" />
+                  <input type="hidden" name="review_id" value={r.id} />
+                  <button type="submit" class="btn btn-ghost" style="font-size:0.8rem; padding:0.3rem 0.6rem;">✓ Approve</button>
+                </form>
+                <form method="POST">
+                  <input type="hidden" name="action" value="reject_review" />
+                  <input type="hidden" name="review_id" value={r.id} />
+                  <button type="submit" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.6rem;">✗ Reject</button>
+                </form>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     )}
 
-    <!-- Winners History -->
+    {/* ── Winners ── */}
     {winners && winners.length > 0 && (
       <div style="margin-top:2rem;">
         <h2>Winners History</h2>
         <div style="overflow-x:auto; margin-top:1rem;">
-          <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
+          <table class="admin-table">
             <thead>
-              <tr style="border-bottom:2px solid var(--line); text-align:left;">
-                <th style="padding:0.6rem 0.8rem;">Month</th>
-                <th style="padding:0.6rem 0.8rem;">Winner</th>
-                <th style="padding:0.6rem 0.8rem;">Book</th>
-                <th style="padding:0.6rem 0.8rem;">Notified</th>
+              <tr>
+                <th>Month</th>
+                <th>Winner</th>
+                <th>Book</th>
+                <th>Claimed</th>
+                <th>Ship To</th>
+                <th>Deadline</th>
               </tr>
             </thead>
             <tbody>
               {winners.map((w: any) => (
-                <tr style="border-bottom:1px solid var(--line);">
-                  <td style="padding:0.6rem 0.8rem; font-weight:700; color:var(--brand-blue);">{w.month}</td>
-                  <td style="padding:0.6rem 0.8rem;">{(w.profiles as any)?.display_name || (w.profiles as any)?.email}</td>
-                  <td style="padding:0.6rem 0.8rem;">{w.book_title || "—"}</td>
-                  <td style="padding:0.6rem 0.8rem;">{w.notified ? "✓" : "—"}</td>
+                <tr>
+                  <td style="font-weight:700; color:var(--brand-blue);">{w.month}</td>
+                  <td>{(w.profiles as any)?.display_name || (w.profiles as any)?.email}</td>
+                  <td>{w.book_chosen ? (bookMap[w.book_chosen] || w.book_chosen) : "—"}</td>
+                  <td>{w.claimed ? "✓" : "—"}</td>
+                  <td style="max-width:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    {w.claimed ? `${w.shipping_name} — ${w.shipping_address}` : "—"}
+                  </td>
+                  <td>{w.claim_deadline ? new Date(w.claim_deadline).toLocaleDateString() : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -187,3 +303,98 @@ const { data: winners } = await serviceClient
     )}
   </section>
 </BaseLayout>
+
+<style>
+  .review-queue {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .review-card-admin {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    flex-wrap: wrap;
+  }
+  .review-img-admin {
+    width: 8rem;
+    height: 8rem;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .review-img-admin:hover {
+    transform: scale(1.5);
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  }
+  .review-details {
+    flex: 1;
+    min-width: 12rem;
+  }
+  .review-details strong {
+    display: block;
+    margin-bottom: 0.2rem;
+  }
+  .review-book-name {
+    display: block;
+    color: var(--brand-blue);
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+  .review-stars-admin {
+    color: var(--accent-gold);
+    font-size: 0.95rem;
+    display: block;
+    margin: 0.2rem 0;
+  }
+  .review-text-admin {
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    margin: 0.3rem 0 0;
+  }
+  .review-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+  }
+  .admin-table thead tr {
+    border-bottom: 2px solid var(--line);
+  }
+  .admin-table tbody tr {
+    border-bottom: 1px solid var(--line);
+  }
+  .msg-ok {
+    padding: 0.8rem;
+    border-radius: 0.5rem;
+    background: rgba(92,150,80,0.14);
+    color: var(--brand-green);
+    border: 1px solid rgba(92,150,80,0.3);
+    margin: 1rem 0;
+  }
+  .msg-err {
+    padding: 0.8rem;
+    border-radius: 0.5rem;
+    background: rgba(220,50,50,0.08);
+    color: #8f1f18;
+    border: 1px solid rgba(220,50,50,0.25);
+    margin: 1rem 0;
+  }
+</style>
