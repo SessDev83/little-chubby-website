@@ -1,0 +1,33 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import PostCard from "../../../components/PostCard.astro";
+import { postsSorted } from "../../../data/posts";
+import { languages, getLangFromParam, ui } from "../../../data/i18n";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/blog/`;
+---
+
+<BaseLayout lang={lang} title={text.blogMetaTitle} description={text.blogMetaDescription} pathname={pathname}>
+  <section class="page-section">
+    <div class="container">
+      <div class="section-head">
+        <h1>{text.blogSectionTitle}</h1>
+        <p>
+          {lang === "es"
+            ? "Consejos editoriales, ideas de actividades y recursos para impulsar creatividad infantil en casa."
+            : "Editorial notes, activity ideas, and practical resources to nurture creativity at home."}
+        </p>
+      </div>
+
+      <div class="grid-cards posts">
+        {postsSorted.map((post) => <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />)}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

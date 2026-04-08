@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 620" role="img" aria-labelledby="title desc">
+  <title id="title">Mini Artistas cover</title>
+  <desc id="desc">Creative coloring book cover with playful shapes</desc>
+  <rect width="480" height="620" rx="24" fill="#fffdf7" />
+  <rect x="22" y="22" width="436" height="576" rx="20" fill="#f9f4e9" stroke="#dfcfb1" stroke-width="3" />
+  <circle cx="86" cy="98" r="54" fill="#d9825f" opacity="0.2" />
+  <circle cx="400" cy="118" r="64" fill="#1f4f86" opacity="0.12" />
+  <text x="58" y="116" fill="#754624" font-size="56" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800">MINI</text>
+  <text x="58" y="168" fill="#5c9650" font-size="56" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800">ARTISTAS</text>
+  <rect x="62" y="204" width="356" height="280" rx="24" fill="#fffdf8" stroke="#e5d5bd" stroke-width="3" />
+  <circle cx="142" cy="280" r="28" fill="#1f4f86" opacity="0.9" />
+  <circle cx="222" cy="302" r="24" fill="#d3a442" opacity="0.95" />
+  <circle cx="294" cy="270" r="30" fill="#5c9650" opacity="0.9" />
+  <rect x="112" y="354" width="52" height="52" rx="10" fill="#d9825f" />
+  <rect x="190" y="350" width="58" height="58" rx="12" fill="#1f4f86" />
+  <rect x="274" y="360" width="48" height="48" rx="10" fill="#d3a442" />
+  <text x="60" y="532" fill="#1f4f86" font-size="28" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="700">Retos creativos para colorear</text>
+</svg>

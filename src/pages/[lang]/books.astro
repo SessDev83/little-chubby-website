@@ -1,0 +1,87 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import BookCard from "../../components/BookCard.astro";
+import { booksByNewest } from "../../data/books";
+import { languages, getLangFromParam, ui } from "../../data/i18n";
+import { siteConfig } from "../../data/site";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/books/`;
+const bookCardLabels = {
+  buy: text.ctaBuyOnAmazon,
+  leaveReview: text.ctaLeaveReview,
+  noReviews: text.ratingNoReviews,
+  outOfFive: text.ratingOutOfFive,
+  reviewSingular: text.ratingReviewSingular,
+  reviewPlural: text.ratingReviewPlural
+};
+
+const booksJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: lang === "es" ? "Catalogo de libros Little Chubby Press" : "Little Chubby Press book catalog",
+  itemListElement: booksByNewest.map((book, index) => {
+    const asinMatch = book.amazonUrl.match(/\/dp\/([A-Z0-9]{10})/i);
+    const asin = asinMatch ? asinMatch[1].toUpperCase() : null;
+    const cover = asin
+      ? `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`
+      : new URL(book.coverSrc, siteConfig.siteUrl).toString();
+
+    const item = {
+      "@type": "Book",
+      name: book.title[lang],
+      description: book.description[lang],
+      inLanguage: "en",
+      numberOfPages: book.pages,
+      image: cover,
+      url: book.amazonUrl
+    };
+
+    if (typeof book.ratingValue === "number" && typeof book.ratingCount === "number" && book.ratingCount > 0) {
+      return {
+        "@type": "ListItem",
+        position: index + 1,
+        item: {
+          ...item,
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: book.ratingValue,
+            reviewCount: book.ratingCount
+          }
+        }
+      };
+    }
+
+    return {
+      "@type": "ListItem",
+      position: index + 1,
+      item
+    };
+  })
+});
+---
+
+<BaseLayout lang={lang} title={text.booksMetaTitle} description={text.booksMetaDescription} pathname={pathname}>
+  <script type="application/ld+json" set:html={booksJsonLd}></script>
+  <section class="page-section">
+    <div class="container">
+      <div class="section-head">
+        <h1>{text.booksSectionTitle}</h1>
+        <p>
+          {lang === "es"
+            ? "Coleccion curada para peques y familias creativas. Cada libro incluye enlace directo a Amazon, reseñas y portada actualizada desde KDP."
+            : "A curated collection for kids and creative families. Every title includes direct Amazon links, review access, and KDP-synced cover updates."}
+        </p>
+      </div>
+
+      <div class="grid-cards books">
+        {booksByNewest.map((book) => <BookCard book={book} lang={lang} labels={bookCardLabels} />)}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,56 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import Button from "../../../components/Button.astro";
+import { postsSorted } from "../../../data/posts";
+import { languages, getLangFromParam, ui, formatDate } from "../../../data/i18n";
+
+export function getStaticPaths() {
+  const paths = [];
+
+  for (const lang of languages) {
+    for (const post of postsSorted) {
+      paths.push({
+        params: { lang, slug: post.slug[lang] },
+        props: { postId: post.id }
+      });
+    }
+  }
+
+  return paths;
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const { postId } = Astro.props;
+const post = postsSorted.find((item) => item.id === postId);
+
+if (!post) {
+  throw new Error("Post not found");
+}
+
+const pathname = `/${lang}/blog/${post.slug[lang]}/`;
+---
+
+<BaseLayout
+  lang={lang}
+  title={`${post.title[lang]} | ${text.blogMetaTitle}`}
+  description={post.summary[lang]}
+  pathname={pathname}
+>
+  <section class="page-section">
+    <div class="container">
+      <article class="surface-card" style="padding: clamp(1rem, 2.8vw, 2rem);">
+        <p class="post-date">{formatDate(post.date, lang)}</p>
+        <h1 style="margin-top: 0.5rem;">{post.title[lang]}</h1>
+        <p style="margin-top: 0.7rem;">{post.summary[lang]}</p>
+
+        <div class="article-prose" set:html={post.content[lang]}></div>
+
+        <div class="hero-actions" style="margin-top: 1.8rem;">
+          <Button href={`/${lang}/blog/`} label={text.navBlog} variant="secondary" />
+          <Button href={`/${lang}/newsletter/`} label={text.navNewsletter} variant="ghost" />
+        </div>
+      </article>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,97 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Button from "../../components/Button.astro";
+import BookCard from "../../components/BookCard.astro";
+import PostCard from "../../components/PostCard.astro";
+import NewsletterForm from "../../components/NewsletterForm.astro";
+import { booksByNewest } from "../../data/books";
+import { postsSorted } from "../../data/posts";
+import { languages, getLangFromParam, ui } from "../../data/i18n";
+import { siteConfig } from "../../data/site";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const featuredBooks = booksByNewest.slice(0, 3);
+const featuredPosts = postsSorted.slice(0, 2);
+const pathname = `/${lang}/`;
+const bookCardLabels = {
+  buy: text.ctaBuyOnAmazon,
+  leaveReview: text.ctaLeaveReview,
+  noReviews: text.ratingNoReviews,
+  outOfFive: text.ratingOutOfFive,
+  reviewSingular: text.ratingReviewSingular,
+  reviewPlural: text.ratingReviewPlural
+};
+const heroLogoAlt = lang === "es"
+  ? "Logo oficial de Little Chubby Press, editorial de libros de colorear para familias"
+  : "Official Little Chubby Press logo, family-focused coloring books publisher";
+---
+
+<BaseLayout lang={lang} title={text.homeMetaTitle} description={text.homeMetaDescription} pathname={pathname}>
+  <section class="hero page-section">
+    <div class="container hero-layout surface-card" style="padding: clamp(1.1rem, 2.6vw, 2rem);">
+      <div>
+        <span class="hero-kicker">{text.heroKicker}</span>
+        <h1 class="hero-title">
+          {siteConfig.penName}
+          <br />
+          <strong>{siteConfig.tagline[lang]}.</strong>
+        </h1>
+        <p class="hero-copy">{siteConfig.shortBio[lang]}</p>
+        <div class="hero-actions">
+          <Button href={`/${lang}/books/`} label={text.ctaViewAllBooks} variant="primary" />
+          <Button href={`/${lang}/blog/`} label={text.ctaViewBlog} variant="secondary" />
+          <Button href={`/${lang}/newsletter/`} label={text.navNewsletter} variant="ghost" />
+        </div>
+      </div>
+
+      <div>
+        <img
+          src={siteConfig.brandAssets.logoLockup}
+          alt={heroLogoAlt}
+          loading="eager"
+          width="920"
+          height="280"
+          style="border-radius: 1rem; border: 1px solid var(--line); background: #fffdf8;"
+        />
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container">
+      <div class="section-head">
+        <h2>{text.homeFeaturedBooks}</h2>
+        <p>{siteConfig.longBio[lang]}</p>
+      </div>
+      <div class="grid-cards books">
+        {featuredBooks.map((book) => <BookCard book={book} lang={lang} labels={bookCardLabels} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container">
+      <div class="section-head">
+        <h2>{text.homeLatestPosts}</h2>
+      </div>
+      <div class="grid-cards posts">
+        {featuredPosts.map((post) => <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container">
+      <div class="section-head">
+        <h2>{text.newsletterSectionTitle}</h2>
+        <p>{text.newsletterDisclaimer}</p>
+      </div>
+      <NewsletterForm lang={lang} />
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 620" role="img" aria-labelledby="title desc">
+  <title id="title">Bosque Magico cover</title>
+  <desc id="desc">Children coloring book cover with forest elements</desc>
+  <rect width="480" height="620" rx="24" fill="#fffdf7" />
+  <rect x="22" y="22" width="436" height="576" rx="20" fill="#f7f0de" stroke="#d6c6a8" stroke-width="3" />
+  <circle cx="98" cy="96" r="46" fill="#1f4f86" opacity="0.14" />
+  <circle cx="392" cy="122" r="58" fill="#5c9650" opacity="0.16" />
+  <circle cx="396" cy="508" r="60" fill="#d3a442" opacity="0.2" />
+  <text x="55" y="112" fill="#754624" font-size="54" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800">BOSQUE</text>
+  <text x="55" y="164" fill="#1f4f86" font-size="54" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="800">MAGICO</text>
+  <rect x="62" y="204" width="356" height="280" rx="24" fill="#fffdf8" stroke="#e2d4bd" stroke-width="3" />
+  <path d="M130 438l34-130 34 130z" fill="#5c9650" />
+  <path d="M218 442l36-160 36 160z" fill="#4c8450" />
+  <path d="M302 438l30-122 30 122z" fill="#5c9650" />
+  <circle cx="178" cy="328" r="23" fill="#f6b8a1" />
+  <circle cx="282" cy="340" r="26" fill="#f5cf58" />
+  <text x="60" y="532" fill="#5c9650" font-size="28" font-family="Baloo 2, Trebuchet MS, sans-serif" font-weight="700">Animales tiernos para colorear</text>
+</svg>

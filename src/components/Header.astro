@@ -1,0 +1,90 @@
+---
+import { siteConfig } from "../data/site";
+import type { Lang } from "../data/i18n";
+import { switchLangPath, ui } from "../data/i18n";
+
+interface Props {
+  lang: Lang;
+  pathname: string;
+}
+
+const { lang, pathname } = Astro.props;
+const text = ui[lang];
+const homeHref = `/${lang}/`;
+
+const navItems = [
+  { href: `/${lang}/`, label: text.navHome },
+  { href: `/${lang}/books/`, label: text.navBooks },
+  { href: `/${lang}/blog/`, label: text.navBlog },
+  { href: `/${lang}/newsletter/`, label: text.navNewsletter },
+  { href: `/${lang}/contact/`, label: text.navContact }
+];
+---
+
+<header class="site-header">
+  <div class="container site-header-shell">
+    <div class="header-top">
+      <a class="brand-link" href={homeHref}>
+        <img src={siteConfig.brandAssets.logoMark} alt={siteConfig.brandName} width="64" height="64" />
+        <span>{siteConfig.brandName}</span>
+      </a>
+
+      <div class="lang-toggle" role="group" aria-label={text.languageToggleLabel}>
+        <a
+          href={switchLangPath(pathname, "es")}
+          hreflang="es"
+          lang="es"
+          data-active={lang === "es"}
+          data-lang-link="es"
+        >
+          ES
+        </a>
+        <a
+          href={switchLangPath(pathname, "en")}
+          hreflang="en"
+          lang="en"
+          data-active={lang === "en"}
+          data-lang-link="en"
+        >
+          EN
+        </a>
+      </div>
+    </div>
+
+    <nav class="header-nav" aria-label="Primary">
+      <ul>
+        {
+          navItems.map((item) => {
+            const isHome = item.href === `/${lang}/`;
+            const isCurrent = isHome
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(item.href);
+            return (
+              <li>
+                <a href={item.href} aria-current={isCurrent ? "page" : undefined}>
+                  {item.label}
+                </a>
+              </li>
+            );
+          })
+        }
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<script is:inline>
+  const rootLang = document.documentElement.getAttribute("lang");
+  if (rootLang === "es" || rootLang === "en") {
+    localStorage.setItem("lcp-lang", rootLang);
+  }
+
+  document.querySelectorAll("[data-lang-link]").forEach((anchor) => {
+    anchor.addEventListener("click", () => {
+      const nextLang = anchor.getAttribute("data-lang-link");
+      if (nextLang === "es" || nextLang === "en") {
+        localStorage.setItem("lcp-lang", nextLang);
+      }
+    });
+  });
+</script>

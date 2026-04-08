@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" role="img" aria-labelledby="title desc">
+  <title id="title">Little Chubby Press mark</title>
+  <desc id="desc">Round elephant mascot holding a pencil</desc>
+  <circle cx="110" cy="110" r="98" fill="#fffdf8" stroke="#754624" stroke-width="8" />
+  <circle cx="95" cy="112" r="40" fill="#f8f3eb" stroke="#1d1d1d" stroke-width="4" />
+  <circle cx="132" cy="96" r="28" fill="#f8f3eb" stroke="#1d1d1d" stroke-width="4" />
+  <circle cx="82" cy="88" r="16" fill="#d3e6f3" stroke="#1d1d1d" stroke-width="3" />
+  <circle cx="142" cy="75" r="14" fill="#d3e6f3" stroke="#1d1d1d" stroke-width="3" />
+  <ellipse cx="103" cy="123" rx="14" ry="10" fill="#f5b49a" />
+  <circle cx="95" cy="115" r="3" fill="#1d1d1d" />
+  <path d="M108 128c6 8 16 8 22 1" fill="none" stroke="#1d1d1d" stroke-width="4" stroke-linecap="round" />
+  <path d="M81 130c-14 6-24 18-25 32" fill="none" stroke="#1d1d1d" stroke-width="5" stroke-linecap="round" />
+  <path d="M57 161c0 12-13 11-13 0 0-10 12-11 13 0" fill="none" stroke="#1d1d1d" stroke-width="5" stroke-linecap="round" />
+  <path d="M63 127l63-50 16 21-63 50z" fill="#f3cf54" stroke="#1d1d1d" stroke-width="4" />
+  <path d="M142 98l12-9 12 15-12 9z" fill="#5c9650" stroke="#1d1d1d" stroke-width="4" />
+  <path d="M69 144l14 18-22 7z" fill="#5c9650" stroke="#1d1d1d" stroke-width="4" />
+</svg>

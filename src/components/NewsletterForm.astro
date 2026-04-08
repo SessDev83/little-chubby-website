@@ -1,0 +1,90 @@
+---
+import { siteConfig } from "../data/site";
+import type { Lang } from "../data/i18n";
+import { ui } from "../data/i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const text = ui[lang];
+const isPlaceholder = siteConfig.newsletter.actionUrl.includes("YOUR_");
+const successUrl = new URL(siteConfig.newsletter.successRedirect[lang], siteConfig.siteUrl).toString();
+---
+
+<form class="surface-card form-shell js-validate-newsletter" method="post" action={siteConfig.newsletter.actionUrl} novalidate>
+  <input type="hidden" name="_redirect" value={successUrl} />
+  <input type="hidden" name="redirect" value={successUrl} />
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="newsletter-name">{text.formName}</label>
+      <input id="newsletter-name" name="name" type="text" autocomplete="name" />
+    </div>
+
+    <div class="form-group">
+      <label for="newsletter-email">{text.formEmail} *</label>
+      <input id="newsletter-email" name="email" type="email" autocomplete="email" required />
+    </div>
+
+    <div class="form-group" aria-hidden="true">
+      <label for="newsletter-company">{text.formPhoneHp}</label>
+      <input id="newsletter-company" class="hp-field" name="company" type="text" tabindex="-1" autocomplete="off" />
+    </div>
+
+    <p class="form-note">{text.newsletterDisclaimer}</p>
+
+    {
+      isPlaceholder && (
+        <p class="provider-warning">
+          {text.providerSetupLabel}: {siteConfig.newsletter.providerName}. {siteConfig.newsletter.providerGuide[lang]}
+        </p>
+      )
+    }
+
+    <p class="status-msg" id="newsletter-status" aria-live="polite"></p>
+
+    <button class="btn btn-primary" type="submit">{text.ctaSubscribe}</button>
+  </div>
+</form>
+
+<script is:inline>
+  const newsletterForm = document.querySelector(".js-validate-newsletter");
+  const newsletterStatus = document.getElementById("newsletter-status");
+
+  if (newsletterForm && newsletterStatus) {
+    newsletterForm.addEventListener("submit", (event) => {
+      const emailInput = newsletterForm.querySelector('input[name="email"]');
+      const hpInput = newsletterForm.querySelector('input[name="company"]');
+      const currentLang = document.documentElement.lang === "en" ? "en" : "es";
+
+      const requiredMsg = currentLang === "en"
+        ? "Please complete all required fields."
+        : "Por favor completa los campos obligatorios.";
+
+      const emailMsg = currentLang === "en"
+        ? "Please enter a valid email."
+        : "Ingresa un email valido.";
+
+      newsletterStatus.textContent = "";
+
+      if (hpInput && hpInput.value.trim()) {
+        event.preventDefault();
+        newsletterStatus.textContent = requiredMsg;
+        return;
+      }
+
+      if (!emailInput || !emailInput.value.trim()) {
+        event.preventDefault();
+        newsletterStatus.textContent = requiredMsg;
+        return;
+      }
+
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim());
+      if (!validEmail) {
+        event.preventDefault();
+        newsletterStatus.textContent = emailMsg;
+      }
+    });
+  }
+</script>

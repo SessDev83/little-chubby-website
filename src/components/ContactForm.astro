@@ -1,0 +1,107 @@
+---
+import { siteConfig } from "../data/site";
+import type { Lang } from "../data/i18n";
+import { ui } from "../data/i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const text = ui[lang];
+const isPlaceholder = siteConfig.contactForm.actionUrl.includes("YOUR_");
+const successUrl = new URL(siteConfig.contactForm.successRedirect[lang], siteConfig.siteUrl).toString();
+---
+
+<form class="surface-card form-shell js-validate-contact" method="post" action={siteConfig.contactForm.actionUrl} novalidate>
+  <input type="hidden" name="_subject" value={`Nuevo mensaje desde ${siteConfig.brandName}`} />
+  <input type="hidden" name="_redirect" value={successUrl} />
+
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="contact-name">{text.formName} *</label>
+      <input id="contact-name" name="name" type="text" autocomplete="name" required />
+    </div>
+
+    <div class="form-group">
+      <label for="contact-email">{text.formEmail} *</label>
+      <input id="contact-email" name="email" type="email" autocomplete="email" required />
+    </div>
+
+    <div class="form-group">
+      <label for="contact-message">{text.formMessage} *</label>
+      <textarea id="contact-message" name="message" required></textarea>
+    </div>
+
+    <div class="form-group" aria-hidden="true">
+      <label for="contact-company">{text.formPhoneHp}</label>
+      <input id="contact-company" class="hp-field" name="company" type="text" tabindex="-1" autocomplete="off" />
+    </div>
+
+    {
+      isPlaceholder && (
+        <p class="provider-warning">
+          {text.providerSetupLabel}: {siteConfig.contactForm.providerName}. {siteConfig.contactForm.providerGuide[lang]}
+        </p>
+      )
+    }
+
+    <p class="form-note">{text.contactResponseTime}</p>
+    <p class="status-msg" id="contact-status" aria-live="polite"></p>
+
+    <button class="btn btn-primary" type="submit">{text.ctaSend}</button>
+  </div>
+</form>
+
+<script is:inline>
+  const contactForm = document.querySelector(".js-validate-contact");
+  const contactStatus = document.getElementById("contact-status");
+
+  if (contactForm && contactStatus) {
+    contactForm.addEventListener("submit", (event) => {
+      const currentLang = document.documentElement.lang === "en" ? "en" : "es";
+      const requiredMsg = currentLang === "en"
+        ? "Please complete all required fields."
+        : "Por favor completa los campos obligatorios.";
+      const emailMsg = currentLang === "en"
+        ? "Please enter a valid email."
+        : "Ingresa un email valido.";
+
+      const nameInput = contactForm.querySelector('input[name="name"]');
+      const emailInput = contactForm.querySelector('input[name="email"]');
+      const messageInput = contactForm.querySelector('textarea[name="message"]');
+      const hpInput = contactForm.querySelector('input[name="company"]');
+
+      contactStatus.textContent = "";
+
+      if (hpInput && hpInput.value.trim()) {
+        event.preventDefault();
+        contactStatus.textContent = requiredMsg;
+        return;
+      }
+
+      if (!nameInput || !emailInput || !messageInput) {
+        event.preventDefault();
+        contactStatus.textContent = requiredMsg;
+        return;
+      }
+
+      const hasRequired =
+        nameInput.value.trim().length > 0 &&
+        emailInput.value.trim().length > 0 &&
+        messageInput.value.trim().length > 0;
+
+      if (!hasRequired) {
+        event.preventDefault();
+        contactStatus.textContent = requiredMsg;
+        return;
+      }
+
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim());
+      if (!validEmail) {
+        event.preventDefault();
+        contactStatus.textContent = emailMsg;
+      }
+    });
+  }
+</script>

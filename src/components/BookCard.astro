@@ -1,0 +1,71 @@
+---
+import type { Book } from "../data/books";
+import type { Lang } from "../data/i18n";
+import Button from "./Button.astro";
+
+interface Props {
+  book: Book;
+  lang: Lang;
+  labels: {
+    buy: string;
+    leaveReview: string;
+    noReviews: string;
+    outOfFive: string;
+    reviewSingular: string;
+    reviewPlural: string;
+  };
+}
+
+const { book, lang, labels } = Astro.props;
+
+const asinMatch = book.amazonUrl.match(/\/dp\/([A-Z0-9]{10})/i);
+const asin = asinMatch ? asinMatch[1].toUpperCase() : null;
+const dynamicCoverSrc = asin
+  ? `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`
+  : book.coverSrc;
+const reviewUrl = asin
+  ? `https://www.amazon.com/review/create-review?asin=${asin}`
+  : `${book.amazonUrl}#customerReviews`;
+
+const hasRating =
+  typeof book.ratingValue === "number" &&
+  Number.isFinite(book.ratingValue) &&
+  typeof book.ratingCount === "number" &&
+  book.ratingCount > 0;
+
+const normalizedRating = hasRating
+  ? Math.max(0, Math.min(5, book.ratingValue ?? 0))
+  : 0;
+const ratingPercent = `${(normalizedRating / 5) * 100}%`;
+const reviewWord = (book.ratingCount ?? 0) === 1
+  ? labels.reviewSingular
+  : labels.reviewPlural;
+const ratingSummary = hasRating
+  ? `${normalizedRating.toFixed(1)} ${labels.outOfFive} (${book.ratingCount} ${reviewWord})`
+  : labels.noReviews;
+---
+
+<article class="book-card" aria-labelledby={`book-${book.id}`}>
+  <div class="book-card-media">
+    <img
+      src={dynamicCoverSrc}
+      alt={book.coverAlt[lang]}
+      loading="lazy"
+      decoding="async"
+      width="600"
+      height="600"
+    />
+  </div>
+  <h3 id={`book-${book.id}`}>{book.title[lang]}</h3>
+  <p>{book.subtitle[lang]}</p>
+  <p>{book.description[lang]}</p>
+  <div class="book-rating" aria-label={ratingSummary}>
+    <span class="book-rating-stars" style={`--rating-percent: ${ratingPercent};`} aria-hidden="true"></span>
+    <span class="book-rating-copy">{ratingSummary}</span>
+  </div>
+  <p class="card-meta">{book.ageRange[lang]} · {book.pages} p.</p>
+  <div class="card-actions">
+    <Button href={book.amazonUrl} label={labels.buy} variant="secondary" external />
+    <Button href={reviewUrl} label={labels.leaveReview} variant="ghost" external />
+  </div>
+</article>

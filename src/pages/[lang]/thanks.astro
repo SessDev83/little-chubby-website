@@ -1,0 +1,65 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Button from "../../components/Button.astro";
+import { languages, getLangFromParam, ui } from "../../data/i18n";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/thanks/`;
+---
+
+<BaseLayout lang={lang} title={text.thanksMetaTitle} description={text.thanksMetaDescription} pathname={pathname}>
+  <section class="page-section">
+    <div class="container">
+      <article class="surface-card" style="padding: clamp(1.1rem, 2.6vw, 2rem); max-width: 42rem;">
+        <h1 id="thanks-title">{text.thanksTitle}</h1>
+        <p id="thanks-body">{text.thanksBody}</p>
+        <div class="hero-actions">
+          <Button href={`/${lang}/`} label={text.thanksBackHome} variant="primary" />
+          <Button href={`/${lang}/books/`} label={text.navBooks} variant="secondary" />
+        </div>
+      </article>
+    </div>
+  </section>
+</BaseLayout>
+
+<script is:inline>
+  const params = new URLSearchParams(window.location.search);
+  const formType = params.get("form");
+  const lang = document.documentElement.lang === "en" ? "en" : "es";
+
+  const titleNode = document.getElementById("thanks-title");
+  const bodyNode = document.getElementById("thanks-body");
+
+  const copy = {
+    es: {
+      contact: {
+        title: "Gracias por tu mensaje",
+        body: "Tu consulta se envio correctamente. Te responderemos muy pronto."
+      },
+      newsletter: {
+        title: "Suscripcion confirmada",
+        body: "Ya quedaste registrado en el newsletter. Revisa tu correo para confirmar si aplica."
+      }
+    },
+    en: {
+      contact: {
+        title: "Thanks for your message",
+        body: "Your inquiry was submitted successfully. We will reply very soon."
+      },
+      newsletter: {
+        title: "Subscription confirmed",
+        body: "You are now added to the newsletter. Please check your inbox if confirmation is required."
+      }
+    }
+  };
+
+  if (formType && (formType === "contact" || formType === "newsletter") && titleNode && bodyNode) {
+    titleNode.textContent = copy[lang][formType].title;
+    bodyNode.textContent = copy[lang][formType].body;
+  }
+</script>

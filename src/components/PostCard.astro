@@ -1,0 +1,24 @@
+---
+import type { Post } from "../data/posts";
+import type { Lang } from "../data/i18n";
+import { formatDate } from "../data/i18n";
+import Button from "./Button.astro";
+
+interface Props {
+  post: Post;
+  lang: Lang;
+  readLabel: string;
+}
+
+const { post, lang, readLabel } = Astro.props;
+const postHref = `/${lang}/blog/${post.slug[lang]}/`;
+---
+
+<article class="post-card" aria-labelledby={`post-${post.id}`}>
+  <p class="post-date">{formatDate(post.date, lang)}</p>
+  <h3 id={`post-${post.id}`}>{post.title[lang]}</h3>
+  <p>{post.summary[lang]}</p>
+  <div class="card-actions">
+    <Button href={postHref} label={readLabel} variant="ghost" />
+  </div>
+</article>
