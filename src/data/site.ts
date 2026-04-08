@@ -43,7 +43,7 @@ export const siteConfig = {
   brandAssets: {
     logoMark: "/images/brand/logo-mark.png",
     logoLockup: "/images/brand/logo-lockup.png",
-    ogCover: "/images/brand/og-cover.svg"
+    ogCover: "/images/brand/og-cover.png"
   },
   newsletter: {
     providerName: "Buttondown",
@@ -75,5 +75,5 @@ export const quickAdjustments = [
   "src/data/site.ts -> penName, bio, email, redes, provider URLs",
   "src/data/books.ts -> titulos, descripciones, enlaces Amazon, portadas",
   "src/data/posts.ts -> titulos, resumenes, slugs, contenido",
-  "public/images/brand/logo-lockup.svg y logo-mark.svg si quieres reemplazar por tu logo final"
+  "public/images/brand/ -> logo-mark.png, logo-lockup.png, og-cover.png"
 ] as const;

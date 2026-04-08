@@ -12,6 +12,10 @@ export function getStaticPaths() {
 const lang = getLangFromParam(Astro.params.lang);
 const text = ui[lang];
 const pathname = `/${lang}/books/`;
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: text.navBooks, url: pathname }
+];
 const bookCardLabels = {
   buy: text.ctaBuyOnAmazon,
   leaveReview: text.ctaLeaveReview,
@@ -66,7 +70,7 @@ const booksJsonLd = JSON.stringify({
 });
 ---
 
-<BaseLayout lang={lang} title={text.booksMetaTitle} description={text.booksMetaDescription} pathname={pathname}>
+<BaseLayout lang={lang} title={text.booksMetaTitle} description={text.booksMetaDescription} pathname={pathname} breadcrumbs={breadcrumbs}>
   <script type="application/ld+json" set:html={booksJsonLd}></script>
   <section class="page-section">
     <div class="container">

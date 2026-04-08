@@ -11,9 +11,16 @@ interface Props {
   title: string;
   description: string;
   pathname: string;
+  breadcrumbs?: { name: string; url: string }[];
+  articleSchema?: {
+    headline: string;
+    description: string;
+    datePublished: string;
+    url: string;
+  };
 }
 
-const { lang, title, description, pathname } = Astro.props;
+const { lang, title, description, pathname, breadcrumbs, articleSchema } = Astro.props;
 const canonical = new URL(pathname, siteConfig.siteUrl).toString();
 const ogImage = new URL(siteConfig.brandAssets.ogCover, siteConfig.siteUrl).toString();
 const alternateLang = lang === "es" ? "en" : "es";
@@ -39,6 +46,44 @@ const websiteJsonLd = JSON.stringify({
   url: siteConfig.siteUrl,
   inLanguage: ["es", "en"]
 });
+
+const breadcrumbJsonLd = breadcrumbs && breadcrumbs.length > 0 ? JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: breadcrumbs.map((item, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    name: item.name,
+    item: new URL(item.url, siteConfig.siteUrl).toString()
+  }))
+}) : null;
+
+const articleJsonLd = articleSchema ? JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline: articleSchema.headline,
+  description: articleSchema.description,
+  datePublished: articleSchema.datePublished,
+  url: new URL(articleSchema.url, siteConfig.siteUrl).toString(),
+  author: {
+    "@type": "Organization",
+    name: siteConfig.brandName,
+    url: siteConfig.siteUrl
+  },
+  publisher: {
+    "@type": "Organization",
+    name: siteConfig.brandName,
+    logo: {
+      "@type": "ImageObject",
+      url: new URL(siteConfig.brandAssets.logoMark, siteConfig.siteUrl).toString()
+    }
+  },
+  image: new URL(siteConfig.brandAssets.ogCover, siteConfig.siteUrl).toString(),
+  mainEntityOfPage: {
+    "@type": "WebPage",
+    "@id": new URL(articleSchema.url, siteConfig.siteUrl).toString()
+  }
+}) : null;
 ---
 
 <!doctype html>
@@ -48,7 +93,16 @@ const websiteJsonLd = JSON.stringify({
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
     <meta name="theme-color" content="#f6f1e7" />
+    <meta name="author" content={siteConfig.brandName} />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="alternate" type="application/rss+xml" title="Little Chubby Press Blog" href="/rss.xml" />
+
     <link rel="dns-prefetch" href="//images-na.ssl-images-amazon.com" />
     <link rel="dns-prefetch" href="//m.media-amazon.com" />
 
@@ -80,6 +134,8 @@ const websiteJsonLd = JSON.stringify({
 
     <script type="application/ld+json" set:html={organizationJsonLd}></script>
     <script type="application/ld+json" set:html={websiteJsonLd}></script>
+    {breadcrumbJsonLd && <script type="application/ld+json" set:html={breadcrumbJsonLd}></script>}
+    {articleJsonLd && <script type="application/ld+json" set:html={articleJsonLd}></script>}
   </head>
   <body>
     <a class="skip-link" href="#contenido-principal">{skipLabel}</a>

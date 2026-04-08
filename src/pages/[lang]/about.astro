@@ -1,0 +1,92 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Button from "../../components/Button.astro";
+import { languages, getLangFromParam, ui } from "../../data/i18n";
+import { siteConfig } from "../../data/site";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/about/`;
+
+const pageTitle = lang === "es"
+  ? "Sobre nosotros | Little Chubby Press"
+  : "About us | Little Chubby Press";
+const pageDescription = lang === "es"
+  ? "Conoce a Little Chubby Press: nuestra historia, misión y por qué creamos libros de colorear para familias."
+  : "Meet Little Chubby Press: our story, mission, and why we create coloring books for families.";
+---
+
+<BaseLayout lang={lang} title={pageTitle} description={pageDescription} pathname={pathname}>
+  <section class="page-section">
+    <div class="container">
+      <article class="surface-card" style="padding: clamp(1.2rem, 3vw, 2.2rem);">
+        <h1>{lang === "es" ? "Sobre Little Chubby Press" : "About Little Chubby Press"}</h1>
+
+        <div style="display: flex; align-items: center; gap: 1.2rem; margin: 1.5rem 0;">
+          <img
+            src={siteConfig.brandAssets.logoMark}
+            alt={siteConfig.brandName}
+            width="80"
+            height="80"
+            style="border-radius: var(--radius-md);"
+          />
+          <div>
+            <p style="font-family: 'Baloo 2', sans-serif; font-weight: 700; font-size: 1.2rem; color: var(--brand-brown); margin: 0;">
+              {siteConfig.brandName}
+            </p>
+            <p style="margin: 0; color: var(--ink-soft); font-size: 0.95rem;">
+              {siteConfig.tagline[lang]}
+            </p>
+          </div>
+        </div>
+
+        {lang === "es" ? (
+          <div class="article-prose">
+            <h2>Nuestra misión</h2>
+            <p>En Little Chubby Press creemos que la creatividad empieza en la infancia. Publicamos libros de colorear diseñados para que las familias compartan momentos de calidad lejos de las pantallas.</p>
+            <p>Cada libro nace de una idea simple: que colorear sea fácil de empezar, divertido de completar y significativo de compartir. Nuestras ilustraciones son amigables, nuestros temas diversos y nuestros diseños pensados para todas las edades.</p>
+
+            <h2>¿Qué nos hace diferentes?</h2>
+            <ul>
+              <li><strong>Diseño de una sola cara</strong> — para que los peques puedan arrancar y exhibir sus obras favoritas.</li>
+              <li><strong>Temas variados</strong> — desde criaturas mágicas hasta moda, espacio, emociones y aventuras culinarias.</li>
+              <li><strong>Para toda la familia</strong> — libros para peques de 4-8 años, adolescentes y adultos creativos.</li>
+              <li><strong>Calidad profesional</strong> — papel grueso, trazos claros e impresos bajo demanda en Amazon.</li>
+            </ul>
+
+            <h2>Nuestro compromiso</h2>
+            <p>Cada libro que publicamos pasa por un proceso cuidadoso de diseño, pruebas con familias reales y ajustes de calidad. No somos una fábrica de contenido: somos una editorial pequeña con corazón grande.</p>
+            <p>Queremos que cada página coloreada sea un recuerdo feliz.</p>
+          </div>
+        ) : (
+          <div class="article-prose">
+            <h2>Our mission</h2>
+            <p>At Little Chubby Press, we believe creativity starts in childhood. We publish coloring books designed for families to share quality time away from screens.</p>
+            <p>Every book starts with a simple idea: make coloring easy to begin, fun to finish, and meaningful to share. Our illustrations are friendly, our themes diverse, and our designs made for all ages.</p>
+
+            <h2>What makes us different?</h2>
+            <ul>
+              <li><strong>Single-sided pages</strong> — so kids can tear out and display their favorite artwork.</li>
+              <li><strong>Diverse themes</strong> — from magical creatures to fashion, space, emotions, and food adventures.</li>
+              <li><strong>For the whole family</strong> — books for kids ages 4-8, teens, and creative adults.</li>
+              <li><strong>Professional quality</strong> — thick paper, clean lines, and printed on demand through Amazon.</li>
+            </ul>
+
+            <h2>Our commitment</h2>
+            <p>Every book we publish goes through careful design, real family testing, and quality adjustments. We are not a content factory — we are a small press with a big heart.</p>
+            <p>We want every colored page to become a happy memory.</p>
+          </div>
+        )}
+
+        <div class="hero-actions" style="margin-top: 1.8rem;">
+          <Button href={`/${lang}/books/`} label={text.ctaViewAllBooks} variant="primary" />
+          <Button href={`/${lang}/contact/`} label={text.navContact} variant="secondary" />
+        </div>
+      </article>
+    </div>
+  </section>
+</BaseLayout>

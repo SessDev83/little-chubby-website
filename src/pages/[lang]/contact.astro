@@ -11,9 +11,13 @@ export function getStaticPaths() {
 const lang = getLangFromParam(Astro.params.lang);
 const text = ui[lang];
 const pathname = `/${lang}/contact/`;
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: text.navContact, url: pathname }
+];
 ---
 
-<BaseLayout lang={lang} title={text.contactMetaTitle} description={text.contactMetaDescription} pathname={pathname}>
+<BaseLayout lang={lang} title={text.contactMetaTitle} description={text.contactMetaDescription} pathname={pathname} breadcrumbs={breadcrumbs}>
   <section class="page-section">
     <div class="container">
       <div class="section-head">

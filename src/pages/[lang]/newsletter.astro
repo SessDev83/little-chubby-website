@@ -11,6 +11,10 @@ export function getStaticPaths() {
 const lang = getLangFromParam(Astro.params.lang);
 const text = ui[lang];
 const pathname = `/${lang}/newsletter/`;
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: text.navNewsletter, url: pathname }
+];
 ---
 
 <BaseLayout
@@ -18,6 +22,7 @@ const pathname = `/${lang}/newsletter/`;
   title={text.newsletterMetaTitle}
   description={text.newsletterMetaDescription}
   pathname={pathname}
+  breadcrumbs={breadcrumbs}
 >
   <section class="page-section">
     <div class="container">

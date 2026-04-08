@@ -29,6 +29,17 @@ if (!post) {
 }
 
 const pathname = `/${lang}/blog/${post.slug[lang]}/`;
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: "Blog", url: `/${lang}/blog/` },
+  { name: post.title[lang], url: pathname }
+];
+const articleSchema = {
+  headline: post.title[lang],
+  description: post.summary[lang],
+  datePublished: post.date,
+  url: pathname
+};
 ---
 
 <BaseLayout
@@ -36,6 +47,8 @@ const pathname = `/${lang}/blog/${post.slug[lang]}/`;
   title={`${post.title[lang]} | ${text.blogMetaTitle}`}
   description={post.summary[lang]}
   pathname={pathname}
+  breadcrumbs={breadcrumbs}
+  articleSchema={articleSchema}
 >
   <section class="page-section">
     <div class="container">

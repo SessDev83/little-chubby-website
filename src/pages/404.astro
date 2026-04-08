@@ -1,0 +1,29 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Button from "../components/Button.astro";
+import { siteConfig } from "../data/site";
+---
+
+<BaseLayout lang="es" title="Página no encontrada | Little Chubby Press" description="La página que buscas no existe o fue movida." pathname="/404/">
+  <section class="page-section">
+    <div class="container" style="text-align: center; padding: clamp(3rem, 8vw, 6rem) 1rem;">
+      <img
+        src={siteConfig.brandAssets.logoMark}
+        alt={siteConfig.brandName}
+        width="120"
+        height="120"
+        style="margin: 0 auto 1.5rem; opacity: 0.7;"
+      />
+      <h1 style="font-size: clamp(3rem, 8vw, 5rem); color: var(--brand-brown); margin: 0;">404</h1>
+      <p style="font-size: 1.15rem; color: var(--ink-soft); max-width: 42ch; margin: 0.8rem auto 2rem;">
+        Oops! This page doesn't exist or was moved.<br />
+        ¡Ups! Esta página no existe o fue movida.
+      </p>
+      <div class="hero-actions" style="justify-content: center;">
+        <Button href="/es/" label="Inicio" variant="primary" />
+        <Button href="/en/" label="Home" variant="secondary" />
+        <Button href="/es/books/" label="Libros / Books" variant="ghost" />
+      </div>
+    </div>
+  </section>
+</BaseLayout>
