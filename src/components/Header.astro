@@ -15,13 +15,9 @@ const homeHref = `/${lang}/`;
 const navItems = [
   { href: `/${lang}/`, label: text.navHome },
   { href: `/${lang}/books/`, label: text.navBooks },
-  { href: `/${lang}/gallery/`, label: text.navGallery },
   { href: `/${lang}/blog/`, label: text.navBlog },
-  { href: `/${lang}/lottery/`, label: lang === "es" ? "Sorteo" : "Giveaway" },
-  { href: `/${lang}/newsletter/`, label: text.navNewsletter },
   { href: `/${lang}/contact/`, label: text.navContact },
   { href: `/${lang}/about/`, label: text.navAbout },
-  { href: `/${lang}/login/`, label: text.navLogin }
 ];
 ---
 
@@ -33,25 +29,28 @@ const navItems = [
         <span>{siteConfig.brandName}</span>
       </a>
 
-      <div class="lang-toggle" role="group" aria-label={text.languageToggleLabel}>
-        <a
-          href={switchLangPath(pathname, "es")}
-          hreflang="es"
-          lang="es"
-          data-active={lang === "es"}
-          data-lang-link="es"
-        >
-          ES
-        </a>
-        <a
-          href={switchLangPath(pathname, "en")}
-          hreflang="en"
-          lang="en"
-          data-active={lang === "en"}
-          data-lang-link="en"
-        >
-          EN
-        </a>
+      <div class="header-actions">
+        <a href={`/${lang}/login/`} class="header-login">{text.navLogin}</a>
+        <div class="lang-toggle" role="group" aria-label={text.languageToggleLabel}>
+          <a
+            href={switchLangPath(pathname, "es")}
+            hreflang="es"
+            lang="es"
+            data-active={lang === "es"}
+            data-lang-link="es"
+          >
+            ES
+          </a>
+          <a
+            href={switchLangPath(pathname, "en")}
+            hreflang="en"
+            lang="en"
+            data-active={lang === "en"}
+            data-lang-link="en"
+          >
+            EN
+          </a>
+        </div>
       </div>
     </div>
 

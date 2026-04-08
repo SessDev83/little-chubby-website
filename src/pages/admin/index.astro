@@ -31,10 +31,15 @@ const { count: usersCount } = await serviceClient
 
 const currentMonth = new Date().toISOString().slice(0, 7);
 
-const { count: entriesCount } = await serviceClient
-  .from("lottery_entries")
+const { count: pendingReviews } = await serviceClient
+  .from("book_reviews")
   .select("*", { count: "exact", head: true })
-  .eq("month", currentMonth);
+  .eq("status", "pending");
+
+const { count: approvedReviews } = await serviceClient
+  .from("book_reviews")
+  .select("*", { count: "exact", head: true })
+  .eq("status", "approved");
 
 const { count: winnersCount } = await serviceClient
   .from("lottery_winners")
@@ -56,9 +61,16 @@ const { count: winnersCount } = await serviceClient
 
       <div class="surface-card" style="padding:1.4rem; text-align:center;">
         <div style="font-size:2rem; font-weight:700; color:var(--brand-green); font-family:'Baloo 2',sans-serif;">
-          {entriesCount ?? 0}
+          {approvedReviews ?? 0}
         </div>
-        <div style="color:var(--ink-soft);">Entries This Month ({currentMonth})</div>
+        <div style="color:var(--ink-soft);">Approved Reviews</div>
+      </div>
+
+      <div class="surface-card" style="padding:1.4rem; text-align:center;">
+        <div style="font-size:2rem; font-weight:700; color:var(--brand-brown); font-family:'Baloo 2',sans-serif;">
+          {pendingReviews ?? 0}
+        </div>
+        <div style="color:var(--ink-soft);">Pending Reviews</div>
       </div>
 
       <div class="surface-card" style="padding:1.4rem; text-align:center;">

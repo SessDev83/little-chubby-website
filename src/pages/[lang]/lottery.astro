@@ -252,7 +252,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
           {totalTickets === 0 && <p style="color:var(--ink-soft);">{text.lotteryNoTickets}</p>}
           {approvedCount > 0 && (
             <p style="color:var(--ink-soft);">
-              {approvedCount} {approvedCount === 1 ? "libro" : "libros"} × 5 = {totalTickets} boletos
+              {approvedCount} {approvedCount === 1 ? (lang === "es" ? "libro" : "book") : (lang === "es" ? "libros" : "books")} × 5 = {totalTickets} {lang === "es" ? "boletos" : "tickets"}
             </p>
           )}
         </div>

@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="800" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1B3A5C"/>
+      <stop offset="100%" stop-color="#2A5F8F"/>
+    </linearGradient>
+    <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#E8A838"/>
+      <stop offset="100%" stop-color="#F5C563"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="320" rx="24" fill="url(#bg)"/>
+
+  <!-- Decorative dots pattern -->
+  <g opacity="0.08" fill="#fff">
+    <circle cx="50" cy="40" r="4"/><circle cx="100" cy="60" r="3"/><circle cx="150" cy="30" r="5"/>
+    <circle cx="650" cy="50" r="4"/><circle cx="700" cy="80" r="3"/><circle cx="750" cy="35" r="5"/>
+    <circle cx="60" cy="280" r="3"/><circle cx="120" cy="260" r="4"/><circle cx="180" cy="290" r="3"/>
+    <circle cx="620" cy="270" r="4"/><circle cx="680" cy="250" r="3"/><circle cx="740" cy="285" r="5"/>
+    <circle cx="300" cy="20" r="3"/><circle cx="500" cy="25" r="4"/><circle cx="400" cy="300" r="3"/>
+  </g>
+
+  <!-- Stars decoration -->
+  <g filter="url(#glow)">
+    <!-- Left star cluster -->
+    <polygon points="80,140 86,156 104,156 90,166 95,182 80,172 65,182 70,166 56,156 74,156" fill="#F5C563" opacity="0.9"/>
+    <polygon points="120,100 124,110 134,110 126,116 129,126 120,120 111,126 114,116 106,110 116,110" fill="#F5C563" opacity="0.6" transform="scale(0.7) translate(50,40)"/>
+    <polygon points="55,200 58,208 66,208 60,212 62,220 55,216 48,220 50,212 44,208 52,208" fill="#F5C563" opacity="0.5"/>
+
+    <!-- Right star cluster -->
+    <polygon points="720,140 726,156 744,156 730,166 735,182 720,172 705,182 710,166 696,156 714,156" fill="#F5C563" opacity="0.9"/>
+    <polygon points="680,100 684,110 694,110 686,116 689,126 680,120 671,126 674,116 666,110 676,110" fill="#F5C563" opacity="0.6" transform="scale(0.7) translate(310,40)"/>
+    <polygon points="745,200 748,208 756,208 750,212 752,220 745,216 738,220 740,212 734,208 742,208" fill="#F5C563" opacity="0.5"/>
+  </g>
+
+  <!-- Gift box icon -->
+  <g transform="translate(340, 45)">
+    <!-- Ribbon vertical -->
+    <rect x="48" y="30" width="24" height="80" rx="2" fill="url(#ribbon)"/>
+    <!-- Ribbon horizontal -->
+    <rect x="10" y="50" width="100" height="20" rx="2" fill="url(#ribbon)"/>
+    <!-- Box body -->
+    <rect x="15" y="55" width="90" height="55" rx="6" fill="#E8A838" stroke="#D4942E" stroke-width="2"/>
+    <!-- Box lid -->
+    <rect x="8" y="42" width="104" height="22" rx="6" fill="#F5C563" stroke="#E8A838" stroke-width="2"/>
+    <!-- Bow left -->
+    <ellipse cx="45" cy="38" rx="18" ry="14" fill="#F5C563" stroke="#E8A838" stroke-width="1.5" transform="rotate(-15, 45, 38)"/>
+    <!-- Bow right -->
+    <ellipse cx="75" cy="38" rx="18" ry="14" fill="#F5C563" stroke="#E8A838" stroke-width="1.5" transform="rotate(15, 75, 38)"/>
+    <!-- Bow center -->
+    <circle cx="60" cy="42" r="8" fill="#E8A838"/>
+    <!-- Book peeking out -->
+    <rect x="30" y="70" width="30" height="36" rx="3" fill="#fff" opacity="0.9"/>
+    <rect x="33" y="74" width="24" height="3" rx="1" fill="#1B3A5C" opacity="0.4"/>
+    <rect x="33" y="80" width="20" height="2" rx="1" fill="#1B3A5C" opacity="0.3"/>
+    <rect x="33" y="85" width="22" height="2" rx="1" fill="#1B3A5C" opacity="0.3"/>
+    <!-- Sparkles around gift -->
+    <text x="-5" y="30" font-size="20" opacity="0.8">✨</text>
+    <text x="105" y="25" font-size="16" opacity="0.7">✨</text>
+    <text x="110" y="100" font-size="14" opacity="0.6">✨</text>
+  </g>
+
+  <!-- Confetti pieces -->
+  <rect x="160" y="60" width="8" height="14" rx="2" fill="#FF6B6B" opacity="0.7" transform="rotate(25,164,67)"/>
+  <rect x="200" y="90" width="6" height="12" rx="2" fill="#4ECDC4" opacity="0.6" transform="rotate(-15,203,96)"/>
+  <rect x="580" y="55" width="8" height="14" rx="2" fill="#FFE66D" opacity="0.7" transform="rotate(40,584,62)"/>
+  <rect x="620" y="85" width="6" height="12" rx="2" fill="#FF6B6B" opacity="0.6" transform="rotate(-30,623,91)"/>
+  <circle cx="250" cy="70" r="5" fill="#4ECDC4" opacity="0.5"/>
+  <circle cx="550" cy="65" r="4" fill="#FF6B6B" opacity="0.5"/>
+
+  <!-- Bottom ribbon accent -->
+  <rect x="200" y="260" width="400" height="4" rx="2" fill="url(#ribbon)" opacity="0.5"/>
+</svg>
