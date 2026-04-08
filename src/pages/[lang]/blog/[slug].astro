@@ -1,7 +1,7 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import Button from "../../../components/Button.astro";
-import { postsSorted } from "../../../data/posts";
+import { postsSorted, getPostBook } from "../../../data/posts";
 import { languages, getLangFromParam, ui, formatDate } from "../../../data/i18n";
 
 export function getStaticPaths() {
@@ -28,6 +28,7 @@ if (!post) {
   throw new Error("Post not found");
 }
 
+const book = getPostBook(post);
 const pathname = `/${lang}/blog/${post.slug[lang]}/`;
 const breadcrumbs = [
   { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
@@ -49,15 +50,39 @@ const articleSchema = {
   pathname={pathname}
   breadcrumbs={breadcrumbs}
   articleSchema={articleSchema}
+  ogImage={post.image}
 >
   <section class="page-section">
     <div class="container">
       <article class="surface-card" style="padding: clamp(1rem, 2.8vw, 2rem);">
+        {post.image && (
+          <img
+            src={post.image}
+            alt={post.title[lang]}
+            class="post-hero-image"
+            width="600"
+            height="600"
+            loading="eager"
+          />
+        )}
         <p class="post-date">{formatDate(post.date, lang)}</p>
         <h1 style="margin-top: 0.5rem;">{post.title[lang]}</h1>
         <p style="margin-top: 0.7rem;">{post.summary[lang]}</p>
 
         <div class="article-prose" set:html={post.content[lang]}></div>
+
+        {book && (
+          <div class="post-book-cta">
+            <img src={book.coverSrc} alt={book.title[lang]} width="120" height="120" loading="lazy" />
+            <div>
+              <p class="post-book-cta-title">{book.title[lang]}</p>
+              <p class="post-book-cta-sub">{book.subtitle[lang]}</p>
+              <a href={book.amazonUrl} target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                {text.ctaBuyOnAmazon}
+              </a>
+            </div>
+          </div>
+        )}
 
         <div class="hero-actions" style="margin-top: 1.8rem;">
           <Button href={`/${lang}/blog/`} label={text.navBlog} variant="secondary" />
