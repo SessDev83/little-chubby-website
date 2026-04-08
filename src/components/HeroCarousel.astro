@@ -111,11 +111,24 @@ const { books, lang, ctaLabel } = Astro.props;
       });
     });
 
-    // Pause on hover/focus
-    carousel.addEventListener('mouseenter', () => clearInterval(timer));
-    carousel.addEventListener('mouseleave', startTimer);
-    carousel.addEventListener('focusin', () => clearInterval(timer));
-    carousel.addEventListener('focusout', startTimer);
+    // Pause on hover/focus, 2s delay before resuming
+    let resumeTimeout: ReturnType<typeof setTimeout>;
+    carousel.addEventListener('mouseenter', () => {
+      clearTimeout(resumeTimeout);
+      clearInterval(timer);
+    });
+    carousel.addEventListener('mouseleave', () => {
+      clearTimeout(resumeTimeout);
+      resumeTimeout = setTimeout(startTimer, 2000);
+    });
+    carousel.addEventListener('focusin', () => {
+      clearTimeout(resumeTimeout);
+      clearInterval(timer);
+    });
+    carousel.addEventListener('focusout', () => {
+      clearTimeout(resumeTimeout);
+      resumeTimeout = setTimeout(startTimer, 2000);
+    });
 
     startTimer();
   }

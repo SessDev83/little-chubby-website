@@ -305,6 +305,12 @@ main {
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
   background: var(--surface);
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.hero-carousel-slide:hover .hero-carousel-cover {
+  transform: scale(1.05);
+  box-shadow: 0 18px 50px rgba(71, 52, 33, 0.22);
 }
 
 .hero-carousel-info {
