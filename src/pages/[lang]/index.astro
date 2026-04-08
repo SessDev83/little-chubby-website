@@ -4,6 +4,7 @@ import Button from "../../components/Button.astro";
 import BookCard from "../../components/BookCard.astro";
 import PostCard from "../../components/PostCard.astro";
 import NewsletterForm from "../../components/NewsletterForm.astro";
+import HeroCarousel from "../../components/HeroCarousel.astro";
 import { booksByNewest } from "../../data/books";
 import { postsSorted } from "../../data/posts";
 import { languages, getLangFromParam, ui } from "../../data/i18n";
@@ -16,8 +17,10 @@ export function getStaticPaths() {
 const lang = getLangFromParam(Astro.params.lang);
 const text = ui[lang];
 const featuredBooks = booksByNewest.slice(0, 3);
+const heroBooks = booksByNewest.slice(0, 5);
 const featuredPosts = postsSorted.slice(0, 2);
 const pathname = `/${lang}/`;
+const heroCtaLabel = lang === "es" ? "Ver en Amazon" : "View on Amazon";
 const bookCardLabels = {
   buy: text.ctaBuyOnAmazon,
   leaveReview: text.ctaLeaveReview,
@@ -26,9 +29,6 @@ const bookCardLabels = {
   reviewSingular: text.ratingReviewSingular,
   reviewPlural: text.ratingReviewPlural
 };
-const heroLogoAlt = lang === "es"
-  ? "Logo oficial de Little Chubby Press, editorial de libros de colorear para familias"
-  : "Official Little Chubby Press logo, family-focused coloring books publisher";
 ---
 
 <BaseLayout lang={lang} title={text.homeMetaTitle} description={text.homeMetaDescription} pathname={pathname}>
@@ -49,14 +49,7 @@ const heroLogoAlt = lang === "es"
       </div>
 
       <div>
-        <img
-          src={siteConfig.brandAssets.logoLockup}
-          alt={heroLogoAlt}
-          loading="eager"
-          width="540"
-          height="540"
-          style="border-radius: 1rem; border: 1px solid var(--line); background: #fffdf8; max-width: 280px; height: auto;"
-        />
+        <HeroCarousel books={heroBooks} lang={lang} ctaLabel={heroCtaLabel} />
       </div>
     </div>
   </section>

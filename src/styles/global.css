@@ -265,6 +265,89 @@ main {
   gap: 0.8rem;
 }
 
+/* ── Hero Book Carousel ── */
+.hero-carousel {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.hero-carousel-track {
+  position: relative;
+  aspect-ratio: 1;
+}
+
+.hero-carousel-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  pointer-events: none;
+}
+
+.hero-carousel-slide.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hero-carousel-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  gap: 0.6rem;
+}
+
+.hero-carousel-cover {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background: var(--surface);
+}
+
+.hero-carousel-title {
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--brand-brown);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.hero-carousel-cta {
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+}
+
+.hero-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.hero-carousel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--brand-brown);
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.hero-carousel-dot.active {
+  background: var(--brand-brown);
+}
+
+.hero-carousel-dot:hover {
+  background: var(--accent-gold);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

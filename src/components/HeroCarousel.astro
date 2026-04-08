@@ -1,0 +1,102 @@
+---
+import type { Book } from "../data/books";
+import type { Lang } from "../data/i18n";
+
+interface Props {
+  books: Book[];
+  lang: Lang;
+  ctaLabel: string;
+}
+
+const { books, lang, ctaLabel } = Astro.props;
+---
+
+<div class="hero-carousel" aria-roledescription="carousel" aria-label={lang === "es" ? "Últimos libros publicados" : "Latest published books"}>
+  <div class="hero-carousel-track">
+    {books.map((book, i) => (
+      <div class={`hero-carousel-slide${i === 0 ? " active" : ""}`} role="group" aria-roledescription="slide" aria-label={`${i + 1} / ${books.length}`}>
+        <a href={book.amazonUrl} target="_blank" rel="noopener noreferrer" class="hero-carousel-link">
+          <img
+            src={book.coverSrc}
+            alt={book.coverAlt[lang]}
+            width="320"
+            height="320"
+            loading={i === 0 ? "eager" : "lazy"}
+            class="hero-carousel-cover"
+          />
+          <span class="hero-carousel-title">{book.title[lang]}</span>
+          <span class="hero-carousel-cta btn btn-primary">{ctaLabel}</span>
+        </a>
+      </div>
+    ))}
+  </div>
+  <div class="hero-carousel-dots" role="tablist" aria-label={lang === "es" ? "Seleccionar libro" : "Select book"}>
+    {books.map((_, i) => (
+      <button
+        type="button"
+        role="tab"
+        class={`hero-carousel-dot${i === 0 ? " active" : ""}`}
+        aria-selected={i === 0 ? "true" : "false"}
+        aria-label={`${i + 1}`}
+        data-index={i}
+      />
+    ))}
+  </div>
+</div>
+
+<script>
+  function initCarousel() {
+    const carousel = document.querySelector('.hero-carousel');
+    if (!carousel) return;
+
+    const slides = carousel.querySelectorAll<HTMLElement>('.hero-carousel-slide');
+    const dots = carousel.querySelectorAll<HTMLElement>('.hero-carousel-dot');
+    if (slides.length === 0) return;
+
+    let current = 0;
+    let timer: ReturnType<typeof setInterval>;
+
+    function goTo(index: number) {
+      slides[current].classList.remove('active');
+      dots[current].classList.remove('active');
+      dots[current].setAttribute('aria-selected', 'false');
+
+      current = index;
+
+      slides[current].classList.add('active');
+      dots[current].classList.add('active');
+      dots[current].setAttribute('aria-selected', 'true');
+    }
+
+    function next() {
+      goTo((current + 1) % slides.length);
+    }
+
+    function startTimer() {
+      timer = setInterval(next, 4000);
+    }
+
+    function resetTimer() {
+      clearInterval(timer);
+      startTimer();
+    }
+
+    dots.forEach((dot) => {
+      dot.addEventListener('click', () => {
+        const idx = Number(dot.dataset.index);
+        goTo(idx);
+        resetTimer();
+      });
+    });
+
+    // Pause on hover/focus
+    carousel.addEventListener('mouseenter', () => clearInterval(timer));
+    carousel.addEventListener('mouseleave', startTimer);
+    carousel.addEventListener('focusin', () => clearInterval(timer));
+    carousel.addEventListener('focusout', startTimer);
+
+    startTimer();
+  }
+
+  initCarousel();
+</script>
