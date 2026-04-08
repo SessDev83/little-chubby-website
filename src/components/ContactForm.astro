@@ -10,12 +10,13 @@ interface Props {
 const { lang } = Astro.props;
 const text = ui[lang];
 const isPlaceholder = siteConfig.contactForm.actionUrl.includes("YOUR_");
-const successUrl = new URL(siteConfig.contactForm.successRedirect[lang], siteConfig.siteUrl).toString();
+const subjectByLang = lang === "en"
+  ? `New message from ${siteConfig.brandName}`
+  : `Nuevo mensaje desde ${siteConfig.brandName}`;
 ---
 
 <form class="surface-card form-shell js-validate-contact" method="post" action={siteConfig.contactForm.actionUrl} novalidate>
-  <input type="hidden" name="_subject" value={`Nuevo mensaje desde ${siteConfig.brandName}`} />
-  <input type="hidden" name="_redirect" value={successUrl} />
+  <input type="hidden" name="subject" value={subjectByLang} />
 
   <div class="form-grid">
     <div class="form-group">
@@ -35,7 +36,7 @@ const successUrl = new URL(siteConfig.contactForm.successRedirect[lang], siteCon
 
     <div class="form-group" aria-hidden="true">
       <label for="contact-company">{text.formPhoneHp}</label>
-      <input id="contact-company" class="hp-field" name="company" type="text" tabindex="-1" autocomplete="off" />
+      <input id="contact-company" class="hp-field" name="_gotcha" type="text" tabindex="-1" autocomplete="off" />
     </div>
 
     {
@@ -70,7 +71,7 @@ const successUrl = new URL(siteConfig.contactForm.successRedirect[lang], siteCon
       const nameInput = contactForm.querySelector('input[name="name"]');
       const emailInput = contactForm.querySelector('input[name="email"]');
       const messageInput = contactForm.querySelector('textarea[name="message"]');
-      const hpInput = contactForm.querySelector('input[name="company"]');
+      const hpInput = contactForm.querySelector('input[name="_gotcha"]');
 
       contactStatus.textContent = "";
 
