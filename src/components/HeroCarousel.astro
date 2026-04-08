@@ -14,22 +14,38 @@ const { books, lang, ctaLabel } = Astro.props;
 <div class="hero-carousel" aria-roledescription="carousel" aria-label={lang === "es" ? "Últimos libros publicados" : "Latest published books"}>
   <div class="hero-carousel-track">
     {books.map((book, i) => (
-      <div class={`hero-carousel-slide${i === 0 ? " active" : ""}`} role="group" aria-roledescription="slide" aria-label={`${i + 1} / ${books.length}`}>
-        <a href={book.amazonUrl} target="_blank" rel="noopener noreferrer" class="hero-carousel-link">
-          <img
-            src={book.coverSrc}
-            alt={book.coverAlt[lang]}
-            width="320"
-            height="320"
-            loading={i === 0 ? "eager" : "lazy"}
-            class="hero-carousel-cover"
-          />
-          <span class="hero-carousel-title">{book.title[lang]}</span>
-          <span class="hero-carousel-cta btn btn-primary">{ctaLabel}</span>
-        </a>
-      </div>
+      <a
+        href={book.amazonUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        class={`hero-carousel-slide${i === 0 ? " active" : ""}`}
+        role="group"
+        aria-roledescription="slide"
+        aria-label={`${i + 1} / ${books.length}`}
+      >
+        <img
+          src={book.coverSrc}
+          alt={book.coverAlt[lang]}
+          width="320"
+          height="320"
+          loading={i === 0 ? "eager" : "lazy"}
+          class="hero-carousel-cover"
+        />
+      </a>
     ))}
   </div>
+
+  <div class="hero-carousel-info">
+    {books.map((book, i) => (
+      <span class={`hero-carousel-title${i === 0 ? " active" : ""}`} data-index={i}>
+        {book.title[lang]}
+      </span>
+    ))}
+    <a href={books[0].amazonUrl} target="_blank" rel="noopener noreferrer" class="hero-carousel-cta btn btn-primary" data-urls={JSON.stringify(books.map(b => b.amazonUrl))}>
+      {ctaLabel} &rarr;
+    </a>
+  </div>
+
   <div class="hero-carousel-dots" role="tablist" aria-label={lang === "es" ? "Seleccionar libro" : "Select book"}>
     {books.map((_, i) => (
       <button
@@ -51,6 +67,9 @@ const { books, lang, ctaLabel } = Astro.props;
 
     const slides = carousel.querySelectorAll<HTMLElement>('.hero-carousel-slide');
     const dots = carousel.querySelectorAll<HTMLElement>('.hero-carousel-dot');
+    const titles = carousel.querySelectorAll<HTMLElement>('.hero-carousel-title');
+    const ctaBtn = carousel.querySelector<HTMLAnchorElement>('.hero-carousel-cta');
+    const ctaUrls: string[] = ctaBtn ? JSON.parse(ctaBtn.dataset.urls || '[]') : [];
     if (slides.length === 0) return;
 
     let current = 0;
@@ -60,12 +79,15 @@ const { books, lang, ctaLabel } = Astro.props;
       slides[current].classList.remove('active');
       dots[current].classList.remove('active');
       dots[current].setAttribute('aria-selected', 'false');
+      titles[current].classList.remove('active');
 
       current = index;
 
       slides[current].classList.add('active');
       dots[current].classList.add('active');
       dots[current].setAttribute('aria-selected', 'true');
+      titles[current].classList.add('active');
+      if (ctaBtn && ctaUrls[current]) ctaBtn.href = ctaUrls[current];
     }
 
     function next() {
