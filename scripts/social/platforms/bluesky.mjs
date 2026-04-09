@@ -1,0 +1,151 @@
+/**
+ * Bluesky (AT Protocol) connector.
+ * Posts text (and optionally an image) to your Bluesky account.
+ *
+ * Required env vars:
+ *   BLUESKY_HANDLE   — e.g. "littlechubbypress.bsky.social"
+ *   BLUESKY_PASSWORD  — an App Password (NOT your main password)
+ *
+ * Create an App Password at: https://bsky.app/settings/app-passwords
+ */
+
+const BLUESKY_SERVICE = "https://bsky.social";
+
+/**
+ * Authenticate and return session tokens.
+ */
+async function createSession(handle, password) {
+  const res = await fetch(`${BLUESKY_SERVICE}/xrpc/com.atproto.server.createSession`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier: handle, password }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Bluesky auth failed (${res.status}): ${body}`);
+  }
+
+  return res.json(); // { did, handle, accessJwt, refreshJwt }
+}
+
+/**
+ * Upload an image blob (for embedding in a post).
+ * @param {string} accessJwt
+ * @param {Buffer} imageBuffer
+ * @param {string} mimeType - e.g. "image/png", "image/jpeg", "image/webp"
+ * @returns {{ blob: object }}
+ */
+async function uploadImage(accessJwt, imageBuffer, mimeType) {
+  const res = await fetch(`${BLUESKY_SERVICE}/xrpc/com.atproto.repo.uploadBlob`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessJwt}`,
+      "Content-Type": mimeType,
+    },
+    body: imageBuffer,
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Bluesky image upload failed (${res.status}): ${body}`);
+  }
+
+  const data = await res.json();
+  return data.blob;
+}
+
+/**
+ * Detect URLs in text and create facets for link embedding.
+ */
+function detectFacets(text) {
+  const facets = [];
+  const urlRegex = /https?:\/\/[^\s)]+/g;
+  let match;
+  const encoder = new TextEncoder();
+
+  while ((match = urlRegex.exec(text)) !== null) {
+    const beforeBytes = encoder.encode(text.slice(0, match.index)).byteLength;
+    const urlBytes = encoder.encode(match[0]).byteLength;
+    facets.push({
+      index: { byteStart: beforeBytes, byteEnd: beforeBytes + urlBytes },
+      features: [{ $type: "app.bsky.richtext.facet#link", uri: match[0] }],
+    });
+  }
+
+  return facets;
+}
+
+/**
+ * Post to Bluesky.
+ * @param {string} text - The post text (max 300 chars).
+ * @param {object} [options]
+ * @param {Buffer} [options.imageBuffer] - Optional image to attach.
+ * @param {string} [options.imageMimeType] - MIME type of the image.
+ * @param {string} [options.imageAlt] - Alt text for the image.
+ * @returns {{ uri: string, cid: string }}
+ */
+export async function postToBluesky(text, options = {}) {
+  const handle = process.env.BLUESKY_HANDLE;
+  const password = process.env.BLUESKY_PASSWORD;
+
+  if (!handle || !password) {
+    throw new Error("Missing BLUESKY_HANDLE or BLUESKY_PASSWORD env vars");
+  }
+
+  const session = await createSession(handle, password);
+  const { did, accessJwt } = session;
+
+  // Build post record
+  const record = {
+    $type: "app.bsky.feed.post",
+    text,
+    createdAt: new Date().toISOString(),
+    facets: detectFacets(text),
+  };
+
+  // Attach link card embed if a URL is provided (appears as a clickable card below the post)
+  if (options.linkUrl) {
+    record.embed = {
+      $type: "app.bsky.embed.external",
+      external: {
+        uri: options.linkUrl,
+        title: options.linkTitle || "",
+        description: options.linkDescription || "",
+      },
+    };
+  }
+
+  // Attach image embed if provided (overrides link card)
+  if (options.imageBuffer) {
+    const blob = await uploadImage(
+      accessJwt,
+      options.imageBuffer,
+      options.imageMimeType || "image/png"
+    );
+    record.embed = {
+      $type: "app.bsky.embed.images",
+      images: [{ alt: options.imageAlt || "", image: blob }],
+    };
+  }
+
+  const res = await fetch(`${BLUESKY_SERVICE}/xrpc/com.atproto.repo.createRecord`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessJwt}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      repo: did,
+      collection: "app.bsky.feed.post",
+      record,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Bluesky post failed (${res.status}): ${body}`);
+  }
+
+  return res.json(); // { uri, cid }
+}

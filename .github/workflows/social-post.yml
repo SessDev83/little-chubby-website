@@ -1,0 +1,82 @@
+# Automated social media posting schedule.
+# Posts go out Mon-Sat at 10 AM ET (14:00 UTC) to Bluesky.
+# Enable Facebook/Instagram by adding platform secrets.
+
+name: Social Media Auto-Post
+
+on:
+  schedule:
+    # 10:00 AM ET (UTC-4) = 14:00 UTC — weekdays + Saturday
+    - cron: "0 14 * * 1"   # Monday    — book promo
+    - cron: "0 14 * * 2"   # Tuesday   — engagement
+    - cron: "0 14 * * 3"   # Wednesday — blog share
+    - cron: "0 14 * * 4"   # Thursday  — book promo
+    - cron: "0 14 * * 5"   # Friday    — engagement
+    - cron: "0 14 * * 6"   # Saturday  — review request
+  workflow_dispatch:
+    inputs:
+      type:
+        description: "Post type"
+        required: true
+        default: "book-promo"
+        type: choice
+        options:
+          - book-promo
+          - blog-share
+          - engagement
+          - review-request
+      platform:
+        description: "Platform"
+        required: true
+        default: "bluesky"
+        type: choice
+        options:
+          - bluesky
+          - facebook
+          - instagram
+          - all
+      lang:
+        description: "Language"
+        required: true
+        default: "en"
+        type: choice
+        options:
+          - en
+          - es
+
+jobs:
+  auto-post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Determine post type from schedule
+        id: schedule
+        run: |
+          DAY=$(date -u +%u)
+          case $DAY in
+            1) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
+            2) echo "type=engagement" >> $GITHUB_OUTPUT ;;
+            3) echo "type=blog-share" >> $GITHUB_OUTPUT ;;
+            4) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
+            5) echo "type=engagement" >> $GITHUB_OUTPUT ;;
+            6) echo "type=review-request" >> $GITHUB_OUTPUT ;;
+            *) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Post to social media
+        env:
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_PASSWORD: ${{ secrets.BLUESKY_PASSWORD }}
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+        run: |
+          TYPE="${{ github.event.inputs.type || steps.schedule.outputs.type }}"
+          PLATFORM="${{ github.event.inputs.platform || 'bluesky' }}"
+          LANG="${{ github.event.inputs.lang || 'en' }}"
+          node scripts/social/post.mjs post --type "$TYPE" --platform "$PLATFORM" --lang "$LANG"

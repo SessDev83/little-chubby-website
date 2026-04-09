@@ -11,7 +11,10 @@
     "preview": "astro preview",
     "astro": "astro",
     "covers:build": "node scripts/prepare-book-covers.mjs",
-    "cover:one": "node scripts/prepare-book-covers.mjs"
+    "cover:one": "node scripts/prepare-book-covers.mjs",
+    "social:generate": "node scripts/social/post.mjs generate",
+    "social:post": "node scripts/social/post.mjs post",
+    "social:calendar": "node scripts/social/post.mjs calendar"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.18",
