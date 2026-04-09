@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#F6F1E7"/>
+  <rect x="60" y="60" width="1080" height="510" rx="32" fill="#1B3A5C"/>
+  <circle cx="600" cy="270" r="110" fill="#2A5F8F" opacity="0.4"/>
+  <!-- Open book -->
+  <path d="M520 240 L520 330 Q570 310 600 320 Q630 310 680 330 L680 240 Q640 225 600 235 Q560 225 520 240Z" fill="#fff" opacity="0.2"/>
+  <line x1="600" y1="235" x2="600" y2="320" stroke="#fff" stroke-width="1.5" opacity="0.3"/>
+  <!-- Page lines -->
+  <line x1="535" y1="260" x2="590" y2="255" stroke="#F5C563" stroke-width="1.5" opacity="0.4"/>
+  <line x1="535" y1="275" x2="585" y2="270" stroke="#F5C563" stroke-width="1.5" opacity="0.3"/>
+  <line x1="535" y1="290" x2="580" y2="286" stroke="#F5C563" stroke-width="1.5" opacity="0.3"/>
+  <line x1="610" y1="255" x2="665" y2="260" stroke="#F5C563" stroke-width="1.5" opacity="0.4"/>
+  <line x1="610" y1="270" x2="660" y2="275" stroke="#F5C563" stroke-width="1.5" opacity="0.3"/>
+  <!-- Magnifying glass -->
+  <circle cx="690" cy="230" r="28" stroke="#F5C563" stroke-width="3" fill="#fff" opacity="0.1"/>
+  <line x1="710" y1="252" x2="730" y2="272" stroke="#F5C563" stroke-width="4" stroke-linecap="round"/>
+  <!-- Checkmark inside glass -->
+  <path d="M678 230 L686 240 L702 220" stroke="#4ECDC4" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <!-- Stars rating -->
+  <polygon points="480,210 484,222 496,222 486,229 490,241 480,234 470,241 474,229 464,222 476,222" fill="#F5C563" opacity="0.5"/>
+  <polygon points="510,200 513,209 522,209 515,214 517,223 510,218 503,223 505,214 498,209 507,209" fill="#F5C563" opacity="0.4"/>
+  <polygon points="540,210 543,219 552,219 545,224 547,233 540,228 533,233 535,224 528,219 537,219" fill="#F5C563" opacity="0.35"/>
+  <!-- Question mark -->
+  <text x="600" y="210" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="40" fill="#F5C563" opacity="0.5">?</text>
+  <text x="600" y="465" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="28" fill="#fff">CHOOSING THE RIGHT BOOK</text>
+  <text x="600" y="500" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="400" font-size="18" fill="#F5C563">The guide to picking your kid's first coloring book</text>
+</svg>

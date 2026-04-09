@@ -15,14 +15,15 @@ export type Post = {
 export const posts: Post[] = [
   {
     id: "primer-libro",
+    image: "/images/blog/choosing-coloring-book.svg",
     title: {
-      es: "Como elegir el primer libro de colorear para tu peque",
-      en: "How to choose your kid's first coloring book"
+      es: "Como elegir el primer libro de colorear para tu peque (sin desperdiciar dinero)",
+      en: "How to choose your kid's first coloring book (without wasting money)"
     },
     date: "2026-03-28",
     summary: {
-      es: "Una guia breve para escoger por edad, nivel de detalle y estilo de ilustracion sin complicarte.",
-      en: "A quick guide to pick by age, detail level, and illustration style without overthinking it."
+      es: "Compraste un libro de colorear y tu peque lo ignoro? El problema no fue el nino. Aqui esta la guia que necesitabas.",
+      en: "Bought a coloring book your kid ignored? The problem was not the child. Here is the guide you needed."
     },
     slug: {
       es: "como-elegir-primer-libro-colorear",
@@ -30,35 +31,44 @@ export const posts: Post[] = [
     },
     content: {
       es: `
-      <p>Elegir un libro de colorear parece simple, pero cuando hay demasiadas opciones puede volverse abrumador. La mejor referencia siempre es la experiencia real del peque con lapices, crayones y tiempo de concentracion.</p>
-      <h2>Empieza por el nivel de detalle</h2>
-      <p>Si recien esta empezando, busca trazos gruesos, espacios amplios y figuras faciles de identificar. Evita paginas excesivamente cargadas para que la experiencia sea divertida y no frustrante.</p>
-      <h2>Observa intereses naturales</h2>
-      <p>Animales, vehiculos, oceano o fantasia: cuando el tema les gusta, el tiempo de atencion mejora de forma natural. Ese es el verdadero atajo para que quieran volver a colorear.</p>
+      <p>Compraste un libro de colorear que se veia perfecto en Amazon. Llego a casa, tu peque lo abrio… y lo dejo en 3 minutos. Ahora tienes un libro sin usar y la sensacion de haber tirado el dinero. <strong>No fue culpa de tu hijo — fue el libro equivocado.</strong></p>
+      <h2>El error que todos cometemos</h2>
+      <p>Elegimos por la portada, las resenas o el precio. Pero un libro de colorear es como zapatos: <strong>si no es la talla correcta, no importa lo bonito que sea</strong>. Un nino de 3 anos con paginas llenas de detalles diminutos se frustra. Un nino de 7 con trazos demasiado basicos se aburre. Y ambos cierran el libro para siempre.</p>
+      <h2>Las 3 reglas que funcionan</h2>
+      <p><strong>1. Nivel de detalle por edad:</strong> Para 2-4 anos, trazos gruesos y una figura por pagina. Para 5-7, algo mas de complejidad pero sin saturar. Para 8+, escenas mas ricas que reten sin frustrar.</p>
+      <p><strong>2. El tema lo decide tu hijo:</strong> Animales, vehiculos, fantasia, moda — cuando el tema les gusta, la concentracion aparece sola. No elijas lo que <em>tu</em> crees que deberia gustarle.</p>
+      <p><strong>3. Prueba antes de comprar:</strong> Busca siempre las paginas de muestra. Si tu peque puede identificar la imagen en 2 segundos, es el nivel correcto.</p>
       <h2>Hazlo ritual, no tarea</h2>
-      <p>Reserva un pequeno bloque semanal, sin pantallas alrededor. Con buena luz, una mesa comoda y musica suave, el momento creativo se convierte en habito.</p>
+      <p>Reserva un bloque semanal sin pantallas cerca. Buena luz, mesa comoda y musica suave. Cuando colorear tiene su propio momento especial, <strong>se convierte en habito, no en obligacion</strong>.</p>
+      <h2>Tu siguiente paso</h2>
+      <p>Antes de abrir Amazon, observa a tu peque 5 minutos: ¿que temas le emocionan? ¿Cuanto tiempo se concentra normalmente? Con esas dos respuestas, el libro correcto se elige solo.</p>
     `,
       en: `
-      <p>Choosing a coloring book sounds simple, but too many options can make the process overwhelming. The best reference is always your child's real experience with pencils, crayons, and attention span.</p>
-      <h2>Start with the detail level</h2>
-      <p>If they are just getting started, choose bold outlines, large areas, and familiar shapes. Avoid crowded pages so the process stays playful, not frustrating.</p>
-      <h2>Follow natural interests</h2>
-      <p>Animals, vehicles, ocean scenes, or fantasy themes: when they care about the topic, focus improves naturally.</p>
+      <p>You bought a coloring book that looked perfect on Amazon. It arrived, your kid opened it… and abandoned it in 3 minutes. Now you have an unused book and the feeling that you wasted money. <strong>It was not your child's fault — it was the wrong book.</strong></p>
+      <h2>The mistake we all make</h2>
+      <p>We choose by cover, reviews, or price. But a coloring book is like shoes: <strong>if it is not the right size, it does not matter how pretty it is</strong>. A 3-year-old with tiny, detailed pages gets frustrated. A 7-year-old with overly basic shapes gets bored. And both close the book forever.</p>
+      <h2>The 3 rules that work</h2>
+      <p><strong>1. Detail level by age:</strong> For ages 2-4, bold outlines and one figure per page. For 5-7, more complexity without overwhelming. For 8+, richer scenes that challenge without frustrating.</p>
+      <p><strong>2. Let your child pick the theme:</strong> Animals, vehicles, fantasy, fashion — when they care about the topic, focus comes naturally. Do not choose what <em>you</em> think they should like.</p>
+      <p><strong>3. Preview before buying:</strong> Always look at sample pages. If your child can identify the image in 2 seconds, it is the right level.</p>
       <h2>Make it a ritual, not a task</h2>
-      <p>Reserve a small weekly time block, away from screens. Good lighting, a comfortable table, and soft music can turn coloring into a lasting habit.</p>
+      <p>Reserve a weekly block with no screens around. Good lighting, a comfortable table, and soft music. When coloring has its own special moment, <strong>it becomes a habit, not an obligation</strong>.</p>
+      <h2>Your next step</h2>
+      <p>Before opening Amazon, observe your child for 5 minutes: what topics excite them? How long do they usually focus? With those two answers, the right book picks itself.</p>
     `
     }
   },
   {
     id: "taller-creativo",
+    image: "/images/blog/creative-workshop.svg",
     title: {
-      es: "3 ideas para transformar una tarde comun en taller creativo",
-      en: "3 ways to turn a regular afternoon into a creative studio"
+      es: "3 ideas para transformar una tarde aburrida en taller creativo (sin gastar un centavo)",
+      en: "3 ways to turn a boring afternoon into a creative workshop (for free)"
     },
     date: "2026-03-12",
     summary: {
-      es: "Recursos simples para que colorear sea una actividad con juego, historia y aprendizaje.",
-      en: "Simple prompts to make coloring feel playful, meaningful, and educational."
+      es: "Tu peque dice 'estoy aburrido' cada tarde. Estas 3 dinamicas convierten lo que ya tienes en una experiencia creativa.",
+      en: "Your kid says 'I am bored' every afternoon. These 3 setups turn what you already have into a creative experience."
     },
     slug: {
       es: "ideas-taller-creativo-en-casa",
@@ -66,35 +76,44 @@ export const posts: Post[] = [
     },
     content: {
       es: `
-      <p>No hace falta montar un estudio de arte para tener una tarde memorable. Con pocos materiales puedes crear dinamicas que mezclen juego y expresion.</p>
+      <p>"Mama, estoy aburrido." Es martes a las 4pm, la tablet esta prohibida, la lluvia no deja salir y tu peque te mira como si fueras la directora de entretenimiento de un crucero. <strong>Necesitas un plan, y lo necesitas ya.</strong></p>
+      <h2>Por que "ve a dibujar" no funciona</h2>
+      <p>Poner una hoja en blanco frente a un nino aburrido es como darle un gimnasio a alguien sin motivacion — <strong>no sabra por donde empezar</strong>. Lo que necesitas es una dinamica con estructura y un poquito de emocion. No un estudio de arte, sino una excusa para crear.</p>
       <h2>1) Historias en cadena</h2>
-      <p>Cada persona colorea un personaje y luego inventan una mini historia conjunta. Esto activa imaginacion y lenguaje al mismo tiempo.</p>
-      <h2>2) Paleta sorpresa</h2>
-      <p>Elige 4 colores al azar y utilicen solo esos tonos durante 15 minutos. Las limitaciones ayudan mucho a desbloquear creatividad.</p>
-      <h2>3) Galeria familiar</h2>
-      <p>Al terminar, peguen las paginas en una pared o puerta por una semana. Ver su trabajo exhibido eleva confianza y motivacion.</p>
+      <p>Cada persona colorea un personaje (cualquiera) y le inventa un nombre. Despues, entre todos construyen una mini historia: "Mi unicornio conocio a tu dinosaurio en el parque y…" Esto <strong>activa imaginacion y lenguaje al mismo tiempo</strong>. Los mas timidos se sueltan cuando su personaje habla por ellos.</p>
+      <h2>2) Paleta sorpresa: solo 4 colores</h2>
+      <p>Mete todos los lapices en una bolsa y saca 4 al azar. Esos son los unicos colores permitidos durante 15 minutos. ¿Un arbol morado? ¿Un perro amarillo? Perfecto. <strong>Las limitaciones desbloquean creatividad</strong> — esta demostrado por la ciencia y por cualquier nino que lo haya probado.</p>
+      <h2>3) Galeria familiar en la pared</h2>
+      <p>Al terminar, peguen las paginas en una pared o puerta con cinta adhesiva. Dejenlas una semana. Ver su trabajo exhibido como arte real <strong>eleva su confianza de una forma que "que bonito" nunca lograra</strong>. Bonus: cuando vengan visitas, ellos explican su obra.</p>
+      <h2>Tu siguiente paso</h2>
+      <p>Hoy, elige UNA de estas tres ideas. Solo una. Pruebala esta semana sin expectativas. Si funciona (y va a funcionar), la proxima semana agregas otra.</p>
     `,
       en: `
-      <p>You do not need a full art studio to create a memorable afternoon. With just a few tools, you can build activities that blend play and expression.</p>
+      <p>"Mom, I am bored." It is Tuesday at 4pm, the tablet is off-limits, the rain is not letting anyone outside, and your kid is looking at you like you are the entertainment director of a cruise ship. <strong>You need a plan, and you need it now.</strong></p>
+      <h2>Why "go draw something" does not work</h2>
+      <p>Handing a blank sheet to a bored child is like giving a gym membership to someone with no motivation — <strong>they will not know where to start</strong>. What you need is an activity with structure and a little excitement. Not an art studio, just an excuse to create.</p>
       <h2>1) Story chain</h2>
-      <p>Each person colors one character, then everyone builds a short story together. It supports imagination and language at the same time.</p>
-      <h2>2) Surprise palette</h2>
-      <p>Pick 4 random colors and use only those for 15 minutes. Healthy constraints often unlock creativity.</p>
+      <p>Each person colors a character (any character) and gives it a name. Then together, everyone builds a mini story: "My unicorn met your dinosaur at the park and…" This <strong>activates imagination and language at the same time</strong>. Shy kids open up when their character speaks for them.</p>
+      <h2>2) Surprise palette: only 4 colors</h2>
+      <p>Put all pencils in a bag and pull out 4 at random. Those are the only colors allowed for 15 minutes. A purple tree? A yellow dog? Perfect. <strong>Constraints unlock creativity</strong> — this is backed by science and by every kid who has ever tried it.</p>
       <h2>3) Family gallery wall</h2>
-      <p>Display finished pages on a wall for one week. Seeing their work celebrated boosts confidence and motivation.</p>
+      <p>When they finish, tape the pages to a wall or door. Leave them up for a week. Seeing their work displayed like real art <strong>builds confidence in a way that "looks nice" never will</strong>. Bonus: when guests come over, they get to explain their masterpiece.</p>
+      <h2>Your next step</h2>
+      <p>Today, pick ONE of these three ideas. Just one. Try it this week with zero expectations. If it works (and it will), add another one next week.</p>
     `
     }
   },
   {
     id: "concentracion",
+    image: "/images/blog/focus-concentration.svg",
     title: {
-      es: "Por que colorear ayuda a la concentracion infantil",
-      en: "Why coloring improves focus in children"
+      es: "Tu hijo no se concentra? Colorear podria ser la solucion que no esperabas",
+      en: "Your kid cannot focus? Coloring might be the solution you did not expect"
     },
     date: "2026-02-25",
     summary: {
-      es: "Beneficios practicos del coloreado guiado para foco, paciencia y coordinacion fina.",
-      en: "Practical benefits of guided coloring for focus, patience, and fine motor skills."
+      es: "Antes de buscar diagnosticos, prueba esto: 15 minutos de color pueden cambiar el juego.",
+      en: "Before chasing diagnoses, try this: 15 minutes of coloring might change the game."
     },
     slug: {
       es: "beneficios-colorear-concentracion-infantil",
@@ -102,35 +121,44 @@ export const posts: Post[] = [
     },
     content: {
       es: `
-      <p>Colorear combina repeticion, decision y control motor. Esa mezcla favorece la atencion sostenida de manera natural y sin presion academica.</p>
-      <h2>Atencion con objetivo claro</h2>
-      <p>Completar una ilustracion ofrece una meta visible. Esa estructura ayuda a que el peque permanezca enfocado por mas tiempo.</p>
-      <h2>Coordinacion y precision</h2>
-      <p>Seguir lineas, elegir intensidad y respetar bordes fortalece habilidades motoras finas que luego impactan escritura y autonomia diaria.</p>
-      <h2>Regulacion emocional</h2>
-      <p>La actividad repetitiva y tranquila reduce sobreestimulo. Muchas familias la usan como puente entre juego activo y rutina de descanso.</p>
+      <p>"No se queda quieto." "No termina nada." "En la escuela dicen que se distrae." Si alguna de estas frases te suena, probablemente ya buscaste en Google y terminaste asustado con siglas como TDAH. <strong>Antes de correr al especialista, lee esto.</strong></p>
+      <h2>La concentracion no es magia — es musculo</h2>
+      <p>Esperamos que los ninos se concentren 45 minutos en clase, pero <strong>nunca les ensenamos a concentrarse</strong>. Es como esperar que corran un maraton sin haber caminado al parque. La atencion sostenida se entrena, y necesita actividades con la dificultad justa: ni tan faciles que aburran, ni tan dificiles que frustren.</p>
+      <h2>Por que colorear funciona (y las pantallas no)</h2>
+      <p>Un videojuego cambia estimulos cada 2 segundos — el cerebro no necesita concentrarse, solo reaccionar. Colorear es lo opuesto: <strong>una tarea continua, con meta clara y feedback visual inmediato</strong>. Seguir lineas, elegir intensidad, respetar bordes — cada micro-decision mantiene al cerebro activo sin sobreestimularlo.</p>
+      <h2>El efecto dominó</h2>
+      <p>Las habilidades motoras finas que se entrenan coloreando (agarre del lapiz, coordinacion ojo-mano, presion controlada) son <strong>exactamente las mismas que necesita para escribir</strong>. Y la regulacion emocional que viene de la actividad repetitiva y tranquila reduce el sobreestimulo. Muchas familias la usan como puente entre juego activo y rutina de descanso.</p>
+      <h2>Como empezar hoy</h2>
+      <p>Pon un temporizador de 10 minutos. Sin presion, sin meta. Solo colorear con musica suave de fondo. La primera semana seran 10 minutos. La segunda, 15. Para la tercera, <strong>te va a pedir el a ti que saquen los colores</strong>.</p>
+      <h2>Tu siguiente paso</h2>
+      <p>La proxima vez que no se concentre, en vez de regañar, di: "¿Quieres colorear 10 minutos?" Es mas barato que un terapeuta y podria ser todo lo que necesita.</p>
     `,
       en: `
-      <p>Coloring combines repetition, decision-making, and motor control. This mix encourages sustained attention in a natural, low-pressure way.</p>
-      <h2>Goal-oriented focus</h2>
-      <p>Finishing an illustration gives kids a visible goal. That simple structure helps them stay engaged for longer periods.</p>
-      <h2>Coordination and precision</h2>
-      <p>Following outlines and choosing color intensity supports fine motor development, which later helps writing and daily autonomy.</p>
-      <h2>Emotional regulation</h2>
-      <p>The repetitive rhythm of coloring can reduce overstimulation. Many families use it as a bridge between active play and bedtime routines.</p>
+      <p>"He will not sit still." "She never finishes anything." "The school says he gets distracted." If any of these sound familiar, you have probably Googled it and ended up scared by acronyms like ADHD. <strong>Before rushing to a specialist, read this.</strong></p>
+      <h2>Focus is not magic — it is a muscle</h2>
+      <p>We expect kids to focus for 45 minutes in class, but <strong>we never teach them how to focus</strong>. That is like expecting them to run a marathon without ever walking to the park. Sustained attention is trained, and it needs activities with the right difficulty: not so easy they bore, not so hard they frustrate.</p>
+      <h2>Why coloring works (and screens do not)</h2>
+      <p>A video game changes stimuli every 2 seconds — the brain does not need to focus, just react. Coloring is the opposite: <strong>a continuous task with a clear goal and immediate visual feedback</strong>. Following outlines, choosing intensity, staying inside the lines — every micro-decision keeps the brain active without overstimulating it.</p>
+      <h2>The domino effect</h2>
+      <p>The fine motor skills trained by coloring (pencil grip, hand-eye coordination, controlled pressure) are <strong>exactly the same skills needed for writing</strong>. And the emotional regulation that comes from repetitive, calm activity reduces overstimulation. Many families use it as a bridge between active play and bedtime routines.</p>
+      <h2>How to start today</h2>
+      <p>Set a 10-minute timer. No pressure, no goal. Just coloring with soft background music. The first week it will be 10 minutes. The second, 15. By the third week, <strong>they will be the one asking you to bring out the colors</strong>.</p>
+      <h2>Your next step</h2>
+      <p>Next time they cannot focus, instead of scolding, say: "Want to color for 10 minutes?" It is cheaper than a therapist, and it might be all they need.</p>
     `
     }
   },
   {
     id: "materiales",
+    image: "/images/blog/coloring-supplies.svg",
     title: {
-      es: "Materiales recomendados para colorear sin manchar todo",
-      en: "Best coloring materials without the mess"
+      es: "La guia definitiva de materiales para colorear (sin arruinar tu sofa)",
+      en: "The ultimate guide to coloring supplies (without ruining your couch)"
     },
     date: "2026-01-30",
     summary: {
-      es: "Una lista practica de herramientas seguras, limpias y faciles de guardar.",
-      en: "A practical list of safe, tidy, and easy-to-store coloring supplies for kids and families at home."
+      es: "Crayones en las paredes, marcadores destapados y lapices rotos. Aqui esta como elegir materiales que sobrevivan a tus hijos.",
+      en: "Crayons on walls, uncapped markers, and broken pencils. Here is how to pick supplies that survive your kids."
     },
     slug: {
       es: "materiales-recomendados-colorear-casa",
@@ -138,22 +166,34 @@ export const posts: Post[] = [
     },
     content: {
       es: `
-      <p>El mejor kit no es el mas caro, sino el que invita a usarlo seguido. Aqui tienes una base funcional para empezar hoy mismo.</p>
-      <h2>Lapices triangulares</h2>
-      <p>Se sujetan mejor en manos pequenas y ruedan menos sobre la mesa. Son un gran primer paso.</p>
-      <h2>Crayones lavables</h2>
-      <p>Ideales para peques de menor edad. Si priorizas tranquilidad, los lavables son indispensables.</p>
-      <h2>Estuche por categorias</h2>
-      <p>Separar por tipo y color acelera el orden al finalizar y evita perder materiales cada semana.</p>
+      <p>Compraste la caja de 64 crayones porque se veia increible. Dos dias despues: 8 rotos, 3 en el sofa, 1 derretido quien-sabe-donde, y tu hijo solo usa el azul. <strong>Suena familiar?</strong></p>
+      <h2>El problema no son los ninos — es comprar sin estrategia</h2>
+      <p>El pasillo de arte para ninos es una trampa de marketing. Cajas enormes, colores "especiales", glitter que <strong>nunca sale de la alfombra</strong>. La realidad es que el mejor kit no es el mas grande ni el mas caro — es el que tu familia realmente usa sin que termines limpiando una hora despues.</p>
+      <h2>Lo que realmente necesitas (por edad)</h2>
+      <p><strong>2-3 anos: Crayones gruesos lavables.</strong> Son indestructibles, faciles de agarrar y se limpian de paredes con una toallita humeda. Punto. No necesitas nada mas a esta edad.</p>
+      <p><strong>4-6 anos: Lapices triangulares.</strong> Se sujetan mejor en manos pequeñas, no ruedan de la mesa y duran mucho mas que los redondos. Compra un set de 12 colores basicos — los ninos no necesitan 64 tonos de verde.</p>
+      <p><strong>7+ anos: Marcadores de punta fina lavables.</strong> Para ninos que ya controlan la presion. Asegurate de que sean cap-snap (la tapa suena al cerrar) para evitar secar markers destapados.</p>
+      <h2>El secreto: organizacion simple</h2>
+      <p>Un estuche o vaso separado por tipo (lapices juntos, crayones juntos) <strong>reduce el caos en un 80%</strong>. Si guardar toma mas de 30 segundos, tu hijo no lo hara. Hazlo tan facil que no tenga excusa.</p>
+      <h2>Lo que NO deberias comprar</h2>
+      <p>Pinturas de dedo (a menos que ames limpiar), acuarelas sueltas (se destapan y secan), sets "profesionales" con 120 piezas (abruman y terminan en el piso). <strong>Menos es mas, especialmente con ninos menores de 6.</strong></p>
+      <h2>Tu siguiente paso</h2>
+      <p>Revisa lo que ya tienes. Tira lo seco y lo roto. Organiza lo que sirve en un solo contenedor. Eso es todo — ya tienes el kit perfecto.</p>
     `,
       en: `
-      <p>The best kit is not the most expensive one. It is the one your family actually uses often. Here is a practical setup to start right away.</p>
-      <h2>Triangular pencils</h2>
-      <p>They are easier for small hands to hold and less likely to roll off the table.</p>
-      <h2>Washable crayons</h2>
-      <p>Perfect for younger kids and much less stressful for parents.</p>
-      <h2>Category-based storage</h2>
-      <p>Sorting by type and color speeds up clean-up and helps materials last longer.</p>
+      <p>You bought the 64-crayon box because it looked amazing. Two days later: 8 broken, 3 on the couch, 1 melted somewhere unknown, and your kid only uses the blue one. <strong>Sound familiar?</strong></p>
+      <h2>The problem is not the kids — it is buying without a strategy</h2>
+      <p>The children's art aisle is a marketing trap. Giant boxes, "special" colors, glitter that <strong>never comes out of the carpet</strong>. The truth is the best kit is not the biggest or the most expensive — it is the one your family actually uses without you spending an hour cleaning up afterward.</p>
+      <h2>What you actually need (by age)</h2>
+      <p><strong>Ages 2-3: Thick washable crayons.</strong> They are indestructible, easy to grip, and wipe off walls with a damp cloth. Period. You do not need anything else at this age.</p>
+      <p><strong>Ages 4-6: Triangular pencils.</strong> They are easier for small hands to hold, do not roll off the table, and last much longer than round ones. Buy a set of 12 basic colors — kids do not need 64 shades of green.</p>
+      <p><strong>Ages 7+: Fine-tip washable markers.</strong> For kids who already control pressure. Make sure they are cap-snap (the cap clicks shut) to avoid dried-out uncapped markers.</p>
+      <h2>The secret: simple organization</h2>
+      <p>A case or cup separated by type (pencils together, crayons together) <strong>reduces chaos by 80%</strong>. If putting things away takes more than 30 seconds, your kid will not do it. Make it so easy they have no excuse.</p>
+      <h2>What you should NOT buy</h2>
+      <p>Finger paints (unless you love cleaning), loose watercolors (they dry out), "professional" sets with 120 pieces (overwhelming and end up on the floor). <strong>Less is more, especially with kids under 6.</strong></p>
+      <h2>Your next step</h2>
+      <p>Go through what you already own. Toss what is dried out or broken. Organize what works into one container. That is it — you already have the perfect kit.</p>
     `
     }
   },
@@ -161,7 +201,7 @@ export const posts: Post[] = [
   {
     id: "fantasia-imaginacion",
     bookId: "magical-creatures",
-    image: "/images/books/magical-creatures.webp",
+    image: "/images/blog/fantasy-coloring.svg",
     title: {
       es: "Como colorear criaturas fantasticas despierta la imaginacion infantil",
       en: "How fantasy coloring sparks imagination and problem-solving in kids"
@@ -203,7 +243,7 @@ export const posts: Post[] = [
   {
     id: "moda-teens",
     bookId: "chic-styles",
-    image: "/images/books/chic-styles.webp",
+    image: "/images/blog/fashion-teens.svg",
     title: {
       es: "Por que colorear moda es el escape creativo perfecto para adolescentes",
       en: "Why fashion coloring is the perfect creative outlet for teens"
@@ -245,7 +285,7 @@ export const posts: Post[] = [
   {
     id: "vestir-confianza",
     bookId: "dresses-and-dolls",
-    image: "/images/books/dresses-and-dolls.webp",
+    image: "/images/blog/dress-confidence.svg",
     title: {
       es: "Como colorear vestidos y munecas fortalece la confianza de las ninas",
       en: "How dress-up coloring builds confidence and self-expression"
@@ -287,7 +327,7 @@ export const posts: Post[] = [
   {
     id: "moda-historia",
     bookId: "style-time-machine",
-    image: "/images/books/style-time-machine.webp",
+    image: "/images/blog/fashion-history.svg",
     title: {
       es: "Una leccion de historia divertida a traves de la moda y el color",
       en: "A fun history lesson through fashion: coloring across decades"
@@ -329,7 +369,7 @@ export const posts: Post[] = [
   {
     id: "rincon-calma",
     bookId: "cozy-kids-club",
-    image: "/images/books/cozy-kids-club.webp",
+    image: "/images/blog/calm-corner.svg",
     title: {
       es: "Como crear un rincon de calma con colorear para ninos ansiosos",
       en: "How to create a calm-down corner with coloring for anxious kids"
@@ -371,7 +411,7 @@ export const posts: Post[] = [
   {
     id: "sin-pantallas-ninos",
     bookId: "awesome-boys",
-    image: "/images/books/awesome-boys.webp",
+    image: "/images/blog/screen-free.svg",
     title: {
       es: "Actividades sin pantalla que los ninos realmente disfrutan (y no son deportes)",
       en: "Screen-free activities boys actually love (that are not sports)"
@@ -415,7 +455,7 @@ export const posts: Post[] = [
   {
     id: "pascua-familia",
     bookId: "enchanted-easter",
-    image: "/images/books/enchanted-easter.webp",
+    image: "/images/blog/easter-family.svg",
     title: {
       es: "5 actividades de Pascua con colorear que toda la familia disfrutara",
       en: "5 Easter coloring activities the whole family can enjoy"
@@ -465,7 +505,7 @@ export const posts: Post[] = [
   {
     id: "nombrar-emociones",
     bookId: "coloring-emotions",
-    image: "/images/books/coloring-emotions.webp",
+    image: "/images/blog/naming-feelings.svg",
     title: {
       es: "Ensenar a los ninos a nombrar sus emociones (sin charlas incomodas)",
       en: "Teaching kids to name their feelings (without awkward talks)"
@@ -507,7 +547,7 @@ export const posts: Post[] = [
   {
     id: "comida-creatividad",
     bookId: "pizza-sweet-treats",
-    image: "/images/books/pizza-sweet-treats.webp",
+    image: "/images/blog/food-picky-eaters.svg",
     title: {
       es: "Como las paginas de comida para colorear hacen a los ninos menos exigentes con la comida",
       en: "How food coloring pages make picky eaters more adventurous"
@@ -549,7 +589,7 @@ export const posts: Post[] = [
   {
     id: "ninas-confianza",
     bookId: "awesome-girls",
-    image: "/images/books/awesome-girls.webp",
+    image: "/images/blog/confident-girls.svg",
     title: {
       es: "Criar ninas seguras: como el juego creativo construye autoestima",
       en: "Raising confident girls: how creative play builds self-esteem"
@@ -591,7 +631,7 @@ export const posts: Post[] = [
   {
     id: "espacio-stem",
     bookId: "blast-off-space",
-    image: "/images/books/blast-off-space.webp",
+    image: "/images/blog/space-stem.svg",
     title: {
       es: "Como colorear el espacio convierte la curiosidad en una base STEM",
       en: "How space coloring turns curiosity into a STEM foundation"
@@ -633,7 +673,7 @@ export const posts: Post[] = [
   {
     id: "camiones-habilidades",
     bookId: "mighty-machines",
-    image: "/images/books/mighty-machines.webp",
+    image: "/images/blog/trucks-skills.svg",
     title: {
       es: "Por que los ninos obsesionados con camiones estan desarrollando habilidades reales",
       en: "Why kids obsessed with trucks and diggers are building real skills"
@@ -675,7 +715,7 @@ export const posts: Post[] = [
   {
     id: "primer-cuaderno-peque",
     bookId: "easy-animals",
-    image: "https://m.media-amazon.com/images/I/610IEQO-VnL._SY342_.jpg",
+    image: "/images/blog/first-coloring-book.svg",
     title: {
       es: "El primer libro de colorear para tu bebe: que buscar (y que evitar)",
       en: "Your toddler's first coloring book: what to look for and what to avoid"
@@ -717,7 +757,7 @@ export const posts: Post[] = [
   {
     id: "aviones-mundo",
     bookId: "awesome-airplanes",
-    image: "https://m.media-amazon.com/images/I/611wlEpMr0L._SY342_.jpg",
+    image: "/images/blog/airplanes-world.svg",
     title: {
       es: "Como colorear aviones le ensena a tu hijo sobre el mundo",
       en: "How airplane coloring teaches kids about the world"
@@ -759,7 +799,7 @@ export const posts: Post[] = [
   {
     id: "letras-preescolar",
     bookId: "alphabet-coloring-book",
-    image: "https://m.media-amazon.com/images/I/61i3TtXpXjL._SY342_.jpg",
+    image: "/images/blog/letters-preschool.svg",
     title: {
       es: "La forma mas astuta de ensenar letras antes de que empiece preescolar",
       en: "The sneaky way to teach letters before preschool starts"

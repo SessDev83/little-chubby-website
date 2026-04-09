@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#F6F1E7"/>
+  <rect x="60" y="60" width="1080" height="510" rx="32" fill="#1565C0"/>
+  <circle cx="600" cy="270" r="110" fill="#1976D2" opacity="0.3"/>
+  <!-- Airplane -->
+  <ellipse cx="600" cy="255" rx="70" ry="18" fill="#fff" opacity="0.25" transform="rotate(-5,600,255)"/>
+  <!-- Wings -->
+  <polygon points="570,255 600,235 600,255" fill="#fff" opacity="0.2"/>
+  <polygon points="570,255 600,275 600,255" fill="#fff" opacity="0.15"/>
+  <!-- Tail -->
+  <polygon points="660,250 680,235 680,260" fill="#fff" opacity="0.2"/>
+  <!-- Windows -->
+  <circle cx="555" cy="253" r="3" fill="#F5C563" opacity="0.5"/>
+  <circle cx="567" cy="252" r="3" fill="#F5C563" opacity="0.5"/>
+  <circle cx="579" cy="252" r="3" fill="#F5C563" opacity="0.5"/>
+  <circle cx="591" cy="252" r="3" fill="#F5C563" opacity="0.5"/>
+  <!-- Globe -->
+  <circle cx="600" cy="310" r="30" stroke="#F5C563" stroke-width="2" fill="none" opacity="0.4"/>
+  <ellipse cx="600" cy="310" rx="30" ry="12" stroke="#F5C563" stroke-width="1.5" fill="none" opacity="0.3"/>
+  <line x1="600" y1="280" x2="600" y2="340" stroke="#F5C563" stroke-width="1.5" opacity="0.3"/>
+  <!-- Path arc -->
+  <path d="M500 300 Q550 200 700 290" stroke="#F5C563" stroke-width="2" fill="none" opacity="0.3" stroke-dasharray="6,4"/>
+  <!-- Clouds -->
+  <ellipse cx="480" cy="230" rx="25" ry="12" fill="#fff" opacity="0.15"/>
+  <ellipse cx="730" cy="260" rx="20" ry="10" fill="#fff" opacity="0.12"/>
+  <text x="600" y="465" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="28" fill="#fff">AIRPLANES &amp; THE WORLD</text>
+  <text x="600" y="500" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="400" font-size="18" fill="#F5C563">How airplane coloring sparks curiosity about geography</text>
+</svg>

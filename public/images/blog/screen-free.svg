@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#F6F1E7"/>
+  <rect x="60" y="60" width="1080" height="510" rx="32" fill="#2C3E50"/>
+  <circle cx="600" cy="275" r="110" fill="#34495E" opacity="0.5"/>
+  <!-- Tablet with X -->
+  <rect x="560" y="220" width="80" height="110" rx="8" fill="#fff" opacity="0.15"/>
+  <line x1="580" y1="260" x2="620" y2="300" stroke="#E74C3C" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+  <line x1="620" y1="260" x2="580" y2="300" stroke="#E74C3C" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+  <!-- Arrow pointing away -->
+  <path d="M650 280 L700 280" stroke="#F5C563" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="700,272 715,280 700,288" fill="#F5C563"/>
+  <!-- Creative alternatives -->
+  <rect x="730" y="240" width="40" height="50" rx="3" fill="#F5C563" opacity="0.3"/>
+  <line x1="738" y1="250" x2="735" y2="232" stroke="#4ECDC4" stroke-width="3" stroke-linecap="round"/>
+  <line x1="748" y1="250" x2="748" y2="228" stroke="#FF6B6B" stroke-width="3" stroke-linecap="round"/>
+  <line x1="758" y1="250" x2="756" y2="234" stroke="#F5C563" stroke-width="3" stroke-linecap="round"/>
+  <!-- Lightning bolt (energy) -->
+  <polygon points="500,230 515,260 505,260 520,300 500,265 510,265" fill="#F5C563" opacity="0.4"/>
+  <text x="600" y="465" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="28" fill="#fff">BEYOND THE SCREEN</text>
+  <text x="600" y="500" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="400" font-size="18" fill="#F5C563">Screen-free activities kids actually love</text>
+</svg>

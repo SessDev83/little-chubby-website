@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#F6F1E7"/>
+  <rect x="60" y="60" width="1080" height="510" rx="32" fill="#5B8C6B"/>
+  <circle cx="600" cy="275" r="110" fill="#6FA07D" opacity="0.4"/>
+  <!-- Cushion -->
+  <ellipse cx="600" cy="310" rx="80" ry="35" fill="#F5C563" opacity="0.3"/>
+  <ellipse cx="600" cy="300" rx="75" ry="30" fill="#F5C563" opacity="0.2"/>
+  <!-- Candle/lamp glow -->
+  <circle cx="600" cy="230" r="40" fill="#F5C563" opacity="0.15"/>
+  <circle cx="600" cy="230" r="25" fill="#F5C563" opacity="0.2"/>
+  <circle cx="600" cy="230" r="12" fill="#F5C563" opacity="0.5"/>
+  <!-- Pencils in cup -->
+  <rect x="540" y="265" width="30" height="40" rx="3" fill="#fff" opacity="0.2"/>
+  <line x1="548" y1="265" x2="545" y2="240" stroke="#FF6B6B" stroke-width="3" stroke-linecap="round"/>
+  <line x1="555" y1="265" x2="555" y2="235" stroke="#4ECDC4" stroke-width="3" stroke-linecap="round"/>
+  <line x1="562" y1="265" x2="560" y2="242" stroke="#F5C563" stroke-width="3" stroke-linecap="round"/>
+  <!-- Leaf decoration -->
+  <path d="M680 280 Q700 260 690 240" stroke="#8FBF9F" stroke-width="2" fill="none" opacity="0.6"/>
+  <path d="M690 240 Q700 250 695 260" fill="#8FBF9F" opacity="0.3"/>
+  <!-- Zzz -->
+  <text x="650" y="240" font-family="system-ui,sans-serif" font-size="20" fill="#fff" opacity="0.3">z</text>
+  <text x="665" y="225" font-family="system-ui,sans-serif" font-size="16" fill="#fff" opacity="0.25">z</text>
+  <text x="675" y="215" font-family="system-ui,sans-serif" font-size="12" fill="#fff" opacity="0.2">z</text>
+  <text x="600" y="465" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="28" fill="#fff">THE CALM-DOWN CORNER</text>
+  <text x="600" y="500" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="400" font-size="18" fill="#F5C563">Coloring as a tool for anxious kids</text>
+</svg>
