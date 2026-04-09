@@ -15,12 +15,18 @@ const bookMap = Object.fromEntries(books.map(b => [b.id, b.title[lang]]));
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 
 // Fetch approved reviews from the public gallery view
-const { data: gallery } = await supabase
-  .from("gallery_feed")
-  .select("id, book_id, photo_url, rating, review_text, featured, submitted_at, display_name")
-  .limit(60);
-
-const items = gallery ?? [];
+let items: any[] = [];
+let fetchError = false;
+try {
+  const { data: gallery, error } = await supabase
+    .from("gallery_feed")
+    .select("id, book_id, photo_url, rating, review_text, featured, submitted_at, display_name")
+    .limit(60);
+  if (error) throw error;
+  items = gallery ?? [];
+} catch {
+  fetchError = true;
+}
 ---
 
 <BaseLayout
@@ -39,7 +45,13 @@ const items = gallery ?? [];
       <p>{text.galleryDescription}</p>
     </div>
 
-    {items.length === 0 ? (
+    {fetchError ? (
+      <div style="text-align:center; padding:2rem;">
+        <p style="color:var(--accent-coral); font-weight:700;">
+          {lang === "es" ? "No pudimos cargar la galería. Intenta de nuevo más tarde." : "We couldn't load the gallery. Please try again later."}
+        </p>
+      </div>
+    ) : items.length === 0 ? (
       <p style="text-align:center; color:var(--ink-soft);">{text.galleryEmpty}</p>
     ) : (
       <div class="gallery-grid">

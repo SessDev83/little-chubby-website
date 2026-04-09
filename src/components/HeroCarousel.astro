@@ -61,7 +61,12 @@ const { books, lang, ctaLabel } = Astro.props;
 </div>
 
 <script>
+  let _carouselTimer: ReturnType<typeof setInterval> | undefined;
+
   function initCarousel() {
+    // Clear any previous timer from a prior init
+    if (_carouselTimer) clearInterval(_carouselTimer);
+
     const carousel = document.querySelector('.hero-carousel');
     if (!carousel) return;
 
@@ -96,6 +101,7 @@ const { books, lang, ctaLabel } = Astro.props;
 
     function startTimer() {
       timer = setInterval(next, 6000);
+      _carouselTimer = timer;
     }
 
     function resetTimer() {
@@ -109,6 +115,22 @@ const { books, lang, ctaLabel } = Astro.props;
         goTo(idx);
         resetTimer();
       });
+    });
+
+    // Keyboard arrow navigation
+    carousel.addEventListener('keydown', (e: Event) => {
+      const key = (e as KeyboardEvent).key;
+      if (key === 'ArrowRight' || key === 'ArrowDown') {
+        e.preventDefault();
+        goTo((current + 1) % slides.length);
+        resetTimer();
+        dots[(current)].focus();
+      } else if (key === 'ArrowLeft' || key === 'ArrowUp') {
+        e.preventDefault();
+        goTo((current - 1 + slides.length) % slides.length);
+        resetTimer();
+        dots[(current)].focus();
+      }
     });
 
     // Pause on hover/focus, 2s delay before resuming
@@ -134,4 +156,5 @@ const { books, lang, ctaLabel } = Astro.props;
   }
 
   initCarousel();
+  document.addEventListener('astro:after-swap', initCarousel);
 </script>

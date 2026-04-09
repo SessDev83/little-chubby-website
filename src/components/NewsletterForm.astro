@@ -44,7 +44,10 @@ const successUrl = new URL(siteConfig.newsletter.successRedirect[lang], siteConf
 
     <p class="status-msg" id="newsletter-status" aria-live="polite"></p>
 
-    <button class="btn btn-primary" type="submit">{text.ctaSubscribe}</button>
+    <button class="btn btn-primary btn-submit" type="submit">
+      <span class="btn-label">{text.ctaSubscribe}</span>
+      <span class="btn-spinner" aria-hidden="true"></span>
+    </button>
   </div>
 </form>
 
@@ -56,6 +59,7 @@ const successUrl = new URL(siteConfig.newsletter.successRedirect[lang], siteConf
     newsletterForm.addEventListener("submit", (event) => {
       const emailInput = newsletterForm.querySelector('input[name="email"]');
       const hpInput = newsletterForm.querySelector('input[name="company"]');
+      const submitBtn = newsletterForm.querySelector('.btn-submit');
       const currentLang = document.documentElement.lang === "en" ? "en" : "es";
 
       const requiredMsg = currentLang === "en"
@@ -84,7 +88,11 @@ const successUrl = new URL(siteConfig.newsletter.successRedirect[lang], siteConf
       if (!validEmail) {
         event.preventDefault();
         newsletterStatus.textContent = emailMsg;
+        return;
       }
+
+      // Show loading state
+      if (submitBtn) submitBtn.classList.add('is-loading');
     });
   }
 </script>

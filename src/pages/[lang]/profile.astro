@@ -34,13 +34,18 @@ if (!user) {
 }
 
 // Fetch profile
-const { data: profileData } = await supabase
-  .from("profiles")
-  .select("display_name, lang_pref")
-  .eq("id", user.id)
-  .single();
-
-profile = profileData;
+let fetchError = false;
+try {
+  const { data: profileData, error } = await supabase
+    .from("profiles")
+    .select("display_name, lang_pref")
+    .eq("id", user.id)
+    .single();
+  if (error) throw error;
+  profile = profileData;
+} catch {
+  fetchError = true;
+}
 
 if (Astro.request.method === "POST") {
   const formData = await Astro.request.formData();

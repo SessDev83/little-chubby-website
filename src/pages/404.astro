@@ -15,9 +15,11 @@ import { siteConfig } from "../data/site";
         style="margin: 0 auto 1.5rem; opacity: 0.7;"
       />
       <h1 style="font-size: clamp(3rem, 8vw, 5rem); color: var(--brand-brown); margin: 0;">404</h1>
-      <p style="font-size: 1.15rem; color: var(--ink-soft); max-width: 42ch; margin: 0.8rem auto 2rem;">
-        Oops! This page doesn't exist or was moved.<br />
+      <p class="notfound-msg-es" style="font-size: 1.15rem; color: var(--ink-soft); max-width: 42ch; margin: 0.8rem auto 2rem;">
         ¡Ups! Esta página no existe o fue movida.
+      </p>
+      <p class="notfound-msg-en" style="font-size: 1.15rem; color: var(--ink-soft); max-width: 42ch; margin: 0.8rem auto 2rem; display: none;">
+        Oops! This page doesn't exist or was moved.
       </p>
       <div class="hero-actions" style="justify-content: center;">
         <Button href="/es/" label="Inicio" variant="primary" />
@@ -27,3 +29,17 @@ import { siteConfig } from "../data/site";
     </div>
   </section>
 </BaseLayout>
+
+<script is:inline>
+  (function() {
+    var stored = localStorage.getItem("lcp-lang");
+    var lang = stored || (navigator.language && navigator.language.startsWith("en") ? "en" : "es");
+    if (lang === "en") {
+      var es = document.querySelector(".notfound-msg-es");
+      var en = document.querySelector(".notfound-msg-en");
+      if (es) es.style.display = "none";
+      if (en) en.style.display = "block";
+      document.documentElement.setAttribute("lang", "en");
+    }
+  })();
+</script>

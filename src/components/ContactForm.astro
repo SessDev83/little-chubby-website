@@ -50,7 +50,10 @@ const subjectByLang = lang === "en"
     <p class="form-note">{text.contactResponseTime}</p>
     <p class="status-msg" id="contact-status" aria-live="polite"></p>
 
-    <button class="btn btn-primary" type="submit">{text.ctaSend}</button>
+    <button class="btn btn-primary btn-submit" type="submit">
+      <span class="btn-label">{text.ctaSend}</span>
+      <span class="btn-spinner" aria-hidden="true"></span>
+    </button>
   </div>
 </form>
 
@@ -72,6 +75,7 @@ const subjectByLang = lang === "en"
       const emailInput = contactForm.querySelector('input[name="email"]');
       const messageInput = contactForm.querySelector('textarea[name="message"]');
       const hpInput = contactForm.querySelector('input[name="_gotcha"]');
+      const submitBtn = contactForm.querySelector('.btn-submit');
 
       contactStatus.textContent = "";
 
@@ -102,7 +106,11 @@ const subjectByLang = lang === "en"
       if (!validEmail) {
         event.preventDefault();
         contactStatus.textContent = emailMsg;
+        return;
       }
+
+      // Show loading state
+      if (submitBtn) submitBtn.classList.add('is-loading');
     });
   }
 </script>

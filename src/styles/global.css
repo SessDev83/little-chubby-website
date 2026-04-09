@@ -16,6 +16,24 @@
   --radius-md: 1rem;
   --radius-lg: 1.6rem;
   --max-width: 70rem;
+  color-scheme: light dark;
+}
+
+/* ── Dark Mode ──────────────────────────────── */
+[data-theme="dark"] {
+  --bg-paper: #1a1613;
+  --bg-soft: #211d18;
+  --surface: #2a2520;
+  --surface-strong: #322c26;
+  --ink: #e8e0d4;
+  --ink-soft: #bfb5a6;
+  --brand-blue: #5b9bd5;
+  --brand-brown: #c7915f;
+  --brand-green: #7ec46e;
+  --accent-gold: #e4bc5e;
+  --accent-coral: #e8a07a;
+  --line: #3d362d;
+  --shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
 }
 
 * {
@@ -44,6 +62,15 @@ body {
     radial-gradient(circle at 88% 8%, rgba(92, 150, 80, 0.1) 0, rgba(92, 150, 80, 0) 30%),
     radial-gradient(circle at 92% 84%, rgba(211, 164, 66, 0.14) 0, rgba(211, 164, 66, 0) 22%),
     radial-gradient(circle at 8% 88%, rgba(217, 130, 95, 0.12) 0, rgba(217, 130, 95, 0) 30%),
+    var(--bg-paper);
+}
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 10% 6%, rgba(91, 155, 213, 0.06) 0, rgba(91, 155, 213, 0) 28%),
+    radial-gradient(circle at 88% 8%, rgba(126, 196, 110, 0.06) 0, rgba(126, 196, 110, 0) 30%),
+    radial-gradient(circle at 92% 84%, rgba(228, 188, 94, 0.08) 0, rgba(228, 188, 94, 0) 22%),
+    radial-gradient(circle at 8% 88%, rgba(232, 160, 122, 0.06) 0, rgba(232, 160, 122, 0) 30%),
     var(--bg-paper);
 }
 
@@ -130,7 +157,7 @@ main {
   top: 0;
   z-index: 30;
   backdrop-filter: blur(10px);
-  background: color-mix(in srgb, var(--bg-paper) 88%, white 12%);
+  background: color-mix(in srgb, var(--bg-paper) 88%, transparent 12%);
   border-bottom: 1px solid var(--line);
 }
 
@@ -165,7 +192,7 @@ main {
   display: inline-flex;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--surface);
   overflow: hidden;
 }
 
@@ -190,6 +217,107 @@ main {
 
 .header-login:hover {
   background: rgba(31, 79, 134, 0.1);
+}
+
+/* ── Theme Toggle Button ────────────────────── */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--accent-gold);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.theme-toggle:hover {
+  background: rgba(211, 164, 66, 0.12);
+  transform: rotate(15deg);
+}
+
+.theme-icon-moon { display: none; }
+
+[data-theme="dark"] .theme-icon-sun { display: none; }
+[data-theme="dark"] .theme-icon-moon { display: block; }
+
+/* ── Hamburger Button ───────────────────────── */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0.3rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 40;
+}
+
+.hamburger-line {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--brand-brown);
+  border-radius: 2px;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.hamburger.is-open .hamburger-line:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.hamburger.is-open .hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.is-open .hamburger-line:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+@media (max-width: 47.99rem) {
+  .hamburger {
+    display: flex;
+  }
+
+  .header-nav {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.35s ease;
+    overflow: hidden;
+    margin-top: 0;
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .header-nav > ul {
+    overflow: hidden;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+  }
+
+  .header-nav.is-open {
+    grid-template-rows: 1fr;
+    border-top: 1px dashed var(--line);
+    margin-top: 0.65rem;
+    padding-top: 0.6rem;
+  }
+
+  .header-nav.is-open > ul {
+    padding-bottom: 0.5rem;
+  }
+
+  .header-nav a {
+    display: block;
+    padding: 0.65rem 0.8rem;
+  }
 }
 
 /* ── Giveaway Banner ────────────────────────── */
@@ -537,14 +665,14 @@ main {
   padding: 1rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
-  background: #fffdfa;
+  background: var(--surface);
 }
 
 .book-card-media {
   aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
-  background: linear-gradient(180deg, #ffffff 0%, #fff8ec 100%);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-strong) 100%);
   border-radius: calc(var(--radius-md) - 0.2rem);
   overflow: hidden;
   border: 1px solid var(--line);
@@ -661,7 +789,7 @@ main {
   width: 100%;
   border-radius: 0.8rem;
   border: 1px solid var(--line);
-  background: #fffdf8;
+  background: var(--surface);
   color: var(--ink);
   font: inherit;
   padding: 0.7rem 0.82rem;
@@ -691,6 +819,39 @@ main {
   margin: 0;
   font-size: 0.95rem;
   color: #8f1f18;
+}
+
+/* ── Button submit spinner ──────────────────── */
+.btn-spinner {
+  display: none;
+  width: 1em;
+  height: 1em;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.btn-submit.is-loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.btn-submit.is-loading .btn-label {
+  visibility: hidden;
+}
+
+.btn-submit.is-loading .btn-spinner {
+  display: inline-block;
+  position: absolute;
+}
+
+.btn-submit {
+  position: relative;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .hp-field {
@@ -773,7 +934,7 @@ main {
   border-radius: calc(var(--radius-md) - 0.2rem);
   margin-bottom: 0.8rem;
   aspect-ratio: 1 / 1;
-  background: linear-gradient(180deg, #ffffff 0%, #fff8ec 100%);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-strong) 100%);
 }
 
 .post-card-image {
@@ -791,7 +952,7 @@ main {
 .site-footer {
   margin-top: 2.5rem;
   border-top: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg-paper) 80%, white 20%);
+  background: color-mix(in srgb, var(--bg-paper) 80%, transparent 20%);
 }
 
 .site-footer-shell {
@@ -976,5 +1137,108 @@ main {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* ── Cookie Consent Banner ──────────────────── */
+.cookie-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.1);
+  animation: slideUp 0.4s ease;
+}
+
+.cookie-banner[hidden] {
+  display: none;
+}
+
+.cookie-banner-shell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.cookie-banner-text {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  flex: 1;
+  min-width: 200px;
+}
+
+.cookie-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-shrink: 0;
+}
+
+.cookie-banner-link {
+  font-size: 0.85rem;
+  color: var(--brand-blue);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.cookie-banner-accept {
+  font-size: 0.85rem;
+  padding: 0.5rem 1.2rem;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* ── Print Styles ───────────────────────────── */
+@media print {
+  .site-header,
+  .site-footer,
+  .cookie-banner,
+  .skip-link,
+  .hero-carousel-dots,
+  .hero-carousel-cta,
+  .giveaway-banner,
+  .btn,
+  .hamburger,
+  .theme-toggle,
+  .lang-toggle,
+  .header-login {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  a {
+    color: #000 !important;
+    text-decoration: underline;
+  }
+
+  .container {
+    width: 100%;
+    max-width: none;
+  }
+
+  img {
+    max-width: 100%;
+    break-inside: avoid;
+  }
+
+  h1, h2, h3 {
+    break-after: avoid;
+    color: #000 !important;
   }
 }

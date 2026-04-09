@@ -1,0 +1,53 @@
+---
+import type { Lang } from "../data/i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+
+const text = {
+  es: {
+    message: "Usamos cookies esenciales para autenticación y preferencias. No usamos cookies de seguimiento.",
+    accept: "Aceptar",
+    learnMore: "Más info",
+  },
+  en: {
+    message: "We use essential cookies for authentication and preferences. No tracking cookies are used.",
+    accept: "Accept",
+    learnMore: "Learn more",
+  },
+};
+
+const t = text[lang];
+---
+
+<div class="cookie-banner" id="cookie-banner" role="dialog" aria-label={lang === "es" ? "Aviso de cookies" : "Cookie notice"} hidden>
+  <div class="container cookie-banner-shell">
+    <p class="cookie-banner-text">{t.message}</p>
+    <div class="cookie-banner-actions">
+      <a href={`/${lang}/privacy/`} class="cookie-banner-link">{t.learnMore}</a>
+      <button type="button" class="btn btn-primary cookie-banner-accept" id="cookie-accept">{t.accept}</button>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  function initCookieBanner() {
+    var banner = document.getElementById("cookie-banner");
+    var oldBtn = document.getElementById("cookie-accept");
+    if (!banner || !oldBtn) return;
+    if (localStorage.getItem("lcp-cookies") === "accepted") return;
+    banner.removeAttribute("hidden");
+    // Clone to prevent duplicate listeners on re-init
+    var acceptBtn = oldBtn.cloneNode(true);
+    oldBtn.parentNode.replaceChild(acceptBtn, oldBtn);
+    acceptBtn.addEventListener("click", function() {
+      localStorage.setItem("lcp-cookies", "accepted");
+      banner.setAttribute("hidden", "");
+    });
+  }
+  initCookieBanner();
+  document.addEventListener("astro:after-swap", initCookieBanner);
+</script>

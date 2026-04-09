@@ -1,6 +1,8 @@
 ---
+import { ClientRouter } from "astro:transitions";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
+import CookieConsent from "../components/CookieConsent.astro";
 import { siteConfig } from "../data/site";
 import type { Lang } from "../data/i18n";
 import { switchLangPath } from "../data/i18n";
@@ -97,6 +99,18 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     <meta name="generator" content={Astro.generator} />
     <meta name="theme-color" content="#f6f1e7" />
     <meta name="author" content={siteConfig.brandName} />
+
+    <!-- Prevent dark-mode flash (runs before paint) -->
+    <script is:inline>
+      (function(){
+        var t = localStorage.getItem("lcp-theme");
+        if (t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+          document.documentElement.setAttribute("data-theme", "dark");
+          var mc = document.querySelector('meta[name="theme-color"]');
+          if (mc) mc.setAttribute("content", "#1a1613");
+        }
+      })();
+    </script>
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
 
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -105,6 +119,7 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="alternate" type="application/rss+xml" title="Little Chubby Press Blog" href="/rss.xml" />
+    <link rel="alternate" type="application/rss+xml" title="Little Chubby Press Blog (Español)" href="/rss-es.xml" />
 
     <link rel="dns-prefetch" href="//images-na.ssl-images-amazon.com" />
     <link rel="dns-prefetch" href="//m.media-amazon.com" />
@@ -128,12 +143,18 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={title} />
     <meta property="og:locale" content={lang === "es" ? "es_ES" : "en_US"} />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={title} />
+
+    <ClientRouter />
 
     <script type="application/ld+json" set:html={organizationJsonLd}></script>
     <script type="application/ld+json" set:html={websiteJsonLd}></script>
@@ -147,5 +168,6 @@ const articleJsonLd = articleSchema ? JSON.stringify({
       <slot />
     </main>
     <Footer lang={lang} />
+    <CookieConsent lang={lang} />
   </body>
 </html>
