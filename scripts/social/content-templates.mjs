@@ -141,19 +141,51 @@ const engagementTemplates = {
   ],
 };
 
-// ─── Review / social proof templates ────────────────────────────────────────
+// ─── Community / website traffic templates ──────────────────────────────────
 
-const reviewRequestTemplates = {
+const communityTemplates = {
   en: [
-    (b) => ({
-      text: `If your kid loved "${b.title.en}", would you leave us a quick review on Amazon? ⭐\n\nReviews help other parents find quality coloring books and mean the world to small publishers like us. 🙏`,
-      cta: `Review here: ${b.amazonUrl}`,
+    () => ({
+      text: `Want coloring tips, free activities, and first looks at new books? 📬\n\nJoin our newsletter — it's free, fun, and screen-free friendly!`,
+      cta: `Sign up here: ${SITE_URL}/en/newsletter`,
+    }),
+    () => ({
+      text: `We'd love to see your kid's artwork! 🎨\n\nShare your coloring creations with us — tag @LittleChubbyPress or visit our gallery for inspiration.`,
+      cta: `See the gallery: ${SITE_URL}/en/gallery`,
+    }),
+    () => ({
+      text: `New books, tips, and free coloring resources — all in one place! 📚\n\nVisit our website and discover what's new at Little Chubby Press.`,
+      cta: `Explore: ${SITE_URL}/en`,
+    }),
+    () => ({
+      text: `Got questions about our coloring books? Want to suggest a theme? 💌\n\nWe read every message! Drop us a line and let's chat.`,
+      cta: `Contact us: ${SITE_URL}/en/contact`,
+    }),
+    () => ({
+      text: `Looking for your next family coloring session? 📖✨\n\nBrowse our full collection — there's something for every age and every mood!`,
+      cta: `See all books: ${SITE_URL}/en/books`,
     }),
   ],
   es: [
-    (b) => ({
-      text: `Si a tu peque le encanto "${b.title.es}", ¿nos dejarias una reseña rapida en Amazon? ⭐\n\nLas reseñas ayudan a otros padres a encontrar libros de calidad y significan mucho para editoriales pequenas como nosotros. 🙏`,
-      cta: `Deja tu reseña: ${b.amazonUrl}`,
+    () => ({
+      text: `¿Quieres tips de colorear, actividades gratis y acceso anticipado a nuevos libros? 📬\n\n¡Unete a nuestro newsletter — es gratis y divertido!`,
+      cta: `Registrate aqui: ${SITE_URL}/es/newsletter`,
+    }),
+    () => ({
+      text: `¡Nos encantaria ver las obras de arte de tus peques! 🎨\n\nComparte sus creaciones con nosotros — visita nuestra galeria para inspirarte.`,
+      cta: `Ver la galeria: ${SITE_URL}/es/gallery`,
+    }),
+    () => ({
+      text: `Nuevos libros, tips y recursos gratis para colorear — todo en un lugar! 📚\n\nVisita nuestro sitio y descubre las novedades de Little Chubby Press.`,
+      cta: `Explora: ${SITE_URL}/es`,
+    }),
+    () => ({
+      text: `¿Tienes preguntas sobre nuestros libros? ¿Quieres sugerir un tema? 💌\n\n¡Leemos cada mensaje! Escribenos y platiquemos.`,
+      cta: `Contacto: ${SITE_URL}/es/contact`,
+    }),
+    () => ({
+      text: `¿Buscas tu proxima sesion de colorear en familia? 📖✨\n\nExplora nuestra coleccion completa — hay algo para cada edad y cada momento!`,
+      cta: `Ver todos los libros: ${SITE_URL}/es/books`,
     }),
   ],
 };
@@ -179,8 +211,8 @@ export function generatePost(type, lang, data) {
     case "engagement":
       templates = engagementTemplates[lang];
       break;
-    case "review-request":
-      templates = reviewRequestTemplates[lang];
+    case "community":
+      templates = communityTemplates[lang];
       break;
     default:
       throw new Error(`Unknown template type: ${type}`);
@@ -211,7 +243,7 @@ export function generateWeeklyCalendar(books, posts, lang) {
     { day: "Wednesday", type: "blog-share" },
     { day: "Thursday",  type: "book-promo" },
     { day: "Friday",    type: "engagement" },
-    { day: "Saturday",  type: "review-request" },
+    { day: "Saturday",  type: "community" },
     { day: "Sunday",    type: "book-promo" },
   ];
 

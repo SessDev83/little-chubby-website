@@ -13,7 +13,7 @@
  *
  * Options:
  *   --platform <name>    bluesky | facebook | instagram | all  (default: bluesky)
- *   --type <type>        book-promo | blog-share | engagement | review-request (default: book-promo)
+ *   --type <type>        book-promo | blog-share | engagement | community (default: book-promo)
  *   --lang <lang>        en | es  (default: en)
  *   --book <id>          Use a specific book by ID (e.g. "magical-creatures")
  *   --dry-run            Show what would be posted without actually posting
@@ -200,7 +200,7 @@ async function main() {
 
   // Select data for the post
   let data;
-  if (opts.type === "book-promo" || opts.type === "review-request") {
+  if (opts.type === "book-promo") {
     if (opts.book) {
       data = books.find((b) => b.id === opts.book);
       if (!data) {

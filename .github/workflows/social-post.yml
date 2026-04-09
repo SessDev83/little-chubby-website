@@ -24,7 +24,7 @@ on:
           - book-promo
           - blog-share
           - engagement
-          - review-request
+          - community
       platform:
         description: "Platform"
         required: true
@@ -64,7 +64,7 @@ jobs:
             3) echo "type=blog-share" >> $GITHUB_OUTPUT ;;
             4) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
             5) echo "type=engagement" >> $GITHUB_OUTPUT ;;
-            6) echo "type=review-request" >> $GITHUB_OUTPUT ;;
+            6) echo "type=community" >> $GITHUB_OUTPUT ;;
             *) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
           esac
 
