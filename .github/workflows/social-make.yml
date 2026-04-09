@@ -1,9 +1,8 @@
-# Automated direct-post schedule.
-# Scheduled runs default to Bluesky only to avoid duplicate Meta posts when
-# Make relay is enabled.
-# Platforms without secrets are skipped gracefully.
+# Daily Make relay workflow.
+# This workflow generates social content and sends it to Make.com,
+# where Facebook and Instagram publishing/auth are handled.
 
-name: Social Media Auto-Post
+name: Social Media Make Relay
 
 on:
   schedule:
@@ -27,16 +26,6 @@ on:
           - blog-share
           - engagement
           - community
-      platform:
-        description: "Platform"
-        required: true
-        default: "all"
-        type: choice
-        options:
-          - all
-          - bluesky
-          - facebook
-          - instagram
       lang:
         description: "Language"
         required: true
@@ -45,10 +34,16 @@ on:
         options:
           - en
           - es
+      dry_run:
+        description: "Preview payload only (do not call Make webhook)"
+        required: true
+        default: false
+        type: boolean
 
 jobs:
-  auto-post:
+  relay-to-make:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -57,6 +52,7 @@ jobs:
           node-version: 22
 
       - name: Determine post type from schedule
+        if: github.event_name == 'schedule'
         id: schedule
         run: |
           DAY=$(date -u +%u)
@@ -71,15 +67,19 @@ jobs:
             *) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
           esac
 
-      - name: Post to social media
+      - name: Send content payload to Make
         env:
-          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
-          BLUESKY_PASSWORD: ${{ secrets.BLUESKY_PASSWORD }}
-          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
-          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
-          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+          MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
+          MAKE_WEBHOOK_SECRET: ${{ secrets.MAKE_WEBHOOK_SECRET }}
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
         run: |
           TYPE="${{ github.event.inputs.type || steps.schedule.outputs.type }}"
-          PLATFORM="${{ github.event.inputs.platform || 'bluesky' }}"
           LANG="${{ github.event.inputs.lang || 'en' }}"
-          node scripts/social/post.mjs post --type "$TYPE" --platform "$PLATFORM" --lang "$LANG"
+          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+
+          ARGS=(--type "$TYPE" --lang "$LANG")
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS+=(--dry-run)
+          fi
+
+          node scripts/social/make.mjs "${ARGS[@]}"

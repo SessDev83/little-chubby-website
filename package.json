@@ -14,7 +14,8 @@
     "cover:one": "node scripts/prepare-book-covers.mjs",
     "social:generate": "node scripts/social/post.mjs generate",
     "social:post": "node scripts/social/post.mjs post",
-    "social:calendar": "node scripts/social/post.mjs calendar"
+    "social:calendar": "node scripts/social/post.mjs calendar",
+    "social:make": "node scripts/social/make.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.18",

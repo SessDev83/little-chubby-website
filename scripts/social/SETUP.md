@@ -11,7 +11,7 @@ Little Chubby Press books and drive traffic to the website + Amazon listings.
 - `book-promo` — Spotlight a book with description + Amazon link
 - `blog-share` — Share a blog post with link to the website
 - `engagement` — Tips, questions, parenting content (no product push)
-- `review-request` — Ask readers to leave Amazon reviews
+- `community` — Drive visits to newsletter, gallery, and main pages
 
 ---
 
@@ -51,6 +51,20 @@ npm run social:post -- --platform bluesky --type engagement --dry-run
 # Actually post to Bluesky
 npm run social:post -- --platform bluesky --type book-promo --lang en
 ```
+
+---
+
+## Make.com Setup (Recommended for Meta auth issues)
+
+If Facebook/Instagram tokens are giving you trouble, use Make as the publishing
+layer and keep this repo only for content generation.
+
+1. Configure the GitHub workflow `.github/workflows/social-make.yml`
+2. Add `MAKE_WEBHOOK_URL` secret in GitHub Actions
+3. Build your Make scenario (Webhook -> Facebook Pages -> Instagram)
+
+Full guide:
+- `scripts/social/MAKE_SETUP.md`
 
 ---
 
@@ -121,7 +135,13 @@ accessible URLs. Images hosted on your Vercel site work:
 
 ## Automated Scheduling (GitHub Actions)
 
-The workflow at `.github/workflows/social-post.yml` posts automatically:
+Direct posting workflow:
+- `.github/workflows/social-post.yml` (scheduled default: Bluesky)
+
+Make relay workflow:
+- `.github/workflows/social-make.yml` (scheduled daily payload delivery)
+
+The daily posting schedule used by both workflows:
 
 | Day       | Type            |
 |-----------|-----------------|
@@ -139,6 +159,8 @@ The workflow at `.github/workflows/social-post.yml` posts automatically:
    - `BLUESKY_HANDLE`
    - `BLUESKY_PASSWORD`
    - (Optional) `META_PAGE_ACCESS_TOKEN`, `META_PAGE_ID`, `META_IG_USER_ID`
+  - (Make relay) `MAKE_WEBHOOK_URL`
+  - (Optional) `MAKE_WEBHOOK_SECRET`
 
 3. The workflow runs at **10:00 AM ET** every weekday + Saturday.
 
@@ -160,10 +182,16 @@ node scripts/social/post.mjs post --platform <platform> --type <type> --lang <la
 
 # Calendar (preview 7-day plan)
 node scripts/social/post.mjs calendar --lang <lang>
+
+# Generate + send payload to Make webhook
+node scripts/social/make.mjs --type <type> --lang <lang> [--book <id>]
+
+# Make dry run (print payload only)
+node scripts/social/make.mjs --type <type> --lang <lang> --dry-run
 ```
 
 **Platforms:** `bluesky`, `facebook`, `instagram`, `all`
-**Types:** `book-promo`, `blog-share`, `engagement`, `review-request`
+**Types:** `book-promo`, `blog-share`, `engagement`, `community`
 **Languages:** `en`, `es`
 
 ---

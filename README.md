@@ -185,3 +185,17 @@ Mientras existan placeholders, el frontend muestra un aviso visible de configura
 
 - Este proyecto es independiente y no depende de ningun otro repositorio.
 - El idioma se cambia con toggle ES/EN en la esquina superior derecha y se guarda en localStorage.
+
+## Automatizacion social con Make
+
+Si quieres publicar en Facebook e Instagram sin pelear con auth/token de Meta,
+usa el flujo de relay hacia Make:
+
+- Workflow diario: `.github/workflows/social-make.yml`
+- CLI de payload: `scripts/social/make.mjs`
+- Guia de conexion: `scripts/social/MAKE_SETUP.md`
+
+Secrets de GitHub Actions necesarios para este flujo:
+
+- `MAKE_WEBHOOK_URL` (requerido)
+- `MAKE_WEBHOOK_SECRET` (opcional)
