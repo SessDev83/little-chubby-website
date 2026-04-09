@@ -1,18 +1,19 @@
 # Automated social media posting schedule.
-# Posts go out Mon-Sat at 10 AM ET (14:00 UTC) to Bluesky.
-# Enable Facebook/Instagram by adding platform secrets.
+# Posts go out Mon-Sun at 10 AM ET (14:00 UTC) to ALL configured platforms.
+# Platforms without secrets are skipped gracefully.
 
 name: Social Media Auto-Post
 
 on:
   schedule:
-    # 10:00 AM ET (UTC-4) = 14:00 UTC — weekdays + Saturday
+    # 10:00 AM ET (UTC-4) = 14:00 UTC — every day
     - cron: "0 14 * * 1"   # Monday    — book promo
     - cron: "0 14 * * 2"   # Tuesday   — engagement
     - cron: "0 14 * * 3"   # Wednesday — blog share
     - cron: "0 14 * * 4"   # Thursday  — book promo
     - cron: "0 14 * * 5"   # Friday    — engagement
-    - cron: "0 14 * * 6"   # Saturday  — review request
+    - cron: "0 14 * * 6"   # Saturday  — community
+    - cron: "0 14 * * 0"   # Sunday    — book promo
   workflow_dispatch:
     inputs:
       type:
@@ -28,13 +29,13 @@ on:
       platform:
         description: "Platform"
         required: true
-        default: "bluesky"
+        default: "all"
         type: choice
         options:
+          - all
           - bluesky
           - facebook
           - instagram
-          - all
       lang:
         description: "Language"
         required: true
@@ -65,6 +66,7 @@ jobs:
             4) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
             5) echo "type=engagement" >> $GITHUB_OUTPUT ;;
             6) echo "type=community" >> $GITHUB_OUTPUT ;;
+            0) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
             *) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
           esac
 
@@ -77,6 +79,6 @@ jobs:
           META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
         run: |
           TYPE="${{ github.event.inputs.type || steps.schedule.outputs.type }}"
-          PLATFORM="${{ github.event.inputs.platform || 'bluesky' }}"
+          PLATFORM="${{ github.event.inputs.platform || 'all' }}"
           LANG="${{ github.event.inputs.lang || 'en' }}"
           node scripts/social/post.mjs post --type "$TYPE" --platform "$PLATFORM" --lang "$LANG"

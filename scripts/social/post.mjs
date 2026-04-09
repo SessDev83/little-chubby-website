@@ -140,6 +140,10 @@ async function publishPost(fullPost, platform, options = {}) {
     try {
       switch (p) {
         case "bluesky": {
+          if (!process.env.BLUESKY_HANDLE || !process.env.BLUESKY_PASSWORD) {
+            console.log(`  ⏭️  Bluesky: skipped (no credentials configured)`);
+            break;
+          }
           // Bluesky has a 300 grapheme limit.
           // Use only text (no CTA/hashtags inline) and attach the link as a card.
           let bskyText = options.bskyText || fullPost;
@@ -150,12 +154,20 @@ async function publishPost(fullPost, platform, options = {}) {
           break;
         }
         case "facebook": {
+          if (!process.env.META_PAGE_ACCESS_TOKEN || !process.env.META_PAGE_ID) {
+            console.log(`  ⏭️  Facebook: skipped (no credentials configured)`);
+            break;
+          }
           const result = await postToFacebook(fullPost, { link: options.link });
           results.push({ platform: "facebook", success: true, result });
           console.log(`  ✅ Facebook: posted successfully (${result.id})`);
           break;
         }
         case "instagram": {
+          if (!process.env.META_PAGE_ACCESS_TOKEN || !process.env.META_IG_USER_ID) {
+            console.log(`  ⏭️  Instagram: skipped (no credentials configured)`);
+            break;
+          }
           if (!options.imageUrl) {
             console.log(`  ⚠️  Instagram: skipped (requires a public image URL)`);
             results.push({ platform: "instagram", success: false, error: "No image URL" });
@@ -238,7 +250,14 @@ async function main() {
 
     const pubOptions = {};
     if (data?.amazonUrl) pubOptions.link = data.amazonUrl;
-    if (data?.coverSrc?.startsWith("http")) pubOptions.imageUrl = data.coverSrc;
+
+    // Build public image URL for Instagram
+    // Local paths like /images/books/x.webp → full public URL
+    if (data?.coverSrc?.startsWith("http")) {
+      pubOptions.imageUrl = data.coverSrc;
+    } else if (data?.coverSrc) {
+      pubOptions.imageUrl = `https://www.littlechubbypress.com${data.coverSrc}`;
+    }
 
     // For Bluesky: send only the text (no hashtags) and attach URL as a link card
     pubOptions.bskyText = `${post.text}\n\n${post.hashtags}`;
