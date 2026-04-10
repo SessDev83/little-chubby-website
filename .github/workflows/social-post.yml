@@ -15,12 +15,12 @@ on:
   schedule:
     # 10:00 AM ET (UTC-4) = 14:00 UTC — every day
     - cron: "0 14 * * 1"   # Monday    — book promo
-    - cron: "0 14 * * 2"   # Tuesday   — engagement
+    - cron: "0 14 * * 2"   # Tuesday   — parenting tip
     - cron: "0 14 * * 3"   # Wednesday — blog share
-    - cron: "0 14 * * 4"   # Thursday  — book promo
-    - cron: "0 14 * * 5"   # Friday    — engagement
+    - cron: "0 14 * * 4"   # Thursday  — behind scenes
+    - cron: "0 14 * * 5"   # Friday    — fun fact
     - cron: "0 14 * * 6"   # Saturday  — community
-    - cron: "0 14 * * 0"   # Sunday    — book promo
+    - cron: "0 14 * * 0"   # Sunday    — engagement
   workflow_dispatch:
     inputs:
       type:
@@ -32,6 +32,9 @@ on:
           - book-promo
           - blog-share
           - engagement
+          - parenting-tip
+          - behind-scenes
+          - fun-fact
           - community
       platform:
         description: "Platform"
@@ -70,12 +73,12 @@ jobs:
           DAY=$(date -u +%u)
           case $DAY in
             1) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-            2) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            2) echo "type=parenting-tip" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
             3) echo "type=blog-share" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
-            4) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-            5) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            4) echo "type=behind-scenes" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            5) echo "type=fun-fact" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
             6) echo "type=community" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
-            7) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            7) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
             *) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
           esac
 
@@ -86,6 +89,8 @@ jobs:
           META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
           META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
           META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NANO_BANANA_API_KEY: ${{ secrets.NANO_BANANA_API_KEY }}
         run: |
           TYPE="${{ github.event.inputs.type || steps.schedule.outputs.type || 'book-promo' }}"
           PLATFORM="${{ github.event.inputs.platform || 'all' }}"

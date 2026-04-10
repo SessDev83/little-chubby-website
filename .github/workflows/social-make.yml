@@ -23,6 +23,9 @@ on:
           - book-promo
           - blog-share
           - engagement
+          - parenting-tip
+          - behind-scenes
+          - fun-fact
           - community
       lang:
         description: "Language"
