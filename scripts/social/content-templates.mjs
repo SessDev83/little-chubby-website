@@ -214,6 +214,12 @@ export function generatePost(type, lang, data) {
     case "community":
       templates = communityTemplates[lang];
       break;
+    case "parenting-tip":
+    case "behind-scenes":
+    case "fun-fact":
+      // These AI-only types fall back to engagement templates
+      templates = engagementTemplates[lang];
+      break;
     default:
       throw new Error(`Unknown template type: ${type}`);
   }
@@ -239,12 +245,12 @@ export function generatePost(type, lang, data) {
 export function generateWeeklyCalendar(books, posts, lang) {
   const schedule = [
     { day: "Monday",    type: "book-promo" },
-    { day: "Tuesday",   type: "engagement" },
+    { day: "Tuesday",   type: "parenting-tip" },
     { day: "Wednesday", type: "blog-share" },
-    { day: "Thursday",  type: "book-promo" },
-    { day: "Friday",    type: "engagement" },
+    { day: "Thursday",  type: "behind-scenes" },
+    { day: "Friday",    type: "fun-fact" },
     { day: "Saturday",  type: "community" },
-    { day: "Sunday",    type: "book-promo" },
+    { day: "Sunday",    type: "engagement" },
   ];
 
   let bookIdx = Math.floor(Math.random() * books.length);

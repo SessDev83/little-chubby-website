@@ -13,10 +13,11 @@
  *
  * Options:
  *   --platform <name>    bluesky | facebook | instagram | all  (default: bluesky)
- *   --type <type>        book-promo | blog-share | engagement | community (default: book-promo)
+ *   --type <type>        book-promo | blog-share | engagement | community | parenting-tip | behind-scenes | fun-fact (default: book-promo)
  *   --lang <lang>        en | es  (default: en)
  *   --book <id>          Use a specific book by ID (e.g. "magical-creatures")
  *   --dry-run            Show what would be posted without actually posting
+ *   --no-ai              Force static templates instead of AI generation
  *
  * Examples:
  *   node scripts/social/post.mjs generate --type engagement --lang es
@@ -29,6 +30,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generatePost, generateWeeklyCalendar } from "./content-templates.mjs";
+import { generateAIPost } from "./ai-generate.mjs";
 import { postToBluesky } from "./platforms/bluesky.mjs";
 import { postToFacebook, postToInstagram } from "./platforms/meta.mjs";
 
@@ -102,6 +104,7 @@ function parseArgs() {
     lang: "en",
     book: null,
     dryRun: false,
+    noAi: false,
   };
 
   for (let i = 1; i < args.length; i++) {
@@ -120,6 +123,9 @@ function parseArgs() {
         break;
       case "--dry-run":
         opts.dryRun = true;
+        break;
+      case "--no-ai":
+        opts.noAi = true;
         break;
     }
   }
@@ -227,9 +233,29 @@ async function main() {
     data = posts[Math.floor(Math.random() * posts.length)];
   }
 
-  const post = generatePost(opts.type, opts.lang, data);
+  // Try AI generation first, fall back to static templates
+  let post;
+  let aiUsed = false;
 
-  console.log(`📝 Generated post (${opts.type}, ${opts.lang}):\n`);
+  if (!opts.noAi && process.env.ANTHROPIC_API_KEY) {
+    try {
+      console.log("🤖 Generating with AI (Claude)...\n");
+      const aiPost = await generateAIPost(opts.type, opts.lang, data);
+      if (aiPost) {
+        post = aiPost;
+        aiUsed = true;
+      }
+    } catch (err) {
+      console.log(`⚠️  AI generation failed: ${err.message}`);
+      console.log("📋 Falling back to static templates...\n");
+    }
+  }
+
+  if (!post) {
+    post = generatePost(opts.type, opts.lang, data);
+  }
+
+  console.log(`📝 Generated post (${opts.type}, ${opts.lang}${aiUsed ? ", AI" : ", template"}):\n`);
   console.log("─".repeat(60));
   console.log(post.fullPost);
   console.log("─".repeat(60));
