@@ -53,6 +53,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Validate webhook configuration
         if: ${{ github.event.inputs.dry_run != 'true' }}
         env:

@@ -37,7 +37,7 @@ const organizationJsonLd = JSON.stringify({
   name: siteConfig.brandName,
   url: siteConfig.siteUrl,
   logo: new URL(siteConfig.brandAssets.logoMark, siteConfig.siteUrl).toString(),
-  sameAs: [siteConfig.social.instagram, siteConfig.social.facebook, siteConfig.social.amazonAuthor],
+  sameAs: [siteConfig.social.instagram, siteConfig.social.facebook, siteConfig.social.bluesky, siteConfig.social.amazonAuthor],
   contactPoint: [{
     "@type": "ContactPoint",
     email: siteConfig.contactEmail,

@@ -6,7 +6,7 @@ import PostCard from "../../components/PostCard.astro";
 import NewsletterForm from "../../components/NewsletterForm.astro";
 import HeroCarousel from "../../components/HeroCarousel.astro";
 import { booksByNewest } from "../../data/books";
-import { postsSorted } from "../../data/posts";
+import { getCollection } from "astro:content";
 import { languages, getLangFromParam, ui } from "../../data/i18n";
 import { siteConfig } from "../../data/site";
 
@@ -18,7 +18,8 @@ const lang = getLangFromParam(Astro.params.lang);
 const text = ui[lang];
 const featuredBooks = booksByNewest.slice(0, 3);
 const heroBooks = booksByNewest.slice(0, 5);
-const featuredPosts = postsSorted.slice(0, 2);
+const allPosts = await getCollection("blog", (entry) => entry.data.lang === lang);
+const featuredPosts = allPosts.sort((a, b) => b.data.date.localeCompare(a.data.date)).slice(0, 2);
 const pathname = `/${lang}/`;
 const heroCtaLabel = lang === "es" ? "Ver en Amazon" : "View on Amazon";
 const bookCardLabels = {
@@ -98,6 +99,28 @@ const bookCardLabels = {
         <p>{text.newsletterDisclaimer}</p>
       </div>
       <NewsletterForm lang={lang} />
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="container">
+      <div class="section-head">
+        <h2>{text.followUs}</h2>
+      </div>
+      <div class="social-follow-row">
+        <a href={siteConfig.social.instagram} target="_blank" rel="noopener noreferrer" class="social-follow-btn" aria-label={text.followInstagram}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          <span>Instagram</span>
+        </a>
+        <a href={siteConfig.social.facebook} target="_blank" rel="noopener noreferrer" class="social-follow-btn" aria-label={text.followFacebook}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          <span>Facebook</span>
+        </a>
+        <a href={siteConfig.social.bluesky} target="_blank" rel="noopener noreferrer" class="social-follow-btn" aria-label={text.followBluesky}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.785 2.643 3.593 3.519 6.173 3.175-.375.52-1.611 1.753-.875 3.613C7.182 20.756 12 18.906 12 18.906s4.818 1.85 6.078-1.871c.736-1.86-.5-3.093-.875-3.613 2.58.344 5.388-.532 6.173-3.175C23.622 9.418 24 4.458 24 3.768c0-.69-.139-1.86-.902-2.203-.659-.3-1.664-.62-4.3 1.24C16.046 4.747 13.087 8.686 12 10.8"/></svg>
+          <span>Bluesky</span>
+        </a>
+      </div>
     </div>
   </section>
 </BaseLayout>

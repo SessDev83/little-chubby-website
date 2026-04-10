@@ -1,19 +1,23 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import Button from "../../../components/Button.astro";
-import { postsSorted, getPostBook } from "../../../data/posts";
+import PostCard from "../../../components/PostCard.astro";
+import { getCollection, render } from "astro:content";
+import { books } from "../../../data/books";
 import { languages, getLangFromParam, ui, formatDate } from "../../../data/i18n";
+import { siteConfig } from "../../../data/site";
 
-export function getStaticPaths() {
+export async function getStaticPaths() {
+  const allPosts = await getCollection("blog");
   const paths = [];
 
-  for (const lang of languages) {
-    for (const post of postsSorted) {
-      paths.push({
-        params: { lang, slug: post.slug[lang] },
-        props: { postId: post.id }
-      });
-    }
+  for (const post of allPosts) {
+    const lang = post.data.lang;
+    const slug = post.id.replace(/^(es|en)\//, "");
+    paths.push({
+      params: { lang, slug },
+      props: { post }
+    });
   }
 
   return paths;
@@ -21,74 +25,143 @@ export function getStaticPaths() {
 
 const lang = getLangFromParam(Astro.params.lang);
 const text = ui[lang];
-const { postId } = Astro.props;
-const post = postsSorted.find((item) => item.id === postId);
+const { post } = Astro.props;
+const slug = post.id.replace(/^(es|en)\//, "");
 
-if (!post) {
-  throw new Error("Post not found");
-}
+const { Content } = await render(post);
 
-const book = getPostBook(post);
-const pathname = `/${lang}/blog/${post.slug[lang]}/`;
+const book = post.data.bookId
+  ? books.find((b) => b.id === post.data.bookId) ?? null
+  : null;
+
+// Related posts: same tags, same language, exclude current
+const allPosts = await getCollection("blog", (entry) => entry.data.lang === lang);
+const postTags = new Set(post.data.tags);
+const relatedPosts = allPosts
+  .filter((p) => p.data.postId !== post.data.postId && p.data.tags.some((t) => postTags.has(t)))
+  .sort((a, b) => b.data.date.localeCompare(a.data.date))
+  .slice(0, 3);
+
+// If not enough related by tags, show random book if no book CTA
+const suggestedBook = !book
+  ? books[Math.floor(Math.random() * books.length)]
+  : null;
+
+const pathname = `/${lang}/blog/${slug}/`;
+const fullUrl = new URL(pathname, siteConfig.siteUrl).toString();
 const breadcrumbs = [
   { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
   { name: "Blog", url: `/${lang}/blog/` },
-  { name: post.title[lang], url: pathname }
+  { name: post.data.title, url: pathname }
 ];
 const articleSchema = {
-  headline: post.title[lang],
-  description: post.summary[lang],
-  datePublished: post.date,
+  headline: post.data.title,
+  description: post.data.summary,
+  datePublished: post.data.date,
   url: pathname
 };
+const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
+const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(post.data.title + " " + fullUrl)}`;
 ---
 
 <BaseLayout
   lang={lang}
-  title={`${post.title[lang]} | ${text.blogMetaTitle}`}
-  description={post.summary[lang]}
+  title={`${post.data.title} | ${text.blogMetaTitle}`}
+  description={post.data.summary}
   pathname={pathname}
   breadcrumbs={breadcrumbs}
   articleSchema={articleSchema}
-  ogImage={post.image}
+  ogImage={post.data.image}
 >
   <section class="page-section">
     <div class="container">
       <article class="surface-card" style="padding: clamp(1rem, 2.8vw, 2rem);">
-        {post.image && (
+        {post.data.image && (
           <img
-            src={post.image}
-            alt={post.title[lang]}
+            src={post.data.image}
+            alt={post.data.title}
             class="post-hero-image"
             width="600"
             height="600"
             loading="eager"
           />
         )}
-        <p class="post-date">{formatDate(post.date, lang)}</p>
-        <h1 style="margin-top: 0.5rem;">{post.title[lang]}</h1>
-        <p style="margin-top: 0.7rem;">{post.summary[lang]}</p>
+        <p class="post-date">{formatDate(post.data.date, lang)}</p>
+        <h1 style="margin-top: 0.5rem;">{post.data.title}</h1>
+        <p style="margin-top: 0.7rem;">{post.data.summary}</p>
 
-        <div class="article-prose" set:html={post.content[lang]}></div>
+        <div class="article-prose">
+          <Content />
+        </div>
 
-        {book && (
+        {/* ── Social Share Buttons ──────────────── */}
+        <div class="social-share-row">
+          <a href={fbShareUrl} target="_blank" rel="noopener noreferrer" class="social-share-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+            {text.shareOnFacebook}
+          </a>
+          <a href={bskyShareUrl} target="_blank" rel="noopener noreferrer" class="social-share-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.785 2.643 3.593 3.519 6.173 3.175-.375.52-1.611 1.753-.875 3.613C7.182 20.756 12 18.906 12 18.906s4.818 1.85 6.078-1.871c.736-1.86-.5-3.093-.875-3.613 2.58.344 5.388-.532 6.173-3.175C23.622 9.418 24 4.458 24 3.768c0-.69-.139-1.86-.902-2.203-.659-.3-1.664-.62-4.3 1.24C16.046 4.747 13.087 8.686 12 10.8"/></svg>
+            {text.shareOnBluesky}
+          </a>
+          <button class="social-share-btn" data-copy-url={fullUrl} aria-label={text.copyLink}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <span class="copy-label">{text.copyLink}</span>
+          </button>
+        </div>
+
+        {/* ── Book CTA ─────────────────────────── */}
+        {(book || suggestedBook) && (
           <div class="post-book-cta">
-            <img src={book.coverSrc} alt={book.title[lang]} width="120" height="120" loading="lazy" />
+            <img src={(book || suggestedBook)!.coverSrc} alt={(book || suggestedBook)!.title[lang]} width="120" height="120" loading="lazy" />
             <div>
-              <p class="post-book-cta-title">{book.title[lang]}</p>
-              <p class="post-book-cta-sub">{book.subtitle[lang]}</p>
-              <a href={book.amazonUrl} target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+              <p class="post-book-cta-title">{(book || suggestedBook)!.title[lang]}</p>
+              <p class="post-book-cta-sub">{(book || suggestedBook)!.subtitle[lang]}</p>
+              <a href={(book || suggestedBook)!.amazonUrl} target="_blank" rel="noopener noreferrer" class="btn btn-primary">
                 {text.ctaBuyOnAmazon}
               </a>
             </div>
           </div>
         )}
 
-        <div class="hero-actions" style="margin-top: 1.8rem;">
-          <Button href={`/${lang}/blog/`} label={text.navBlog} variant="secondary" />
-          <Button href={`/${lang}/newsletter/`} label={text.navNewsletter} variant="ghost" />
+        {/* ── Related Posts ─────────────────────── */}
+        {relatedPosts.length > 0 && (
+          <div class="related-posts">
+            <h2>{text.relatedPosts}</h2>
+            <div class="grid-cards posts">
+              {relatedPosts.map((rp) => <PostCard post={rp} lang={lang} readLabel={text.ctaReadPost} />)}
+            </div>
+          </div>
+        )}
+
+        {/* ── Explore More ─────────────────────── */}
+        <div class="explore-more">
+          <h2>{text.exploreMore}</h2>
+          <div class="explore-more-links">
+            <Button href={`/${lang}/books/`} label={text.ctaViewAllBooks} variant="secondary" />
+            <Button href={`/${lang}/newsletter/`} label={text.navNewsletter} variant="ghost" />
+            <Button href={`/${lang}/lottery/`} label={text.lotteryBannerCta} variant="ghost" />
+          </div>
         </div>
       </article>
     </div>
   </section>
 </BaseLayout>
+
+<script>
+  document.querySelectorAll("[data-copy-url]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const url = btn.getAttribute("data-copy-url");
+      if (!url) return;
+      try {
+        await navigator.clipboard.writeText(url);
+        const label = btn.querySelector(".copy-label");
+        if (label) {
+          const original = label.textContent;
+          label.textContent = "✓";
+          setTimeout(() => { label.textContent = original; }, 2000);
+        }
+      } catch {}
+    });
+  });
+</script>

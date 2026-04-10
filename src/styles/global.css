@@ -1242,3 +1242,104 @@ main {
     color: #000 !important;
   }
 }
+
+/* ── Social Follow Row (Homepage) ───────────── */
+.social-follow-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.social-follow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 1.5px solid var(--line);
+  transition: border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.social-follow-btn:hover {
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+  transform: translateY(-2px);
+}
+
+/* ── Footer Social Link Icons ───────────────── */
+.footer-social-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.footer-social-link svg {
+  flex-shrink: 0;
+}
+
+/* ── Social Share Buttons (Blog) ────────────── */
+.social-share-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+}
+
+.social-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-strong);
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 600;
+  font-size: 0.82rem;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.social-share-btn:hover {
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+}
+
+/* ── Related Posts Grid ─────────────────────── */
+.related-posts {
+  margin-top: 2rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1.5rem;
+}
+
+.related-posts h2 {
+  font-size: 1.15rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Explore More Section ───────────────────── */
+.explore-more {
+  margin-top: 1.5rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--line);
+}
+
+.explore-more h2 {
+  font-size: 1.15rem;
+  margin-bottom: 0.8rem;
+}
+
+.explore-more-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}

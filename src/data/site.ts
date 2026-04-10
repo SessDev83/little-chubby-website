@@ -38,6 +38,7 @@ export const siteConfig = {
   social: {
     instagram: "https://www.instagram.com/LittleChubbyPress",
     facebook: "https://www.facebook.com/LittleChubbyPress",
+    bluesky: "https://bsky.app/profile/littlechubbypress.bsky.social",
     amazonAuthor: "https://www.amazon.com/author/littlechubbypress"
   },
   brandAssets: {

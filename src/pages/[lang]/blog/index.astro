@@ -1,7 +1,7 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import PostCard from "../../../components/PostCard.astro";
-import { postsSorted } from "../../../data/posts";
+import { getCollection } from "astro:content";
 import { languages, getLangFromParam, ui } from "../../../data/i18n";
 
 export function getStaticPaths() {
@@ -15,6 +15,9 @@ const breadcrumbs = [
   { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
   { name: "Blog", url: pathname }
 ];
+
+const allPosts = await getCollection("blog", (entry) => entry.data.lang === lang);
+const sortedPosts = allPosts.sort((a, b) => b.data.date.localeCompare(a.data.date));
 ---
 
 <BaseLayout lang={lang} title={text.blogMetaTitle} description={text.blogMetaDescription} pathname={pathname} breadcrumbs={breadcrumbs}>
@@ -30,7 +33,7 @@ const breadcrumbs = [
       </div>
 
       <div class="grid-cards posts">
-        {postsSorted.map((post) => <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />)}
+        {sortedPosts.map((post) => <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />)}
       </div>
     </div>
   </section>
