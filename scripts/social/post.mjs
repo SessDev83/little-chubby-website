@@ -31,8 +31,11 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generatePost, generateWeeklyCalendar } from "./content-templates.mjs";
 import { generateAIPost } from "./ai-generate.mjs";
+import { generateImage, downloadImage } from "./image-generate.mjs";
 import { postToBluesky } from "./platforms/bluesky.mjs";
 import { postToFacebook, postToInstagram } from "./platforms/meta.mjs";
+
+const SITE_URL = "https://www.littlechubbypress.com";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "../..");
@@ -133,16 +136,130 @@ function parseArgs() {
   return opts;
 }
 
+// ─── Adapt static template to per-platform format ─────────────────────────
+
+function adaptToPlatforms(post, data, lang) {
+  // Bluesky: short text, no URLs, 2-3 hashtags — total must be ≤300 chars
+  let bskyText = post.text;
+  // Strip any URLs from bluesky text
+  bskyText = bskyText.replace(/https?:\/\/[^\s]+/g, "").replace(/\n\n+/g, "\n\n").trim();
+  let bskyHashtags = post.hashtags.split(" ").slice(0, 3).join(" ");
+
+  // Ensure combined text + hashtags fits in 300 chars (AT Protocol limit)
+  const bskyMaxTotal = 300;
+  const hashtagBlock = bskyHashtags ? `\n\n${bskyHashtags}` : "";
+  const maxTextLen = bskyMaxTotal - hashtagBlock.length;
+  if (bskyText.length > maxTextLen) {
+    let cut = bskyText.lastIndexOf(".", maxTextLen - 1);
+    if (cut < 80) cut = bskyText.lastIndexOf(" ", maxTextLen - 1);
+    if (cut < 80) cut = maxTextLen - 1;
+    bskyText = bskyText.slice(0, cut + 1);
+  }
+
+  // Facebook: full text with CTA and link
+  const fbText = `${post.text}\n\n${post.cta}`;
+  const fbHashtags = post.hashtags;
+
+  // Instagram: no URLs, "link in bio" instead
+  let igText = post.text.replace(/https?:\/\/[^\s]+/g, "").trim();
+  if (post.cta) {
+    const bioText = lang === "es" ? "Link en bio" : "Link in bio";
+    igText += `\n\n${bioText}`;
+  }
+  // More hashtags for Instagram discovery
+  const extraIG = lang === "es"
+    ? "#Colorear #ArteInfantil #MamasCreativas #PapasCreativos #ActividadesSinPantallas"
+    : "#KidsArt #ColoringTime #Parenting #MomLife #ArtForKids";
+  const igHashtags = `${post.hashtags} ${extraIG}`;
+
+  return {
+    concept: post.text.split("\n")[0].slice(0, 80),
+    platforms: {
+      bluesky:   { text: bskyText, hashtags: bskyHashtags },
+      facebook:  { text: fbText, hashtags: fbHashtags },
+      instagram: { text: igText, hashtags: igHashtags },
+    },
+    imagePrompt: null,
+    aiGenerated: false,
+  };
+}
+
+// ─── Resolve image for platforms ────────────────────────────────────────────
+
+async function resolveImage(post, data, opts) {
+  // For book-promo: use the book cover
+  if (opts.type === "book-promo" && data?.coverSrc) {
+    const url = data.coverSrc.startsWith("http")
+      ? data.coverSrc
+      : `${SITE_URL}${data.coverSrc}`;
+    console.log(`🖼️  Using book cover: ${url}`);
+    try {
+      const { buffer, mimeType } = await downloadImage(url);
+      return { url, buffer, mimeType };
+    } catch (err) {
+      console.log(`⚠️  Could not download book cover: ${err.message}`);
+      return { url, buffer: null, mimeType: null };
+    }
+  }
+
+  // For blog-share: use blog post image if available
+  if (opts.type === "blog-share" && data?.image) {
+    const url = data.image.startsWith("http")
+      ? data.image
+      : `${SITE_URL}${data.image}`;
+    console.log(`🖼️  Using blog image: ${url}`);
+    try {
+      const { buffer, mimeType } = await downloadImage(url);
+      return { url, buffer, mimeType };
+    } catch (err) {
+      console.log(`⚠️  Could not download blog image: ${err.message}`);
+      // Fall through to AI generation
+    }
+  }
+
+  // For all other types (or if blog image failed): generate with AI
+  if (post.imagePrompt && process.env.NANO_BANANA_API_KEY) {
+    try {
+      console.log("🎨 Generating image with AI (Nano Banana)...");
+      const result = await generateImage(post.imagePrompt);
+      if (result?.buffer) {
+        console.log(`✅ Image generated (${result.mimeType}, ${(result.buffer.length / 1024).toFixed(0)} KB)`);
+        return { url: result.url, buffer: result.buffer, mimeType: result.mimeType };
+      }
+    } catch (err) {
+      console.log(`⚠️  Image generation failed: ${err.message}`);
+    }
+  } else if (post.imagePrompt && !process.env.NANO_BANANA_API_KEY) {
+    console.log("⏭️  Image generation skipped (no NANO_BANANA_API_KEY configured)");
+  }
+
+  return null;
+}
+
+// ─── Build full post text for a platform ────────────────────────────────────
+
+function buildFullText(platformContent) {
+  const { text, hashtags } = platformContent;
+  return hashtags ? `${text}\n\n${hashtags}` : text;
+}
+
 // ─── Publish to platforms ───────────────────────────────────────────────────
 
-async function publishPost(fullPost, platform, options = {}) {
+async function publishPost(post, platform, imageData, data, lang) {
   const results = [];
-
   const platforms = platform === "all"
     ? ["bluesky", "facebook", "instagram"]
     : [platform];
 
   for (const p of platforms) {
+    const content = post.platforms[p];
+    if (!content) {
+      console.log(`  ⚠️  No content for platform: ${p}`);
+      continue;
+    }
+
+    const fullText = buildFullText(content);
+
     try {
       switch (p) {
         case "bluesky": {
@@ -150,40 +267,78 @@ async function publishPost(fullPost, platform, options = {}) {
             console.log(`  ⏭️  Bluesky: skipped (no credentials configured)`);
             break;
           }
-          // Bluesky has a 300 grapheme limit.
-          // Use only text (no CTA/hashtags inline) and attach the link as a card.
-          let bskyText = options.bskyText || fullPost;
-          if (bskyText.length > 300) bskyText = bskyText.slice(0, 297) + "...";
-          const result = await postToBluesky(bskyText, options);
+
+          let bskyText = fullText;
+          if (bskyText.length > 300) {
+            let cut = bskyText.lastIndexOf(".", 297);
+            if (cut < 80) cut = bskyText.lastIndexOf(" ", 297);
+            if (cut < 80) cut = 297;
+            bskyText = bskyText.slice(0, cut + 1);
+          }
+
+          const bskyOpts = {};
+
+          // Attach link card embed
+          if (data?.amazonUrl) {
+            bskyOpts.linkUrl = data.amazonUrl;
+            bskyOpts.linkTitle = data.title?.[lang] || data.title?.en || "";
+            bskyOpts.linkDescription = data.description?.[lang] || data.description?.en || "";
+          } else {
+            // Extract any URL from Facebook text as link card source
+            const urlMatch = post.platforms.facebook.text.match(/https?:\/\/[^\s]+/);
+            if (urlMatch) {
+              bskyOpts.linkUrl = urlMatch[0];
+              bskyOpts.linkTitle = "Little Chubby Press";
+              bskyOpts.linkDescription = "";
+            }
+          }
+
+          // Attach image (overrides link card)
+          if (imageData?.buffer) {
+            bskyOpts.imageBuffer = imageData.buffer;
+            bskyOpts.imageMimeType = imageData.mimeType || "image/png";
+            bskyOpts.imageAlt = post.concept || "Little Chubby Press";
+          }
+
+          const result = await postToBluesky(bskyText, bskyOpts);
           results.push({ platform: "bluesky", success: true, result });
           console.log(`  ✅ Bluesky: posted successfully (${result.uri})`);
           break;
         }
+
         case "facebook": {
           if (!process.env.META_PAGE_ACCESS_TOKEN || !process.env.META_PAGE_ID) {
             console.log(`  ⏭️  Facebook: skipped (no credentials configured)`);
             break;
           }
-          const result = await postToFacebook(fullPost, { link: options.link });
+
+          const fbOpts = {};
+          if (data?.amazonUrl) fbOpts.link = data.amazonUrl;
+          if (imageData?.url) fbOpts.imageUrl = imageData.url;
+
+          const result = await postToFacebook(fullText, fbOpts);
           results.push({ platform: "facebook", success: true, result });
           console.log(`  ✅ Facebook: posted successfully (${result.id})`);
           break;
         }
+
         case "instagram": {
           if (!process.env.META_PAGE_ACCESS_TOKEN || !process.env.META_IG_USER_ID) {
             console.log(`  ⏭️  Instagram: skipped (no credentials configured)`);
             break;
           }
-          if (!options.imageUrl) {
+          if (!imageData?.url) {
             console.log(`  ⚠️  Instagram: skipped (requires a public image URL)`);
             results.push({ platform: "instagram", success: false, error: "No image URL" });
             break;
           }
-          const result = await postToInstagram(fullPost, options.imageUrl);
+
+          const result = await postToInstagram(fullText, imageData.url);
           results.push({ platform: "instagram", success: true, result });
           console.log(`  ✅ Instagram: posted successfully (${result.id})`);
           break;
         }
+
         default:
           console.log(`  ⚠️  Unknown platform: ${p}`);
       }
@@ -194,6 +349,31 @@ async function publishPost(fullPost, platform, options = {}) {
   }
 
   return results;
+}
+
+// ─── Display post preview ──────────────────────────────────────────────────
+
+function displayPreview(post, aiUsed, type, lang) {
+  const source = aiUsed ? "AI" : "template";
+  console.log(`📝 Generated post (${type}, ${lang}, ${source}):\n`);
+
+  if (post.concept) {
+    console.log(`💡 Concept: ${post.concept}\n`);
+  }
+
+  for (const [platform, content] of Object.entries(post.platforms)) {
+    const icon = { bluesky: "🦋", facebook: "📘", instagram: "📸" }[platform] || "📱";
+    const full = buildFullText(content);
+    console.log(`${icon} ${platform.toUpperCase()} (${full.length} chars)`);
+    console.log("─".repeat(50));
+    console.log(full);
+    console.log("─".repeat(50));
+    console.log();
+  }
+
+  if (post.imagePrompt) {
+    console.log(`🖼️  Image prompt: ${post.imagePrompt}\n`);
+  }
 }
 
 // ─── Main ───────────────────────────────────────────────────────────────────
@@ -239,7 +419,7 @@ async function main() {
 
   if (!opts.noAi && process.env.ANTHROPIC_API_KEY) {
     try {
-      console.log("🤖 Generating with AI (Claude)...\n");
+      console.log("🤖 Generating content with AI (Claude)...\n");
       const aiPost = await generateAIPost(opts.type, opts.lang, data);
       if (aiPost) {
         post = aiPost;
@@ -252,14 +432,12 @@ async function main() {
   }
 
   if (!post) {
-    post = generatePost(opts.type, opts.lang, data);
+    const staticPost = generatePost(opts.type, opts.lang, data);
+    post = adaptToPlatforms(staticPost, data, opts.lang);
   }
 
-  console.log(`📝 Generated post (${opts.type}, ${opts.lang}${aiUsed ? ", AI" : ", template"}):\n`);
-  console.log("─".repeat(60));
-  console.log(post.fullPost);
-  console.log("─".repeat(60));
-  console.log(`\n📏 Length: ${post.fullPost.length} chars\n`);
+  // Display preview
+  displayPreview(post, aiUsed, opts.type, opts.lang);
 
   if (opts.command === "generate") {
     console.log("ℹ️  Preview only. Use 'post' command to publish.\n");
@@ -267,41 +445,20 @@ async function main() {
   }
 
   if (opts.command === "post") {
+    // Resolve image (book cover, blog image, or AI-generated)
+    const imageData = await resolveImage(post, data, opts);
+
     if (opts.dryRun) {
-      console.log(`🏃 DRY RUN — Would post to: ${opts.platform}\n`);
+      console.log(`\n🏃 DRY RUN — Would post to: ${opts.platform}`);
+      if (imageData?.url) {
+        console.log(`   Image: ${imageData.url.slice(0, 80)}...`);
+      }
+      console.log();
       return;
     }
 
-    console.log(`📤 Publishing to: ${opts.platform}...\n`);
-
-    const pubOptions = {};
-    if (data?.amazonUrl) pubOptions.link = data.amazonUrl;
-
-    // Build public image URL for Instagram
-    // Local paths like /images/books/x.webp → full public URL
-    if (data?.coverSrc?.startsWith("http")) {
-      pubOptions.imageUrl = data.coverSrc;
-    } else if (data?.coverSrc) {
-      pubOptions.imageUrl = `https://www.littlechubbypress.com${data.coverSrc}`;
-    }
-
-    // For Bluesky: send only the text (no hashtags) and attach URL as a link card
-    pubOptions.bskyText = `${post.text}\n\n${post.hashtags}`;
-    if (data?.amazonUrl) {
-      pubOptions.linkUrl = data.amazonUrl;
-      pubOptions.linkTitle = data.title?.en || data.title?.es || "";
-      pubOptions.linkDescription = data.description?.en || data.description?.es || "";
-    } else if (post.cta) {
-      // Extract URL from CTA text
-      const urlMatch = post.cta.match(/https?:\/\/[^\s]+/);
-      if (urlMatch) {
-        pubOptions.linkUrl = urlMatch[0];
-        pubOptions.linkTitle = "Little Chubby Press";
-        pubOptions.linkDescription = "";
-      }
-    }
-
-    await publishPost(post.fullPost, opts.platform, pubOptions);
+    console.log(`\n📤 Publishing to: ${opts.platform}...\n`);
+    await publishPost(post, opts.platform, imageData, data, opts.lang);
     console.log("\n✨ Done!\n");
   }
 }

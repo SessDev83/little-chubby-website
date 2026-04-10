@@ -100,7 +100,27 @@ export async function postToInstagram(caption, imageUrl) {
 
   const { id: containerId } = await containerRes.json();
 
-  // Step 2: Publish the container
+  // Step 2: Wait for the container to finish processing
+  //         Instagram needs time to download + process the image before publishing.
+  const maxAttempts = 10;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const statusRes = await fetch(
+      `${GRAPH_API}/${encodeURIComponent(containerId)}?fields=status_code&access_token=${encodeURIComponent(token)}`
+    );
+    if (statusRes.ok) {
+      const { status_code } = await statusRes.json();
+      if (status_code === "FINISHED") break;
+      if (status_code === "ERROR") {
+        throw new Error("Instagram container processing failed (status: ERROR)");
+      }
+    }
+    if (attempt === maxAttempts) {
+      throw new Error("Instagram container not ready after polling — timed out");
+    }
+    await new Promise((r) => setTimeout(r, 2000)); // wait 2s between polls
+  }
+
+  // Step 3: Publish the container
   const publishRes = await fetch(`${GRAPH_API}/${encodeURIComponent(igUserId)}/media_publish`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

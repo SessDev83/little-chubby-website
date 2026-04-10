@@ -11,6 +11,9 @@ Little Chubby Press books and drive traffic to the website + Amazon listings.
 - `book-promo` — Spotlight a book with description + Amazon link
 - `blog-share` — Share a blog post with link to the website
 - `engagement` — Tips, questions, parenting content (no product push)
+- `parenting-tip` — Actionable parenting advice (AI-only)
+- `behind-scenes` — Behind-the-scenes at Little Chubby Press (AI-only)
+- `fun-fact` — Shareable facts about creativity / child development (AI-only)
 - `community` — Drive visits to newsletter, gallery, and main pages
 
 ---
@@ -146,11 +149,12 @@ The daily posting schedule used by both workflows:
 | Day       | Type            |
 |-----------|-----------------|
 | Monday    | Book promo      |
-| Tuesday   | Engagement      |
+| Tuesday   | Parenting tip   |
 | Wednesday | Blog share      |
-| Thursday  | Book promo      |
-| Friday    | Engagement      |
-| Saturday  | Review request  |
+| Thursday  | Behind scenes   |
+| Friday    | Fun fact        |
+| Saturday  | Community       |
+| Sunday    | Engagement      |
 
 ### Setup
 
@@ -158,6 +162,8 @@ The daily posting schedule used by both workflows:
 2. Add these secrets:
    - `BLUESKY_HANDLE`
    - `BLUESKY_PASSWORD`
+   - (Optional) `ANTHROPIC_API_KEY` — for AI-powered content generation
+   - (Optional) `NANO_BANANA_API_KEY` — for AI image generation (nanobananaapi.dev)
    - (Optional) `META_PAGE_ACCESS_TOKEN`, `META_PAGE_ID`, `META_IG_USER_ID`
   - (Make relay) `MAKE_WEBHOOK_URL`
   - (Optional) `MAKE_WEBHOOK_SECRET`
@@ -191,7 +197,7 @@ node scripts/social/make.mjs --type <type> --lang <lang> --dry-run
 ```
 
 **Platforms:** `bluesky`, `facebook`, `instagram`, `all`
-**Types:** `book-promo`, `blog-share`, `engagement`, `community`
+**Types:** `book-promo`, `blog-share`, `engagement`, `parenting-tip`, `behind-scenes`, `fun-fact`, `community`
 **Languages:** `en`, `es`
 
 ---
