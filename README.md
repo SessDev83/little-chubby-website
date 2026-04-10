@@ -199,3 +199,9 @@ Secrets de GitHub Actions necesarios para este flujo:
 
 - `MAKE_WEBHOOK_URL` (requerido)
 - `MAKE_WEBHOOK_SECRET` (opcional)
+
+## Seguridad
+
+Guia de endurecimiento y operacion segura:
+
+- `SECURITY.md`

@@ -1,9 +1,15 @@
 # Automated direct-post schedule.
-# Scheduled runs default to Bluesky only to avoid duplicate Meta posts when
-# Make relay is enabled.
+# This workflow is the primary automation path (no Make relay required).
 # Platforms without secrets are skipped gracefully.
 
 name: Social Media Auto-Post
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-direct-post
+  cancel-in-progress: false
 
 on:
   schedule:
@@ -49,6 +55,7 @@ on:
 jobs:
   auto-post:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -56,19 +63,20 @@ jobs:
         with:
           node-version: 22
 
-      - name: Determine post type from schedule
+      - name: Determine scheduled post settings
+        if: github.event_name == 'schedule'
         id: schedule
         run: |
           DAY=$(date -u +%u)
           case $DAY in
-            1) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
-            2) echo "type=engagement" >> $GITHUB_OUTPUT ;;
-            3) echo "type=blog-share" >> $GITHUB_OUTPUT ;;
-            4) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
-            5) echo "type=engagement" >> $GITHUB_OUTPUT ;;
-            6) echo "type=community" >> $GITHUB_OUTPUT ;;
-            0) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
-            *) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
+            1) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            2) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            3) echo "type=blog-share" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
+            4) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            5) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            6) echo "type=community" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
+            7) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            *) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
           esac
 
       - name: Post to social media
@@ -79,7 +87,7 @@ jobs:
           META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
           META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
         run: |
-          TYPE="${{ github.event.inputs.type || steps.schedule.outputs.type }}"
-          PLATFORM="${{ github.event.inputs.platform || 'bluesky' }}"
-          LANG="${{ github.event.inputs.lang || 'en' }}"
+          TYPE="${{ github.event.inputs.type || steps.schedule.outputs.type || 'book-promo' }}"
+          PLATFORM="${{ github.event.inputs.platform || 'all' }}"
+          LANG="${{ github.event.inputs.lang || steps.schedule.outputs.lang || 'en' }}"
           node scripts/social/post.mjs post --type "$TYPE" --platform "$PLATFORM" --lang "$LANG"

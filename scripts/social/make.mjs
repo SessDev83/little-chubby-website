@@ -15,6 +15,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHmac, randomUUID } from "node:crypto";
 import { generatePost } from "./content-templates.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -125,6 +126,9 @@ function parseArgs() {
   // npm + PowerShell may strip option names and pass only values.
   if (positional[0] && opts.type === "book-promo") opts.type = positional[0];
   if (positional[1] && opts.lang === "en") opts.lang = positional[1];
+  if (positional[2] && !opts.webhookUrl && /^https?:\/\//i.test(positional[2])) {
+    opts.webhookUrl = positional[2];
+  }
 
   if (!SUPPORTED_TYPES.has(opts.type)) {
     throw new Error(`Unsupported --type: ${opts.type}`);
@@ -192,6 +196,7 @@ function createPayload(opts, data, generatedPost, siteUrl) {
 
   return {
     source: "little-chubby-website",
+    requestId: randomUUID(),
     generatedAt: new Date().toISOString(),
     type: opts.type,
     lang: opts.lang,
@@ -217,19 +222,68 @@ function createPayload(opts, data, generatedPost, siteUrl) {
   };
 }
 
+function isAllowedWebhookHost(hostname) {
+  const allowedHostsEnv = (process.env.MAKE_WEBHOOK_ALLOWED_HOSTS || "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (allowedHostsEnv.length > 0) {
+    return allowedHostsEnv.some((host) => hostname === host || hostname.endsWith(`.${host}`));
+  }
+
+  return hostname === "make.com" || hostname.endsWith(".make.com");
+}
+
+function assertSecureWebhookUrl(webhookUrl) {
+  let parsed;
+  try {
+    parsed = new URL(webhookUrl);
+  } catch {
+    throw new Error("Invalid MAKE_WEBHOOK_URL format.");
+  }
+
+  if (parsed.protocol !== "https:") {
+    throw new Error("MAKE_WEBHOOK_URL must use HTTPS.");
+  }
+
+  if (!isAllowedWebhookHost(parsed.hostname.toLowerCase())) {
+    throw new Error(
+      "Webhook host is not allowed. Set MAKE_WEBHOOK_ALLOWED_HOSTS to override this protection."
+    );
+  }
+}
+
 async function sendToMake(webhookUrl, webhookSecret, payload) {
-  const headers = { "Content-Type": "application/json" };
-  if (webhookSecret) headers["X-Webhook-Secret"] = webhookSecret;
+  const body = JSON.stringify(payload);
+  const headers = {
+    "Content-Type": "application/json",
+    "User-Agent": "little-chubby-website/1.0",
+  };
+
+  const unixTimestamp = Math.floor(Date.now() / 1000).toString();
+  headers["X-Webhook-Timestamp"] = unixTimestamp;
+
+  if (webhookSecret) {
+    const signature = createHmac("sha256", webhookSecret)
+      .update(`${unixTimestamp}.${body}`)
+      .digest("hex");
+
+    // Backward compatibility with existing Make filter setup.
+    headers["X-Webhook-Secret"] = webhookSecret;
+    headers["X-Webhook-Signature"] = `sha256=${signature}`;
+  }
 
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers,
-    body: JSON.stringify(payload),
+    body,
   });
 
   const bodyText = await res.text();
   if (!res.ok) {
-    throw new Error(`Make webhook failed (${res.status}): ${bodyText}`);
+    const safeBody = bodyText.replace(/\s+/g, " ").slice(0, 300);
+    throw new Error(`Make webhook failed (${res.status}): ${safeBody}`);
   }
 
   return { status: res.status, bodyText };
@@ -253,6 +307,8 @@ async function main() {
   if (!opts.webhookUrl) {
     throw new Error("Missing Make webhook URL. Set MAKE_WEBHOOK_URL or pass --webhook.");
   }
+
+  assertSecureWebhookUrl(opts.webhookUrl);
 
   const result = await sendToMake(opts.webhookUrl, opts.webhookSecret, payload);
   console.log(`Posted payload to Make webhook (HTTP ${result.status}).`);

@@ -1,19 +1,17 @@
-# Daily Make relay workflow.
-# This workflow generates social content and sends it to Make.com,
-# where Facebook and Instagram publishing/auth are handled.
+# Manual Make relay workflow.
+# Direct posting is the default automation path.
+# Keep this workflow as a fallback for troubleshooting Meta auth issues.
 
 name: Social Media Make Relay
 
+permissions:
+  contents: read
+
+concurrency:
+  group: social-make-relay
+  cancel-in-progress: false
+
 on:
-  schedule:
-    # 10:00 AM ET (UTC-4) = 14:00 UTC — every day
-    - cron: "0 14 * * 1"   # Monday    — book promo
-    - cron: "0 14 * * 2"   # Tuesday   — engagement
-    - cron: "0 14 * * 3"   # Wednesday — blog share
-    - cron: "0 14 * * 4"   # Thursday  — book promo
-    - cron: "0 14 * * 5"   # Friday    — engagement
-    - cron: "0 14 * * 6"   # Saturday  — community
-    - cron: "0 14 * * 0"   # Sunday    — book promo
   workflow_dispatch:
     inputs:
       type:
@@ -37,12 +35,13 @@ on:
       dry_run:
         description: "Preview payload only (do not call Make webhook)"
         required: true
-        default: false
+        default: true
         type: boolean
 
 jobs:
   relay-to-make:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -51,29 +50,24 @@ jobs:
         with:
           node-version: 22
 
-      - name: Determine post type from schedule
-        if: github.event_name == 'schedule'
-        id: schedule
+      - name: Validate webhook configuration
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
         run: |
-          DAY=$(date -u +%u)
-          case $DAY in
-            1) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
-            2) echo "type=engagement" >> $GITHUB_OUTPUT ;;
-            3) echo "type=blog-share" >> $GITHUB_OUTPUT ;;
-            4) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
-            5) echo "type=engagement" >> $GITHUB_OUTPUT ;;
-            6) echo "type=community" >> $GITHUB_OUTPUT ;;
-            0) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
-            *) echo "type=book-promo" >> $GITHUB_OUTPUT ;;
-          esac
+          if [ -z "$MAKE_WEBHOOK_URL" ]; then
+            echo "::error::Missing MAKE_WEBHOOK_URL secret. Add it in repository Actions secrets."
+            exit 1
+          fi
 
       - name: Send content payload to Make
         env:
           MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
           MAKE_WEBHOOK_SECRET: ${{ secrets.MAKE_WEBHOOK_SECRET }}
+          MAKE_WEBHOOK_ALLOWED_HOSTS: ${{ vars.MAKE_WEBHOOK_ALLOWED_HOSTS }}
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
         run: |
-          TYPE="${{ github.event.inputs.type || steps.schedule.outputs.type }}"
+          TYPE="${{ github.event.inputs.type || 'book-promo' }}"
           LANG="${{ github.event.inputs.lang || 'en' }}"
           DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
 

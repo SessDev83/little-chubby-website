@@ -47,7 +47,15 @@ Use this checklist when you are ready to publish.
 - Confirm redirects to /thanks pages are correct.
 - Confirm no visible provider warning appears in forms.
 
-## 5) Search Console and indexing
+## 5) Security checks
+
+- Confirm `vercel.json` security headers are active in production responses.
+- Confirm no secrets exist in repo files (`.env` and `.env.local` must stay local).
+- Confirm GitHub Actions secrets exist only in repository settings, not in code.
+- Trigger `social-make.yml` with `dry_run=true` and verify webhook security filter in Make.
+- If any token was exposed during setup, revoke and regenerate before go-live.
+
+## 6) Search Console and indexing
 
 - Verify domain property in Google Search Console.
 - Submit sitemap:
@@ -58,13 +66,13 @@ Use this checklist when you are ready to publish.
   - blog index
 - Check Coverage and Enhancements after first crawl.
 
-## 6) Social preview and metadata
+## 7) Social preview and metadata
 
 - Validate Open Graph and Twitter cards with a link preview tool.
 - Check canonical and hreflang tags on /es/ and /en/.
 - Confirm organization and website structured data are present.
 
-## 7) First-week monitoring
+## 8) First-week monitoring
 
 - Re-run SEO audit after first content edits.
 - Watch 404 and redirect behavior.

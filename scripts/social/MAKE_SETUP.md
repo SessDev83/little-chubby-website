@@ -20,6 +20,9 @@ Add:
 - `MAKE_WEBHOOK_URL` (required)
 - `MAKE_WEBHOOK_SECRET` (optional, extra validation)
 
+Optional repository variable:
+- `MAKE_WEBHOOK_ALLOWED_HOSTS` (comma-separated allowlist, default protection is `*.make.com`)
+
 Workflow used:
 - `.github/workflows/social-make.yml`
 
@@ -54,11 +57,16 @@ Recommended:
 
 ## 4) Optional Security Validation
 
-If you set `MAKE_WEBHOOK_SECRET`, this script sends HTTP header:
+If you set `MAKE_WEBHOOK_SECRET`, this script sends:
 - `X-Webhook-Secret: <value>`
+- `X-Webhook-Timestamp: <unix-seconds>`
+- `X-Webhook-Signature: sha256=<hmac>`
 
 In Make, add a filter right after webhook:
 - Continue only if header `X-Webhook-Secret` equals your secret.
+
+Advanced option:
+- Validate `X-Webhook-Signature` in a custom code step using the same secret.
 
 ---
 
@@ -83,6 +91,7 @@ node scripts/social/make.mjs --type engagement --lang es
 ```json
 {
   "source": "little-chubby-website",
+  "requestId": "4d2cb7af-5b70-4cde-9832-2abf7c960eb9",
   "generatedAt": "2026-04-09T20:12:45.000Z",
   "type": "book-promo",
   "lang": "en",
@@ -107,6 +116,15 @@ node scripts/social/make.mjs --type engagement --lang es
   }
 }
 ```
+
+---
+
+## Token Hygiene (Important)
+
+- If a Make API token is ever pasted into chat/logs, revoke it immediately and create a new one.
+- Use temporary tokens while configuring automation.
+- Never store Make API tokens in project files.
+- Keep only webhook URL/secret in GitHub Actions secrets.
 
 ---
 
