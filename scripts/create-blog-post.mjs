@@ -1,29 +1,104 @@
 #!/usr/bin/env node
 /**
- * Bilingual Blog Post Creator
- * Creates matching EN + ES blog posts with shared postId for seamless language switching.
+ * Bilingual Blog Post Creator — Full Pipeline
+ *
+ * Creates matching EN + ES blog posts with:
+ *   - Shared postId for seamless language switching
+ *   - "Keep exploring" / "Sigue leyendo" internal links (3 related posts)
+ *   - AI-generated hero image (brand-consistent WebP)
+ *   - SEO-friendly slugs, tags, and meta descriptions
  *
  * Usage:
- *   node scripts/create-blog-post.mjs --topic "why coloring helps kids sleep better"
- *   node scripts/create-blog-post.mjs --topic "..." --bookId magical-creatures
+ *   node scripts/create-blog-post.mjs --topic "why coloring helps kids sleep"
+ *   node scripts/create-blog-post.mjs --topic "..." --bookId cozy-kids-club
  *   node scripts/create-blog-post.mjs --topic "..." --dry-run
+ *   node scripts/create-blog-post.mjs --topic "..." --no-image   # skip image generation
  */
 
-import { writeFileSync, existsSync } from "fs";
-import { resolve } from "path";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+import sharp from "sharp";
+import { BRAND_STYLE } from "./social/image-generate.mjs";
 
-// ─── Config ─────────────────────────────────────────────────────────────────
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(__dirname, "..");
+const BLOG_DIR = resolve(ROOT, "src/content/blog");
+const IMG_DIR = resolve(ROOT, "public/images/blog");
+
+// ─── Load .env ──────────────────────────────────────────────────────────────
+
+const envPath = resolve(ROOT, ".env");
+if (existsSync(envPath)) {
+  for (const line of readFileSync(envPath, "utf-8").split("\n")) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const eq = t.indexOf("=");
+    if (eq === -1) continue;
+    const key = t.slice(0, eq).trim();
+    const val = t.slice(eq + 1).trim();
+    if (!process.env[key]) process.env[key] = val;
+  }
+}
+
+// ─── API config ─────────────────────────────────────────────────────────────
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-20250514";
+const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 const MAX_TOKENS = 4096;
-const BLOG_DIR = resolve("src/content/blog");
+
+const NANO_API_URL = "https://api.nanobananaapi.dev/v1/images/generate";
+const IMG_MODEL = "gemini-2.5-flash-image";
+const IMG_SIZE = 800;
+const WEBP_QUALITY = 80;
 
 const SITE_URL = "https://www.littlechubbypress.com";
 
+// ─── Read existing posts for internal linking ───────────────────────────────
+
+function readExistingPosts(lang) {
+  const dir = resolve(BLOG_DIR, lang);
+  if (!existsSync(dir)) return [];
+  const posts = [];
+  for (const file of readdirSync(dir)) {
+    if (!file.endsWith(".md") || file.startsWith("_")) continue;
+    const content = readFileSync(resolve(dir, file), "utf-8");
+    const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (!fmMatch) continue;
+    const fm = fmMatch[1];
+    const get = (key) => {
+      const m = fm.match(new RegExp(`^${key}:\\s*"([^"]*)"`, "m"));
+      return m ? m[1] : "";
+    };
+    const getTags = () => {
+      const m = fm.match(/^tags:\s*\[([^\]]*)\]/m);
+      return m ? m[1].split(",").map((t) => t.trim().replace(/"/g, "")) : [];
+    };
+    const slug = file.replace(/\.md$/, "");
+    posts.push({
+      slug,
+      postId: get("postId"),
+      title: get("title"),
+      summary: get("summary"),
+      tags: getTags(),
+      bookId: get("bookId"),
+      path: `/${lang}/blog/${slug}/`,
+    });
+  }
+  return posts;
+}
+
+function buildExistingPostsList(lang) {
+  const posts = readExistingPosts(lang);
+  return posts
+    .map((p) => `- slug: "${p.slug}" | title: "${p.title}" | tags: [${p.tags.join(", ")}] | path: ${p.path}`)
+    .join("\n");
+}
+
 // ─── System prompt ──────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are the bilingual blog content writer for Little Chubby Press, a small independent publisher of children's coloring books.
+function buildSystemPrompt(enPostsList, esPostsList) {
+  return `You are the bilingual blog content writer for Little Chubby Press, a small independent publisher of children's coloring books.
 
 Your job is to create ONE blog post in TWO languages (English + Spanish) simultaneously.
 
@@ -41,14 +116,29 @@ TARGET AUDIENCE:
 WRITING RULES:
 - Posts should be 600-900 words each (per language)
 - Use Markdown: ## for sections (never #), **bold** for emphasis, bullet lists where helpful
-- 4-6 clear sections with descriptive ## headings
+- 3-6 clear sections with descriptive ## headings
 - Open with a relatable hook that names a real parenting pain point
 - Include practical, actionable tips parents can use TODAY
-- Close with an encouraging takeaway
+- End with a section titled "## Your next step" (EN) / "## Tu siguiente paso" (ES) with one clear, encouraging closing paragraph
 - DO NOT use # (h1) — Astro renders the title separately
 - DO NOT include the title in the body text
-- Spanish: Latin American, casual but respectful. Do NOT use accents/tildes. Use "peques" instead of "ninos pequenos"
+- DO NOT use apostrophes (write "do not" instead of "don't", "it is" instead of "it's")
+- Spanish: Latin American, casual but respectful. Do NOT use accents/tildes. Use "peques" for little kids
 - English: warm American English, inclusive language
+
+INTERNAL LINKS — CRITICAL:
+After the "Your next step" section, you MUST add an internal links section:
+- English: "## Keep exploring" with exactly 3 bullet links
+- Spanish: "## Sigue leyendo" with exactly 3 bullet links
+Each bullet is formatted as: - [Descriptive anchor text](path) — short explanation.
+Pick the 3 most RELEVANT existing posts based on topic/tag overlap.
+Use the EXACT paths from the lists below. Do NOT invent paths.
+
+EXISTING ENGLISH POSTS:
+${enPostsList}
+
+EXISTING SPANISH POSTS:
+${esPostsList}
 
 SLUG RULES:
 - English slug: 4-7 lowercase words separated by hyphens, descriptive SEO-friendly
@@ -56,39 +146,49 @@ SLUG RULES:
 - NO accents/tildes in slugs
 
 TAG RULES:
-- 3-5 tags per post, lowercase English words
-- Pick from existing tags when possible: creativity, focus, emotions, parenting, screen-free, fine-motor, book-review, confidence, imagination, education, family-activities, stem, self-expression, travel, seasonal, food, fashion
+- 3-5 tags per post, lowercase English words (same tags for both languages)
+- Pick from existing tags when possible: creativity, focus, emotions, parenting, screen-free, fine-motor, book-review, confidence, imagination, education, family-activities, stem, self-expression, travel, seasonal, food, fashion, activities, wellness, emotional-development, coloring, bedtime
 - Only invent a new tag if truly needed
+
+IMAGE PROMPT:
+Also provide a detailed prompt for generating a hero image. The image should:
+- Feature the cute chubby baby elephant mascot OR children in kawaii watercolor style
+- Use warm paper tones, soft watercolors, brand colors (cream, coral, sky blue, green)
+- Show a scene related to the post topic with coloring/creativity elements
+- Be a clean square composition with no text or words
 
 RESPONSE FORMAT:
 Respond with VALID JSON ONLY. No markdown fences, no backticks, no commentary.
 {
   "postId": "short-kebab-case-id-shared-by-both",
+  "imagePrompt": "detailed scene description for AI image generation",
   "en": {
     "slug": "english-seo-friendly-slug",
     "title": "Engaging English Title in Title Case",
     "summary": "One compelling sentence (max 160 chars) for meta description",
     "tags": ["tag1", "tag2", "tag3"],
-    "body": "Full markdown body (600-900 words)..."
+    "body": "Full markdown body including ## Keep exploring section at end..."
   },
   "es": {
     "slug": "slug-descriptivo-en-espanol",
     "title": "Titulo atractivo en espanol",
     "summary": "Una oracion compelling (max 160 chars) para meta description",
     "tags": ["tag1", "tag2", "tag3"],
-    "body": "Cuerpo completo en markdown (600-900 palabras)..."
+    "body": "Cuerpo completo en markdown incluyendo ## Sigue leyendo al final..."
   }
 }`;
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { topic: null, bookId: null, dryRun: false };
+  const opts = { topic: null, bookId: null, dryRun: false, noImage: false };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--topic" && args[i + 1]) opts.topic = args[++i];
     if (args[i] === "--bookId" && args[i + 1]) opts.bookId = args[++i];
     if (args[i] === "--dry-run") opts.dryRun = true;
+    if (args[i] === "--no-image") opts.noImage = true;
   }
   return opts;
 }
@@ -113,9 +213,9 @@ function buildFrontmatter(data, lang, postId, bookId, date, imagePath) {
   return lines.join("\n");
 }
 
-// ─── AI call ────────────────────────────────────────────────────────────────
+// ─── AI content generation ─────────────────────────────────────────────────
 
-async function generatePost(topic, bookId) {
+async function generatePost(topic, bookId, enPostsList, esPostsList) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("  ✗ ANTHROPIC_API_KEY not set");
@@ -124,12 +224,13 @@ async function generatePost(topic, bookId) {
 
   let userPrompt = `Write a bilingual blog post about: "${topic}"`;
   if (bookId) {
-    userPrompt += `\n\nRelated book (bookId: "${bookId}"). Mention this book naturally in both versions as a recommendation — never as an ad. Include a brief "check out [book title]" moment that fits the post's narrative.`;
+    userPrompt += `\n\nRelated book (bookId: "${bookId}"). Mention this book naturally in both versions with its title in **bold** — never as an ad. Include a brief recommendation that fits the post narrative.`;
   }
   userPrompt += `\n\nToday's date: ${todayISO()}`;
-  userPrompt += `\n\nSite URL: ${SITE_URL}`;
 
-  console.log("  🤖 Calling Claude...");
+  const systemPrompt = buildSystemPrompt(enPostsList, esPostsList);
+
+  console.log("  🤖 Calling Claude for bilingual content...");
   const res = await fetch(ANTHROPIC_API_URL, {
     method: "POST",
     headers: {
@@ -138,9 +239,9 @@ async function generatePost(topic, bookId) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: CLAUDE_MODEL,
       max_tokens: MAX_TOKENS,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
     }),
   });
@@ -151,14 +252,81 @@ async function generatePost(topic, bookId) {
   }
 
   const json = await res.json();
-  const raw = json.content?.[0]?.text ?? "";
+  let raw = json.content?.[0]?.text ?? "";
+  // Strip markdown fences if Claude wraps JSON in ```json ... ```
+  raw = raw.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
   return JSON.parse(raw);
+}
+
+// ─── Hero image generation ─────────────────────────────────────────────────
+
+async function generateHeroImage(imagePrompt, filename) {
+  const apiKey = process.env.NANO_BANANA_API_KEY;
+  if (!apiKey) {
+    console.log("  ⚠ NANO_BANANA_API_KEY not set — skipping image generation");
+    return false;
+  }
+
+  console.log("  🎨 Generating hero image...");
+  const fullPrompt = `${BRAND_STYLE}\n\nScene to illustrate:\n${imagePrompt}`;
+
+  const res = await fetch(NANO_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      prompt: fullPrompt,
+      num: 1,
+      model: IMG_MODEL,
+      image_size: "1:1",
+    }),
+    signal: AbortSignal.timeout(120_000),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.log(`  ⚠ Image API error (${res.status}): ${body}`);
+    return false;
+  }
+
+  const json = await res.json();
+  if (json.code !== 0) {
+    console.log(`  ⚠ Image API error: ${json.message}`);
+    return false;
+  }
+
+  const url = Array.isArray(json.data?.url) ? json.data.url[0] : json.data?.url;
+  if (!url) {
+    console.log("  ⚠ No image URL returned");
+    return false;
+  }
+
+  const imgRes = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  if (!imgRes.ok) {
+    console.log("  ⚠ Failed to download image");
+    return false;
+  }
+
+  const rawBuffer = Buffer.from(await imgRes.arrayBuffer());
+  const optimized = await sharp(rawBuffer)
+    .resize(IMG_SIZE, IMG_SIZE, { fit: "cover" })
+    .webp({ quality: WEBP_QUALITY })
+    .toBuffer();
+
+  const outPath = resolve(IMG_DIR, filename);
+  writeFileSync(outPath, optimized);
+  const kb = Math.round(optimized.length / 1024);
+  const pct = Math.round((1 - optimized.length / rawBuffer.length) * 100);
+  console.log(`  ✅ Image saved: ${filename} (${kb} KB, ${pct}% smaller)`);
+  return true;
 }
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 async function main() {
-  const { topic, bookId, dryRun } = parseArgs();
+  const { topic, bookId, dryRun, noImage } = parseArgs();
 
   if (!topic) {
     console.log(`
@@ -168,9 +336,10 @@ Usage:
   node scripts/create-blog-post.mjs --topic "your topic here"
 
 Options:
-  --topic     Topic or title idea for the post (required)
-  --bookId    Link a book (e.g. magical-creatures, awesome-boys)
-  --dry-run   Preview output without writing files
+  --topic      Topic or title idea for the post (required)
+  --bookId     Link a book (e.g. magical-creatures, awesome-boys)
+  --dry-run    Preview output without writing files or generating images
+  --no-image   Skip hero image generation
 `);
     process.exit(0);
   }
@@ -179,24 +348,32 @@ Options:
   console.log(`  Topic:   ${topic}`);
   if (bookId) console.log(`  Book:    ${bookId}`);
   console.log(`  Date:    ${todayISO()}`);
-  console.log("");
 
-  const post = await generatePost(topic, bookId);
+  // Step 1: Read existing posts for internal linking
+  console.log("\n  📚 Reading existing posts for internal linking...");
+  const enPostsList = buildExistingPostsList("en");
+  const esPostsList = buildExistingPostsList("es");
+  const enCount = readExistingPosts("en").length;
+  const esCount = readExistingPosts("es").length;
+  console.log(`     Found ${enCount} EN + ${esCount} ES posts`);
+
+  // Step 2: Generate bilingual content with Claude
+  const post = await generatePost(topic, bookId, enPostsList, esPostsList);
 
   const date = todayISO();
-  const { postId } = post;
+  const { postId, imagePrompt } = post;
 
-  // Image placeholder — to be generated separately with generate-blog-images.mjs
-  const imagePath = `/images/blog/${post.en.slug.split("-").slice(0, 3).join("-")}.webp`;
+  // Derive image filename from EN slug
+  const imageFilename = `${post.en.slug.split("-").slice(0, 3).join("-")}.webp`;
+  const imagePath = `/images/blog/${imageFilename}`;
 
-  console.log(`\n  ✅ Generated bilingual post: "${postId}"\n`);
+  console.log(`\n  ✅ Content generated: "${postId}"\n`);
   console.log(`  EN: ${post.en.slug}`);
   console.log(`      "${post.en.title}"`);
   console.log(`  ES: ${post.es.slug}`);
   console.log(`      "${post.es.title}"`);
-  console.log(`  Tags EN: ${post.en.tags.join(", ")}`);
-  console.log(`  Tags ES: ${post.es.tags.join(", ")}`);
-  console.log(`  Image:   ${imagePath}`);
+  console.log(`  Tags: ${post.en.tags.join(", ")}`);
+  console.log(`  Image: ${imagePath}`);
 
   // Build markdown files
   const enFrontmatter = buildFrontmatter(post.en, "en", postId, bookId, date, imagePath);
@@ -209,17 +386,19 @@ Options:
   const esPath = resolve(BLOG_DIR, "es", `${post.es.slug}.md`);
 
   if (dryRun) {
-    console.log("\n  🔍 DRY RUN — files not written\n");
+    console.log("\n  🔍 DRY RUN — nothing written\n");
     console.log("─".repeat(60));
-    console.log(`EN → ${enPath}\n`);
-    console.log(enContent.slice(0, 500) + "\n...\n");
+    console.log(`EN → ${post.en.slug}.md\n`);
+    console.log(enContent.slice(0, 800) + "\n...\n");
     console.log("─".repeat(60));
-    console.log(`ES → ${esPath}\n`);
-    console.log(esContent.slice(0, 500) + "\n...\n");
+    console.log(`ES → ${post.es.slug}.md\n`);
+    console.log(esContent.slice(0, 800) + "\n...\n");
+    console.log("─".repeat(60));
+    console.log(`Image prompt: ${imagePrompt}\n`);
     return;
   }
 
-  // Safety: don't overwrite
+  // Safety: do not overwrite
   if (existsSync(enPath)) {
     console.error(`\n  ✗ File already exists: ${enPath}`);
     process.exit(1);
@@ -229,16 +408,25 @@ Options:
     process.exit(1);
   }
 
+  // Step 3: Write markdown files
   writeFileSync(enPath, enContent, "utf-8");
   writeFileSync(esPath, esContent, "utf-8");
+  console.log(`\n  📄 EN post written: src/content/blog/en/${post.en.slug}.md`);
+  console.log(`  📄 ES post written: src/content/blog/es/${post.es.slug}.md`);
 
-  console.log(`\n  📄 Written: ${enPath}`);
-  console.log(`  📄 Written: ${esPath}`);
-  console.log(`\n  💡 Next steps:`);
-  console.log(`     1. Review both files and tweak if needed`);
-  console.log(`     2. Generate hero image: node scripts/generate-blog-images.mjs --id <N>`);
-  console.log(`        (add entry to BLOG_IMAGES array first)`);
-  console.log(`     3. Build & push: npm run build && git add -A && git commit && git push\n`);
+  // Step 4: Generate hero image
+  if (!noImage) {
+    console.log("");
+    const imageOk = await generateHeroImage(imagePrompt, imageFilename);
+    if (!imageOk) {
+      console.log(`  💡 Generate image manually later:`);
+      console.log(`     Add to BLOG_IMAGES in generate-blog-images.mjs, then run --id <N>`);
+    }
+  } else {
+    console.log("\n  ⏭ Image generation skipped (--no-image)");
+  }
+
+  console.log(`\n  ✨ Done! Review posts, then: npm run build && git add -A && git commit && git push\n`);
 }
 
 main().catch((err) => {
