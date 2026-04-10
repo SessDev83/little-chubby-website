@@ -137,3 +137,150 @@ export async function postToInstagram(caption, imageUrl) {
 
   return publishRes.json();
 }
+
+// ─── Facebook engagement functions ──────────────────────────────────────────
+
+/**
+ * Get recent posts from the Facebook Page.
+ * @param {number} [limit=10] - Max posts to fetch.
+ * @returns {{ data: Array<{ id, message, created_time }> }}
+ */
+export async function getPagePosts(limit = 10) {
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+  const pageId = process.env.META_PAGE_ID;
+  if (!token || !pageId) throw new Error("Missing META_PAGE_ACCESS_TOKEN or META_PAGE_ID");
+
+  const params = new URLSearchParams({
+    fields: "id,message,created_time",
+    limit: String(limit),
+    access_token: token,
+  });
+
+  const res = await fetch(`${GRAPH_API}/${encodeURIComponent(pageId)}/published_posts?${params}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Facebook getPagePosts failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+/**
+ * Get comments on a Facebook post.
+ * @param {string} postId - The post ID.
+ * @param {number} [limit=50] - Max comments to fetch.
+ * @returns {{ data: Array<{ id, message, from: { id, name }, created_time }> }}
+ */
+export async function getPostComments(postId, limit = 50) {
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+  if (!token) throw new Error("Missing META_PAGE_ACCESS_TOKEN");
+
+  const params = new URLSearchParams({
+    fields: "id,message,from{id,name},created_time",
+    filter: "stream",
+    limit: String(limit),
+    access_token: token,
+  });
+
+  const res = await fetch(`${GRAPH_API}/${encodeURIComponent(postId)}/comments?${params}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Facebook getPostComments failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+/**
+ * Reply to a Facebook comment.
+ * @param {string} commentId - The comment to reply to.
+ * @param {string} message - Reply text.
+ * @returns {{ id: string }}
+ */
+export async function replyToFBComment(commentId, message) {
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+  if (!token) throw new Error("Missing META_PAGE_ACCESS_TOKEN");
+
+  const res = await fetch(`${GRAPH_API}/${encodeURIComponent(commentId)}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ message, access_token: token }).toString(),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Facebook reply failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+// ─── Instagram engagement functions ─────────────────────────────────────────
+
+/**
+ * Get recent Instagram media for the business account.
+ * @param {number} [limit=10] - Max media items.
+ * @returns {{ data: Array<{ id, caption, timestamp }> }}
+ */
+export async function getIGMedia(limit = 10) {
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+  const igUserId = process.env.META_IG_USER_ID;
+  if (!token || !igUserId) throw new Error("Missing META_PAGE_ACCESS_TOKEN or META_IG_USER_ID");
+
+  const params = new URLSearchParams({
+    fields: "id,caption,timestamp",
+    limit: String(limit),
+    access_token: token,
+  });
+
+  const res = await fetch(`${GRAPH_API}/${encodeURIComponent(igUserId)}/media?${params}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Instagram getIGMedia failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+/**
+ * Get comments on an Instagram media item.
+ * @param {string} mediaId - The media ID.
+ * @param {number} [limit=50] - Max comments.
+ * @returns {{ data: Array<{ id, text, username, timestamp }> }}
+ */
+export async function getIGComments(mediaId, limit = 50) {
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+  if (!token) throw new Error("Missing META_PAGE_ACCESS_TOKEN");
+
+  const params = new URLSearchParams({
+    fields: "id,text,username,timestamp",
+    limit: String(limit),
+    access_token: token,
+  });
+
+  const res = await fetch(`${GRAPH_API}/${encodeURIComponent(mediaId)}/comments?${params}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Instagram getIGComments failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+/**
+ * Reply to an Instagram comment.
+ * @param {string} commentId - The comment to reply to.
+ * @param {string} message - Reply text.
+ * @returns {{ id: string }}
+ */
+export async function replyToIGComment(commentId, message) {
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+  if (!token) throw new Error("Missing META_PAGE_ACCESS_TOKEN");
+
+  const res = await fetch(`${GRAPH_API}/${encodeURIComponent(commentId)}/replies`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ message, access_token: token }).toString(),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Instagram reply failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}

@@ -6,6 +6,7 @@ name: Social Media Auto-Post
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: social-direct-post
@@ -13,14 +14,22 @@ concurrency:
 
 on:
   schedule:
-    # 10:00 AM ET (UTC-4) = 14:00 UTC — every day
-    - cron: "0 14 * * 1"   # Monday    — book promo
-    - cron: "0 14 * * 2"   # Tuesday   — parenting tip
-    - cron: "0 14 * * 3"   # Wednesday — blog share
-    - cron: "0 14 * * 4"   # Thursday  — behind scenes
-    - cron: "0 14 * * 5"   # Friday    — fun fact
-    - cron: "0 14 * * 6"   # Saturday  — community
-    - cron: "0 14 * * 0"   # Sunday    — engagement
+    # ── Morning slot — 10:00 AM ET (14:00 UTC) ──
+    - cron: "0 14 * * 1"   # Monday    — book promo (EN)
+    - cron: "0 14 * * 2"   # Tuesday   — parenting tip (EN)
+    - cron: "0 14 * * 3"   # Wednesday — blog share (ES)
+    - cron: "0 14 * * 4"   # Thursday  — behind scenes (EN)
+    - cron: "0 14 * * 5"   # Friday    — fun fact (EN)
+    - cron: "0 14 * * 6"   # Saturday  — community (ES)
+    - cron: "0 14 * * 0"   # Sunday    — engagement (EN)
+    # ── Afternoon slot — 4:00 PM ET (20:00 UTC) ──
+    - cron: "0 20 * * 1"   # Monday    — community (ES)
+    - cron: "0 20 * * 2"   # Tuesday   — engagement (EN)
+    - cron: "0 20 * * 3"   # Wednesday — fun fact (EN)
+    - cron: "0 20 * * 4"   # Thursday  — parenting tip (ES)
+    - cron: "0 20 * * 5"   # Friday    — behind scenes (ES)
+    - cron: "0 20 * * 6"   # Saturday  — book promo (EN)
+    - cron: "0 20 * * 0"   # Sunday    — blog share (ES)
   workflow_dispatch:
     inputs:
       type:
@@ -66,21 +75,43 @@ jobs:
         with:
           node-version: 22
 
+      - name: Restore post state
+        uses: actions/cache@v4
+        with:
+          path: scripts/social/.post-state.json
+          key: social-post-state
+
       - name: Determine scheduled post settings
         if: github.event_name == 'schedule'
         id: schedule
         run: |
           DAY=$(date -u +%u)
-          case $DAY in
-            1) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-            2) echo "type=parenting-tip" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-            3) echo "type=blog-share" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
-            4) echo "type=behind-scenes" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-            5) echo "type=fun-fact" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-            6) echo "type=community" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
-            7) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-            *) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-          esac
+          HOUR=$(date -u +%H)
+          if [ "$HOUR" -lt 17 ]; then
+            # Morning slot (14:00 UTC)
+            case $DAY in
+              1) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+              2) echo "type=parenting-tip" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+              3) echo "type=blog-share" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
+              4) echo "type=behind-scenes" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+              5) echo "type=fun-fact" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+              6) echo "type=community" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
+              7) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+              *) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            esac
+          else
+            # Afternoon slot (20:00 UTC)
+            case $DAY in
+              1) echo "type=community" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
+              2) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+              3) echo "type=fun-fact" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+              4) echo "type=parenting-tip" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
+              5) echo "type=behind-scenes" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
+              6) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+              7) echo "type=blog-share" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
+              *) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
+            esac
+          fi
 
       - name: Post to social media
         env:
@@ -96,3 +127,10 @@ jobs:
           PLATFORM="${{ github.event.inputs.platform || 'all' }}"
           LANG="${{ github.event.inputs.lang || steps.schedule.outputs.lang || 'en' }}"
           node scripts/social/post.mjs post --type "$TYPE" --platform "$PLATFORM" --lang "$LANG"
+
+      - name: Save post state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: scripts/social/.post-state.json
+          key: social-post-state

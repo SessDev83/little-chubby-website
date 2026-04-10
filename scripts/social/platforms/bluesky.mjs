@@ -163,3 +163,161 @@ export async function postToBluesky(text, options = {}) {
 
   return res.json(); // { uri, cid }
 }
+
+// ─── Engagement functions ───────────────────────────────────────────────────
+
+/**
+ * Fetch notifications (replies, mentions, likes, follows).
+ * @param {string} accessJwt
+ * @param {string} [cursor] - Pagination cursor.
+ * @returns {{ notifications: object[], cursor?: string }}
+ */
+async function listNotifications(accessJwt, cursor) {
+  const params = new URLSearchParams({ limit: "50" });
+  if (cursor) params.set("cursor", cursor);
+
+  const res = await fetch(
+    `${BLUESKY_SERVICE}/xrpc/app.bsky.notification.listNotifications?${params}`,
+    { headers: { Authorization: `Bearer ${accessJwt}` } }
+  );
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Bluesky listNotifications failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+/**
+ * Get replies and mentions directed at our account.
+ * @returns {{ notifications: Array<{ uri, cid, author, reason, record, indexedAt }> }}
+ */
+export async function getNotifications() {
+  const session = await createSession(
+    process.env.BLUESKY_HANDLE,
+    process.env.BLUESKY_PASSWORD
+  );
+
+  const data = await listNotifications(session.accessJwt);
+
+  // Filter to replies and mentions only
+  const relevant = (data.notifications || []).filter(
+    (n) => n.reason === "reply" || n.reason === "mention"
+  );
+
+  // Mark as seen
+  await fetch(`${BLUESKY_SERVICE}/xrpc/app.bsky.notification.updateSeen`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session.accessJwt}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ seenAt: new Date().toISOString() }),
+  });
+
+  return { notifications: relevant, did: session.did };
+}
+
+/**
+ * Reply to a Bluesky post.
+ * @param {string} text - Reply text.
+ * @param {{ uri: string, cid: string }} parent - The post being replied to.
+ * @param {{ uri: string, cid: string }} root - The root post of the thread.
+ * @returns {{ uri: string, cid: string }}
+ */
+export async function replyToPost(text, parent, root) {
+  const session = await createSession(
+    process.env.BLUESKY_HANDLE,
+    process.env.BLUESKY_PASSWORD
+  );
+
+  const record = {
+    $type: "app.bsky.feed.post",
+    text,
+    createdAt: new Date().toISOString(),
+    facets: detectFacets(text),
+    reply: {
+      root: { uri: root.uri, cid: root.cid },
+      parent: { uri: parent.uri, cid: parent.cid },
+    },
+  };
+
+  const res = await fetch(`${BLUESKY_SERVICE}/xrpc/com.atproto.repo.createRecord`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session.accessJwt}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      repo: session.did,
+      collection: "app.bsky.feed.post",
+      record,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Bluesky reply failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+/**
+ * Like a Bluesky post.
+ * @param {{ uri: string, cid: string }} subject - The post to like.
+ * @returns {{ uri: string, cid: string }}
+ */
+export async function likePost(subject) {
+  const session = await createSession(
+    process.env.BLUESKY_HANDLE,
+    process.env.BLUESKY_PASSWORD
+  );
+
+  const res = await fetch(`${BLUESKY_SERVICE}/xrpc/com.atproto.repo.createRecord`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session.accessJwt}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      repo: session.did,
+      collection: "app.bsky.feed.like",
+      record: {
+        $type: "app.bsky.feed.like",
+        subject: { uri: subject.uri, cid: subject.cid },
+        createdAt: new Date().toISOString(),
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Bluesky like failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+/**
+ * Search public Bluesky posts by keyword.
+ * @param {string} query - Search terms.
+ * @param {number} [limit=25] - Max results.
+ * @returns {{ posts: Array<{ uri, cid, author, record, indexedAt }> }}
+ */
+export async function searchPosts(query, limit = 25) {
+  const session = await createSession(
+    process.env.BLUESKY_HANDLE,
+    process.env.BLUESKY_PASSWORD
+  );
+
+  const params = new URLSearchParams({ q: query, limit: String(limit) });
+  const res = await fetch(
+    `${BLUESKY_SERVICE}/xrpc/app.bsky.feed.searchPosts?${params}`,
+    { headers: { Authorization: `Bearer ${session.accessJwt}` } }
+  );
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Bluesky search failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}

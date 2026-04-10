@@ -1,0 +1,140 @@
+# Automated engagement: reply to comments + Bluesky outreach.
+
+name: Social Media Engagement
+
+permissions:
+  contents: read
+  actions: write
+
+on:
+  schedule:
+    # ── Comment monitoring — every 4 hours ──
+    - cron: "0 */4 * * *"
+    # ── Bluesky outreach — 8 AM ET (12:00 UTC) + 6 PM ET (22:00 UTC) ──
+    - cron: "0 12 * * *"
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "Command"
+        required: true
+        default: "monitor"
+        type: choice
+        options:
+          - monitor
+          - outreach
+      platform:
+        description: "Platform (monitor only)"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - bluesky
+          - facebook
+          - instagram
+      lang:
+        description: "Language (outreach only)"
+        required: true
+        default: "en"
+        type: choice
+        options:
+          - en
+          - es
+      dry_run:
+        description: "Preview only"
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: social-engagement
+  cancel-in-progress: false
+
+jobs:
+  # ── Comment monitoring (runs every 4h + on-demand) ──
+  monitor:
+    if: >-
+      github.event_name == 'workflow_dispatch' && github.event.inputs.command == 'monitor'
+      || github.event_name == 'schedule' && github.event.schedule != '0 12 * * *' && github.event.schedule != '0 22 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Restore engagement state
+        uses: actions/cache@v4
+        with:
+          path: scripts/social/.engage-state.json
+          key: social-engage-state
+
+      - name: Monitor and reply to comments
+        env:
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_PASSWORD: ${{ secrets.BLUESKY_PASSWORD }}
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          PLATFORM="${{ github.event.inputs.platform || 'all' }}"
+          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+          ARGS=(monitor --platform "$PLATFORM")
+          if [ "$DRY_RUN" = "true" ]; then ARGS+=(--dry-run); fi
+          node scripts/social/engage.mjs "${ARGS[@]}"
+
+      - name: Save engagement state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: scripts/social/.engage-state.json
+          key: social-engage-state
+
+  # ── Bluesky outreach (2x/day + on-demand) ──
+  outreach:
+    if: >-
+      github.event_name == 'workflow_dispatch' && github.event.inputs.command == 'outreach'
+      || github.event_name == 'schedule' && (github.event.schedule == '0 12 * * *' || github.event.schedule == '0 22 * * *')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Restore engagement state
+        uses: actions/cache@v4
+        with:
+          path: scripts/social/.engage-state.json
+          key: social-engage-state
+
+      - name: Bluesky outreach engagement
+        env:
+          BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+          BLUESKY_PASSWORD: ${{ secrets.BLUESKY_PASSWORD }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Alternate language: morning=EN, evening=ES
+          HOUR=$(date -u +%H)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            LANG="${{ github.event.inputs.lang || 'en' }}"
+          elif [ "$HOUR" -lt 17 ]; then
+            LANG="en"
+          else
+            LANG="es"
+          fi
+          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+          ARGS=(outreach --lang "$LANG" --limit 8)
+          if [ "$DRY_RUN" = "true" ]; then ARGS+=(--dry-run); fi
+          node scripts/social/engage.mjs "${ARGS[@]}"
+
+      - name: Save engagement state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: scripts/social/.engage-state.json
+          key: social-engage-state

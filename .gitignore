@@ -25,3 +25,7 @@ pnpm-debug.log*
 
 .vercel
 .env*.local
+
+# social engagement state files
+scripts/social/.post-state.json
+scripts/social/.engage-state.json

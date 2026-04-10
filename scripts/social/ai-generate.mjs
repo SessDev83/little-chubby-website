@@ -314,3 +314,151 @@ export async function generateAIPost(type, lang, data) {
     aiGenerated: true,
   };
 }
+
+// ─── Engagement AI functions ────────────────────────────────────────────────
+
+const REPLY_SYSTEM_PROMPT = `You are the social media manager for Little Chubby Press, a small independent publisher of children's coloring books.
+
+RULES:
+- Reply in 1-2 sentences only. Keep it SHORT and warm.
+- Match the language of the comment (English or Spanish).
+- Be genuinely grateful, friendly, and encouraging.
+- NEVER be salesy or mention buying/purchasing.
+- If they mention a specific book, acknowledge it warmly.
+- If they ask a question, answer helpfully and concisely.
+- Use at most 1 emoji per reply.
+- Sound like a real person, not a bot.
+- For Spanish: Latin American Spanish, no accents/tildes.
+
+Respond with ONLY the reply text — no JSON, no quotes, no commentary.`;
+
+const OUTREACH_SYSTEM_PROMPT = `You are a friendly parent who loves creative activities with kids. You're commenting on someone else's social media post.
+
+RULES:
+- Write a brief, genuine comment (1-2 sentences, max 250 characters).
+- Be a friendly fellow parent or educator — NOT promotional.
+- Do NOT mention any brand, product, book, or company name. EVER.
+- Relate naturally to what the person posted about.
+- Be encouraging, empathetic, or share a very brief related thought.
+- Sound like a real person having a casual conversation.
+- Match the language of the post (English or Spanish).
+- Use at most 1 emoji.
+
+Respond with ONLY the comment text — no JSON, no quotes, no commentary.`;
+
+/**
+ * Generate a brand-voice reply to a social media comment.
+ * @param {string} comment - The comment text to reply to.
+ * @param {string} originalPost - Context: the original post text (if available).
+ * @param {string} platform - "bluesky" | "facebook" | "instagram"
+ * @returns {Promise<string|null>} The reply text.
+ */
+export async function generateReply(comment, originalPost, platform) {
+  const maxChars = platform === "bluesky" ? 280 : 500;
+  const prompt = `Original post context: "${originalPost || "(not available)"}"\n\nComment to reply to: "${comment}"\n\nPlatform: ${platform} (max ${maxChars} characters)`;
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  const res = await fetch(ANTHROPIC_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 300,
+      system: REPLY_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Claude API error ${res.status}: ${err}`);
+  }
+
+  const json = await res.json();
+  let reply = json.content?.[0]?.text?.trim() || null;
+  if (reply && reply.length > maxChars) {
+    reply = reply.slice(0, maxChars - 1).trimEnd();
+  }
+  return reply;
+}
+
+/**
+ * Generate a genuine, non-promotional comment for outbound engagement.
+ * @param {string} postText - The post text to comment on.
+ * @returns {Promise<string|null>} The comment text.
+ */
+export async function generateOutreachComment(postText) {
+  const prompt = `Post to comment on:\n"${postText}"\n\nWrite a brief, genuine comment as a friendly parent. Max 250 characters.`;
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+
+  const res = await fetch(ANTHROPIC_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 200,
+      system: OUTREACH_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: prompt }],
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Claude API error ${res.status}: ${err}`);
+  }
+
+  const json = await res.json();
+  let comment = json.content?.[0]?.text?.trim() || null;
+  if (comment && comment.length > 250) {
+    comment = comment.slice(0, 249).trimEnd();
+  }
+  return comment;
+}
+
+/**
+ * Check if a post's content is safe to engage with (not controversial/political).
+ * @param {string} postText - The text to check.
+ * @returns {Promise<boolean>} True if safe to engage.
+ */
+export async function isSafeToEngage(postText) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return false;
+
+  const res = await fetch(ANTHROPIC_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 10,
+      system: "You are a content safety filter. Respond with ONLY 'yes' or 'no'.",
+      messages: [{
+        role: "user",
+        content: `Is the following social media post safe for a children's brand to publicly engage with? It must NOT be political, controversial, sexual, violent, hateful, or about sensitive social issues. Only answer 'yes' if it's clearly safe and wholesome.\n\nPost: "${postText}"`,
+      }],
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!res.ok) return false;
+  const json = await res.json();
+  const answer = json.content?.[0]?.text?.trim()?.toLowerCase();
+  return answer === "yes";
+}

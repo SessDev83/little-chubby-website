@@ -26,7 +26,7 @@
  *   node scripts/social/post.mjs post --platform all --type book-promo --dry-run
  */
 
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generatePost, generateWeeklyCalendar } from "./content-templates.mjs";
@@ -39,6 +39,37 @@ const SITE_URL = "https://www.littlechubbypress.com";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "../..");
+
+// ─── Post-state file for sequential rotation ───────────────────────────────
+
+const POST_STATE_PATH = resolve(__dirname, ".post-state.json");
+
+function loadPostState() {
+  if (!existsSync(POST_STATE_PATH)) return {};
+  try {
+    return JSON.parse(readFileSync(POST_STATE_PATH, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
+function savePostState(state) {
+  writeFileSync(POST_STATE_PATH, JSON.stringify(state, null, 2));
+}
+
+/**
+ * Pick the next item in sequence for a given content type, rotating through
+ * the full list before repeating.
+ */
+function pickNextItem(items, type) {
+  const state = loadPostState();
+  const key = `${type}-index`;
+  const idx = (state[key] ?? -1) + 1;
+  const next = idx >= items.length ? 0 : idx;
+  state[key] = next;
+  savePostState(state);
+  return items[next];
+}
 
 // ─── Load .env file ────────────────────────────────────────────────────────
 const envPath = resolve(ROOT, ".env");
@@ -407,7 +438,7 @@ async function main() {
     return;
   }
 
-  // Select data for the post
+  // Select data for the post (with rotation state to avoid repeats)
   let data;
   if (opts.type === "book-promo") {
     if (opts.book) {
@@ -418,10 +449,10 @@ async function main() {
         process.exit(1);
       }
     } else {
-      data = books[Math.floor(Math.random() * books.length)];
+      data = pickNextItem(books, "book-promo");
     }
   } else if (opts.type === "blog-share") {
-    data = posts[Math.floor(Math.random() * posts.length)];
+    data = pickNextItem(posts, "blog-share");
   }
 
   // Try AI generation with retry (no static fallback unless --no-ai)
