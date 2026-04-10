@@ -37,7 +37,7 @@ export const siteConfig = {
   contactEmail: "hello@littlechubbypress.com",
   social: {
     instagram: "https://www.instagram.com/LittleChubbyPress",
-    facebook: "https://www.facebook.com/LittleChubbyPress",
+    facebook: "https://www.facebook.com/profile.php?id=61572034373766",
     bluesky: "https://bsky.app/profile/littlechubbypress.bsky.social",
     amazonAuthor: "https://www.amazon.com/author/littlechubbypress"
   },

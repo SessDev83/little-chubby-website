@@ -5,8 +5,8 @@ date: "2025-12-02"
 summary: "Every airplane goes somewhere: coloring is the first step to sparking geographic curiosity."
 lang: "en"
 bookId: "awesome-airplanes"
-image: "/images/blog/airplanes-world.svg"
-tags: ["education", "book-review"]
+image: "/images/blog/airplanes-world.webp"
+tags: ["education", "book-review", "stem", "imagination"]
 ---
 
 "Where is that plane going?" That simple question hides a huge opportunity. Your child wants to explore the world, but their universe is limited to school and home. **Paper can open the door.**
@@ -26,3 +26,8 @@ A rescue helicopter leads to conversations about heroes. A commercial jet, about
 ## Your next step
 
 Color a plane together and choose a country you would "fly to." Look up a photo of that place. Now your child has a real reason to want to know more about the world.
+
+## Keep exploring
+
+- [How space coloring turns curiosity into a STEM foundation](/en/blog/space-coloring-stem-curiosity-kids/) — another way to spark scientific thinking through coloring.
+- [Why kids obsessed with trucks are building real skills](/en/blog/truck-obsessed-kids-building-skills/) — the same curiosity, applied to machines and engineering.

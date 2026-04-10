@@ -451,8 +451,8 @@ async function main() {
     } else {
       data = pickNextItem(books, "book-promo");
     }
-  } else if (opts.type === "blog-share") {
-    data = pickNextItem(posts, "blog-share");
+  } else if (opts.type === "blog-share" || opts.type === "blog-new") {
+    data = pickNextItem(posts, opts.type);
   }
 
   // Try AI generation with retry (no static fallback unless --no-ai)

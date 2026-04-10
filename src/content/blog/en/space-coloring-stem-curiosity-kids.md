@@ -5,8 +5,8 @@ date: "2025-12-28"
 summary: "That kid who asks 'why does the moon glow?' is ready to learn science without knowing it."
 lang: "en"
 bookId: "blast-off-space"
-image: "/images/blog/space-stem.svg"
-tags: ["education", "book-review"]
+image: "/images/blog/space-stem.webp"
+tags: ["education", "book-review", "stem", "imagination"]
 ---
 
 "Why don't stars fall down?" If your kid asks these kinds of questions, they have **natural scientific curiosity**. The worst mistake is wasting it with a "just because" or letting it die in front of a screen.
@@ -26,3 +26,9 @@ While they color a planet, ask: "How many planets do you think there are?" Look 
 ## Your next step
 
 Next time they ask something about the sky, do not look up the answer alone: color something space-themed and explore it together.
+
+## Keep exploring
+
+- [How airplane coloring teaches kids about the world](/en/blog/airplane-coloring-teaches-kids-world/) — geography through aviation.
+- [Why kids obsessed with trucks are building real skills](/en/blog/truck-obsessed-kids-building-skills/) — the same curiosity applied to machines.
+- [The sneaky way to teach letters before preschool](/en/blog/teach-letters-before-preschool-coloring/) — learning disguised as fun.

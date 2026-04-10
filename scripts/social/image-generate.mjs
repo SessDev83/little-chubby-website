@@ -14,18 +14,23 @@ const API_URL = "https://api.nanobananaapi.dev/v1/images/generate";
 const MODEL = "gemini-2.5-flash-image";
 
 // ─── Brand visual guidelines (prepended to every prompt) ────────────────────
+// Shared brand style — used by social posts AND blog hero images.
+// Based on the Little Chubby Press identity: cute baby elephant mascot with
+// a green-yellow crayon, warm paper tones, children's coloring book aesthetic.
 
-const BRAND_STYLE = `Style guidelines (MUST follow):
-- Soft watercolor / digital illustration style, children's book aesthetic
-- Warm color palette: soft yellows, corals, sky blues, gentle greens, creamy whites
-- Mood: joyful, cozy, wholesome, inviting
-- Diverse representation: different skin tones, hair types, family structures
-- Subjects may include: children coloring, art supplies, families together, open coloring books, crayons, creative play
-- NO text, words, letters, logos, or watermarks anywhere in the image
+export const BRAND_STYLE = `Style guidelines (MUST follow strictly):
+- Kawaii / soft watercolor children's book illustration style
+- Warm palette matching a cozy coloring book brand: creamy paper whites (#f6f1e7), soft yellows, gentle corals (#d9825f), sky blues, warm browns (#754624), sage greens (#5c9650), touches of gold (#d3a442)
+- Brand mascot: a cute chubby baby elephant — include as a subtle element when natural (small, in a corner or background, NOT dominating the scene)
+- Characters should be diverse children (different skin tones, hair types) aged 3-8 years old
+- Mood: joyful, cozy, wholesome, inviting, warm and fuzzy
+- Art supplies visible when relevant: crayons, colored pencils, open coloring books
+- NO text, words, letters, logos, or watermarks ANYWHERE in the image
 - NO scary, violent, or inappropriate elements
-- Clean composition, uncluttered, suitable as a social media post image
-- Square 1:1 aspect ratio
-- Bright, well-lit scene with soft shadows`;
+- Clean uncluttered composition with soft rounded shapes
+- Bright, well-lit scene with soft watercolor edges and gentle shadows
+- Background should feel warm and papery, like a coloring book page come to life
+- Square 1:1 aspect ratio`;
 
 // ─── Nano Banana image generation ───────────────────────────────────────────
 

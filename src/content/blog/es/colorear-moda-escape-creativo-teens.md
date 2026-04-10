@@ -5,8 +5,8 @@ date: "2026-03-22"
 summary: "Los teens necesitan expresarse sin presion: la moda sobre papel es terapia creativa disfrazada."
 lang: "es"
 bookId: "chic-styles"
-image: "/images/blog/fashion-teens.svg"
-tags: ["creativity", "book-review"]
+image: "/images/blog/fashion-teens.webp"
+tags: ["creativity", "book-review", "fashion", "self-expression"]
 ---
 
 Tu adolescente esta estresado, pegado al telefono y "aburrido de todo". ¿Suena familiar? El problema no es falta de actividades, es falta de una salida creativa sin juicio.
@@ -26,3 +26,9 @@ Elegir colores para un outfit es tomar decisiones esteticas sin consecuencias. �
 ## Tu siguiente paso
 
 Deja el libro donde lo vean. Sin presion, sin instrucciones. La curiosidad hara el resto.
+
+## Sigue leyendo
+
+- [Como colorear vestidos y munecas fortalece la confianza de las ninas](/es/blog/colorear-vestidos-confianza-ninas/) — donde empieza la confianza en la moda.
+- [Una leccion de historia divertida a traves de la moda](/es/blog/leccion-historia-moda-colorear/) — explora el estilo a traves de las decadas.
+- [Criar ninas seguras: como el juego creativo construye autoestima](/es/blog/criar-ninas-seguras-juego-creativo/) — expresion creativa para ninas mas jovenes.

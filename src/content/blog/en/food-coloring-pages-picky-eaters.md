@@ -5,8 +5,8 @@ date: "2026-01-15"
 summary: "If your child rejects everything that is not nuggets, the issue might start with how food looks."
 lang: "en"
 bookId: "pizza-sweet-treats"
-image: "/images/blog/food-picky-eaters.svg"
-tags: ["parenting", "book-review"]
+image: "/images/blog/food-picky-eaters.webp"
+tags: ["parenting", "book-review", "wellness"]
 ---
 
 Another plate rejected. "I do not like it." They did not even try it. If dinnertime battles sound familiar, you are not alone. But what if the problem is not taste but a **lack of visual familiarity**?
@@ -26,3 +26,9 @@ Let them color their favorite food and stick it on the fridge as the "daily menu
 ## Your next step
 
 This week, color a food your child usually rejects. Then offer it at dinner. No pressure, just exposure.
+
+## Keep exploring
+
+- [Teaching kids to name their feelings](/en/blog/teaching-kids-name-feelings-coloring/) — emotional comfort helps with food anxiety too.
+- [3 ways to turn a boring afternoon into a creative workshop](/en/blog/creative-workshop-ideas-at-home/) — more creative activities involving everyday objects.
+- [How to choose your kid's first coloring book](/en/blog/how-to-choose-first-coloring-book/) — find the right book for your child's interests.

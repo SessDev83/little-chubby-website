@@ -4,8 +4,8 @@ title: "3 ideas para transformar una tarde aburrida en taller creativo (sin gast
 date: "2026-03-12"
 summary: "Tu peque dice 'estoy aburrido' cada tarde. Estas 3 dinamicas convierten lo que ya tienes en una experiencia creativa."
 lang: "es"
-image: "/images/blog/creative-workshop.svg"
-tags: ["activities", "creativity"]
+image: "/images/blog/creative-workshop.webp"
+tags: ["activities", "creativity", "screen-free", "coloring", "family-time"]
 ---
 
 "Mama, estoy aburrido." Es martes a las 4pm, la tablet esta prohibida, la lluvia no deja salir y tu peque te mira como si fueras la directora de entretenimiento de un crucero. **Necesitas un plan, y lo necesitas ya.**
@@ -29,3 +29,9 @@ Al terminar, peguen las paginas en una pared o puerta con cinta adhesiva. Dejenl
 ## Tu siguiente paso
 
 Hoy, elige UNA de estas tres ideas. Solo una. Pruebala esta semana sin expectativas. Si funciona (y va a funcionar), la proxima semana agregas otra.
+
+## Sigue leyendo
+
+- [La guia definitiva de materiales para colorear](/es/blog/materiales-recomendados-colorear-casa/) — preparate antes del proximo taller.
+- [Actividades sin pantalla que los ninos realmente disfrutan](/es/blog/actividades-sin-pantalla-ninos-creativos/) — mas alternativas creativas.
+- [Tu hijo no se concentra? Colorear podria ser la solucion](/es/blog/beneficios-colorear-concentracion-infantil/) — como el tiempo creativo construye atencion.

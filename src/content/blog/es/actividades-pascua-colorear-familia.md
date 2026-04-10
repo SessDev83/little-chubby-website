@@ -5,8 +5,8 @@ date: "2026-02-05"
 summary: "Transforma la Pascua en algo mas que chocolate: ideas creativas para hacer juntos."
 lang: "es"
 bookId: "enchanted-easter"
-image: "/images/blog/easter-family.svg"
-tags: ["activities", "book-review"]
+image: "/images/blog/easter-family.webp"
+tags: ["activities", "book-review", "family-time", "coloring"]
 ---
 
 Otro ano, otra Pascua donde los ninos comen chocolate, buscan huevos y en 20 minutos "ya se aburrieron". ¿Y si este ano la celebracion durara toda la tarde?
@@ -34,3 +34,9 @@ Coloreen una pagina, doblenla y escriban un mensaje adentro. Regalarla a un abue
 ## Tu siguiente paso
 
 Elige una actividad, solo una, y pruebala esta Pascua. Si funciona, el proximo ano tendras cinco.
+
+## Sigue leyendo
+
+- [3 ideas para transformar una tarde aburrida en taller creativo](/es/blog/ideas-taller-creativo-en-casa/) — mas actividades familiares mas alla de Pascua.
+- [La guia definitiva de materiales para colorear](/es/blog/materiales-recomendados-colorear-casa/) — prepara tus materiales antes de la festividad.
+- [Como elegir el primer libro de colorear para tu peque](/es/blog/como-elegir-primer-libro-colorear/) — elige el libro ideal para toda la familia.

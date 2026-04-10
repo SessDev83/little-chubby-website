@@ -5,8 +5,8 @@ date: "2025-12-10"
 summary: "Not every coloring book works for every age. Here is the guide nobody gave you."
 lang: "en"
 bookId: "easy-animals"
-image: "/images/blog/first-coloring-book.svg"
-tags: ["tips", "book-review"]
+image: "/images/blog/first-coloring-book.webp"
+tags: ["tips", "book-review", "toddler", "coloring"]
 ---
 
 You bought a "children's" coloring book and your 3-year-old got frustrated in 2 minutes. The shapes were too small, the details too many, and the book ended up on the floor. **It was not their fault.**
@@ -26,3 +26,9 @@ Pages with complex geometric patterns, busy backgrounds, and shapes that require
 ## Your next step
 
 Before buying, look at the sample pages. If your toddler can identify the shape in 2 seconds, the book is right for their age.
+
+## Keep exploring
+
+- [How to choose your kid's first coloring book](/en/blog/how-to-choose-first-coloring-book/) — the complete guide for all ages.
+- [The ultimate guide to coloring supplies](/en/blog/best-coloring-supplies-for-home/) — supplies that survive small hands.
+- [The sneaky way to teach letters before preschool](/en/blog/teach-letters-before-preschool-coloring/) — learning through coloring for toddlers.

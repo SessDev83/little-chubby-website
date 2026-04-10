@@ -4,8 +4,8 @@ title: "How to choose your kid's first coloring book (without wasting money)"
 date: "2026-03-28"
 summary: "Bought a coloring book your kid ignored? The problem was not the child. Here is the guide you needed."
 lang: "en"
-image: "/images/blog/choosing-coloring-book.svg"
-tags: ["parenting", "tips"]
+image: "/images/blog/choosing-coloring-book.webp"
+tags: ["parenting", "tips", "coloring", "gift-guide"]
 ---
 
 You bought a coloring book that looked perfect on Amazon. It arrived, your kid opened it… and abandoned it in 3 minutes. Now you have an unused book and the feeling that you wasted money. **It was not your child's fault — it was the wrong book.**
@@ -29,3 +29,9 @@ Reserve a weekly block with no screens around. Good lighting, a comfortable tabl
 ## Your next step
 
 Before opening Amazon, observe your child for 5 minutes: what topics excite them? How long do they usually focus? With those two answers, the right book picks itself.
+
+## Keep exploring
+
+- [The ultimate guide to coloring supplies](/en/blog/best-coloring-supplies-for-home/) — pair the perfect book with the right supplies.
+- [Your toddler's first coloring book: what to look for](/en/blog/toddler-first-coloring-book-guide/) — specific guidance for the youngest kids.
+- [Your kid cannot focus? Coloring might be the solution](/en/blog/benefits-of-coloring-for-focus/) — how the right book builds attention.

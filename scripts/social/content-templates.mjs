@@ -96,6 +96,39 @@ const blogShareTemplates = {
   ],
 };
 
+// ─── Blog-new templates (for announcing new blog posts) ─────────────────────
+
+const blogNewTemplates = {
+  en: [
+    (p) => ({
+      text: `🆕 Just published! "${p.title.en}"\n\n${p.summary.en}\n\nFresh off the blog — don't miss it!`,
+      cta: `Read it now 👉 ${SITE_URL}/en/blog/${p.slug.en}`,
+    }),
+    (p) => ({
+      text: `📣 New on the blog today!\n\n"${p.title.en}"\n\n${p.summary.en}`,
+      cta: `Check it out: ${SITE_URL}/en/blog/${p.slug.en}`,
+    }),
+    (p) => ({
+      text: `Hot off the press! 🔥\n\nWe just published a new guide: "${p.title.en}"\n\n${p.summary.en}`,
+      cta: `Read the full article: ${SITE_URL}/en/blog/${p.slug.en}`,
+    }),
+  ],
+  es: [
+    (p) => ({
+      text: `🆕 ¡Recien publicado! "${p.title.es}"\n\n${p.summary.es}\n\n¡Directo del blog — no te lo pierdas!`,
+      cta: `Leelo ahora 👉 ${SITE_URL}/es/blog/${p.slug.es}`,
+    }),
+    (p) => ({
+      text: `📣 ¡Nuevo en el blog hoy!\n\n"${p.title.es}"\n\n${p.summary.es}`,
+      cta: `Miralo aqui: ${SITE_URL}/es/blog/${p.slug.es}`,
+    }),
+    (p) => ({
+      text: `¡Recien salido del horno! 🔥\n\nPublicamos una nueva guia: "${p.title.es}"\n\n${p.summary.es}`,
+      cta: `Lee el articulo completo: ${SITE_URL}/es/blog/${p.slug.es}`,
+    }),
+  ],
+};
+
 // ─── Engagement / tips templates (no book needed) ───────────────────────────
 
 const engagementTemplates = {
@@ -207,6 +240,9 @@ export function generatePost(type, lang, data) {
       break;
     case "blog-share":
       templates = blogShareTemplates[lang];
+      break;
+    case "blog-new":
+      templates = blogNewTemplates[lang];
       break;
     case "engagement":
       templates = engagementTemplates[lang];

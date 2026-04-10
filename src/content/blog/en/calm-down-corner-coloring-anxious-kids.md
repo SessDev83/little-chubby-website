@@ -5,8 +5,8 @@ date: "2026-02-20"
 summary: "A quiet space + simple pages = the anti-anxiety tool you did not know you needed."
 lang: "en"
 bookId: "cozy-kids-club"
-image: "/images/blog/calm-corner.svg"
-tags: ["parenting", "activities"]
+image: "/images/blog/calm-corner.webp"
+tags: ["parenting", "activities", "emotional-development", "wellness"]
 ---
 
 Your child has meltdowns, gets frustrated quickly, or struggles to calm down after big emotions. You are not alone — and you do not need a therapist to take the first step.
@@ -26,3 +26,9 @@ Cushion on the floor, pencils in a cup, and **The Cozy Kids' Club** open to any 
 ## Your next step
 
 Pick a corner of your home today. It does not have to be perfect — just consistent. The habit is built through repetition, not decoration.
+
+## Keep exploring
+
+- [Teaching kids to name their feelings](/en/blog/teaching-kids-name-feelings-coloring/) — help them put words to what they feel.
+- [Your kid cannot focus? Coloring might be the solution](/en/blog/benefits-of-coloring-for-focus/) — how coloring builds attention alongside calm.
+- [The ultimate guide to coloring supplies](/en/blog/best-coloring-supplies-for-home/) — the right tools for your calm-down corner.

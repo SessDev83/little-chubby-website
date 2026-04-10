@@ -5,8 +5,8 @@ date: "2026-03-22"
 summary: "Teens need pressure-free self-expression: fashion on paper is creative therapy in disguise."
 lang: "en"
 bookId: "chic-styles"
-image: "/images/blog/fashion-teens.svg"
-tags: ["creativity", "book-review"]
+image: "/images/blog/fashion-teens.webp"
+tags: ["creativity", "book-review", "fashion", "self-expression"]
 ---
 
 Your teenager is stressed, glued to their phone, and "bored of everything." Sound familiar? The problem is not a lack of activities — it is a lack of judgment-free creative expression.
@@ -26,3 +26,9 @@ Choosing colors for an outfit means making aesthetic decisions with zero consequ
 ## Your next step
 
 Leave the book where they can see it. No pressure, no instructions. Curiosity will do the rest.
+
+## Keep exploring
+
+- [How dress-up coloring builds confidence and self-expression](/en/blog/dress-up-coloring-builds-confidence/) — where fashion confidence starts.
+- [A fun history lesson through fashion](/en/blog/fashion-history-coloring-activity/) — explore style across decades.
+- [Raising confident girls: how creative play builds self-esteem](/en/blog/creative-play-builds-confidence-girls/) — creative expression for younger kids too.

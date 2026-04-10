@@ -5,8 +5,8 @@ date: "2025-11-25"
 summary: "Tu peque puede aprender el alfabeto sin fichas, sin repeticion y sin aburrirse."
 lang: "es"
 bookId: "alphabet-coloring-book"
-image: "/images/blog/letters-preschool.svg"
-tags: ["education", "book-review"]
+image: "/images/blog/letters-preschool.webp"
+tags: ["education", "book-review", "toddler", "fine-motor"]
 ---
 
 Quieres que tu peque llegue a preescolar sabiendo algunas letras, pero cada vez que intentas con fichas o apps, **pierde interes en 60 segundos**. El problema no es el nino — es el metodo.
@@ -26,3 +26,9 @@ Cuando un nino colorea una "A" grande junto a un dibujo de un "avion", tres cosa
 ## Tu siguiente paso
 
 Empieza por la inicial de su nombre. Coloreen esa letra juntos y pegarla en la puerta de su cuarto. Manana, otra letra. Sin prisa, sin fichas, sin drama.
+
+## Sigue leyendo
+
+- [El primer libro de colorear para tu bebe](/es/blog/primer-libro-colorear-bebe-guia/) — libros apropiados para manos pequenas.
+- [Como elegir el primer libro de colorear para tu peque](/es/blog/como-elegir-primer-libro-colorear/) — elige el nivel de detalle correcto.
+- [Tu hijo no se concentra? Colorear podria ser la solucion](/es/blog/beneficios-colorear-concentracion-infantil/) — colorear construye la atencion necesaria para aprender.

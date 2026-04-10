@@ -42,7 +42,7 @@ const main = async () => {
     const page = `/${toPosix(path.relative(distRoot, htmlFile)).replace(/index\.html$/, "")}`;
 
     const title = getFirstMatch(/<title>([^<]*)<\/title>/i, html);
-    const description = getFirstMatch(/<meta\s+name=["']description["']\s+content=["']([^"']*)["']/i, html);
+    const description = getFirstMatch(/<meta\s+name=["']description["']\s+content="([^"]*)"/i, html);
     const canonical = getFirstMatch(/<link\s+rel=["']canonical["']\s+href=["']([^"']*)["']/i, html);
 
     const h1Count = countMatches(/<h1\b/gi, html);

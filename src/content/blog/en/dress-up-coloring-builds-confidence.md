@@ -5,8 +5,8 @@ date: "2026-03-15"
 summary: "Designing outfits on paper trains decision-making and builds self-esteem in young girls."
 lang: "en"
 bookId: "dresses-and-dolls"
-image: "/images/blog/dress-confidence.svg"
-tags: ["parenting", "book-review"]
+image: "/images/blog/dress-confidence.webp"
+tags: ["parenting", "book-review", "fashion", "self-expression"]
 ---
 
 Your daughter wants to pick her own outfits but ends up frustrated because "nothing matches." That frustration is normal — she just needs a safe space to experiment.
@@ -26,3 +26,9 @@ Every time she picks a color for a dress, she is practicing decision-making and 
 ## Your next step
 
 Sit down and color together. Ask: "Why did you choose those colors?" That conversation is worth gold.
+
+## Keep exploring
+
+- [Raising confident girls: how creative play builds self-esteem](/en/blog/creative-play-builds-confidence-girls/) — more ways to nurture confidence through creativity.
+- [Why fashion coloring is the perfect creative outlet for teens](/en/blog/fashion-coloring-creative-outlet-teens/) — self-expression grows with them.
+- [A fun history lesson through fashion](/en/blog/fashion-history-coloring-activity/) — explore fashion across decades.

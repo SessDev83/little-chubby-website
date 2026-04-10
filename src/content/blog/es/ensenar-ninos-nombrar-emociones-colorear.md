@@ -5,8 +5,8 @@ date: "2026-01-25"
 summary: "Cuando un nino no puede nombrar lo que siente, lo expresa de formas que no entendemos."
 lang: "es"
 bookId: "coloring-emotions"
-image: "/images/blog/naming-feelings.svg"
-tags: ["parenting", "education"]
+image: "/images/blog/naming-feelings.webp"
+tags: ["parenting", "education", "emotional-development", "wellness"]
 ---
 
 Tu peque llora "sin razon", tiene explosiones de ira o se cierra y no habla. No es que no sienta — es que **no tiene palabras para lo que siente**. Y eso es frustrante para todos.
@@ -26,3 +26,9 @@ Preguntale: "¿De que color se siente tu enojo?" Eso es mas facil que "explícam
 ## Tu siguiente paso
 
 Esta noche, pregunta: "¿Como te sientes hoy? ¿De que color seria?" Escucha la respuesta. Ese es el primer paso.
+
+## Sigue leyendo
+
+- [Como crear un rincon de calma con colorear para ninos ansiosos](/es/blog/rincon-calma-colorear-ninos-ansiosos/) — un espacio dedicado para manejar emociones.
+- [Criar ninas seguras: como el juego creativo construye autoestima](/es/blog/criar-ninas-seguras-juego-creativo/) — fortaleza emocional a traves de la expresion creativa.
+- [Tu hijo no se concentra? Colorear podria ser la solucion](/es/blog/beneficios-colorear-concentracion-infantil/) — calma, concentracion y regulacion emocional van de la mano.

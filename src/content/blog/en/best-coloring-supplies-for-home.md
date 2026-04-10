@@ -4,8 +4,8 @@ title: "The ultimate guide to coloring supplies (without ruining your couch)"
 date: "2026-01-30"
 summary: "Crayons on walls, uncapped markers, and broken pencils. Here is how to pick supplies that survive your kids."
 lang: "en"
-image: "/images/blog/coloring-supplies.svg"
-tags: ["tips", "parenting"]
+image: "/images/blog/coloring-supplies.webp"
+tags: ["tips", "parenting", "coloring", "gift-guide"]
 ---
 
 You bought the 64-crayon box because it looked amazing. Two days later: 8 broken, 3 on the couch, 1 melted somewhere unknown, and your kid only uses the blue one. **Sound familiar?**
@@ -33,3 +33,9 @@ Finger paints (unless you love cleaning), loose watercolors (they dry out), "pro
 ## Your next step
 
 Go through what you already own. Toss what is dried out or broken. Organize what works into one container. That is it — you already have the perfect kit.
+
+## Keep exploring
+
+- [How to choose your kid's first coloring book](/en/blog/how-to-choose-first-coloring-book/) — pair the right supplies with the right book.
+- [3 ways to turn a boring afternoon into a creative workshop](/en/blog/creative-workshop-ideas-at-home/) — put those supplies to work.
+- [Your toddler's first coloring book: what to look for](/en/blog/toddler-first-coloring-book-guide/) — age-appropriate supply and book recommendations.

@@ -4,8 +4,8 @@ title: "La guia definitiva de materiales para colorear (sin arruinar tu sofa)"
 date: "2026-01-30"
 summary: "Crayones en las paredes, marcadores destapados y lapices rotos. Aqui esta como elegir materiales que sobrevivan a tus hijos."
 lang: "es"
-image: "/images/blog/coloring-supplies.svg"
-tags: ["tips", "parenting"]
+image: "/images/blog/coloring-supplies.webp"
+tags: ["tips", "parenting", "coloring", "gift-guide"]
 ---
 
 Compraste la caja de 64 crayones porque se veia increible. Dos dias despues: 8 rotos, 3 en el sofa, 1 derretido quien-sabe-donde, y tu hijo solo usa el azul. **Suena familiar?**
@@ -33,3 +33,9 @@ Pinturas de dedo (a menos que ames limpiar), acuarelas sueltas (se destapan y se
 ## Tu siguiente paso
 
 Revisa lo que ya tienes. Tira lo seco y lo roto. Organiza lo que sirve en un solo contenedor. Eso es todo — ya tienes el kit perfecto.
+
+## Sigue leyendo
+
+- [Como elegir el primer libro de colorear para tu peque](/es/blog/como-elegir-primer-libro-colorear/) — empareja los materiales correctos con el libro correcto.
+- [3 ideas para transformar una tarde aburrida en taller creativo](/es/blog/ideas-taller-creativo-en-casa/) — pon esos materiales a trabajar.
+- [El primer libro de colorear para tu bebe](/es/blog/primer-libro-colorear-bebe-guia/) — recomendaciones por edad.

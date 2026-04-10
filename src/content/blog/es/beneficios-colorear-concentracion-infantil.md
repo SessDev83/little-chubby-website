@@ -4,8 +4,8 @@ title: "Tu hijo no se concentra? Colorear podria ser la solucion que no esperaba
 date: "2026-02-25"
 summary: "Antes de buscar diagnosticos, prueba esto: 15 minutos de color pueden cambiar el juego."
 lang: "es"
-image: "/images/blog/focus-concentration.svg"
-tags: ["parenting", "education"]
+image: "/images/blog/focus-concentration.webp"
+tags: ["parenting", "education", "screen-free", "wellness"]
 ---
 
 "No se queda quieto." "No termina nada." "En la escuela dicen que se distrae." Si alguna de estas frases te suena, probablemente ya buscaste en Google y terminaste asustado con siglas como TDAH. **Antes de correr al especialista, lee esto.**
@@ -29,3 +29,9 @@ Pon un temporizador de 10 minutos. Sin presion, sin meta. Solo colorear con musi
 ## Tu siguiente paso
 
 La proxima vez que no se concentre, en vez de regañar, di: "¿Quieres colorear 10 minutos?" Es mas barato que un terapeuta y podria ser todo lo que necesita.
+
+## Sigue leyendo
+
+- [Como crear un rincon de calma con colorear para ninos ansiosos](/es/blog/rincon-calma-colorear-ninos-ansiosos/) — un espacio dedicado a la calma y la concentracion.
+- [Actividades sin pantalla que los ninos realmente disfrutan](/es/blog/actividades-sin-pantalla-ninos-creativos/) — mas alternativas creativas a las pantallas.
+- [Como elegir el primer libro de colorear para tu peque](/es/blog/como-elegir-primer-libro-colorear/) — el libro correcto marca la diferencia.

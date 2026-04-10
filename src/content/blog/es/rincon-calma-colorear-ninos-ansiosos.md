@@ -5,8 +5,8 @@ date: "2026-02-20"
 summary: "Un espacio tranquilo + paginas sencillas = la herramienta anti-ansiedad que no sabias que necesitabas."
 lang: "es"
 bookId: "cozy-kids-club"
-image: "/images/blog/calm-corner.svg"
-tags: ["parenting", "activities"]
+image: "/images/blog/calm-corner.webp"
+tags: ["parenting", "activities", "emotional-development", "wellness"]
 ---
 
 Tu peque tiene rabietas, se frustra rapido o le cuesta calmarse despues de una emocion fuerte. No estas solo — y no necesitas un terapeuta para dar el primer paso.
@@ -26,3 +26,9 @@ Cojin en el piso, lapices en un vaso y **The Cozy Kids' Club** abierto en cualqu
 ## Tu siguiente paso
 
 Elige un rincon de la casa hoy. No tiene que ser perfecto — solo consistente. El habito se construye con repeticion, no con decoracion.
+
+## Sigue leyendo
+
+- [Ensenar a los ninos a nombrar sus emociones](/es/blog/ensenar-ninos-nombrar-emociones-colorear/) — ayudalos a poner palabras a lo que sienten.
+- [Tu hijo no se concentra? Colorear podria ser la solucion](/es/blog/beneficios-colorear-concentracion-infantil/) — como colorear construye atencion y calma.
+- [La guia definitiva de materiales para colorear](/es/blog/materiales-recomendados-colorear-casa/) — las herramientas ideales para tu rincon de calma.

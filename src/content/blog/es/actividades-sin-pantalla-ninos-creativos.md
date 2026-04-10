@@ -5,8 +5,8 @@ date: "2026-02-12"
 summary: "No todos los ninos quieren correr: aqui hay opciones creativas que realmente los enganchan."
 lang: "es"
 bookId: "awesome-boys"
-image: "/images/blog/screen-free.svg"
-tags: ["activities", "book-review"]
+image: "/images/blog/screen-free.webp"
+tags: ["activities", "book-review", "screen-free", "coloring"]
 ---
 
 "Apaga la tablet." Lo dices, empieza el drama, y al final cedes porque no tienes una alternativa que realmente le interese. El problema no es la pantalla — es que no ha encontrado algo mejor.
@@ -28,3 +28,9 @@ No todos los ninos son deportistas, y esta bien. Pero si la unica alternativa qu
 ## Tu siguiente paso
 
 Hoy, en vez de decir "apaga eso", pon los colores sobre la mesa sin decir nada. La curiosidad es mas poderosa que cualquier regla.
+
+## Sigue leyendo
+
+- [3 ideas para transformar una tarde aburrida en taller creativo](/es/blog/ideas-taller-creativo-en-casa/) — actividades que realmente los enganchan.
+- [Como elegir el primer libro de colorear para tu peque](/es/blog/como-elegir-primer-libro-colorear/) — elige un tema que realmente le importe.
+- [Tu hijo no se concentra? Colorear podria ser la solucion](/es/blog/beneficios-colorear-concentracion-infantil/) — el tiempo creativo construye atencion real.

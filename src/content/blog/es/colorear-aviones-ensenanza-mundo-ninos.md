@@ -5,8 +5,8 @@ date: "2025-12-02"
 summary: "Cada avion va a algun lugar: colorear es el primer paso para despertar la curiosidad geografica."
 lang: "es"
 bookId: "awesome-airplanes"
-image: "/images/blog/airplanes-world.svg"
-tags: ["education", "book-review"]
+image: "/images/blog/airplanes-world.webp"
+tags: ["education", "book-review", "stem", "imagination"]
 ---
 
 "¿A donde va ese avion?" Esa pregunta simple esconde una oportunidad enorme. Tu peque quiere conocer el mundo pero su universo se limita a la escuela y la casa. **El papel puede abrir la puerta.**
@@ -26,3 +26,8 @@ Un helicoptero de rescate lleva a hablar de heroes. Un avion comercial, de viaje
 ## Tu siguiente paso
 
 Coloreen un avion juntos y elijan un pais al que "volarian". Busquen una foto del lugar. Ahora tu peque tiene un motivo real para querer saber mas del mundo.
+
+## Sigue leyendo
+
+- [Como colorear el espacio convierte la curiosidad en una base STEM](/es/blog/colorear-espacio-curiosidad-stem-ninos/) — otra forma de despertar el pensamiento cientifico.
+- [Por que los ninos obsesionados con camiones estan desarrollando habilidades reales](/es/blog/ninos-obsesion-camiones-habilidades-reales/) — la misma curiosidad aplicada a maquinas e ingenieria.

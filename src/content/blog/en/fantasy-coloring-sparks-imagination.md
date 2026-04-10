@@ -5,8 +5,8 @@ date: "2026-04-05"
 summary: "Unicorns, dragons, and mermaids are not just fun — they train your child's creative thinking."
 lang: "en"
 bookId: "magical-creatures"
-image: "/images/blog/fantasy-coloring.svg"
-tags: ["creativity", "book-review"]
+image: "/images/blog/fantasy-coloring.webp"
+tags: ["creativity", "book-review", "imagination", "self-expression"]
 ---
 
 Your kid spends hours glued to a screen, and when you turn it off… they have no idea what to do. Creativity needs a nudge, and fantasy worlds are the perfect launchpad.
@@ -26,3 +26,9 @@ While they color, ask: "Where does this dragon live? What does it eat?" Turning 
 ## Your next step
 
 Turn off the screen, open a fantasy page, and let imagination do the rest. Sometimes the best toy is a colored pencil.
+
+## Keep exploring
+
+- [How space coloring turns curiosity into a STEM foundation](/en/blog/space-coloring-stem-curiosity-kids/) — imagination meets science.
+- [3 ways to turn a boring afternoon into a creative workshop](/en/blog/creative-workshop-ideas-at-home/) — structured activities that fuel imagination.
+- [Screen-free activities boys actually love](/en/blog/screen-free-activities-boys-love/) — swap screens for fantasy worlds.

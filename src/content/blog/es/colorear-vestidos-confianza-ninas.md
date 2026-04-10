@@ -5,8 +5,8 @@ date: "2026-03-15"
 summary: "Disenar outfits sobre papel entrena la toma de decisiones y refuerza la autoestima."
 lang: "es"
 bookId: "dresses-and-dolls"
-image: "/images/blog/dress-confidence.svg"
-tags: ["parenting", "book-review"]
+image: "/images/blog/dress-confidence.webp"
+tags: ["parenting", "book-review", "fashion", "self-expression"]
 ---
 
 Tu hija quiere elegir su propia ropa pero termina frustrada porque "nada combina". Esa frustracion es normal — solo le falta un espacio seguro para experimentar.
@@ -26,3 +26,9 @@ Cada vez que elige un color para un vestido, esta practicando tomar decisiones y
 ## Tu siguiente paso
 
 Sientate a colorear juntas. Pregunta: "¿Por que elegiste esos colores?" Esa conversacion vale oro.
+
+## Sigue leyendo
+
+- [Criar ninas seguras: como el juego creativo construye autoestima](/es/blog/criar-ninas-seguras-juego-creativo/) — mas formas de nutrir la confianza.
+- [Por que colorear moda es el escape creativo perfecto para adolescentes](/es/blog/colorear-moda-escape-creativo-teens/) — la autoexpresion crece con ellas.
+- [Una leccion de historia divertida a traves de la moda](/es/blog/leccion-historia-moda-colorear/) — explora la moda a traves de las decadas.

@@ -4,8 +4,8 @@ title: "Your kid cannot focus? Coloring might be the solution you did not expect
 date: "2026-02-25"
 summary: "Before chasing diagnoses, try this: 15 minutes of coloring might change the game."
 lang: "en"
-image: "/images/blog/focus-concentration.svg"
-tags: ["parenting", "education"]
+image: "/images/blog/focus-concentration.webp"
+tags: ["parenting", "education", "screen-free", "wellness"]
 ---
 
 "He will not sit still." "She never finishes anything." "The school says he gets distracted." If any of these sound familiar, you have probably Googled it and ended up scared by acronyms like ADHD. **Before rushing to a specialist, read this.**
@@ -29,3 +29,9 @@ Set a 10-minute timer. No pressure, no goal. Just coloring with soft background 
 ## Your next step
 
 Next time they cannot focus, instead of scolding, say: "Want to color for 10 minutes?" It is cheaper than a therapist, and it might be all they need.
+
+## Keep exploring
+
+- [How to create a calm-down corner with coloring](/en/blog/calm-down-corner-coloring-anxious-kids/) — a dedicated space for calm and focus.
+- [Screen-free activities boys actually love](/en/blog/screen-free-activities-boys-love/) — more ways to replace screens with creative engagement.
+- [How to choose your kid's first coloring book](/en/blog/how-to-choose-first-coloring-book/) — the right book makes all the difference for sustained focus.

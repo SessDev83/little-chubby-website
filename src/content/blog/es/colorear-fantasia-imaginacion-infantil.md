@@ -5,8 +5,8 @@ date: "2026-04-05"
 summary: "Unicornios, dragones y sirenas no son solo diversion: entrenan el pensamiento creativo de tu peque."
 lang: "es"
 bookId: "magical-creatures"
-image: "/images/blog/fantasy-coloring.svg"
-tags: ["creativity", "book-review"]
+image: "/images/blog/fantasy-coloring.webp"
+tags: ["creativity", "book-review", "imagination", "self-expression"]
 ---
 
 Tu peque pasa horas frente a una pantalla y cuando la apagas... no sabe que hacer. La creatividad necesita un empujon, y los mundos fantasticos son el trampolín perfecto.
@@ -26,3 +26,9 @@ Mientras colorean, pregunta: "¿Donde vive este dragon? ¿Que come?". Convertir 
 ## Tu siguiente paso
 
 Apaga la pantalla, abre una pagina de fantasia y deja que la imaginacion haga el resto. A veces el mejor juguete es un lapiz de color.
+
+## Sigue leyendo
+
+- [Como colorear el espacio convierte la curiosidad en una base STEM](/es/blog/colorear-espacio-curiosidad-stem-ninos/) — la imaginacion se encuentra con la ciencia.
+- [3 ideas para transformar una tarde aburrida en taller creativo](/es/blog/ideas-taller-creativo-en-casa/) — actividades que alimentan la imaginacion.
+- [Actividades sin pantalla que los ninos realmente disfrutan](/es/blog/actividades-sin-pantalla-ninos-creativos/) — cambia pantallas por mundos fantasticos.

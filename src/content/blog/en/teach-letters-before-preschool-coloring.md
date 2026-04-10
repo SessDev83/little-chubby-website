@@ -5,8 +5,8 @@ date: "2025-11-25"
 summary: "Your child can learn the alphabet without flashcards, without drills, and without boredom."
 lang: "en"
 bookId: "alphabet-coloring-book"
-image: "/images/blog/letters-preschool.svg"
-tags: ["education", "book-review"]
+image: "/images/blog/letters-preschool.webp"
+tags: ["education", "book-review", "toddler", "fine-motor"]
 ---
 
 You want your child to start preschool knowing some letters, but every time you try with flashcards or apps, **they lose interest in 60 seconds**. The problem is not the child — it is the method.
@@ -26,3 +26,9 @@ When a child colors a big "A" next to a drawing of an "airplane," three things h
 ## Your next step
 
 Start with the first letter of their name. Color that letter together and stick it on their bedroom door. Tomorrow, another letter. No rush, no flashcards, no drama.
+
+## Keep exploring
+
+- [Your toddler's first coloring book: what to look for](/en/blog/toddler-first-coloring-book-guide/) — age-appropriate books for little hands.
+- [How to choose your kid's first coloring book](/en/blog/how-to-choose-first-coloring-book/) — pick the right level of detail.
+- [Your kid cannot focus? Coloring might be the solution](/en/blog/benefits-of-coloring-for-focus/) — coloring builds the attention muscles needed for learning.

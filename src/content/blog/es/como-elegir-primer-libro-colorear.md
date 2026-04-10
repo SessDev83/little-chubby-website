@@ -4,8 +4,8 @@ title: "Como elegir el primer libro de colorear para tu peque (sin desperdiciar 
 date: "2026-03-28"
 summary: "Compraste un libro de colorear y tu peque lo ignoro? El problema no fue el nino. Aqui esta la guia que necesitabas."
 lang: "es"
-image: "/images/blog/choosing-coloring-book.svg"
-tags: ["parenting", "tips"]
+image: "/images/blog/choosing-coloring-book.webp"
+tags: ["parenting", "tips", "coloring", "gift-guide"]
 ---
 
 Compraste un libro de colorear que se veia perfecto en Amazon. Llego a casa, tu peque lo abrio… y lo dejo en 3 minutos. Ahora tienes un libro sin usar y la sensacion de haber tirado el dinero. **No fue culpa de tu hijo — fue el libro equivocado.**
@@ -29,3 +29,9 @@ Reserva un bloque semanal sin pantallas cerca. Buena luz, mesa comoda y musica s
 ## Tu siguiente paso
 
 Antes de abrir Amazon, observa a tu peque 5 minutos: ¿que temas le emocionan? ¿Cuanto tiempo se concentra normalmente? Con esas dos respuestas, el libro correcto se elige solo.
+
+## Sigue leyendo
+
+- [La guia definitiva de materiales para colorear](/es/blog/materiales-recomendados-colorear-casa/) — empareja el libro perfecto con los materiales correctos.
+- [El primer libro de colorear para tu bebe](/es/blog/primer-libro-colorear-bebe-guia/) — guia especifica para los mas pequenos.
+- [Tu hijo no se concentra? Colorear podria ser la solucion](/es/blog/beneficios-colorear-concentracion-infantil/) — como el libro correcto construye atencion.
