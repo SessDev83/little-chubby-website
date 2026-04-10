@@ -30,6 +30,14 @@ const slug = post.id.replace(/^(es|en)\//, "");
 
 const { Content } = await render(post);
 
+// Find the matching post in the other language via postId
+const alternateLang = lang === "es" ? "en" : "es";
+const altPosts = await getCollection("blog", (entry) => entry.data.lang === alternateLang);
+const altPost = altPosts.find((p) => p.data.postId === post.data.postId);
+const alternatePath = altPost
+  ? `/${alternateLang}/blog/${altPost.id.replace(/^(es|en)\//, "")}/`
+  : undefined;
+
 const book = post.data.bookId
   ? books.find((b) => b.id === post.data.bookId) ?? null
   : null;
@@ -69,6 +77,7 @@ const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(
   title={`${post.data.title} | ${text.blogMetaTitle}`}
   description={post.data.summary}
   pathname={pathname}
+  alternatePath={alternatePath}
   breadcrumbs={breadcrumbs}
   articleSchema={articleSchema}
   ogImage={post.data.image}

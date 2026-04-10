@@ -6,9 +6,10 @@ import { switchLangPath, ui } from "../data/i18n";
 interface Props {
   lang: Lang;
   pathname: string;
+  alternatePath?: string;
 }
 
-const { lang, pathname } = Astro.props;
+const { lang, pathname, alternatePath } = Astro.props;
 const text = ui[lang];
 const homeHref = `/${lang}/`;
 
@@ -42,7 +43,7 @@ const navItems = [
         <a href={`/${lang}/login/`} class="header-login">{text.navLogin}</a>
         <div class="lang-toggle" role="group" aria-label={text.languageToggleLabel}>
           <a
-            href={switchLangPath(pathname, "es")}
+            href={lang === "en" && alternatePath ? alternatePath : switchLangPath(pathname, "es")}
             hreflang="es"
             lang="es"
             data-active={lang === "es"}
@@ -51,7 +52,7 @@ const navItems = [
             ES
           </a>
           <a
-            href={switchLangPath(pathname, "en")}
+            href={lang === "es" && alternatePath ? alternatePath : switchLangPath(pathname, "en")}
             hreflang="en"
             lang="en"
             data-active={lang === "en"}

@@ -13,6 +13,7 @@ interface Props {
   title: string;
   description: string;
   pathname: string;
+  alternatePath?: string;
   breadcrumbs?: { name: string; url: string }[];
   articleSchema?: {
     headline: string;
@@ -23,13 +24,13 @@ interface Props {
   ogImage?: string;
 }
 
-const { lang, title, description, pathname, breadcrumbs, articleSchema, ogImage: customOgImage } = Astro.props;
+const { lang, title, description, pathname, alternatePath, breadcrumbs, articleSchema, ogImage: customOgImage } = Astro.props;
 const canonical = new URL(pathname, siteConfig.siteUrl).toString();
 const ogImage = customOgImage
   ? new URL(customOgImage, siteConfig.siteUrl).toString()
   : new URL(siteConfig.brandAssets.ogCover, siteConfig.siteUrl).toString();
 const alternateLang = lang === "es" ? "en" : "es";
-const alternateHref = new URL(switchLangPath(pathname, alternateLang), siteConfig.siteUrl).toString();
+const alternateHref = new URL(alternatePath || switchLangPath(pathname, alternateLang), siteConfig.siteUrl).toString();
 const skipLabel = lang === "es" ? "Saltar al contenido" : "Skip to content";
 const organizationJsonLd = JSON.stringify({
   "@context": "https://schema.org",
@@ -163,7 +164,7 @@ const articleJsonLd = articleSchema ? JSON.stringify({
   </head>
   <body>
     <a class="skip-link" href="#contenido-principal">{skipLabel}</a>
-    <Header lang={lang} pathname={pathname} />
+    <Header lang={lang} pathname={pathname} alternatePath={alternatePath} />
     <main id="contenido-principal">
       <slot />
     </main>
