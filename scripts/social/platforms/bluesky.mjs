@@ -9,7 +9,10 @@
  * Create an App Password at: https://bsky.app/settings/app-passwords
  */
 
+import sharp from "sharp";
+
 const BLUESKY_SERVICE = "https://bsky.social";
+const BLUESKY_MAX_BLOB = 1_000_000; // 1 MB AT Protocol limit
 
 /**
  * Authenticate and return session tokens.
@@ -37,13 +40,24 @@ async function createSession(handle, password) {
  * @returns {{ blob: object }}
  */
 async function uploadImage(accessJwt, imageBuffer, mimeType) {
+  // Compress if over Bluesky's 1 MB blob limit
+  let finalBuffer = imageBuffer;
+  let finalMimeType = mimeType;
+  if (imageBuffer.length > BLUESKY_MAX_BLOB) {
+    finalBuffer = await sharp(imageBuffer)
+      .resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    finalMimeType = "image/jpeg";
+  }
+
   const res = await fetch(`${BLUESKY_SERVICE}/xrpc/com.atproto.repo.uploadBlob`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessJwt}`,
-      "Content-Type": mimeType,
+      "Content-Type": finalMimeType,
     },
-    body: imageBuffer,
+    body: finalBuffer,
   });
 
   if (!res.ok) {

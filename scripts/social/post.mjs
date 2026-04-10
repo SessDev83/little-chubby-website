@@ -217,17 +217,28 @@ async function resolveImage(post, data, opts) {
     }
   }
 
-  // For all other types (or if blog image failed): generate with AI
+  // For all other types (or if blog image failed): generate with AI + retry
   if (post.imagePrompt && process.env.NANO_BANANA_API_KEY) {
-    try {
-      console.log("🎨 Generating image with AI (Nano Banana)...");
-      const result = await generateImage(post.imagePrompt);
-      if (result?.buffer) {
-        console.log(`✅ Image generated (${result.mimeType}, ${(result.buffer.length / 1024).toFixed(0)} KB)`);
-        return { url: result.url, buffer: result.buffer, mimeType: result.mimeType };
+    const IMG_MAX_RETRIES = 3;
+    const IMG_RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+
+    for (let attempt = 1; attempt <= IMG_MAX_RETRIES; attempt++) {
+      try {
+        console.log(`🎨 Generating image with AI (Nano Banana)...${attempt > 1 ? ` (attempt ${attempt}/${IMG_MAX_RETRIES})` : ""}`);
+        const result = await generateImage(post.imagePrompt);
+        if (result?.buffer) {
+          console.log(`✅ Image generated (${result.mimeType}, ${(result.buffer.length / 1024).toFixed(0)} KB)`);
+          return { url: result.url, buffer: result.buffer, mimeType: result.mimeType };
+        }
+      } catch (err) {
+        console.log(`⚠️  Image generation failed: ${err.message}`);
+        if (attempt < IMG_MAX_RETRIES) {
+          console.log(`⏳ Retrying image in 5 minutes... (attempt ${attempt}/${IMG_MAX_RETRIES})\n`);
+          await new Promise((r) => setTimeout(r, IMG_RETRY_DELAY_MS));
+        } else {
+          console.log(`⚠️  Image generation failed after ${IMG_MAX_RETRIES} attempts — posting without image.`);
+        }
       }
-    } catch (err) {
-      console.log(`⚠️  Image generation failed: ${err.message}`);
     }
   } else if (post.imagePrompt && !process.env.NANO_BANANA_API_KEY) {
     console.log("⏭️  Image generation skipped (no NANO_BANANA_API_KEY configured)");
@@ -413,25 +424,39 @@ async function main() {
     data = posts[Math.floor(Math.random() * posts.length)];
   }
 
-  // Try AI generation first, fall back to static templates
+  // Try AI generation with retry (no static fallback unless --no-ai)
   let post;
   let aiUsed = false;
 
+  const MAX_RETRIES = 6;          // 6 retries × 5 min = 30 min max wait
+  const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+
   if (!opts.noAi && process.env.ANTHROPIC_API_KEY) {
-    try {
-      console.log("🤖 Generating content with AI (Claude)...\n");
-      const aiPost = await generateAIPost(opts.type, opts.lang, data);
-      if (aiPost) {
-        post = aiPost;
-        aiUsed = true;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`🤖 Generating content with AI (Claude)...${attempt > 1 ? ` (attempt ${attempt}/${MAX_RETRIES})` : ""}\n`);
+        const aiPost = await generateAIPost(opts.type, opts.lang, data);
+        if (aiPost) {
+          post = aiPost;
+          aiUsed = true;
+          break;
+        }
+      } catch (err) {
+        console.log(`⚠️  AI generation failed: ${err.message}`);
+        if (attempt < MAX_RETRIES) {
+          console.log(`⏳ Retrying in 5 minutes... (attempt ${attempt}/${MAX_RETRIES})\n`);
+          await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+        } else {
+          console.error(`\n❌ AI generation failed after ${MAX_RETRIES} attempts. Aborting.`);
+          console.error("   Fix the issue and try again, or use --no-ai for static templates.\n");
+          process.exit(1);
+        }
       }
-    } catch (err) {
-      console.log(`⚠️  AI generation failed: ${err.message}`);
-      console.log("📋 Falling back to static templates...\n");
     }
   }
 
   if (!post) {
+    // Only reached when --no-ai or no ANTHROPIC_API_KEY
     const staticPost = generatePost(opts.type, opts.lang, data);
     post = adaptToPlatforms(staticPost, data, opts.lang);
   }
