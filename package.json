@@ -15,7 +15,6 @@
     "social:generate": "node scripts/social/post.mjs generate",
     "social:post": "node scripts/social/post.mjs post",
     "social:calendar": "node scripts/social/post.mjs calendar",
-    "social:make": "node scripts/social/make.mjs",
     "social:monitor": "node scripts/social/engage.mjs monitor",
     "social:outreach": "node scripts/social/engage.mjs outreach"
   },

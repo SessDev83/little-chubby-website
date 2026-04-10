@@ -57,20 +57,6 @@ npm run social:post -- --platform bluesky --type book-promo --lang en
 
 ---
 
-## Make.com Setup (Recommended for Meta auth issues)
-
-If Facebook/Instagram tokens are giving you trouble, use Make as the publishing
-layer and keep this repo only for content generation.
-
-1. Configure the GitHub workflow `.github/workflows/social-make.yml`
-2. Add `MAKE_WEBHOOK_URL` secret in GitHub Actions
-3. Build your Make scenario (Webhook -> Facebook Pages -> Instagram)
-
-Full guide:
-- `scripts/social/MAKE_SETUP.md`
-
----
-
 ## Facebook Pages Setup
 
 ### 1. Create a Facebook Developer App
@@ -138,13 +124,10 @@ accessible URLs. Images hosted on your Vercel site work:
 
 ## Automated Scheduling (GitHub Actions)
 
-Direct posting workflow:
-- `.github/workflows/social-post.yml` (scheduled default: Bluesky)
+Posting workflow:
+- `.github/workflows/social-post.yml`
 
-Make relay workflow:
-- `.github/workflows/social-make.yml` (scheduled daily payload delivery)
-
-The daily posting schedule used by both workflows:
+The daily posting schedule:
 
 | Day       | Type            |
 |-----------|-----------------|
@@ -165,8 +148,6 @@ The daily posting schedule used by both workflows:
    - (Optional) `ANTHROPIC_API_KEY` — for AI-powered content generation
    - (Optional) `NANO_BANANA_API_KEY` — for AI image generation (nanobananaapi.dev)
    - (Optional) `META_PAGE_ACCESS_TOKEN`, `META_PAGE_ID`, `META_IG_USER_ID`
-  - (Make relay) `MAKE_WEBHOOK_URL`
-  - (Optional) `MAKE_WEBHOOK_SECRET`
 
 3. The workflow runs at **10:00 AM ET** every weekday + Saturday.
 
@@ -188,12 +169,6 @@ node scripts/social/post.mjs post --platform <platform> --type <type> --lang <la
 
 # Calendar (preview 7-day plan)
 node scripts/social/post.mjs calendar --lang <lang>
-
-# Generate + send payload to Make webhook
-node scripts/social/make.mjs --type <type> --lang <lang> [--book <id>]
-
-# Make dry run (print payload only)
-node scripts/social/make.mjs --type <type> --lang <lang> --dry-run
 ```
 
 **Platforms:** `bluesky`, `facebook`, `instagram`, `all`

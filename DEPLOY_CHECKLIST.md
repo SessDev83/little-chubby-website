@@ -52,7 +52,6 @@ Use this checklist when you are ready to publish.
 - Confirm `vercel.json` security headers are active in production responses.
 - Confirm no secrets exist in repo files (`.env` and `.env.local` must stay local).
 - Confirm GitHub Actions secrets exist only in repository settings, not in code.
-- Trigger `social-make.yml` with `dry_run=true` and verify webhook security filter in Make.
 - If any token was exposed during setup, revoke and regenerate before go-live.
 
 ## 6) Search Console and indexing
