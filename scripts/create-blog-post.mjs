@@ -183,14 +183,39 @@ Respond with VALID JSON ONLY. No markdown fences, no backticks, no commentary.
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { topic: null, bookId: null, dryRun: false, noImage: false };
+  const opts = { topic: null, bookId: null, dryRun: false, noImage: false, auto: false };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--topic" && args[i + 1]) opts.topic = args[++i];
     if (args[i] === "--bookId" && args[i + 1]) opts.bookId = args[++i];
     if (args[i] === "--dry-run") opts.dryRun = true;
     if (args[i] === "--no-image") opts.noImage = true;
+    if (args[i] === "--auto") opts.auto = true;
   }
   return opts;
+}
+
+// ─── Queue management ───────────────────────────────────────────────────────
+
+const QUEUE_PATH = resolve(__dirname, "blog-queue.json");
+
+function loadQueue() {
+  if (!existsSync(QUEUE_PATH)) return [];
+  return JSON.parse(readFileSync(QUEUE_PATH, "utf-8"));
+}
+
+function pickNextFromQueue() {
+  const queue = loadQueue();
+  const next = queue.find((item) => item.status === "pending");
+  return next || null;
+}
+
+function markQueueItemDone(topic) {
+  const queue = loadQueue();
+  const item = queue.find((i) => i.topic === topic && i.status === "pending");
+  if (item) {
+    item.status = "done";
+    writeFileSync(QUEUE_PATH, JSON.stringify(queue, null, 2) + "\n", "utf-8");
+  }
 }
 
 function todayISO() {
@@ -326,7 +351,22 @@ async function generateHeroImage(imagePrompt, filename) {
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 async function main() {
-  const { topic, bookId, dryRun, noImage } = parseArgs();
+  const { topic: topicArg, bookId: bookIdArg, dryRun, noImage, auto } = parseArgs();
+
+  // ─── Auto mode: pick next topic from queue ───────────────────────────────
+  let topic = topicArg;
+  let bookId = bookIdArg;
+
+  if (auto) {
+    const next = pickNextFromQueue();
+    if (!next) {
+      console.log("\n  ✅ Queue empty — all blog posts have been created!\n");
+      process.exit(0);
+    }
+    topic = next.topic;
+    bookId = next.bookId || null;
+    console.log(`\n  🤖 AUTO MODE — picked from queue: "${topic}"`);
+  }
 
   if (!topic) {
     console.log(`
@@ -334,10 +374,12 @@ async function main() {
 
 Usage:
   node scripts/create-blog-post.mjs --topic "your topic here"
+  node scripts/create-blog-post.mjs --auto          # pick next from queue
 
 Options:
-  --topic      Topic or title idea for the post (required)
+  --topic      Topic or title idea for the post (required unless --auto)
   --bookId     Link a book (e.g. magical-creatures, awesome-boys)
+  --auto       Pick the next pending topic from blog-queue.json
   --dry-run    Preview output without writing files or generating images
   --no-image   Skip hero image generation
 `);
@@ -413,6 +455,12 @@ Options:
   writeFileSync(esPath, esContent, "utf-8");
   console.log(`\n  📄 EN post written: src/content/blog/en/${post.en.slug}.md`);
   console.log(`  📄 ES post written: src/content/blog/es/${post.es.slug}.md`);
+
+  // Mark queue item as done (if auto mode)
+  if (auto) {
+    markQueueItemDone(topic);
+    console.log(`  ✅ Queue item marked done`);
+  }
 
   // Step 4: Generate hero image
   if (!noImage) {
