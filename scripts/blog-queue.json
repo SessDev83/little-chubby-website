@@ -1,31 +1,147 @@
 [
-  { "topic": "How animal coloring pages build empathy in kids", "bookId": "easy-animals", "status": "pending" },
-  { "topic": "Road trip coloring kit: what to pack for creative travel", "bookId": null, "status": "pending" },
-  { "topic": "Space-themed birthday party coloring activities", "bookId": "blast-off-space", "status": "pending" },
-  { "topic": "Why coloring is the perfect screen-free summer activity", "bookId": null, "status": "pending" },
-  { "topic": "Fairy tale coloring and storytelling for kids", "bookId": "magical-creatures", "status": "pending" },
-  { "topic": "Fashion design careers start with coloring books", "bookId": "chic-styles", "status": "pending" },
-  { "topic": "Fine motor skills your child builds while coloring", "bookId": null, "status": "pending" },
-  { "topic": "How construction coloring teaches spatial awareness", "bookId": "mighty-machines", "status": "pending" },
-  { "topic": "Alphabet games beyond the ABCs with coloring", "bookId": "alphabet-coloring-book", "status": "pending" },
-  { "topic": "Coloring helps kids who struggle with transitions", "bookId": "coloring-emotions", "status": "pending" },
-  { "topic": "How food coloring pages can teach healthy eating", "bookId": "pizza-sweet-treats", "status": "pending" },
-  { "topic": "Airplane coloring and geography lessons for kids", "bookId": "awesome-airplanes", "status": "pending" },
-  { "topic": "Mix-and-match fashion: creative coloring for girls", "bookId": "dresses-and-dolls", "status": "pending" },
-  { "topic": "Mindfulness coloring exercises for anxious kids", "bookId": "cozy-kids-club", "status": "pending" },
-  { "topic": "Boys and creativity: breaking the stereotypes", "bookId": "awesome-boys", "status": "pending" },
-  { "topic": "Coloring activities for kids with ADHD", "bookId": "coloring-emotions", "status": "pending" },
-  { "topic": "How coloring builds patience in toddlers", "bookId": "easy-animals", "status": "pending" },
-  { "topic": "Friendship activities with coloring books", "bookId": "awesome-girls", "status": "pending" },
-  { "topic": "Seasonal fruits and vegetables coloring fun", "bookId": "pizza-sweet-treats", "status": "pending" },
-  { "topic": "Fantasy worlds: mythical creatures from around the globe", "bookId": "magical-creatures", "status": "pending" },
-  { "topic": "Family coloring night: bonding through art", "bookId": null, "status": "pending" },
-  { "topic": "Coloring contests and challenges at home", "bookId": null, "status": "pending" },
-  { "topic": "Travel coloring page ideas from around the world", "bookId": "awesome-airplanes", "status": "pending" },
-  { "topic": "Vintage vs modern style: a coloring adventure", "bookId": "style-time-machine", "status": "pending" },
-  { "topic": "Easter and spring crafts you can use year-round", "bookId": "enchanted-easter", "status": "pending" },
-  { "topic": "Getting ready for school with coloring routines", "bookId": "alphabet-coloring-book", "status": "pending" },
-  { "topic": "Trucks, cranes, and careers: what kids learn coloring machines", "bookId": "mighty-machines", "status": "pending" },
-  { "topic": "Dress-up coloring for pretend play and imagination", "bookId": "dresses-and-dolls", "status": "pending" },
-  { "topic": "How to start a summer coloring challenge for your kids", "bookId": null, "status": "pending" }
+  {
+    "topic": "How animal coloring pages build empathy in kids",
+    "bookId": "easy-animals",
+    "status": "done"
+  },
+  {
+    "topic": "Road trip coloring kit: what to pack for creative travel",
+    "bookId": null,
+    "status": "pending"
+  },
+  {
+    "topic": "Space-themed birthday party coloring activities",
+    "bookId": "blast-off-space",
+    "status": "pending"
+  },
+  {
+    "topic": "Why coloring is the perfect screen-free summer activity",
+    "bookId": null,
+    "status": "pending"
+  },
+  {
+    "topic": "Fairy tale coloring and storytelling for kids",
+    "bookId": "magical-creatures",
+    "status": "pending"
+  },
+  {
+    "topic": "Fashion design careers start with coloring books",
+    "bookId": "chic-styles",
+    "status": "pending"
+  },
+  {
+    "topic": "Fine motor skills your child builds while coloring",
+    "bookId": null,
+    "status": "pending"
+  },
+  {
+    "topic": "How construction coloring teaches spatial awareness",
+    "bookId": "mighty-machines",
+    "status": "pending"
+  },
+  {
+    "topic": "Alphabet games beyond the ABCs with coloring",
+    "bookId": "alphabet-coloring-book",
+    "status": "pending"
+  },
+  {
+    "topic": "Coloring helps kids who struggle with transitions",
+    "bookId": "coloring-emotions",
+    "status": "pending"
+  },
+  {
+    "topic": "How food coloring pages can teach healthy eating",
+    "bookId": "pizza-sweet-treats",
+    "status": "pending"
+  },
+  {
+    "topic": "Airplane coloring and geography lessons for kids",
+    "bookId": "awesome-airplanes",
+    "status": "pending"
+  },
+  {
+    "topic": "Mix-and-match fashion: creative coloring for girls",
+    "bookId": "dresses-and-dolls",
+    "status": "pending"
+  },
+  {
+    "topic": "Mindfulness coloring exercises for anxious kids",
+    "bookId": "cozy-kids-club",
+    "status": "pending"
+  },
+  {
+    "topic": "Boys and creativity: breaking the stereotypes",
+    "bookId": "awesome-boys",
+    "status": "pending"
+  },
+  {
+    "topic": "Coloring activities for kids with ADHD",
+    "bookId": "coloring-emotions",
+    "status": "pending"
+  },
+  {
+    "topic": "How coloring builds patience in toddlers",
+    "bookId": "easy-animals",
+    "status": "pending"
+  },
+  {
+    "topic": "Friendship activities with coloring books",
+    "bookId": "awesome-girls",
+    "status": "pending"
+  },
+  {
+    "topic": "Seasonal fruits and vegetables coloring fun",
+    "bookId": "pizza-sweet-treats",
+    "status": "pending"
+  },
+  {
+    "topic": "Fantasy worlds: mythical creatures from around the globe",
+    "bookId": "magical-creatures",
+    "status": "pending"
+  },
+  {
+    "topic": "Family coloring night: bonding through art",
+    "bookId": null,
+    "status": "pending"
+  },
+  {
+    "topic": "Coloring contests and challenges at home",
+    "bookId": null,
+    "status": "pending"
+  },
+  {
+    "topic": "Travel coloring page ideas from around the world",
+    "bookId": "awesome-airplanes",
+    "status": "pending"
+  },
+  {
+    "topic": "Vintage vs modern style: a coloring adventure",
+    "bookId": "style-time-machine",
+    "status": "pending"
+  },
+  {
+    "topic": "Easter and spring crafts you can use year-round",
+    "bookId": "enchanted-easter",
+    "status": "pending"
+  },
+  {
+    "topic": "Getting ready for school with coloring routines",
+    "bookId": "alphabet-coloring-book",
+    "status": "pending"
+  },
+  {
+    "topic": "Trucks, cranes, and careers: what kids learn coloring machines",
+    "bookId": "mighty-machines",
+    "status": "pending"
+  },
+  {
+    "topic": "Dress-up coloring for pretend play and imagination",
+    "bookId": "dresses-and-dolls",
+    "status": "pending"
+  },
+  {
+    "topic": "How to start a summer coloring challenge for your kids",
+    "bookId": null,
+    "status": "pending"
+  }
 ]
