@@ -28,4 +28,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ANALYTICS_EMAIL: ${{ secrets.ANALYTICS_EMAIL }}
           BLUESKY_HANDLE: littlechubbypress.bsky.social
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
         run: node scripts/daily-analytics-email.mjs

@@ -12,6 +12,7 @@
  *
  * Optional env vars (for social media stats):
  *   BLUESKY_HANDLE (e.g. "littlechubbypress.bsky.social")
+ *   META_PAGE_ACCESS_TOKEN, META_PAGE_ID, META_IG_USER_ID
  */
 
 // ─── Config ────────────────────────────────────────────────────────────────
@@ -206,8 +207,91 @@ async function fetchBlueskyStats() {
   }
 }
 
+// ─── Meta (Facebook + Instagram) stats ─────────────────────────────────────
+async function fetchMetaStats() {
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+  const pageId = process.env.META_PAGE_ID;
+  const igId = process.env.META_IG_USER_ID;
+  if (!token || !pageId) return null;
+
+  try {
+    const GRAPH = "https://graph.facebook.com/v25.0";
+
+    // Facebook Page stats
+    const fbRes = await fetch(
+      `${GRAPH}/${pageId}?fields=name,fan_count,followers_count&access_token=${token}`
+    );
+    if (!fbRes.ok) { console.log(`  ⚠️  Facebook API error: ${fbRes.status}`); return null; }
+    const fb = await fbRes.json();
+
+    // Recent Facebook posts engagement
+    const fbPostsRes = await fetch(
+      `${GRAPH}/${pageId}/posts?fields=created_time,likes.summary(true),comments.summary(true),shares&limit=10&access_token=${token}`
+    );
+    let fbPostsYesterday = 0, fbLikes = 0, fbComments = 0, fbShares = 0;
+    if (fbPostsRes.ok) {
+      const fbPosts = await fbPostsRes.json();
+      const yesterdayStr = yesterday();
+      for (const post of fbPosts.data || []) {
+        if (post.created_time?.slice(0, 10) === yesterdayStr) fbPostsYesterday++;
+        fbLikes += post.likes?.summary?.total_count || 0;
+        fbComments += post.comments?.summary?.total_count || 0;
+        fbShares += post.shares?.count || 0;
+      }
+    }
+
+    // Instagram stats (optional)
+    let ig = null;
+    if (igId) {
+      const igRes = await fetch(
+        `${GRAPH}/${igId}?fields=username,followers_count,media_count&access_token=${token}`
+      );
+      if (igRes.ok) {
+        const igData = await igRes.json();
+        // Recent IG media engagement
+        const igMediaRes = await fetch(
+          `${GRAPH}/${igId}/media?fields=timestamp,like_count,comments_count&limit=10&access_token=${token}`
+        );
+        let igLikes = 0, igComments = 0, igPostsYesterday = 0;
+        if (igMediaRes.ok) {
+          const igMedia = await igMediaRes.json();
+          const yesterdayStr = yesterday();
+          for (const m of igMedia.data || []) {
+            if (m.timestamp?.slice(0, 10) === yesterdayStr) igPostsYesterday++;
+            igLikes += m.like_count || 0;
+            igComments += m.comments_count || 0;
+          }
+        }
+        ig = {
+          username: igData.username,
+          followers: igData.followers_count || 0,
+          mediaCount: igData.media_count || 0,
+          postsYesterday: igPostsYesterday,
+          recentLikes: igLikes,
+          recentComments: igComments,
+        };
+      }
+    }
+
+    return {
+      facebook: {
+        name: fb.name,
+        followers: fb.followers_count || fb.fan_count || 0,
+        postsYesterday: fbPostsYesterday,
+        recentLikes: fbLikes,
+        recentComments: fbComments,
+        recentShares: fbShares,
+      },
+      instagram: ig,
+    };
+  } catch (e) {
+    console.log(`  ⚠️  Meta stats unavailable: ${e.message}`);
+    return null;
+  }
+}
+
 // ─── Build email ───────────────────────────────────────────────────────────
-function buildEmailHtml(date, stats, weekAgo, bluesky, utmSources) {
+function buildEmailHtml(date, stats, weekAgo, bluesky, utmSources, meta) {
   const fmtDate = formatDate(date);
   const tableRow = (label, value) =>
     `<tr><td style="padding:6px 12px;border-bottom:1px solid #eee">${label}</td>` +
@@ -291,6 +375,26 @@ function buildEmailHtml(date, stats, weekAgo, bluesky, utmSources) {
 
     ${utmSection}
     ${blueskySection}
+
+    ${meta?.facebook ? `
+    ${sectionHeader("📘", "Facebook — " + escapeHtml(meta.facebook.name))}
+    <table style="width:100%;border-collapse:collapse">
+      ${tableRow("Followers", meta.facebook.followers)}
+      ${tableRow("Posts Yesterday", meta.facebook.postsYesterday)}
+      ${tableRow("Recent Likes (last 10 posts)", meta.facebook.recentLikes)}
+      ${tableRow("Recent Comments", meta.facebook.recentComments)}
+      ${tableRow("Recent Shares", meta.facebook.recentShares)}
+    </table>` : ""}
+
+    ${meta?.instagram ? `
+    ${sectionHeader("📷", "Instagram — @" + escapeHtml(meta.instagram.username))}
+    <table style="width:100%;border-collapse:collapse">
+      ${tableRow("Followers", meta.instagram.followers)}
+      ${tableRow("Total Posts", meta.instagram.mediaCount)}
+      ${tableRow("Posts Yesterday", meta.instagram.postsYesterday)}
+      ${tableRow("Recent Likes (last 10 posts)", meta.instagram.recentLikes)}
+      ${tableRow("Recent Comments", meta.instagram.recentComments)}
+    </table>` : ""}
 
     <p style="text-align:center;margin:24px 0 8px">
       <a href="https://vercel.com/sessdev83s-projects/little-chubby-website/analytics"
@@ -387,8 +491,21 @@ if (bluesky) {
   console.log(`  Recent likes:    ${bluesky.recentLikes}`);
 }
 
+console.log(`\n📘 Fetching Meta (Facebook/Instagram) stats...`);
+const meta = await fetchMetaStats();
+if (meta?.facebook) {
+  console.log(`  FB Followers:    ${meta.facebook.followers}`);
+  console.log(`  FB Posts yest:   ${meta.facebook.postsYesterday}`);
+  console.log(`  FB Recent likes: ${meta.facebook.recentLikes}`);
+}
+if (meta?.instagram) {
+  console.log(`  IG Followers:    ${meta.instagram.followers}`);
+  console.log(`  IG Posts yest:   ${meta.instagram.postsYesterday}`);
+  console.log(`  IG Recent likes: ${meta.instagram.recentLikes}`);
+}
+
 const subject = `📊 ${formatDate(date)} — ${stats.uniqueVisitors} visitors, ${stats.totalPageviews} views`;
-const html = buildEmailHtml(date, stats, weekAgo, bluesky, utmSources);
+const html = buildEmailHtml(date, stats, weekAgo, bluesky, utmSources, meta);
 
 if (DRY_RUN) {
   console.log(`\n--- DRY RUN ---`);
