@@ -448,6 +448,7 @@ async function sendEmail(subject, html) {
       html,
       headers: {
         "List-Unsubscribe": `<mailto:${ANALYTICS_EMAIL}?subject=unsubscribe>`,
+        "X-Entity-Ref-ID": `analytics-${Date.now()}`,
       },
     }),
   });
