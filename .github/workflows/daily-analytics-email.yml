@@ -1,0 +1,30 @@
+# Daily analytics email report.
+# Queries yesterday's pageview data from Supabase and sends a
+# summary email to the admin via Resend.
+
+name: Daily Analytics Email
+
+on:
+  schedule:
+    # Every day at 8:00 AM ET (12:00 UTC)
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Send daily analytics email
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ANALYTICS_EMAIL: ${{ secrets.ANALYTICS_EMAIL }}
+        run: node scripts/daily-analytics-email.mjs

@@ -100,6 +100,8 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     <meta name="generator" content={Astro.generator} />
     <meta name="theme-color" content="#f6f1e7" />
     <meta name="author" content={siteConfig.brandName} />
+    <meta name="x-sb-url" content={import.meta.env.PUBLIC_SUPABASE_URL} />
+    <meta name="x-sb-key" content={import.meta.env.PUBLIC_SUPABASE_ANON_KEY} />
 
     <!-- Prevent dark-mode flash (runs before paint) -->
     <script is:inline>
@@ -177,6 +179,34 @@ const articleJsonLd = articleSchema ? JSON.stringify({
       import { injectSpeedInsights } from "@vercel/speed-insights";
       inject();
       injectSpeedInsights();
+    </script>
+
+    <!-- Lightweight pageview tracker → Supabase (for daily email report) -->
+    <script is:inline>
+      (function(){
+        if (navigator.webdriver) return;                       // skip bots
+        var p = location.pathname;
+        if (p.startsWith("/admin")) return;                    // skip admin
+        var key = "pv:" + p;
+        if (sessionStorage.getItem(key)) return;               // once per session per page
+        sessionStorage.setItem(key, "1");
+        // build a daily visitor hash from random session id + date
+        var sid = sessionStorage.getItem("_pvs");
+        if (!sid) { sid = Math.random().toString(36).slice(2); sessionStorage.setItem("_pvs", sid); }
+        var vh = sid + "_" + new Date().toISOString().slice(0,10);
+        var sb = document.querySelector('meta[name="x-sb-url"]');
+        var sk = document.querySelector('meta[name="x-sb-key"]');
+        if (!sb || !sk) return;
+        var body = JSON.stringify({ path: p, referrer: document.referrer || null, visitor_hash: vh });
+        fetch(sb.content + "/rest/v1/pageviews", {
+          method: "POST", headers: {
+            "Content-Type": "application/json",
+            apikey: sk.content,
+            Authorization: "Bearer " + sk.content,
+            Prefer: "return=minimal"
+          }, body: body, keepalive: true
+        }).catch(function(){});
+      })();
     </script>
   </body>
 </html>
