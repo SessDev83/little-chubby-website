@@ -27,4 +27,5 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ANALYTICS_EMAIL: ${{ secrets.ANALYTICS_EMAIL }}
+          BLUESKY_HANDLE: littlechubbypress.bsky.social
         run: node scripts/daily-analytics-email.mjs

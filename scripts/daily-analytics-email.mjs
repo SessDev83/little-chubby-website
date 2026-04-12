@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 /**
  * Daily Analytics Email Report
- * Queries yesterday's pageview data from Supabase and sends a
- * summary email via Resend to the site admin.
+ * Queries yesterday's pageview data from Supabase, fetches social media
+ * stats from Bluesky (public API), and sends a summary email via Resend.
  *
  * Usage:  node scripts/daily-analytics-email.mjs [--dry-run]
  *
  * Required env vars:
  *   PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY,
  *   ANALYTICS_EMAIL (recipient)
+ *
+ * Optional env vars (for social media stats):
+ *   BLUESKY_HANDLE (e.g. "littlechubbypress.bsky.social")
  */
 
 // ─── Config ────────────────────────────────────────────────────────────────
@@ -16,6 +19,7 @@ const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const ANALYTICS_EMAIL = process.env.ANALYTICS_EMAIL || "ivan.c4u@gmail.com";
+const BLUESKY_HANDLE = process.env.BLUESKY_HANDLE || "littlechubbypress.bsky.social";
 const SITE_URL = "https://www.littlechubbypress.com";
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -116,8 +120,94 @@ async function fetchAnalytics(date) {
   return { totalPageviews, uniqueVisitors, topPages, topReferrers, topCountries };
 }
 
+// ─── Week-over-week comparison ─────────────────────────────────────────────
+async function fetchWeekAgoStats(date) {
+  const d = new Date(date + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() - 7);
+  const weekAgo = d.toISOString().slice(0, 10);
+  const dayStart = `${weekAgo}T00:00:00.000Z`;
+  const dayEnd = `${weekAgo}T23:59:59.999Z`;
+  const range = `created_at=gte.${dayStart}&created_at=lte.${dayEnd}`;
+
+  const { count: totalPageviews } = await query("pageviews", `select=id&${range}`);
+  const { data: rows } = await query("pageviews", `select=visitor_hash&${range}&limit=10000`);
+  const uniqueVisitors = new Set(rows.map((r) => r.visitor_hash)).size;
+  return { totalPageviews, uniqueVisitors };
+}
+
+function changeLabel(current, previous) {
+  if (previous === 0) return current > 0 ? " 🟢 new!" : "";
+  const pct = Math.round(((current - previous) / previous) * 100);
+  if (pct > 0) return ` 🟢 +${pct}%`;
+  if (pct < 0) return ` 🔴 ${pct}%`;
+  return " ➖ same";
+}
+
+// ─── UTM source breakdown ──────────────────────────────────────────────────
+function parseUtmSources(rows) {
+  const utmCounts = {};
+  for (const r of rows) {
+    if (!r.referrer) continue;
+    try {
+      const url = new URL(r.referrer);
+      const source = url.searchParams.get("utm_source");
+      const campaign = url.searchParams.get("utm_campaign");
+      if (source) {
+        const key = campaign ? `${source} / ${campaign}` : source;
+        utmCounts[key] = (utmCounts[key] || 0) + 1;
+      }
+    } catch {}
+  }
+  return Object.entries(utmCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+}
+
+// ─── Social media stats (Bluesky public API, no auth needed) ───────────────
+async function fetchBlueskyStats() {
+  try {
+    // Profile stats
+    const profileRes = await fetch(
+      `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${BLUESKY_HANDLE}`
+    );
+    if (!profileRes.ok) return null;
+    const profile = await profileRes.json();
+
+    // Recent posts (last 20)
+    const feedRes = await fetch(
+      `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${BLUESKY_HANDLE}&limit=20`
+    );
+    const feedData = feedRes.ok ? await feedRes.json() : { feed: [] };
+
+    // Calculate engagement from recent posts
+    let totalLikes = 0, totalReposts = 0, totalReplies = 0, postsYesterday = 0;
+    const yesterdayStr = yesterday();
+    for (const item of feedData.feed || []) {
+      const post = item.post;
+      const postDate = post.indexedAt?.slice(0, 10);
+      if (postDate === yesterdayStr) {
+        postsYesterday++;
+      }
+      totalLikes += post.likeCount || 0;
+      totalReposts += post.repostCount || 0;
+      totalReplies += post.replyCount || 0;
+    }
+
+    return {
+      followers: profile.followersCount || 0,
+      following: profile.followsCount || 0,
+      posts: profile.postsCount || 0,
+      postsYesterday,
+      recentLikes: totalLikes,
+      recentReposts: totalReposts,
+      recentReplies: totalReplies,
+    };
+  } catch (e) {
+    console.log(`  ⚠️  Bluesky stats unavailable: ${e.message}`);
+    return null;
+  }
+}
+
 // ─── Build email ───────────────────────────────────────────────────────────
-function buildEmailHtml(date, stats) {
+function buildEmailHtml(date, stats, weekAgo, bluesky, utmSources) {
   const fmtDate = formatDate(date);
   const tableRow = (label, value) =>
     `<tr><td style="padding:6px 12px;border-bottom:1px solid #eee">${label}</td>` +
@@ -134,6 +224,37 @@ function buildEmailHtml(date, stats) {
           )
           .join("");
 
+  const sectionHeader = (emoji, title) =>
+    `<h3 style="font-size:15px;color:#6b4c3b;margin:16px 0 8px">${emoji} ${title}</h3>`;
+
+  // Week-over-week labels
+  const visitorChange = weekAgo ? changeLabel(stats.uniqueVisitors, weekAgo.uniqueVisitors) : "";
+  const viewChange = weekAgo ? changeLabel(stats.totalPageviews, weekAgo.totalPageviews) : "";
+
+  // Bluesky section
+  let blueskySection = "";
+  if (bluesky) {
+    blueskySection = `
+    ${sectionHeader("🦋", "Bluesky")}
+    <table style="width:100%;border-collapse:collapse">
+      ${tableRow("Followers", bluesky.followers)}
+      ${tableRow("Posts Yesterday", bluesky.postsYesterday)}
+      ${tableRow("Recent Likes (last 20 posts)", bluesky.recentLikes)}
+      ${tableRow("Recent Reposts", bluesky.recentReposts)}
+      ${tableRow("Recent Replies", bluesky.recentReplies)}
+    </table>`;
+  }
+
+  // UTM sources section
+  let utmSection = "";
+  if (utmSources && utmSources.length > 0) {
+    utmSection = `
+    ${sectionHeader("🎯", "Traffic from Social Posts (UTM)")}
+    <table style="width:100%;border-collapse:collapse">
+      ${listRows(utmSources)}
+    </table>`;
+  }
+
   return `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
@@ -146,26 +267,30 @@ function buildEmailHtml(date, stats) {
   </div>
 
   <div style="padding:20px 24px">
+    ${sectionHeader("🌐", "Website")}
     <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
-      ${tableRow("👥 Unique Visitors", stats.uniqueVisitors)}
-      ${tableRow("📄 Page Views", stats.totalPageviews)}
+      ${tableRow("👥 Unique Visitors", `${stats.uniqueVisitors}${visitorChange}`)}
+      ${tableRow("📄 Page Views", `${stats.totalPageviews}${viewChange}`)}
     </table>
 
-    <h3 style="font-size:15px;color:#6b4c3b;margin:16px 0 8px">🏆 Top Pages</h3>
+    ${sectionHeader("🏆", "Top Pages")}
     <table style="width:100%;border-collapse:collapse">
       ${listRows(stats.topPages)}
     </table>
 
-    <h3 style="font-size:15px;color:#6b4c3b;margin:16px 0 8px">🔗 Top Referrers</h3>
+    ${sectionHeader("🔗", "Top Referrers")}
     <table style="width:100%;border-collapse:collapse">
       ${listRows(stats.topReferrers)}
     </table>
 
     ${stats.topCountries.length > 0 ? `
-    <h3 style="font-size:15px;color:#6b4c3b;margin:16px 0 8px">🌍 Countries</h3>
+    ${sectionHeader("🌍", "Countries / Regions")}
     <table style="width:100%;border-collapse:collapse">
       ${listRows(stats.topCountries)}
     </table>` : ""}
+
+    ${utmSection}
+    ${blueskySection}
 
     <p style="text-align:center;margin:24px 0 8px">
       <a href="https://vercel.com/sessdev83s-projects/little-chubby-website/analytics"
@@ -238,8 +363,32 @@ console.log(`  Top pages:       ${stats.topPages.length}`);
 console.log(`  Referrers:       ${stats.topReferrers.length}`);
 console.log(`  Countries:       ${stats.topCountries.length}`);
 
+// Week-over-week comparison
+console.log(`\n📈 Fetching week-ago comparison...`);
+const weekAgo = await fetchWeekAgoStats(date);
+console.log(`  Week ago:        ${weekAgo.uniqueVisitors} visitors, ${weekAgo.totalPageviews} views`);
+
+// UTM source breakdown
+const { data: allRows } = await query(
+  "pageviews",
+  `select=referrer&created_at=gte.${date}T00:00:00.000Z&created_at=lte.${date}T23:59:59.999Z&referrer=not.is.null&limit=10000`
+);
+const utmSources = parseUtmSources(allRows);
+if (utmSources.length > 0) {
+  console.log(`  UTM sources:     ${utmSources.length}`);
+}
+
+// Social media stats
+console.log(`\n🦋 Fetching Bluesky stats...`);
+const bluesky = await fetchBlueskyStats();
+if (bluesky) {
+  console.log(`  Followers:       ${bluesky.followers}`);
+  console.log(`  Posts yesterday:  ${bluesky.postsYesterday}`);
+  console.log(`  Recent likes:    ${bluesky.recentLikes}`);
+}
+
 const subject = `📊 ${formatDate(date)} — ${stats.uniqueVisitors} visitors, ${stats.totalPageviews} views`;
-const html = buildEmailHtml(date, stats);
+const html = buildEmailHtml(date, stats, weekAgo, bluesky, utmSources);
 
 if (DRY_RUN) {
   console.log(`\n--- DRY RUN ---`);
@@ -249,6 +398,9 @@ if (DRY_RUN) {
   console.log(`\nTop pages:`);
   for (const [page, count] of stats.topPages) {
     console.log(`  ${count.toString().padStart(4)}  ${page}`);
+  }
+  if (bluesky) {
+    console.log(`\nBluesky: ${bluesky.followers} followers, ${bluesky.recentLikes} recent likes`);
   }
 } else {
   await sendEmail(subject, html);

@@ -197,14 +197,19 @@ const articleJsonLd = articleSchema ? JSON.stringify({
         var sb = document.querySelector('meta[name="x-sb-url"]');
         var sk = document.querySelector('meta[name="x-sb-key"]');
         if (!sb || !sk) return;
-        var body = JSON.stringify({ path: p, referrer: document.referrer || null, visitor_hash: vh });
+        var body = { path: p, referrer: document.referrer || null, visitor_hash: vh };
+        // Try to get country from Vercel header (edge) or timezone fallback
+        try {
+          var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+          body.country = tz.split("/")[0]; // rough region (America, Europe, Asia…)
+        } catch(e){}
         fetch(sb.content + "/rest/v1/pageviews", {
           method: "POST", headers: {
             "Content-Type": "application/json",
             apikey: sk.content,
             Authorization: "Bearer " + sk.content,
             Prefer: "return=minimal"
-          }, body: body, keepalive: true
+          }, body: JSON.stringify(body), keepalive: true
         }).catch(function(){});
       })();
     </script>
