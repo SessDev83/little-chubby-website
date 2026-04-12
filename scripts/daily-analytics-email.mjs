@@ -187,7 +187,24 @@ function escapeHtml(str) {
 }
 
 // ─── Send email via Resend ─────────────────────────────────────────────────
+async function getSenderAddress() {
+  // Check if littlechubbypress.com is verified on Resend
+  try {
+    const res = await fetch("https://api.resend.com/domains", {
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}` },
+    });
+    const data = await res.json();
+    const domain = (data.data || []).find((d) => d.name === "littlechubbypress.com");
+    if (domain && domain.status === "verified") {
+      return "Little Chubby Press <analytics@littlechubbypress.com>";
+    }
+  } catch {}
+  // Fallback to Resend's shared domain
+  return "Little Chubby Press <onboarding@resend.dev>";
+}
+
 async function sendEmail(subject, html) {
+  const from = await getSenderAddress();
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -195,7 +212,7 @@ async function sendEmail(subject, html) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Little Chubby Press <analytics@littlechubbypress.com>",
+      from,
       to: [ANALYTICS_EMAIL],
       subject,
       html,
