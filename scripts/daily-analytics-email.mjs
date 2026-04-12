@@ -443,8 +443,12 @@ async function sendEmail(subject, html) {
     body: JSON.stringify({
       from,
       to: [ANALYTICS_EMAIL],
+      reply_to: ANALYTICS_EMAIL,
       subject,
       html,
+      headers: {
+        "List-Unsubscribe": `<mailto:${ANALYTICS_EMAIL}?subject=unsubscribe>`,
+      },
     }),
   });
   if (!res.ok) {
