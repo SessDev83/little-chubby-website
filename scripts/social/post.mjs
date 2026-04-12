@@ -26,7 +26,7 @@
  *   node scripts/social/post.mjs post --platform all --type book-promo --dry-run
  */
 
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generatePost, generateWeeklyCalendar } from "./content-templates.mjs";
@@ -217,6 +217,21 @@ function adaptToPlatforms(post, data, lang) {
 
 // ─── Resolve image for platforms ────────────────────────────────────────────
 
+// ─── Read blog image from markdown frontmatter ─────────────────────────────
+
+function getBlogImageFromFrontmatter(slug, lang) {
+  const blogDir = resolve(ROOT, "src/content/blog", lang);
+  const filePath = resolve(blogDir, `${slug}.md`);
+  if (!existsSync(filePath)) return null;
+  const content = readFileSync(filePath, "utf-8");
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!fmMatch) return null;
+  const imageMatch = fmMatch[1].match(/^image:\s*"([^"]+)"/m);
+  return imageMatch ? imageMatch[1] : null;
+}
+
+// ─── Resolve image for social post ──────────────────────────────────────────
+
 async function resolveImage(post, data, opts) {
   // For book-promo: use the book cover
   if (opts.type === "book-promo" && data?.coverSrc) {
@@ -233,18 +248,20 @@ async function resolveImage(post, data, opts) {
     }
   }
 
-  // For blog-share: use blog post image if available
-  if (opts.type === "blog-share" && data?.image) {
-    const url = data.image.startsWith("http")
-      ? data.image
-      : `${SITE_URL}${data.image}`;
-    console.log(`🖼️  Using blog image: ${url}`);
-    try {
-      const { buffer, mimeType } = await downloadImage(url);
-      return { url, buffer, mimeType };
-    } catch (err) {
-      console.log(`⚠️  Could not download blog image: ${err.message}`);
-      // Fall through to AI generation
+  // For blog-share: use hero image from blog markdown frontmatter
+  if (opts.type === "blog-share" && data?.slug) {
+    const slug = typeof data.slug === "object" ? data.slug[opts.lang || "en"] : data.slug;
+    const blogImage = getBlogImageFromFrontmatter(slug, opts.lang || "en");
+    if (blogImage) {
+      const url = blogImage.startsWith("http") ? blogImage : `${SITE_URL}${blogImage}`;
+      console.log(`🖼️  Using blog image: ${url}`);
+      try {
+        const { buffer, mimeType } = await downloadImage(url);
+        return { url, buffer, mimeType };
+      } catch (err) {
+        console.log(`⚠️  Could not download blog image: ${err.message}`);
+        // Fall through to AI generation
+      }
     }
   }
 
