@@ -29,7 +29,7 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generatePost, generateWeeklyCalendar } from "./content-templates.mjs";
+import { generatePost, generateWeeklyCalendar, buildUtmUrl } from "./content-templates.mjs";
 import { generateAIPost } from "./ai-generate.mjs";
 import { generateImage, downloadImage } from "./image-generate.mjs";
 import { postToBluesky } from "./platforms/bluesky.mjs";
@@ -337,16 +337,16 @@ async function publishPost(post, platform, imageData, data, lang) {
 
           const bskyOpts = {};
 
-          // Attach link card embed
+          // Attach link card embed (with platform-specific UTM)
           if (data?.amazonUrl) {
-            bskyOpts.linkUrl = data.amazonUrl;
+            bskyOpts.linkUrl = data.amazonUrl; // Amazon strips UTM — keep as-is
             bskyOpts.linkTitle = data.title?.[lang] || data.title?.en || "";
             bskyOpts.linkDescription = data.description?.[lang] || data.description?.en || "";
           } else {
             // Extract any URL from Facebook text as link card source
             const urlMatch = post.platforms.facebook.text.match(/https?:\/\/[^\s]+/);
             if (urlMatch) {
-              bskyOpts.linkUrl = urlMatch[0];
+              bskyOpts.linkUrl = buildUtmUrl(urlMatch[0], { source: "bluesky", campaign: data?._postType || "organic" });
               bskyOpts.linkTitle = "Little Chubby Press";
               bskyOpts.linkDescription = "";
             }
@@ -372,7 +372,12 @@ async function publishPost(post, platform, imageData, data, lang) {
           }
 
           const fbOpts = {};
-          if (data?.amazonUrl) fbOpts.link = data.amazonUrl;
+          if (data?.amazonUrl) fbOpts.link = data.amazonUrl; // Amazon strips UTM
+          else {
+            // Tag any site link in text with Facebook-specific UTM
+            const fbUrlMatch = fullText.match(/https?:\/\/[^\s]+/);
+            if (fbUrlMatch) fbOpts.link = buildUtmUrl(fbUrlMatch[0], { source: "facebook", campaign: data?._postType || "organic" });
+          }
           if (imageData?.url) fbOpts.imageUrl = imageData.url;
 
           const result = await postToFacebook(fullText, fbOpts);
@@ -518,6 +523,9 @@ async function main() {
   }
 
   if (opts.command === "post") {
+    // Tag data with post type for platform-specific UTM in embeds
+    if (data) data._postType = opts.type;
+
     // Resolve image (book cover, blog image, or AI-generated)
     const imageData = await resolveImage(post, data, opts);
 

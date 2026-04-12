@@ -6,6 +6,31 @@
 
 const SITE_URL = "https://www.littlechubbypress.com";
 
+// ─── UTM helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Append UTM query params to a site URL (skips Amazon / external links).
+ * @param {string} url
+ * @param {{ source?: string, campaign?: string, content?: string }} utm
+ * @returns {string}
+ */
+export function buildUtmUrl(url, { source = "social", campaign = "organic", content } = {}) {
+  // Only tag our own URLs — Amazon strips UTM params
+  if (!url.startsWith(SITE_URL)) return url;
+  const u = new URL(url);
+  u.searchParams.set("utm_source", source);
+  u.searchParams.set("utm_medium", "social");
+  u.searchParams.set("utm_campaign", campaign);
+  if (content) u.searchParams.set("utm_content", content);
+  return u.toString();
+}
+
+// Internal: wrap a site URL at template-render time (platform + campaign set later)
+let _utmCtx = { source: "social", campaign: "organic" };
+function siteUrl(path) {
+  return buildUtmUrl(`${SITE_URL}${path}`, _utmCtx);
+}
+
 // ─── Hashtag pools ──────────────────────────────────────────────────────────
 
 const BASE_HASHTAGS_EN = [
@@ -77,21 +102,21 @@ const blogShareTemplates = {
   en: [
     (p) => ({
       text: `📝 New on the blog: "${p.title.en}"\n\n${p.summary.en}`,
-      cta: `Read more 👉 ${SITE_URL}/en/blog/${p.slug.en}`,
+      cta: `Read more 👉 ${siteUrl(`/en/blog/${p.slug.en}`)}`,
     }),
     (p) => ({
       text: `Did you know? 🤔\n\n${p.summary.en}\n\nWe wrote a full guide about it!`,
-      cta: `Check it out: ${SITE_URL}/en/blog/${p.slug.en}`,
+      cta: `Check it out: ${siteUrl(`/en/blog/${p.slug.en}`)}`,
     }),
   ],
   es: [
     (p) => ({
       text: `📝 Nuevo en el blog: "${p.title.es}"\n\n${p.summary.es}`,
-      cta: `Lee mas 👉 ${SITE_URL}/es/blog/${p.slug.es}`,
+      cta: `Lee mas 👉 ${siteUrl(`/es/blog/${p.slug.es}`)}`,
     }),
     (p) => ({
       text: `¿Sabias? 🤔\n\n${p.summary.es}\n\nEscribimos una guia completa!`,
-      cta: `Leela aqui: ${SITE_URL}/es/blog/${p.slug.es}`,
+      cta: `Leela aqui: ${siteUrl(`/es/blog/${p.slug.es}`)}`,
     }),
   ],
 };
@@ -102,29 +127,29 @@ const blogNewTemplates = {
   en: [
     (p) => ({
       text: `🆕 Just published! "${p.title.en}"\n\n${p.summary.en}\n\nFresh off the blog — don't miss it!`,
-      cta: `Read it now 👉 ${SITE_URL}/en/blog/${p.slug.en}`,
+      cta: `Read it now 👉 ${siteUrl(`/en/blog/${p.slug.en}`)}`,
     }),
     (p) => ({
       text: `📣 New on the blog today!\n\n"${p.title.en}"\n\n${p.summary.en}`,
-      cta: `Check it out: ${SITE_URL}/en/blog/${p.slug.en}`,
+      cta: `Check it out: ${siteUrl(`/en/blog/${p.slug.en}`)}`,
     }),
     (p) => ({
       text: `Hot off the press! 🔥\n\nWe just published a new guide: "${p.title.en}"\n\n${p.summary.en}`,
-      cta: `Read the full article: ${SITE_URL}/en/blog/${p.slug.en}`,
+      cta: `Read the full article: ${siteUrl(`/en/blog/${p.slug.en}`)}`,
     }),
   ],
   es: [
     (p) => ({
       text: `🆕 ¡Recien publicado! "${p.title.es}"\n\n${p.summary.es}\n\n¡Directo del blog — no te lo pierdas!`,
-      cta: `Leelo ahora 👉 ${SITE_URL}/es/blog/${p.slug.es}`,
+      cta: `Leelo ahora 👉 ${siteUrl(`/es/blog/${p.slug.es}`)}`,
     }),
     (p) => ({
       text: `📣 ¡Nuevo en el blog hoy!\n\n"${p.title.es}"\n\n${p.summary.es}`,
-      cta: `Miralo aqui: ${SITE_URL}/es/blog/${p.slug.es}`,
+      cta: `Miralo aqui: ${siteUrl(`/es/blog/${p.slug.es}`)}`,
     }),
     (p) => ({
       text: `¡Recien salido del horno! 🔥\n\nPublicamos una nueva guia: "${p.title.es}"\n\n${p.summary.es}`,
-      cta: `Lee el articulo completo: ${SITE_URL}/es/blog/${p.slug.es}`,
+      cta: `Lee el articulo completo: ${siteUrl(`/es/blog/${p.slug.es}`)}`,
     }),
   ],
 };
@@ -135,41 +160,41 @@ const engagementTemplates = {
   en: [
     () => ({
       text: `What's your kid's favorite thing to color? 🖍️\n\nAnimals 🐾\nSpace 🚀\nFashion 👗\nFood 🍕\nVehicles 🚗\n\nTell us in the comments!`,
-      cta: `Explore our full collection: ${SITE_URL}/en/books`,
+      cta: `Explore our full collection: ${siteUrl("/en/books")}`,
     }),
     () => ({
       text: `3 benefits of coloring that might surprise you:\n\n1️⃣ Improves fine motor skills\n2️⃣ Reduces screen time naturally\n3️⃣ Creates calm family moments\n\nHow often does your family color together?`,
-      cta: `Discover our books: ${SITE_URL}/en/books`,
+      cta: `Discover our books: ${siteUrl("/en/books")}`,
     }),
     () => ({
       text: `Pro tip for parents: 💡\n\nDon't say "go draw something." Instead, sit down and color WITH your kids for 10 minutes. Watch the magic happen. ✨\n\nColoring together > coloring alone.`,
-      cta: `Find the perfect book: ${SITE_URL}/en/books`,
+      cta: `Find the perfect book: ${siteUrl("/en/books")}`,
     }),
     () => ({
       text: `Every page colored is a screen-free victory! 📵🎨\n\nOur coloring books are designed for meaningful family time — no batteries required.\n\nWhat's your family's screen-free activity?`,
-      cta: `Browse our books: ${SITE_URL}/en/books`,
+      cta: `Browse our books: ${siteUrl("/en/books")}`,
     }),
     () => ({
       text: `Did you know? The average kid spends 7+ hours/day on screens. 😟\n\nColoring books offer a simple, creative alternative that kids actually enjoy.\n\nStart with just 15 minutes a day!`,
-      cta: `See our collection: ${SITE_URL}/en/books`,
+      cta: `See our collection: ${siteUrl("/en/books")}`,
     }),
   ],
   es: [
     () => ({
       text: `¿Que es lo que mas le gusta colorear a tu peque? 🖍️\n\nAnimales 🐾\nEspacio 🚀\nModa 👗\nComida 🍕\nVehiculos 🚗\n\n¡Cuentanos en los comentarios!`,
-      cta: `Explora nuestra coleccion: ${SITE_URL}/es/books`,
+      cta: `Explora nuestra coleccion: ${siteUrl("/es/books")}`,
     }),
     () => ({
       text: `3 beneficios de colorear que te sorprenderan:\n\n1️⃣ Mejora la motricidad fina\n2️⃣ Reduce el uso de pantallas\n3️⃣ Crea momentos familiares de calma\n\n¿Cada cuanto colorean juntos en familia?`,
-      cta: `Descubre nuestros libros: ${SITE_URL}/es/books`,
+      cta: `Descubre nuestros libros: ${siteUrl("/es/books")}`,
     }),
     () => ({
       text: `Tip para padres: 💡\n\nNo digas "ve a dibujar." Mejor sientate y colorea CON tus peques 10 minutos. Mira la magia. ✨\n\nColorear juntos > colorear solo.`,
-      cta: `Encuentra el libro perfecto: ${SITE_URL}/es/books`,
+      cta: `Encuentra el libro perfecto: ${siteUrl("/es/books")}`,
     }),
     () => ({
       text: `¡Cada pagina coloreada es una victoria sin pantallas! 📵🎨\n\nNuestros libros de colorear estan disenados para tiempo de calidad en familia.\n\n¿Cual es la actividad sin pantallas de tu familia?`,
-      cta: `Mira nuestros libros: ${SITE_URL}/es/books`,
+      cta: `Mira nuestros libros: ${siteUrl("/es/books")}`,
     }),
   ],
 };
@@ -180,45 +205,45 @@ const communityTemplates = {
   en: [
     () => ({
       text: `Want coloring tips, free activities, and first looks at new books? 📬\n\nJoin our newsletter — it's free, fun, and screen-free friendly!`,
-      cta: `Sign up here: ${SITE_URL}/en/newsletter`,
+      cta: `Sign up here: ${siteUrl("/en/newsletter")}`,
     }),
     () => ({
       text: `We'd love to see your kid's artwork! 🎨\n\nShare your coloring creations with us — tag @LittleChubbyPress or visit our gallery for inspiration.`,
-      cta: `See the gallery: ${SITE_URL}/en/gallery`,
+      cta: `See the gallery: ${siteUrl("/en/gallery")}`,
     }),
     () => ({
       text: `New books, tips, and free coloring resources — all in one place! 📚\n\nVisit our website and discover what's new at Little Chubby Press.`,
-      cta: `Explore: ${SITE_URL}/en`,
+      cta: `Explore: ${siteUrl("/en")}`,
     }),
     () => ({
       text: `Got questions about our coloring books? Want to suggest a theme? 💌\n\nWe read every message! Drop us a line and let's chat.`,
-      cta: `Contact us: ${SITE_URL}/en/contact`,
+      cta: `Contact us: ${siteUrl("/en/contact")}`,
     }),
     () => ({
       text: `Looking for your next family coloring session? 📖✨\n\nBrowse our full collection — there's something for every age and every mood!`,
-      cta: `See all books: ${SITE_URL}/en/books`,
+      cta: `See all books: ${siteUrl("/en/books")}`,
     }),
   ],
   es: [
     () => ({
       text: `¿Quieres tips de colorear, actividades gratis y acceso anticipado a nuevos libros? 📬\n\n¡Unete a nuestro newsletter — es gratis y divertido!`,
-      cta: `Registrate aqui: ${SITE_URL}/es/newsletter`,
+      cta: `Registrate aqui: ${siteUrl("/es/newsletter")}`,
     }),
     () => ({
       text: `¡Nos encantaria ver las obras de arte de tus peques! 🎨\n\nComparte sus creaciones con nosotros — visita nuestra galeria para inspirarte.`,
-      cta: `Ver la galeria: ${SITE_URL}/es/gallery`,
+      cta: `Ver la galeria: ${siteUrl("/es/gallery")}`,
     }),
     () => ({
       text: `Nuevos libros, tips y recursos gratis para colorear — todo en un lugar! 📚\n\nVisita nuestro sitio y descubre las novedades de Little Chubby Press.`,
-      cta: `Explora: ${SITE_URL}/es`,
+      cta: `Explora: ${siteUrl("/es")}`,
     }),
     () => ({
       text: `¿Tienes preguntas sobre nuestros libros? ¿Quieres sugerir un tema? 💌\n\n¡Leemos cada mensaje! Escribenos y platiquemos.`,
-      cta: `Contacto: ${SITE_URL}/es/contact`,
+      cta: `Contacto: ${siteUrl("/es/contact")}`,
     }),
     () => ({
       text: `¿Buscas tu proxima sesion de colorear en familia? 📖✨\n\nExplora nuestra coleccion completa — hay algo para cada edad y cada momento!`,
-      cta: `Ver todos los libros: ${SITE_URL}/es/books`,
+      cta: `Ver todos los libros: ${siteUrl("/es/books")}`,
     }),
   ],
 };
@@ -230,9 +255,13 @@ const communityTemplates = {
  * @param {"book-promo"|"blog-share"|"engagement"|"review-request"} type
  * @param {"en"|"es"} lang
  * @param {object} [data] - book or post object (not needed for engagement)
+ * @param {{ source?: string }} [utmOpts] - UTM overrides (source set per-platform by caller)
  * @returns {{ text: string, hashtags: string, fullPost: string }}
  */
-export function generatePost(type, lang, data) {
+export function generatePost(type, lang, data, utmOpts = {}) {
+  // Set UTM context so siteUrl() embeds tracking params in every CTA
+  _utmCtx = { source: utmOpts.source || "social", campaign: type };
+
   let templates;
   switch (type) {
     case "book-promo":

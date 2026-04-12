@@ -170,5 +170,13 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     </main>
     <Footer lang={lang} />
     <CookieConsent lang={lang} />
+
+    <!-- Vercel Analytics & Speed Insights (cookie-free, GDPR-compliant) -->
+    <script>
+      import { inject } from "@vercel/analytics";
+      import { injectSpeedInsights } from "@vercel/speed-insights";
+      inject();
+      injectSpeedInsights();
+    </script>
   </body>
 </html>
