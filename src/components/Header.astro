@@ -93,6 +93,7 @@ const navItems = [
 <script is:inline>
   function initHeader() {
     // Auth state: toggle login vs profile/logout
+    // Middleware clears sb-logged-in when tokens expire, so this is reliable
     var loggedIn = document.cookie.indexOf("sb-logged-in=") !== -1;
     var loginEl = document.getElementById("auth-login");
     var profileEl = document.getElementById("auth-profile");

@@ -10,116 +10,598 @@ const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
 const pathname = `/${lang}/profile/`;
 
-// Get current session from cookie
-const accessToken = Astro.cookies.get("sb-access-token")?.value;
-const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
-
-let user = null;
-let profile: { display_name: string | null; lang_pref: string } | null = null;
-let saveMessage = "";
-
-if (accessToken && refreshToken) {
-  const { data: sessionData } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  });
-  user = sessionData?.user ?? null;
-}
-
-// Handle magic link callback — extract tokens from hash
-// This is handled client-side, see script below
-
+const user = Astro.locals.user;
 if (!user) {
   return Astro.redirect(`/${lang}/login/`);
 }
 
 // Fetch profile
-let fetchError = false;
-try {
-  const { data: profileData, error } = await supabase
-    .from("profiles")
-    .select("display_name, lang_pref")
-    .eq("id", user.id)
-    .single();
-  if (error) throw error;
-  profile = profileData;
-} catch {
-  fetchError = true;
+interface Profile {
+  display_name: string | null;
+  lang_pref: string;
+  avatar_url: string | null;
+  phone: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  country: string | null;
 }
+
+let profile: Profile | null = null;
+let saveMessage = "";
+let saveMessageType: "success" | "error" = "success";
+let securityMessage = "";
+let securityMessageType: "success" | "error" = "success";
+
+const { data: profileData } = await supabase
+  .from("profiles")
+  .select("display_name, lang_pref, avatar_url, phone, address_line1, address_line2, city, state, zip_code, country")
+  .eq("id", user.id)
+  .single();
+profile = profileData;
 
 if (Astro.request.method === "POST") {
   const formData = await Astro.request.formData();
-  const displayName = formData.get("display_name")?.toString().trim() || "";
-  const langPref = formData.get("lang_pref")?.toString().trim() || "es";
+  const action = formData.get("action")?.toString() || "save-profile";
 
-  await supabase
-    .from("profiles")
-    .update({ display_name: displayName, lang_pref: langPref })
-    .eq("id", user.id);
+  if (action === "save-profile") {
+    const updates = {
+      display_name: formData.get("display_name")?.toString().trim() || null,
+      lang_pref: formData.get("lang_pref")?.toString().trim() || "es",
+      phone: formData.get("phone")?.toString().trim() || null,
+      address_line1: formData.get("address_line1")?.toString().trim() || null,
+      address_line2: formData.get("address_line2")?.toString().trim() || null,
+      city: formData.get("city")?.toString().trim() || null,
+      state: formData.get("state")?.toString().trim() || null,
+      zip_code: formData.get("zip_code")?.toString().trim() || null,
+      country: formData.get("country")?.toString().trim() || null,
+    };
 
-  profile = { display_name: displayName, lang_pref: langPref };
-  saveMessage = text.profileSaved;
+    const { error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", user.id);
+
+    if (error) {
+      saveMessage = text.loginError;
+      saveMessageType = "error";
+    } else {
+      profile = { ...profile, ...updates } as Profile;
+      saveMessage = text.profileSaved;
+      saveMessageType = "success";
+    }
+  } else if (action === "change-email") {
+    const newEmail = formData.get("new_email")?.toString().trim() || "";
+    if (newEmail) {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) {
+        securityMessage = error.message;
+        securityMessageType = "error";
+      } else {
+        securityMessage = text.profileChangeEmailSuccess;
+        securityMessageType = "success";
+      }
+    }
+  } else if (action === "change-password") {
+    const newPassword = formData.get("new_password")?.toString() || "";
+    const confirmPassword = formData.get("confirm_password")?.toString() || "";
+
+    if (newPassword.length < 6) {
+      securityMessage = text.profilePasswordTooShort;
+      securityMessageType = "error";
+    } else if (newPassword !== confirmPassword) {
+      securityMessage = text.profilePasswordMismatch;
+      securityMessageType = "error";
+    } else {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        securityMessage = error.message;
+        securityMessageType = "error";
+      } else {
+        securityMessage = text.profilePasswordChanged;
+        securityMessageType = "success";
+      }
+    }
+  }
 }
+
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 ---
 
 <BaseLayout lang={lang} title={text.profileMetaTitle} description={text.profileHeading} pathname={pathname}>
   <section class="page-section container">
-    <div class="auth-card surface-card">
-      <div class="section-head" style="text-align:center;">
-        <h1>{text.profileHeading}</h1>
-        <p>{user.email}</p>
-      </div>
+    <div class="profile-layout">
 
-      {saveMessage && (
-        <p class="auth-message success">{saveMessage}</p>
-      )}
-
-      <form method="POST" class="form-grid">
-        <div class="form-group">
-          <label for="display_name">{text.profileDisplayName}</label>
-          <input
-            type="text"
-            id="display_name"
-            name="display_name"
-            value={profile?.display_name || ""}
-            autocomplete="name"
+      {/* ── Avatar ── */}
+      <div class="profile-avatar-section surface-card">
+        <div class="avatar-wrapper">
+          <img
+            id="avatar-preview"
+            src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.display_name || user.email || "U")}&background=4a90d9&color=fff&size=128`}
+            alt={text.profileAvatar}
+            width="128"
+            height="128"
+            class="avatar-img"
           />
         </div>
+        <div class="avatar-actions">
+          <label class="btn btn-secondary btn-sm" for="avatar-input" style="cursor:pointer;">
+            {text.profileAvatarChange}
+          </label>
+          <input
+            type="file"
+            id="avatar-input"
+            accept="image/jpeg,image/png,image/webp"
+            style="display:none;"
+          />
+          {profile?.avatar_url && (
+            <button type="button" id="avatar-remove" class="btn btn-secondary btn-sm" style="color:#8f1f18;">
+              {text.profileAvatarRemove}
+            </button>
+          )}
+        </div>
+        <p id="avatar-status" style="font-size:0.85rem; color:var(--ink-soft); margin-top:0.5rem;"></p>
+        <p style="text-align:center; font-weight:600; margin-top:0.8rem;">{profile?.display_name || user.email}</p>
+        <p style="text-align:center; color:var(--ink-soft); font-size:0.9rem;">{user.email}</p>
+      </div>
 
-        <div class="form-group">
-          <label for="lang_pref">{text.profileLangPref}</label>
-          <select id="lang_pref" name="lang_pref" style="width:100%; border-radius:0.8rem; border:1px solid var(--line); background:var(--surface); padding:0.7rem 0.82rem; font:inherit;">
-            <option value="es" selected={profile?.lang_pref === "es"}>Español</option>
-            <option value="en" selected={profile?.lang_pref === "en"}>English</option>
-          </select>
+      {/* ── Profile form ── */}
+      <div class="profile-forms">
+
+        {saveMessage && (
+          <p class={`auth-message ${saveMessageType}`}>{saveMessage}</p>
+        )}
+
+        <form method="POST" class="surface-card profile-section">
+          <input type="hidden" name="action" value="save-profile" />
+
+          <h2 class="profile-section-title">{text.profilePersonalInfo}</h2>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="display_name">{text.profileDisplayName}</label>
+              <input
+                type="text"
+                id="display_name"
+                name="display_name"
+                value={profile?.display_name || ""}
+                autocomplete="name"
+              />
+            </div>
+            <div class="form-group">
+              <label for="phone">{text.profilePhone}</label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={profile?.phone || ""}
+                autocomplete="tel"
+                inputmode="tel"
+              />
+            </div>
+          </div>
+
+          <h2 class="profile-section-title" style="margin-top:1.5rem;">{text.profileAddressSection}</h2>
+
+          <div class="form-group">
+            <label for="address_line1">{text.profileAddress1}</label>
+            <input
+              type="text"
+              id="address_line1"
+              name="address_line1"
+              value={profile?.address_line1 || ""}
+              autocomplete="address-line1"
+            />
+          </div>
+          <div class="form-group">
+            <label for="address_line2">{text.profileAddress2}</label>
+            <input
+              type="text"
+              id="address_line2"
+              name="address_line2"
+              value={profile?.address_line2 || ""}
+              autocomplete="address-line2"
+            />
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="city">{text.profileCity}</label>
+              <input
+                type="text"
+                id="city"
+                name="city"
+                value={profile?.city || ""}
+                autocomplete="address-level2"
+              />
+            </div>
+            <div class="form-group">
+              <label for="state">{text.profileState}</label>
+              <input
+                type="text"
+                id="state"
+                name="state"
+                value={profile?.state || ""}
+                autocomplete="address-level1"
+              />
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="zip_code">{text.profileZip}</label>
+              <input
+                type="text"
+                id="zip_code"
+                name="zip_code"
+                value={profile?.zip_code || ""}
+                autocomplete="postal-code"
+              />
+            </div>
+            <div class="form-group">
+              <label for="country">{text.profileCountry}</label>
+              <input
+                type="text"
+                id="country"
+                name="country"
+                value={profile?.country || ""}
+                autocomplete="country-name"
+              />
+            </div>
+          </div>
+
+          <h2 class="profile-section-title" style="margin-top:1.5rem;">{text.profilePreferences}</h2>
+
+          <div class="form-group">
+            <label for="lang_pref">{text.profileLangPref}</label>
+            <select id="lang_pref" name="lang_pref" class="form-select">
+              <option value="es" selected={profile?.lang_pref === "es"}>Español</option>
+              <option value="en" selected={profile?.lang_pref === "en"}>English</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">
+            {text.profileSave}
+          </button>
+        </form>
+
+        {/* ── Security section ── */}
+        <div class="surface-card profile-section">
+          <h2 class="profile-section-title">{text.profileSecurity}</h2>
+
+          {securityMessage && (
+            <p class={`auth-message ${securityMessageType}`}>{securityMessage}</p>
+          )}
+
+          {/* Change email */}
+          <details class="security-block">
+            <summary>{text.profileChangeEmail}</summary>
+            <form method="POST" class="security-form">
+              <input type="hidden" name="action" value="change-email" />
+              <div class="form-group">
+                <label for="new_email">{text.profileNewEmail}</label>
+                <input
+                  type="email"
+                  id="new_email"
+                  name="new_email"
+                  required
+                  autocomplete="email"
+                  inputmode="email"
+                  placeholder={user.email || ""}
+                />
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">
+                {text.profileChangeEmailSubmit}
+              </button>
+            </form>
+          </details>
+
+          {/* Change / set password */}
+          <details class="security-block">
+            <summary>{text.profileChangePassword}</summary>
+            <form method="POST" class="security-form">
+              <input type="hidden" name="action" value="change-password" />
+              <div class="form-group">
+                <label for="new_password">{text.profileNewPassword}</label>
+                <input
+                  type="password"
+                  id="new_password"
+                  name="new_password"
+                  required
+                  autocomplete="new-password"
+                  minlength="6"
+                />
+              </div>
+              <div class="form-group">
+                <label for="confirm_password">{text.profileConfirmPassword}</label>
+                <input
+                  type="password"
+                  id="confirm_password"
+                  name="confirm_password"
+                  required
+                  autocomplete="new-password"
+                  minlength="6"
+                />
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">
+                {text.profileChangePasswordSubmit}
+              </button>
+            </form>
+          </details>
         </div>
 
-        <button type="submit" class="btn btn-primary" style="width:100%;">
-          {text.profileSave}
-        </button>
-      </form>
-
-      <div style="margin-top:1.5rem; text-align:center;">
-        <a href={`/${lang}/logout/`} class="btn btn-secondary">{text.navLogout}</a>
+        <div style="text-align:center; margin-top:1.5rem;">
+          <a href={`/${lang}/logout/`} class="btn btn-secondary">{text.navLogout}</a>
+        </div>
       </div>
     </div>
   </section>
 </BaseLayout>
 
-<style>
-  .auth-card {
-    max-width: 28rem;
-    margin: 0 auto;
-    padding: 2rem 1.6rem;
+<script is:inline define:vars={{ supabaseUrl, supabaseAnonKey, userId: user.id }}>
+  // ── Avatar upload (client-side to Supabase Storage) ──
+  var fileInput = document.getElementById("avatar-input");
+  var preview = document.getElementById("avatar-preview");
+  var status = document.getElementById("avatar-status");
+  var removeBtn = document.getElementById("avatar-remove");
+
+  if (fileInput) {
+    fileInput.addEventListener("change", function() {
+      var file = fileInput.files[0];
+      if (!file) return;
+
+      var maxSize = 2 * 1024 * 1024; // 2 MB
+      if (file.size > maxSize) {
+        status.textContent = "Max 2 MB";
+        status.style.color = "#8f1f18";
+        return;
+      }
+
+      var allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (allowed.indexOf(file.type) === -1) {
+        status.textContent = "JPG, PNG, or WebP only";
+        status.style.color = "#8f1f18";
+        return;
+      }
+
+      status.textContent = "Uploading…";
+      status.style.color = "var(--ink-soft)";
+
+      var ext = file.name.split(".").pop().toLowerCase();
+      var filePath = userId + "/avatar." + ext;
+
+      // Get the access token from the cookie for the upload
+      // We use the Supabase REST API directly
+      var accessToken = "";
+      document.cookie.split(";").forEach(function(c) {
+        var parts = c.trim().split("=");
+        if (parts[0] === "sb-access-token") accessToken = decodeURIComponent(parts.slice(1).join("="));
+      });
+
+      // Upload via fetch (Supabase Storage REST API)
+      fetch(supabaseUrl + "/storage/v1/object/avatars/" + filePath, {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + accessToken,
+          "apikey": supabaseAnonKey,
+          "Content-Type": file.type,
+          "x-upsert": "true"
+        },
+        body: file
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error("Upload failed");
+        var publicUrl = supabaseUrl + "/storage/v1/object/public/avatars/" + filePath + "?t=" + Date.now();
+        preview.src = publicUrl;
+
+        // Save avatar_url to profile
+        return fetch(supabaseUrl + "/rest/v1/profiles?id=eq." + userId, {
+          method: "PATCH",
+          headers: {
+            "Authorization": "Bearer " + accessToken,
+            "apikey": supabaseAnonKey,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify({ avatar_url: publicUrl.split("?")[0] })
+        });
+      })
+      .then(function() {
+        status.textContent = "✓";
+        status.style.color = "var(--brand-green)";
+      })
+      .catch(function() {
+        status.textContent = "Upload failed";
+        status.style.color = "#8f1f18";
+      });
+    });
   }
 
-  .auth-message.success {
+  if (removeBtn) {
+    removeBtn.addEventListener("click", function() {
+      status.textContent = "Removing…";
+      var accessToken = "";
+      document.cookie.split(";").forEach(function(c) {
+        var parts = c.trim().split("=");
+        if (parts[0] === "sb-access-token") accessToken = decodeURIComponent(parts.slice(1).join("="));
+      });
+
+      // List files for user, then remove them
+      fetch(supabaseUrl + "/storage/v1/object/list/avatars/" + userId, {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + accessToken,
+          "apikey": supabaseAnonKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prefix: "" })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(files) {
+        if (!files || !files.length) return;
+        var paths = files.map(function(f) { return userId + "/" + f.name; });
+        return fetch(supabaseUrl + "/storage/v1/object/avatars", {
+          method: "DELETE",
+          headers: {
+            "Authorization": "Bearer " + accessToken,
+            "apikey": supabaseAnonKey,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ prefixes: paths })
+        });
+      })
+      .then(function() {
+        // Clear avatar_url in profile
+        return fetch(supabaseUrl + "/rest/v1/profiles?id=eq." + userId, {
+          method: "PATCH",
+          headers: {
+            "Authorization": "Bearer " + accessToken,
+            "apikey": supabaseAnonKey,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal"
+          },
+          body: JSON.stringify({ avatar_url: null })
+        });
+      })
+      .then(function() {
+        preview.src = "https://ui-avatars.com/api/?name=U&background=4a90d9&color=fff&size=128";
+        removeBtn.style.display = "none";
+        status.textContent = "✓";
+        status.style.color = "var(--brand-green)";
+      })
+      .catch(function() {
+        status.textContent = "Error";
+        status.style.color = "#8f1f18";
+      });
+    });
+  }
+</script>
+
+<style>
+  .profile-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    max-width: 48rem;
+    margin: 0 auto;
+  }
+
+  @media (min-width: 640px) {
+    .profile-layout {
+      grid-template-columns: 14rem 1fr;
+      align-items: start;
+    }
+  }
+
+  .profile-avatar-section {
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .avatar-wrapper {
+    display: flex;
+    justify-content: center;
+  }
+
+  .avatar-img {
+    width: 128px;
+    height: 128px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--brand-blue);
+  }
+
+  .avatar-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .profile-forms {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .profile-section {
+    padding: 1.5rem;
+  }
+
+  .profile-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.8rem;
+    color: var(--ink);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.4rem;
+  }
+
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+  }
+
+  @media (max-width: 480px) {
+    .form-grid-2 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .form-select {
+    width: 100%;
+    border-radius: 0.8rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 0.7rem 0.82rem;
+    font: inherit;
+  }
+
+  .security-block {
+    border: 1px solid var(--line);
+    border-radius: 0.8rem;
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .security-block summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--brand-blue);
+  }
+
+  .security-form {
+    margin-top: 0.8rem;
+  }
+
+  .security-form .form-group {
+    margin-bottom: 0.6rem;
+  }
+
+  .btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .auth-message {
     text-align: center;
     padding: 0.8rem;
     border-radius: 0.5rem;
     margin-bottom: 1rem;
+  }
+
+  .auth-message.success {
     background: rgba(92, 150, 80, 0.14);
     color: var(--brand-green);
     border: 1px solid rgba(92, 150, 80, 0.3);
+  }
+
+  .auth-message.error {
+    background: rgba(220, 50, 50, 0.08);
+    color: #8f1f18;
+    border: 1px solid rgba(220, 50, 50, 0.25);
   }
 </style>

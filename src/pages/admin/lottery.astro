@@ -2,21 +2,10 @@
 export const prerender = false;
 
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { supabase, ADMIN_EMAILS, getServiceClient } from "../../lib/supabase";
+import { ADMIN_EMAILS, getServiceClient } from "../../lib/supabase";
 import { books } from "../../data/books";
 
-const accessToken = Astro.cookies.get("sb-access-token")?.value;
-const refreshToken = Astro.cookies.get("sb-refresh-token")?.value;
-let user = null;
-
-if (accessToken && refreshToken) {
-  const { data: sessionData } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  });
-  user = sessionData?.user ?? null;
-}
-
+const user = Astro.locals.user;
 if (!user || !ADMIN_EMAILS.includes(user.email ?? "")) {
   return Astro.redirect("/es/login/");
 }

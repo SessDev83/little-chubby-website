@@ -10,17 +10,23 @@ const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
 const pathname = `/${lang}/login/`;
 
-// Check if user is already logged in
-const { data: { session } } = await supabase.auth.getSession();
+// If already logged in, redirect to profile
+const user = Astro.locals.user;
+if (user) {
+  return Astro.redirect(`/${lang}/profile/`);
+}
 
 let message = "";
 let messageType: "success" | "error" | "" = "";
+let activeTab: "magic" | "password" = "magic";
 
 if (Astro.request.method === "POST") {
   const formData = await Astro.request.formData();
+  const action = formData.get("action")?.toString() || "";
   const email = formData.get("email")?.toString().trim() || "";
 
-  if (email) {
+  if (action === "magic-link" && email) {
+    activeTab = "magic";
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -35,6 +41,42 @@ if (Astro.request.method === "POST") {
       message = text.loginCheckEmail;
       messageType = "success";
     }
+  } else if (action === "password" && email) {
+    activeTab = "password";
+    const password = formData.get("password")?.toString() || "";
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error || !data.session) {
+      message = text.loginInvalidCredentials;
+      messageType = "error";
+    } else {
+      // Set auth cookies
+      Astro.cookies.set("sb-access-token", data.session.access_token, {
+        path: "/",
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      Astro.cookies.set("sb-refresh-token", data.session.refresh_token, {
+        path: "/",
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      Astro.cookies.set("sb-logged-in", "1", {
+        path: "/",
+        httpOnly: false,
+        secure: true,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      return Astro.redirect(`/${lang}/profile/`);
+    }
   }
 }
 ---
@@ -44,7 +86,6 @@ if (Astro.request.method === "POST") {
     <div class="auth-card surface-card">
       <div class="section-head" style="text-align:center;">
         <h1>{text.loginHeading}</h1>
-        <p>{text.loginSubheading}</p>
       </div>
 
       {message && (
@@ -52,19 +93,121 @@ if (Astro.request.method === "POST") {
       )}
 
       {messageType !== "success" && (
-        <form method="POST" class="form-grid">
-          <div class="form-group">
-            <label for="email">{text.loginEmailLabel}</label>
-            <input type="email" id="email" name="email" required autocomplete="email" />
+        <>
+          <div class="auth-tabs" role="tablist">
+            <button
+              role="tab"
+              class={`auth-tab ${activeTab === "magic" ? "active" : ""}`}
+              data-tab="magic"
+              aria-selected={activeTab === "magic" ? "true" : "false"}
+            >
+              {text.loginTabMagicLink}
+            </button>
+            <button
+              role="tab"
+              class={`auth-tab ${activeTab === "password" ? "active" : ""}`}
+              data-tab="password"
+              aria-selected={activeTab === "password" ? "true" : "false"}
+            >
+              {text.loginTabPassword}
+            </button>
           </div>
-          <button type="submit" class="btn btn-primary" style="width:100%;">
-            {text.loginSubmit}
-          </button>
-        </form>
+
+          {/* Magic Link form */}
+          <form
+            method="POST"
+            class="form-grid auth-panel"
+            id="panel-magic"
+            style={activeTab === "magic" ? "" : "display:none"}
+          >
+            <input type="hidden" name="action" value="magic-link" />
+            <p style="color:var(--ink-soft); font-size:0.95rem; margin-bottom:0.5rem;">
+              {text.loginSubheading}
+            </p>
+            <div class="form-group">
+              <label for="email-magic">{text.loginEmailLabel}</label>
+              <input
+                type="email"
+                id="email-magic"
+                name="email"
+                required
+                autocomplete="email"
+                inputmode="email"
+              />
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;">
+              {text.loginSubmit}
+            </button>
+          </form>
+
+          {/* Password form */}
+          <form
+            method="POST"
+            class="form-grid auth-panel"
+            id="panel-password"
+            style={activeTab === "password" ? "" : "display:none"}
+          >
+            <input type="hidden" name="action" value="password" />
+            <div class="form-group">
+              <label for="email-password">{text.loginEmailLabel}</label>
+              <input
+                type="email"
+                id="email-password"
+                name="email"
+                required
+                autocomplete="email"
+                inputmode="email"
+              />
+            </div>
+            <div class="form-group">
+              <label for="password">{text.loginPasswordLabel}</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                autocomplete="current-password"
+                minlength="6"
+              />
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;">
+              {text.loginSignIn}
+            </button>
+            <div style="text-align:center; margin-top:0.5rem;">
+              <a href={`/${lang}/forgot-password/`} style="font-size:0.9rem;">
+                {text.loginForgotPassword}
+              </a>
+            </div>
+          </form>
+
+          <p style="text-align:center; margin-top:1.2rem; font-size:0.95rem;">
+            {text.loginNoAccount}{" "}
+            <a href={`/${lang}/register/`}><strong>{text.loginCreateAccount}</strong></a>
+          </p>
+        </>
       )}
     </div>
   </section>
 </BaseLayout>
+
+<script is:inline>
+  document.querySelectorAll(".auth-tab").forEach(function(tab) {
+    tab.addEventListener("click", function() {
+      var target = tab.getAttribute("data-tab");
+      document.querySelectorAll(".auth-tab").forEach(function(t) {
+        t.classList.remove("active");
+        t.setAttribute("aria-selected", "false");
+      });
+      tab.classList.add("active");
+      tab.setAttribute("aria-selected", "true");
+      document.querySelectorAll(".auth-panel").forEach(function(p) {
+        p.style.display = "none";
+      });
+      var panel = document.getElementById("panel-" + target);
+      if (panel) panel.style.display = "";
+    });
+  });
+</script>
 
 <style>
   .auth-card {
@@ -90,5 +233,35 @@ if (Astro.request.method === "POST") {
     background: rgba(220, 50, 50, 0.08);
     color: #8f1f18;
     border: 1px solid rgba(220, 50, 50, 0.25);
+  }
+
+  .auth-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.2rem;
+    border-bottom: 2px solid var(--line);
+  }
+
+  .auth-tab {
+    flex: 1;
+    padding: 0.7rem 1rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    color: var(--ink-soft);
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .auth-tab.active {
+    color: var(--brand-blue);
+    border-bottom-color: var(--brand-blue);
+  }
+
+  .auth-tab:hover {
+    color: var(--ink);
   }
 </style>
