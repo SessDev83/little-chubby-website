@@ -1140,15 +1140,29 @@ main {
   }
 
   .footer-columns {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
     text-align: center;
+    gap: 1rem;
   }
 
   .site-footer-shell {
     text-align: center;
+    gap: 1.8rem;
   }
 
   .footer-brand {
+    justify-content: center;
+  }
+
+  .footer-col a {
+    font-size: 0.84rem;
+  }
+
+  .footer-col-title {
+    font-size: 0.72rem;
+  }
+
+  .footer-social-link {
     justify-content: center;
   }
 }
