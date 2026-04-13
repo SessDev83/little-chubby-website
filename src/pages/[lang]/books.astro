@@ -142,10 +142,19 @@ const booksJsonLd = JSON.stringify({
 
       // Sticky shadow: add .stuck class when filter bar is pinned
       const filtersEl = document.querySelector<HTMLElement>('.book-filters');
-      if (filtersEl) {
+      const header = document.querySelector<HTMLElement>('.site-header');
+      if (filtersEl && header) {
+        // Set top offset to match header height
+        function syncTop() {
+          const h = header!.offsetHeight;
+          filtersEl!.style.setProperty('--header-h', `${h}px`);
+        }
+        syncTop();
+        window.addEventListener('resize', syncTop);
+
         const observer = new IntersectionObserver(
           ([e]) => filtersEl.classList.toggle('stuck', e.intersectionRatio < 1),
-          { threshold: [1], rootMargin: '-1px 0px 0px 0px' }
+          { threshold: [1], rootMargin: `-${header.offsetHeight + 1}px 0px 0px 0px` }
         );
         observer.observe(filtersEl);
       }
