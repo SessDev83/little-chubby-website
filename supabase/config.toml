@@ -223,15 +223,19 @@ otp_length = 8
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 3600
 
-# Use a production-ready SMTP server
+# Use a production-ready SMTP server via Resend
+# Uncomment after setting the secret:
+#   npx supabase secrets set RESEND_API_KEY=re_YOUR_KEY --project-ref igbnuxndcgxwymyoywbn
+# Then push:
+#   npx supabase config push --project-ref igbnuxndcgxwymyoywbn --yes
 # [auth.email.smtp]
 # enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# host = "smtp.resend.com"
+# port = 465
+# user = "resend"
+# pass = "env(RESEND_API_KEY)"
+# admin_email = "hello@littlechubbypress.com"
+# sender_name = "Little Chubby Press"
 
 # Uncomment to customize email template
 [auth.email.template.invite]
@@ -239,7 +243,7 @@ subject = "You're Invited to Little Chubby Press! ✨"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.confirmation]
-subject = "Welcome to Little Chubby Press! ✅ Confirm your email"
+subject = "Welcome to Little Chubby Press! ✅ Confirm Your Email"
 content_path = "./supabase/templates/confirm.html"
 
 [auth.email.template.magic_link]
