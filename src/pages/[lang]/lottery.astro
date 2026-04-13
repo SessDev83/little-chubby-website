@@ -524,12 +524,12 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       const allOptions = Array.from(dropdown.querySelectorAll(".book-option"));
 
       searchInput.addEventListener("focus", () => {
-        dropdown.classList.add("open");
+        dropdown.dataset.open = "true";
         filterOptions();
       });
 
       searchInput.addEventListener("input", () => {
-        dropdown.classList.add("open");
+        dropdown.dataset.open = "true";
         filterOptions();
         // Clear hidden value when typing (must re-select)
         hiddenInput.value = "";
@@ -551,7 +551,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
           hiddenInput.value = opt.getAttribute("data-value");
           searchInput.value = opt.textContent;
           searchInput.setCustomValidity("");
-          dropdown.classList.remove("open");
+          dropdown.dataset.open = "false";
         });
         // Touch support for mobile
         opt.addEventListener("touchend", (e) => {
@@ -563,7 +563,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       // Close dropdown on outside click
       document.addEventListener("click", (e) => {
         if (!combo.contains(e.target)) {
-          dropdown.classList.remove("open");
+          dropdown.dataset.open = "false";
         }
       });
     }
@@ -577,7 +577,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       function setRating(value) {
         ratingInput.value = value;
         stars.forEach((s, i) => {
-          s.classList.toggle("selected", i < value);
+          s.dataset.selected = i < value ? "true" : "false";
         });
       }
 
@@ -588,10 +588,10 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
         });
         // Hover effect (desktop)
         star.addEventListener("mouseenter", () => {
-          stars.forEach((s, j) => s.classList.toggle("hovered", j <= i));
+          stars.forEach((s, j) => s.dataset.hovered = j <= i ? "true" : "false");
         });
         star.addEventListener("mouseleave", () => {
-          stars.forEach(s => s.classList.remove("hovered"));
+          stars.forEach(s => s.dataset.hovered = "false");
         });
       });
     }
@@ -726,7 +726,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
           if (ratingInput && picker) {
             ratingInput.value = data.rating;
             const starBtns = picker.querySelectorAll(".star-btn");
-            starBtns.forEach((s, j) => s.classList.toggle("selected", j < data.rating));
+            starBtns.forEach((s, j) => s.dataset.selected = j < data.rating ? "true" : "false");
           }
 
           // Make photos optional for edits
@@ -944,7 +944,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     margin: 0;
     padding: 0;
   }
-  .book-dropdown.open {
+  .book-dropdown[data-open="true"] {
     display: block;
   }
   .book-option {
@@ -993,8 +993,8 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     color: var(--line);
     transition: color 0.15s;
   }
-  .star-btn.hovered .star-icon,
-  .star-btn.selected .star-icon {
+  .star-btn[data-hovered="true"] .star-icon,
+  .star-btn[data-selected="true"] .star-icon {
     color: var(--accent-gold);
   }
   .star-btn:hover {
