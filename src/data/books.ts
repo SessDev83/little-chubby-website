@@ -1,5 +1,7 @@
 import type { LocalizedText } from "./site";
 
+export type AgeCategory = "4-8" | "8-12" | "12-18+";
+
 export type Book = {
   id: string;
   title: LocalizedText;
@@ -9,6 +11,7 @@ export type Book = {
   coverAlt: LocalizedText;
   coverSrc: string;
   ageRange: LocalizedText;
+  ageCategories: AgeCategory[];
   pages: number;
   ratingValue?: number;
   ratingCount?: number;
@@ -39,6 +42,7 @@ export const books: Book[] = [
       es: "4-8 anos",
       en: "Ages 4-8"
     },
+    ageCategories: ["4-8"],
     pages: 90
   },
   {
@@ -65,6 +69,7 @@ export const books: Book[] = [
       es: "Teenagers y adultos",
       en: "Teens and adults"
     },
+    ageCategories: ["12-18+"],
     pages: 90
   },
   {
@@ -91,6 +96,7 @@ export const books: Book[] = [
       es: "4-8 anos y fans de moda",
       en: "Ages 4-8 and fashion lovers"
     },
+    ageCategories: ["4-8"],
     pages: 90
   },
   {
@@ -117,6 +123,7 @@ export const books: Book[] = [
       es: "Ninos, teens y adultos",
       en: "Kids, teens, and adults"
     },
+    ageCategories: ["4-8", "8-12", "12-18+"],
     pages: 90
   },
   {
@@ -143,6 +150,7 @@ export const books: Book[] = [
       es: "4-8 anos",
       en: "Ages 4-8"
     },
+    ageCategories: ["4-8"],
     pages: 90
   },
   {
@@ -169,6 +177,7 @@ export const books: Book[] = [
       es: "4-8 anos",
       en: "Ages 4-8"
     },
+    ageCategories: ["4-8"],
     pages: 90
   },
   {
@@ -195,6 +204,7 @@ export const books: Book[] = [
       es: "4-8 anos",
       en: "Ages 4-8"
     },
+    ageCategories: ["4-8"],
     pages: 90
   },
   {
@@ -221,6 +231,7 @@ export const books: Book[] = [
       es: "4-8 anos",
       en: "Ages 4-8"
     },
+    ageCategories: ["4-8"],
     pages: 90
   },
   {
@@ -247,6 +258,7 @@ export const books: Book[] = [
       es: "4-8 anos",
       en: "Ages 4-8"
     },
+    ageCategories: ["4-8"],
     pages: 90
   },
   {
@@ -273,6 +285,7 @@ export const books: Book[] = [
       es: "4-8 anos",
       en: "Ages 4-8"
     },
+    ageCategories: ["4-8"],
     pages: 90
   },
   {
@@ -299,6 +312,7 @@ export const books: Book[] = [
       es: "4-8 anos",
       en: "Ages 4-8"
     },
+    ageCategories: ["4-8"],
     pages: 90
   },
   {
@@ -325,6 +339,7 @@ export const books: Book[] = [
       es: "3-8 anos",
       en: "Ages 3-8"
     },
+    ageCategories: ["4-8"],
     pages: 100
   },
   {
@@ -351,6 +366,7 @@ export const books: Book[] = [
       es: "Edad: ver detalle en Amazon",
       en: "Age: see Amazon listing"
     },
+    ageCategories: ["4-8"],
     pages: 110,
     ratingValue: 5,
     ratingCount: 2
@@ -379,6 +395,7 @@ export const books: Book[] = [
       es: "Edad: ver detalle en Amazon",
       en: "Age: see Amazon listing"
     },
+    ageCategories: ["4-8"],
     pages: 90,
     ratingValue: 5,
     ratingCount: 2
@@ -407,6 +424,7 @@ export const books: Book[] = [
       es: "4-8 anos",
       en: "Ages 4-8"
     },
+    ageCategories: ["4-8"],
     pages: 90
   }
 ];

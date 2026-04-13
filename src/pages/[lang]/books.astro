@@ -83,9 +83,66 @@ const booksJsonLd = JSON.stringify({
         </p>
       </div>
 
+      <nav class="book-filters" role="navigation" aria-label={text.booksFilterLabel}>
+        <button class="book-filter-btn active" data-filter="all" type="button">{text.booksFilterAll}</button>
+        <button class="book-filter-btn" data-filter="4-8" type="button">{text.booksFilter4to8}</button>
+        <button class="book-filter-btn" data-filter="8-12" type="button">{text.booksFilter8to12}</button>
+        <button class="book-filter-btn" data-filter="12-18+" type="button">{text.booksFilter12plus}</button>
+      </nav>
+
+      <p class="books-empty-msg book-hidden" aria-live="polite">{text.booksEmptyCategory}</p>
+
       <div class="grid-cards books">
         {booksByNewest.map((book) => <BookCard book={book} lang={lang} labels={bookCardLabels} />)}
       </div>
     </div>
   </section>
+
+  <script>
+    function initBookFilters() {
+      const buttons = document.querySelectorAll<HTMLButtonElement>('.book-filter-btn');
+      const cards = document.querySelectorAll<HTMLElement>('.book-card');
+      const emptyMsg = document.querySelector<HTMLElement>('.books-empty-msg');
+      if (!buttons.length || !cards.length) return;
+
+      function applyFilter(category: string) {
+        let visibleCount = 0;
+
+        cards.forEach((card) => {
+          const cats = (card.dataset.categories || '').split(',');
+          const show = category === 'all' || cats.includes(category);
+          card.classList.toggle('book-hidden', !show);
+          if (show) visibleCount++;
+        });
+
+        if (emptyMsg) {
+          emptyMsg.classList.toggle('book-hidden', visibleCount > 0);
+        }
+
+        buttons.forEach((btn) => {
+          const isActive = btn.dataset.filter === category;
+          btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-pressed', String(isActive));
+        });
+      }
+
+      buttons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const filter = btn.dataset.filter || 'all';
+          applyFilter(filter);
+          history.replaceState(null, '', filter === 'all' ? location.pathname : `#age-${filter}`);
+        });
+      });
+
+      // Apply filter from URL hash on load
+      const hash = location.hash.replace('#age-', '');
+      if (hash && ['4-8', '8-12', '12-18+'].includes(hash)) {
+        applyFilter(hash);
+      }
+    }
+
+    // Run on initial load and on Astro page transitions
+    initBookFilters();
+    document.addEventListener('astro:after-swap', initBookFilters);
+  </script>
 </BaseLayout>

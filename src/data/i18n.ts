@@ -141,7 +141,13 @@ export const ui = {
     claimShippingAddress: "Direccion de envio",
     claimSubmit: "Reclamar premio",
     claimSuccess: "\u00a1Premio reclamado! Te contactaremos pronto.",
-    claimExpired: "El plazo para reclamar este premio ha expirado."
+    claimExpired: "El plazo para reclamar este premio ha expirado.",
+    booksFilterAll: "Todos",
+    booksFilter4to8: "4-8 años",
+    booksFilter8to12: "8-12 años",
+    booksFilter12plus: "12-18+",
+    booksFilterLabel: "Filtrar por edad",
+    booksEmptyCategory: "¡Nuevos títulos próximamente!"
   },
   en: {
     languageName: "English",
@@ -279,7 +285,13 @@ export const ui = {
     claimShippingAddress: "Shipping address",
     claimSubmit: "Claim prize",
     claimSuccess: "Prize claimed! We'll contact you soon.",
-    claimExpired: "The deadline to claim this prize has expired."
+    claimExpired: "The deadline to claim this prize has expired.",
+    booksFilterAll: "All",
+    booksFilter4to8: "Ages 4-8",
+    booksFilter8to12: "Ages 8-12",
+    booksFilter12plus: "Ages 12-18+",
+    booksFilterLabel: "Filter by age",
+    booksEmptyCategory: "New titles coming soon!"
   }
 } as const;
 

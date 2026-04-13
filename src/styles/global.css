@@ -738,6 +738,91 @@ main {
   font-family: "Baloo 2", "Trebuchet MS", sans-serif;
 }
 
+.badge-age {
+  display: inline-block;
+  margin-top: 0.55rem;
+  padding: 0.22rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  color: var(--brand-brown);
+  background: rgba(117, 70, 36, 0.08);
+  border: 1px solid rgba(117, 70, 36, 0.22);
+  border-radius: 2rem;
+  line-height: 1.4;
+}
+
+[data-theme="dark"] .badge-age {
+  background: rgba(199, 145, 95, 0.12);
+  border-color: rgba(199, 145, 95, 0.28);
+}
+
+/* ── Book Filters ───────────────────────────── */
+.book-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.4rem;
+}
+
+.book-filter-btn {
+  appearance: none;
+  border: 1.5px solid var(--brand-brown);
+  background: transparent;
+  color: var(--brand-brown);
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.38rem 1.1rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+  line-height: 1.3;
+}
+
+.book-filter-btn:hover {
+  background: rgba(117, 70, 36, 0.1);
+}
+
+.book-filter-btn.active {
+  background: var(--brand-brown);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(117, 70, 36, 0.2);
+}
+
+[data-theme="dark"] .book-filter-btn {
+  border-color: var(--brand-brown);
+  color: var(--brand-brown);
+}
+
+[data-theme="dark"] .book-filter-btn:hover {
+  background: rgba(199, 145, 95, 0.15);
+}
+
+[data-theme="dark"] .book-filter-btn.active {
+  background: var(--brand-brown);
+  color: #1a1613;
+}
+
+/* ── Book Filter Transitions ────────────────── */
+.book-card {
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.book-hidden {
+  display: none !important;
+}
+
+.books-empty-msg {
+  text-align: center;
+  color: var(--ink-soft);
+  font-style: italic;
+  font-size: 1.05rem;
+  padding: 2rem 1rem;
+  margin: 0;
+}
+
 .card-actions {
   margin-top: 0.95rem;
   display: flex;

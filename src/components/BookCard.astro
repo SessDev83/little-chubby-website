@@ -45,7 +45,7 @@ const ratingSummary = hasRating
   : labels.noReviews;
 ---
 
-<article class="book-card" aria-labelledby={`book-${book.id}`}>
+<article class="book-card" aria-labelledby={`book-${book.id}`} data-categories={book.ageCategories.join(",")}>
   <div class="book-card-media">
     <img
       src={dynamicCoverSrc}
@@ -63,7 +63,7 @@ const ratingSummary = hasRating
     <span class="book-rating-stars" style={`--rating-percent: ${ratingPercent};`} aria-hidden="true"></span>
     <span class="book-rating-copy">{ratingSummary}</span>
   </div>
-  <p class="card-meta">{book.ageRange[lang]} · {book.pages} p.</p>
+  <span class="badge-age">{book.ageRange[lang]}</span>
   <div class="card-actions">
     <Button href={book.amazonUrl} label={labels.buy} variant="secondary" external />
     <Button href={reviewUrl} label={labels.leaveReview} variant="ghost" external />
