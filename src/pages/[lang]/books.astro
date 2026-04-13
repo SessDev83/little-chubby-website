@@ -139,6 +139,16 @@ const booksJsonLd = JSON.stringify({
       if (hash && ['4-8', '8-12', '12-18+'].includes(hash)) {
         applyFilter(hash);
       }
+
+      // Sticky shadow: add .stuck class when filter bar is pinned
+      const filtersEl = document.querySelector<HTMLElement>('.book-filters');
+      if (filtersEl) {
+        const observer = new IntersectionObserver(
+          ([e]) => filtersEl.classList.toggle('stuck', e.intersectionRatio < 1),
+          { threshold: [1], rootMargin: '-1px 0px 0px 0px' }
+        );
+        observer.observe(filtersEl);
+      }
     }
 
     // Run on initial load and on Astro page transitions
