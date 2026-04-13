@@ -1,0 +1,47 @@
+# Social Media Diagnostics — run on demand to check the health of the posting pipeline.
+# Reports token validity, today's Facebook posts, and today's Instagram posts.
+
+name: Social Media Diagnostics
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Check posts since this date (YYYY-MM-DD). Leave blank for today only."
+        required: false
+        default: ""
+      limit:
+        description: "Number of recent posts to inspect per platform"
+        required: false
+        default: "15"
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run diagnostics
+        env:
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+        run: |
+          SINCE="${{ github.event.inputs.since }}"
+          LIMIT="${{ github.event.inputs.limit || '15' }}"
+          ARGS=""
+          if [ -n "$SINCE" ]; then
+            ARGS="--since $SINCE"
+          fi
+          node scripts/social/diagnose.mjs $ARGS --limit "$LIMIT"
