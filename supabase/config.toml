@@ -224,18 +224,14 @@ otp_length = 8
 otp_expiry = 3600
 
 # Use a production-ready SMTP server via Resend
-# Uncomment after setting the secret:
-#   npx supabase secrets set RESEND_API_KEY=re_YOUR_KEY --project-ref igbnuxndcgxwymyoywbn
-# Then push:
-#   npx supabase config push --project-ref igbnuxndcgxwymyoywbn --yes
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.resend.com"
-# port = 465
-# user = "resend"
-# pass = "env(RESEND_API_KEY)"
-# admin_email = "hello@littlechubbypress.com"
-# sender_name = "Little Chubby Press"
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "hello@littlechubbypress.com"
+sender_name = "Little Chubby Press"
 
 # Uncomment to customize email template
 [auth.email.template.invite]
