@@ -1,0 +1,36 @@
+# Sync Amazon book ratings via DataForSEO every Sunday at 8 PM ET.
+# If any ratings changed, commits and pushes — triggering Vercel auto-deploy.
+
+name: Sync Amazon Ratings
+
+on:
+  schedule:
+    # Every Sunday at 8:00 PM ET (00:00 UTC Monday)
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+jobs:
+  sync-ratings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Sync Amazon ratings
+        env:
+          DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+          DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
+        run: node scripts/sync-amazon-ratings.mjs
+
+      - name: Commit and push if changed
+        run: |
+          git diff --quiet src/data/books.ts && echo "No rating changes" && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/books.ts
+          git commit -m "chore: update Amazon book ratings [automated]"
+          git push
