@@ -138,6 +138,85 @@ export async function postToInstagram(caption, imageUrl) {
   return publishRes.json();
 }
 
+// ─── Token diagnostics ──────────────────────────────────────────────────────
+
+/**
+ * Check whether the configured page access token is still valid.
+ * Makes a lightweight call to the Graph API and returns status info.
+ *
+ * @returns {{
+ *   valid: boolean,
+ *   pageId: string | null,
+ *   pageName: string | null,
+ *   error: string | null,
+ *   isExpired: boolean,
+ *   expiredAt: string | null,
+ * }}
+ */
+export async function checkTokenStatus() {
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+  const pageId = process.env.META_PAGE_ID;
+
+  if (!token || !pageId) {
+    return {
+      valid: false,
+      pageId: null,
+      pageName: null,
+      error: "META_PAGE_ACCESS_TOKEN or META_PAGE_ID env vars are not set",
+      isExpired: false,
+      expiredAt: null,
+    };
+  }
+
+  try {
+    const res = await fetch(
+      `${GRAPH_API}/${encodeURIComponent(pageId)}?fields=id,name&access_token=${encodeURIComponent(token)}`
+    );
+    const body = await res.json();
+
+    if (!res.ok) {
+      const msg = body?.error?.message || JSON.stringify(body);
+      const isExpired =
+        body?.error?.code === 190 ||
+        (typeof msg === "string" && msg.toLowerCase().includes("session has expired"));
+
+      // Try to extract the expiry date from the error message
+      let expiredAt = null;
+      if (isExpired) {
+        const match = msg.match(/Session has expired on ([^.]+)\./i);
+        if (match) expiredAt = match[1].trim();
+      }
+
+      return {
+        valid: false,
+        pageId,
+        pageName: null,
+        error: msg,
+        isExpired,
+        expiredAt,
+      };
+    }
+
+    return {
+      valid: true,
+      pageId: body.id || pageId,
+      pageName: body.name || null,
+      error: null,
+      isExpired: false,
+      expiredAt: null,
+    };
+  } catch (err) {
+    return {
+      valid: false,
+      pageId,
+      pageName: null,
+      error: err.message,
+      isExpired: false,
+      expiredAt: null,
+    };
+  }
+}
+
 // ─── Facebook engagement functions ──────────────────────────────────────────
 
 /**
@@ -151,7 +230,7 @@ export async function getPagePosts(limit = 10) {
   if (!token || !pageId) throw new Error("Missing META_PAGE_ACCESS_TOKEN or META_PAGE_ID");
 
   const params = new URLSearchParams({
-    fields: "id,message,created_time",
+    fields: "id,message,story,created_time,permalink_url,full_picture",
     limit: String(limit),
     access_token: token,
   });
@@ -225,7 +304,7 @@ export async function getIGMedia(limit = 10) {
   if (!token || !igUserId) throw new Error("Missing META_PAGE_ACCESS_TOKEN or META_IG_USER_ID");
 
   const params = new URLSearchParams({
-    fields: "id,caption,timestamp",
+    fields: "id,caption,timestamp,permalink,media_url,media_type",
     limit: String(limit),
     access_token: token,
   });

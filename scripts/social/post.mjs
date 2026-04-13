@@ -537,8 +537,37 @@ async function main() {
     }
 
     console.log(`\n📤 Publishing to: ${opts.platform}...\n`);
-    await publishPost(post, opts.platform, imageData, data, opts.lang);
+    const results = await publishPost(post, opts.platform, imageData, data, opts.lang);
     console.log("\n✨ Done!\n");
+
+    // Fail the process if any Meta platform post failed, so CI shows a red X
+    const metaFailures = results.filter(
+      (r) => !r.success && (r.platform === "facebook" || r.platform === "instagram")
+    );
+    if (metaFailures.length > 0) {
+      for (const f of metaFailures) {
+        const isExpired =
+          f.error &&
+          (f.error.includes("Session has expired") ||
+            (f.error.includes("OAuthException") && f.error.includes("190")));
+        if (isExpired) {
+          console.error(`\n🔑 ACTION REQUIRED — META TOKEN EXPIRED`);
+          console.error(`   The META_PAGE_ACCESS_TOKEN in your GitHub repository secrets has expired.`);
+          console.error(`   To fix:`);
+          console.error(`   1. Go to https://developers.facebook.com/tools/explorer/`);
+          console.error(`   2. Generate a new Page Access Token with pages_manage_posts + instagram_content_publish`);
+          console.error(`   3. Exchange it for a long-lived token (60 days) via:`);
+          console.error(`      GET https://graph.facebook.com/v21.0/oauth/access_token`);
+          console.error(`         ?grant_type=fb_exchange_token`);
+          console.error(`         &client_id=YOUR_APP_ID`);
+          console.error(`         &client_secret=YOUR_APP_SECRET`);
+          console.error(`         &fb_exchange_token=SHORT_LIVED_TOKEN`);
+          console.error(`   4. Update the META_PAGE_ACCESS_TOKEN secret in:`);
+          console.error(`      https://github.com/SessDev83/little-chubby-website/settings/secrets/actions\n`);
+        }
+      }
+      process.exit(1);
+    }
   }
 }
 
