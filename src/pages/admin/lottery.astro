@@ -28,6 +28,7 @@ let drawResult = "";
 let drawError = "";
 let configMsg = "";
 let reviewMsg = "";
+let bulkMsg = "";
 
 // ── Get or create this month's config ────────────────
 let { data: config } = await sc
@@ -41,6 +42,14 @@ if (!config) {
   const { data: fresh } = await sc.from("lottery_config").select("*").eq("month", currentMonth).single();
   config = fresh;
 }
+
+// Check if draw already happened this month (prevent duplicates)
+const { data: monthWinners } = await sc
+  .from("lottery_winners")
+  .select("id")
+  .eq("month", currentMonth)
+  .limit(1);
+const drawAlreadyDone = (monthWinners ?? []).length > 0;
 
 // ── Handle POST actions ──────────────────────────────
 if (Astro.request.method === "POST") {
@@ -76,6 +85,18 @@ if (Astro.request.method === "POST") {
     reviewMsg = `Review ${newStatus}.`;
   }
 
+  if (action === "bulk_approve" || action === "bulk_reject") {
+    const ids = formData.getAll("selected_ids").map(v => v.toString());
+    const newStatus = action === "bulk_approve" ? "approved" : "rejected";
+    if (ids.length > 0) {
+      const { error } = await sc.from("book_reviews").update({
+        status: newStatus,
+        reviewed_at: new Date().toISOString(),
+      }).in("id", ids);
+      bulkMsg = error ? `Error: ${error.message}` : `${newStatus === "approved" ? "✓" : "✗"} ${ids.length} review(s) ${newStatus}.`;
+    }
+  }
+
   if (action === "toggle_featured") {
     const reviewId = formData.get("review_id")?.toString();
     const featured = formData.get("featured") === "true";
@@ -83,78 +104,97 @@ if (Astro.request.method === "POST") {
     reviewMsg = "Featured status updated.";
   }
 
+  if (action === "delete_review") {
+    const reviewId = formData.get("review_id")?.toString();
+    if (reviewId) {
+      await sc.from("book_reviews").delete().eq("id", reviewId);
+      reviewMsg = "Review deleted.";
+    }
+  }
+
   if (action === "draw") {
-    // Each user with ≥1 approved review gets 5 tickets per approved book
-    const { data: reviews } = await sc
-      .from("book_reviews")
-      .select("user_id")
-      .eq("status", "approved");
+    // Prevent duplicate draw for same month
+    const { data: existCheck } = await sc
+      .from("lottery_winners")
+      .select("id")
+      .eq("month", currentMonth)
+      .limit(1);
 
-    if (!reviews || reviews.length === 0) {
-      drawError = "No approved reviews — nobody is eligible.";
+    if (existCheck && existCheck.length > 0) {
+      drawError = "⚠️ Draw already completed for this month. Cannot draw again.";
     } else {
-      // Count approved reviews per user → tickets = count × 5
-      const ticketMap = new Map<string, number>();
-      for (const r of reviews) {
-        ticketMap.set(r.user_id, (ticketMap.get(r.user_id) || 0) + 5);
-      }
-
-      // Filter: min_purchases requirement
-      const minReq = config?.min_purchases ?? 0;
-      const eligible = [...ticketMap.entries()].filter(([, tickets]) => tickets >= minReq * 5);
-
-      // Exclude users who already won this month
-      const { data: existingWinners } = await sc
-        .from("lottery_winners")
+      // Each user with ≥1 approved review gets 5 tickets per approved book
+      const { data: reviews } = await sc
+        .from("book_reviews")
         .select("user_id")
-        .eq("month", currentMonth);
-      const alreadyWonIds = new Set((existingWinners ?? []).map(w => w.user_id));
+        .eq("status", "approved");
 
-      const pool = eligible.filter(([uid]) => !alreadyWonIds.has(uid));
-
-      if (pool.length === 0) {
-        drawError = "No eligible users (check min requirements or all already won).";
+      if (!reviews || reviews.length === 0) {
+        drawError = "No approved reviews — nobody is eligible.";
       } else {
-        const pctWinners = Math.ceil(pool.length * ((config?.winner_pct ?? 1) / 100));
-        const numToDraw = Math.min(pctWinners, config?.max_winners ?? 3, pool.length);
+        const ticketMap = new Map<string, number>();
+        for (const r of reviews) {
+          ticketMap.set(r.user_id, (ticketMap.get(r.user_id) || 0) + 5);
+        }
 
-        if (numToDraw <= 0) {
-          drawError = "Winner count resolves to 0. Check config.";
+        const minReq = config?.min_purchases ?? 0;
+        const eligible = [...ticketMap.entries()].filter(([, tickets]) => tickets >= minReq * 5);
+        const pool = eligible;
+
+        if (pool.length === 0) {
+          drawError = "No eligible users (check min requirements).";
         } else {
-          // Build weighted pool
-          const weightedPool: string[] = [];
-          for (const [uid, tickets] of pool) {
-            for (let i = 0; i < tickets; i++) {
-              weightedPool.push(uid);
+          const pctWinners = Math.ceil(pool.length * ((config?.winner_pct ?? 1) / 100));
+          const numToDraw = Math.min(pctWinners, config?.max_winners ?? 3, pool.length);
+
+          if (numToDraw <= 0) {
+            drawError = "Winner count resolves to 0. Check config.";
+          } else {
+            const weightedPool: string[] = [];
+            let totalTicketsCount = 0;
+            for (const [uid, tickets] of pool) {
+              for (let i = 0; i < tickets; i++) {
+                weightedPool.push(uid);
+              }
+              totalTicketsCount += tickets;
             }
-          }
 
-          // Draw unique winners
-          const winnerIds = new Set<string>();
-          let attempts = 0;
-          while (winnerIds.size < numToDraw && attempts < weightedPool.length * 10) {
-            const idx = Math.floor(Math.random() * weightedPool.length);
-            winnerIds.add(weightedPool[idx]);
-            attempts++;
-          }
+            const winnerIds = new Set<string>();
+            let attempts = 0;
+            while (winnerIds.size < numToDraw && attempts < weightedPool.length * 10) {
+              const idx = Math.floor(Math.random() * weightedPool.length);
+              winnerIds.add(weightedPool[idx]);
+              attempts++;
+            }
 
-          const drawn: string[] = [];
-          const claimDeadline = new Date();
-          claimDeadline.setDate(claimDeadline.getDate() + 14);
+            const drawn: string[] = [];
+            const claimDeadline = new Date();
+            claimDeadline.setDate(claimDeadline.getDate() + 14);
 
-          for (const winnerId of winnerIds) {
-            const { error } = await sc.from("lottery_winners").insert({
-              user_id: winnerId,
+            for (const winnerId of winnerIds) {
+              const { error } = await sc.from("lottery_winners").insert({
+                user_id: winnerId,
+                month: currentMonth,
+                claim_deadline: claimDeadline.toISOString(),
+              });
+              if (!error) {
+                const { data: profile } = await sc.from("profiles").select("email, display_name").eq("id", winnerId).single();
+                drawn.push(profile?.display_name || profile?.email || winnerId);
+              }
+            }
+
+            // Audit trail
+            await sc.from("lottery_draw_log").insert({
               month: currentMonth,
-              claim_deadline: claimDeadline.toISOString(),
+              config_snapshot: config ?? {},
+              eligible_users: pool.length,
+              total_tickets: totalTicketsCount,
+              winners_drawn: drawn.length,
+              drawn_by: user!.id,
             });
-            if (!error) {
-              const { data: profile } = await sc.from("profiles").select("email, display_name").eq("id", winnerId).single();
-              drawn.push(profile?.display_name || profile?.email || winnerId);
-            }
-          }
 
-          drawResult = `Drew ${drawn.length} winner(s): ${drawn.join(", ")} — from ${pool.length} eligible users, ${weightedPool.length} weighted tickets`;
+            drawResult = `Drew ${drawn.length} winner(s): ${drawn.join(", ")} — from ${pool.length} eligible users, ${totalTicketsCount} weighted tickets`;
+          }
         }
       }
     }
@@ -227,73 +267,114 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       {drawResult && <p class="msg-ok">🎉 {drawResult}</p>}
       {drawError && <p class="msg-err">{drawError}</p>}
 
-      <form method="POST" style="margin-top:1rem;">
-        <input type="hidden" name="action" value="draw" />
-        <button type="submit" class="btn btn-primary">🎲 Draw Winners</button>
-      </form>
+      {drawAlreadyDone ? (
+        <p class="msg-err">⚠️ Draw already completed for {currentMonth}. Winners have been selected.</p>
+      ) : (
+        <form method="POST" style="margin-top:1rem;" id="drawForm">
+          <input type="hidden" name="action" value="draw" />
+          <button type="submit" class="btn btn-primary" id="drawBtn" onclick="this.disabled=true;this.textContent='⏳ Drawing...';this.form.submit();">🎲 Draw Winners</button>
+        </form>
+      )}
     </div>
 
-    {/* ── Pending Reviews ── */}
+    {/* ── Pending Reviews with Bulk Actions ── */}
     {pendingReviews && pendingReviews.length > 0 && (
       <div style="margin-top:2rem;">
         <h2>Pending Reviews ({pendingReviews.length})</h2>
         {reviewMsg && <p class="msg-ok">{reviewMsg}</p>}
-        <div class="review-queue">
-          {pendingReviews.map((r: any) => (
-            <div class="review-card-admin">
-              <img src={r.photo_url} alt="" class="review-img-admin" loading="lazy" />
-              <div class="review-details">
-                <strong>{(r.profiles as any)?.display_name || (r.profiles as any)?.email}</strong>
-                <span class="review-book-name">{bookMap[r.book_id] || r.book_id}</span>
-                <span class="review-stars-admin">{stars(r.rating)}</span>
-                {r.review_text && <p class="review-text-admin">{r.review_text}</p>}
-                <small style="color:var(--ink-soft);">{new Date(r.submitted_at).toLocaleDateString()}</small>
+        {bulkMsg && <p class="msg-ok">{bulkMsg}</p>}
+
+        <form method="POST" id="bulkForm">
+          <div class="bulk-bar" id="bulkBar" style="display:none;">
+            <label class="bulk-select-all">
+              <input type="checkbox" id="selectAll" /> Select All
+            </label>
+            <span id="bulkCount">0 selected</span>
+            <button type="submit" name="action" value="bulk_approve" class="btn btn-ghost" style="font-size:0.8rem; padding:0.3rem 0.6rem;">✓ Approve Selected</button>
+            <button type="submit" name="action" value="bulk_reject" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.6rem;">✗ Reject Selected</button>
+          </div>
+          <div class="review-queue">
+            {pendingReviews.map((r: any) => (
+              <div class="review-card-admin">
+                <div class="review-checkbox">
+                  <input type="checkbox" name="selected_ids" value={r.id} class="bulk-checkbox" />
+                </div>
+                <img src={r.photo_url} alt="" class="review-img-admin" loading="lazy" />
+                <div class="review-details">
+                  <strong>{(r.profiles as any)?.display_name || (r.profiles as any)?.email}</strong>
+                  <span class="review-book-name">{bookMap[r.book_id] || r.book_id}</span>
+                  <span class="review-stars-admin">{stars(r.rating)}</span>
+                  {r.review_text && <p class="review-text-admin">{r.review_text}</p>}
+                  <small style="color:var(--ink-soft);">{new Date(r.submitted_at).toLocaleDateString()}</small>
+                </div>
+                <div class="review-actions">
+                  <form method="POST">
+                    <input type="hidden" name="action" value="approve_review" />
+                    <input type="hidden" name="review_id" value={r.id} />
+                    <input type="text" name="reviewer_note" placeholder="Note (optional)" style="font-size:0.78rem; padding:0.2rem 0.4rem; width:100%; margin-bottom:0.3rem; border:1px solid var(--line); border-radius:var(--radius-sm);" />
+                    <button type="submit" class="btn btn-ghost" style="font-size:0.8rem; padding:0.3rem 0.6rem;">✓ Approve</button>
+                  </form>
+                  <form method="POST">
+                    <input type="hidden" name="action" value="reject_review" />
+                    <input type="hidden" name="review_id" value={r.id} />
+                    <input type="text" name="reviewer_note" placeholder="Rejection reason" style="font-size:0.78rem; padding:0.2rem 0.4rem; width:100%; margin-bottom:0.3rem; border:1px solid var(--line); border-radius:var(--radius-sm);" />
+                    <button type="submit" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.6rem;">✗ Reject</button>
+                  </form>
+                  <form method="POST">
+                    <input type="hidden" name="action" value="toggle_featured" />
+                    <input type="hidden" name="review_id" value={r.id} />
+                    <input type="hidden" name="featured" value={r.featured ? "true" : "false"} />
+                    <button type="submit" class="btn btn-ghost" style="font-size:0.78rem; padding:0.2rem 0.4rem;">
+                      {r.featured ? "★ Unfeature" : "☆ Feature"}
+                    </button>
+                  </form>
+                  <form method="POST" onsubmit="return confirm('Delete this review permanently?')">
+                    <input type="hidden" name="action" value="delete_review" />
+                    <input type="hidden" name="review_id" value={r.id} />
+                    <button type="submit" class="btn btn-secondary" style="font-size:0.78rem; padding:0.2rem 0.4rem; color:#8f1f18;">🗑 Delete</button>
+                  </form>
+                </div>
               </div>
-              <div class="review-actions">
-                <form method="POST">
-                  <input type="hidden" name="action" value="approve_review" />
-                  <input type="hidden" name="review_id" value={r.id} />
-                  <button type="submit" class="btn btn-ghost" style="font-size:0.8rem; padding:0.3rem 0.6rem;">✓ Approve</button>
-                </form>
-                <form method="POST">
-                  <input type="hidden" name="action" value="reject_review" />
-                  <input type="hidden" name="review_id" value={r.id} />
-                  <button type="submit" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.6rem;">✗ Reject</button>
-                </form>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </form>
       </div>
     )}
 
     {/* ── Winners ── */}
     {winners && winners.length > 0 && (
       <div style="margin-top:2rem;">
-        <h2>Winners History</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+          <h2>Winners History</h2>
+          <button type="button" class="btn btn-secondary" id="exportCsvBtn" style="font-size:0.85rem;">📥 Export CSV</button>
+        </div>
         <div style="overflow-x:auto; margin-top:1rem;">
-          <table class="admin-table">
+          <table class="admin-table" id="winnersTable">
             <thead>
               <tr>
                 <th>Month</th>
                 <th>Winner</th>
+                <th>Email</th>
                 <th>Book</th>
                 <th>Claimed</th>
                 <th>Ship To</th>
                 <th>Deadline</th>
+                <th>Notified</th>
               </tr>
             </thead>
             <tbody>
               {winners.map((w: any) => (
                 <tr>
                   <td style="font-weight:700; color:var(--brand-blue);">{w.month}</td>
-                  <td>{(w.profiles as any)?.display_name || (w.profiles as any)?.email}</td>
+                  <td>{(w.profiles as any)?.display_name || "—"}</td>
+                  <td>{(w.profiles as any)?.email || "—"}</td>
                   <td>{w.book_chosen ? (bookMap[w.book_chosen] || w.book_chosen) : "—"}</td>
                   <td>{w.claimed ? "✓" : "—"}</td>
                   <td style="max-width:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                     {w.claimed ? `${w.shipping_name} — ${w.shipping_address}` : "—"}
                   </td>
                   <td>{w.claim_deadline ? new Date(w.claim_deadline).toLocaleDateString() : "—"}</td>
+                  <td>{w.notified ? "✓" : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -303,6 +384,58 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     )}
   </section>
 </BaseLayout>
+
+<script is:inline>
+document.addEventListener("DOMContentLoaded", () => {
+  // ── Bulk select logic ─────────────────────────
+  const checkboxes = document.querySelectorAll(".bulk-checkbox");
+  const selectAll = document.getElementById("selectAll");
+  const bulkBar = document.getElementById("bulkBar");
+  const bulkCount = document.getElementById("bulkCount");
+
+  function updateBulk() {
+    const checked = document.querySelectorAll(".bulk-checkbox:checked").length;
+    if (bulkBar) bulkBar.style.display = checked > 0 || (checkboxes.length > 0) ? "flex" : "none";
+    if (bulkCount) bulkCount.textContent = checked + " selected";
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener("change", () => {
+      checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+      updateBulk();
+    });
+  }
+  checkboxes.forEach(cb => cb.addEventListener("change", updateBulk));
+  if (checkboxes.length > 0 && bulkBar) bulkBar.style.display = "flex";
+
+  // ── CSV Export ────────────────────────────────
+  const exportBtn = document.getElementById("exportCsvBtn");
+  const table = document.getElementById("winnersTable");
+  if (exportBtn && table) {
+    exportBtn.addEventListener("click", () => {
+      const rows = table.querySelectorAll("tr");
+      const csv = [];
+      rows.forEach(row => {
+        const cells = row.querySelectorAll("th, td");
+        const line = [];
+        cells.forEach(cell => {
+          let val = cell.textContent.trim().replace(/"/g, '""');
+          line.push('"' + val + '"');
+        });
+        csv.push(line.join(","));
+      });
+      const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const month = new Date().toISOString().slice(0, 7);
+      a.href = url;
+      a.download = "lottery-winners-" + month + ".csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+});
+</script>
 
 <style>
   .review-queue {
@@ -396,5 +529,35 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     color: #8f1f18;
     border: 1px solid rgba(220,50,50,0.25);
     margin: 1rem 0;
+  }
+  .bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    background: var(--surface-strong);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  }
+  .bulk-select-all {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .review-checkbox {
+    display: flex;
+    align-items: center;
+    padding: 0 0.2rem;
+    flex-shrink: 0;
+  }
+  .review-checkbox input {
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
   }
 </style>

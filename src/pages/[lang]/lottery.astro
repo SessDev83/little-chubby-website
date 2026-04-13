@@ -27,17 +27,18 @@ if (accessToken && refreshToken) {
 const sc = getServiceClient();
 
 // ── User state ───────────────────────────────────────
-let myReviews: { id: string; book_id: string; photo_url: string; rating: number; review_text: string; status: string; submitted_at: string }[] = [];
+let myReviews: { id: string; book_id: string; photo_url: string; rating: number; review_text: string; status: string; submitted_at: string; reviewer_note?: string }[] = [];
 let pendingClaim: any = null;
 let shareMsg = "";
 let shareMsgType: "success" | "error" | "" = "";
 let claimMsg = "";
+let editingReview: any = null;
 
 if (user) {
   // Get user's reviews
   const { data: reviewData } = await supabase
     .from("book_reviews")
-    .select("id, book_id, photo_url, rating, review_text, status, submitted_at")
+    .select("id, book_id, photo_url, rating, review_text, status, submitted_at, reviewer_note")
     .eq("user_id", user.id)
     .order("submitted_at", { ascending: false });
   myReviews = reviewData ?? [];
@@ -59,75 +60,132 @@ if (user) {
     const formData = await Astro.request.formData();
     const action = formData.get("action")?.toString();
 
+    if (action === "delete_review") {
+      const reviewId = formData.get("review_id")?.toString();
+      if (reviewId) {
+        // Find the review to delete its photo too
+        const toDelete = myReviews.find(r => r.id === reviewId);
+        if (toDelete) {
+          const photoPath = `${user.id}/${toDelete.book_id}.jpg`;
+          await sc.storage.from("book-photos").remove([photoPath]);
+          await sc.from("book_reviews").delete().eq("id", reviewId).eq("user_id", user.id);
+          // Refresh reviews
+          const { data: refreshed } = await supabase
+            .from("book_reviews")
+            .select("id, book_id, photo_url, rating, review_text, status, submitted_at, reviewer_note")
+            .eq("user_id", user.id)
+            .order("submitted_at", { ascending: false });
+          myReviews = refreshed ?? [];
+          shareMsg = lang === "es" ? "Review eliminada." : "Review deleted.";
+          shareMsgType = "success";
+        }
+      }
+    }
+
     if (action === "share_book") {
       const bookId = formData.get("book_id")?.toString() || "";
       const rating = parseInt(formData.get("rating")?.toString() || "0", 10);
       const reviewText = formData.get("review_text")?.toString().trim() || "";
       const showGallery = formData.get("show_in_gallery") === "on";
       const photo = formData.get("photo") as File | null;
+      const editId = formData.get("edit_id")?.toString() || "";
 
-      // Validate — client-side JS compresses to JPEG before submit
-      // Server enforces 500 KB hard limit as safety net
-      const MAX_BYTES = 500 * 1024; // 500 KB
+      const MAX_BYTES = 500 * 1024;
       const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-      if (!photo || photo.size === 0) {
-        shareMsg = text.shareInvalidType;
-        shareMsgType = "error";
-      } else if (photo.size > MAX_BYTES) {
+      const hasNewPhoto = photo && photo.size > 0;
+
+      if (hasNewPhoto && photo!.size > MAX_BYTES) {
         shareMsg = text.shareTooLarge;
         shareMsgType = "error";
-      } else if (!ALLOWED_TYPES.includes(photo.type)) {
+      } else if (hasNewPhoto && !ALLOWED_TYPES.includes(photo!.type)) {
         shareMsg = text.shareInvalidType;
         shareMsgType = "error";
       } else if (!bookId || rating < 1 || rating > 5) {
         shareMsg = text.loginError;
         shareMsgType = "error";
       } else {
-        // Always save as .jpg (client already compressed to JPEG)
-        const filePath = `${user.id}/${bookId}.jpg`;
-        const arrayBuf = await photo.arrayBuffer();
-        const buffer = new Uint8Array(arrayBuf);
+        let photoUrl = "";
 
-        const { error: uploadError } = await sc.storage
-          .from("book-photos")
-          .upload(filePath, buffer, { contentType: "image/jpeg", upsert: true });
-
-        if (uploadError) {
-          shareMsg = text.loginError;
-          shareMsgType = "error";
-        } else {
-          const { data: urlData } = sc.storage.from("book-photos").getPublicUrl(filePath);
-          const photoUrl = urlData.publicUrl;
-
-          const { error: insertError } = await sc
-            .from("book_reviews")
-            .insert({
-              user_id: user.id,
-              book_id: bookId,
-              photo_url: photoUrl,
-              rating,
-              review_text: reviewText,
-              show_in_gallery: showGallery,
-            });
-
-          if (insertError?.code === "23505") {
-            shareMsg = text.shareAlreadyReviewed;
-            shareMsgType = "error";
-          } else if (insertError) {
+        if (hasNewPhoto) {
+          const filePath = `${user.id}/${bookId}.jpg`;
+          const arrayBuf = await photo!.arrayBuffer();
+          const buffer = new Uint8Array(arrayBuf);
+          const { error: uploadError } = await sc.storage
+            .from("book-photos")
+            .upload(filePath, buffer, { contentType: "image/jpeg", upsert: true });
+          if (uploadError) {
             shareMsg = text.loginError;
             shareMsgType = "error";
           } else {
-            shareMsg = text.shareSuccess;
-            shareMsgType = "success";
-            // Refresh reviews
-            const { data: refreshed } = await supabase
-              .from("book_reviews")
-              .select("id, book_id, photo_url, rating, review_text, status, submitted_at")
-              .eq("user_id", user.id)
-              .order("submitted_at", { ascending: false });
-            myReviews = refreshed ?? [];
+            const { data: urlData } = sc.storage.from("book-photos").getPublicUrl(filePath);
+            photoUrl = urlData.publicUrl;
           }
+        }
+
+        if (shareMsgType !== "error") {
+          if (editId) {
+            // Update existing review — reset status to pending
+            const updateData: any = {
+              rating,
+              review_text: reviewText,
+              show_in_gallery: formData.get("show_in_gallery") === "on",
+              status: "pending",
+              reviewed_at: null,
+              reviewer_note: null,
+            };
+            if (photoUrl) updateData.photo_url = photoUrl;
+
+            const { error: updateError } = await sc
+              .from("book_reviews")
+              .update(updateData)
+              .eq("id", editId)
+              .eq("user_id", user.id);
+
+            if (updateError) {
+              shareMsg = text.loginError;
+              shareMsgType = "error";
+            } else {
+              shareMsg = text.shareSuccess;
+              shareMsgType = "success";
+            }
+          } else {
+            // New review
+            if (!photoUrl) {
+              shareMsg = text.shareInvalidType;
+              shareMsgType = "error";
+            } else {
+              const { error: insertError } = await sc
+                .from("book_reviews")
+                .insert({
+                  user_id: user.id,
+                  book_id: bookId,
+                  photo_url: photoUrl,
+                  rating,
+                  review_text: reviewText,
+                  show_in_gallery: formData.get("show_in_gallery") === "on",
+                });
+
+              if (insertError?.code === "23505") {
+                shareMsg = text.shareAlreadyReviewed;
+                shareMsgType = "error";
+              } else if (insertError) {
+                shareMsg = text.loginError;
+                shareMsgType = "error";
+              } else {
+                shareMsg = text.shareSuccess;
+                shareMsgType = "success";
+              }
+            }
+          }
+
+          // Refresh reviews
+          const { data: refreshed } = await supabase
+            .from("book_reviews")
+            .select("id, book_id, photo_url, rating, review_text, status, submitted_at, reviewer_note")
+            .eq("user_id", user.id)
+            .order("submitted_at", { ascending: false });
+          myReviews = refreshed ?? [];
         }
       }
     }
@@ -194,14 +252,34 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       <p>{text.lotteryDescription}</p>
     </div>
 
-    <!-- How It Works -->
+    <!-- How It Works — Visual Steps -->
     <div class="lottery-steps surface-card" style="max-width:42rem; margin:0 auto 2rem; padding:1.6rem;">
-      <h2 style="text-align:center; margin-bottom:1rem;">{text.lotteryHowItWorks}</h2>
-      <ol class="steps-list">
-        <li><span class="step-num">1</span>{text.lotteryStep1}</li>
-        <li><span class="step-num">2</span>{text.lotteryStep2}</li>
-        <li><span class="step-num">3</span>{text.lotteryStep3}</li>
-      </ol>
+      <h2 style="text-align:center; margin-bottom:1.2rem;">{text.lotteryHowItWorks}</h2>
+      <div class="steps-row">
+        <div class="step-card">
+          <span class="step-icon">📚</span>
+          <span class="step-num">1</span>
+          <p class="step-text">{text.lotteryStep1}</p>
+        </div>
+        <span class="step-arrow">→</span>
+        <div class="step-card">
+          <span class="step-icon">📸</span>
+          <span class="step-num">2</span>
+          <p class="step-text">{text.lotteryStep2}</p>
+        </div>
+        <span class="step-arrow">→</span>
+        <div class="step-card">
+          <span class="step-icon">🎫</span>
+          <span class="step-num">3</span>
+          <p class="step-text">{text.lotteryStep3}</p>
+        </div>
+        <span class="step-arrow">→</span>
+        <div class="step-card">
+          <span class="step-icon">🎁</span>
+          <span class="step-num">4</span>
+          <p class="step-text">{text.lotteryStep4}</p>
+        </div>
+      </div>
     </div>
 
     {!user ? (
@@ -216,18 +294,31 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
         {/* ── Pending claim banner ── */}
         {pendingClaim && !claimMsg && (
           <div class="surface-card claim-card">
-            <h2>🎉 {text.claimTitle}</h2>
+            <div class="claim-header">
+              <span class="claim-confetti">🎉</span>
+              <h2>{text.claimCongrats} {text.claimTitle}</h2>
+              <span class="claim-confetti">🎉</span>
+            </div>
             <p>{text.claimInstructions}</p>
+            <p class="claim-countdown" data-deadline={pendingClaim.claim_deadline}>
+              <span class="claim-days" id="claimDays"></span> {text.claimDaysLeft}
+            </p>
             <form method="POST" class="form-grid">
               <input type="hidden" name="action" value="claim" />
               <div class="form-group">
                 <label for="book_chosen">{text.claimBookChoice}</label>
-                <select id="book_chosen" name="book_chosen" class="form-select" required>
-                  <option value="">—</option>
-                  {bookOptions.map(b => (
-                    <option value={b.id}>{b.title}</option>
-                  ))}
-                </select>
+                <div class="claim-book-grid">
+                  {bookOptions.map(b => {
+                    const book = books.find(bk => bk.id === b.id);
+                    return (
+                      <label class="claim-book-option">
+                        <input type="radio" name="book_chosen" value={b.id} required />
+                        {book?.coverSrc && <img src={book.coverSrc} alt={b.title} class="claim-book-cover" loading="lazy" width="80" height="100" />}
+                        <span class="claim-book-title">{b.title}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
               <div class="form-group">
                 <label for="shipping_name">{text.claimShippingName}</label>
@@ -243,7 +334,10 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
         )}
 
         {claimMsg && (
-          <p class="msg msg-success">{claimMsg}</p>
+          <div class="surface-card" style="padding:1.6rem; margin-bottom:1.5rem; text-align:center; border:2px solid var(--brand-green);">
+            <h2>✅ {text.claimOrderSummary}</h2>
+            <p class="msg msg-success">{claimMsg}</p>
+          </div>
         )}
 
         {/* ── Tickets summary ── */}
@@ -266,8 +360,9 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
               <p class={`msg ${shareMsgType === "success" ? "msg-success" : "msg-error"}`}>{shareMsg}</p>
             )}
 
-            <form method="POST" enctype="multipart/form-data" class="form-grid">
+            <form method="POST" enctype="multipart/form-data" class="form-grid" id="shareForm">
               <input type="hidden" name="action" value="share_book" />
+              <input type="hidden" name="edit_id" id="editId" value="" />
 
               <div class="form-group">
                 <label for="book_id">{text.shareBookLabel}</label>
@@ -332,15 +427,39 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
             <div class="reviews-list">
               {myReviews.map(r => (
                 <div class="review-row">
-                  <img src={r.photo_url} alt="" class="review-thumb" loading="lazy" />
+                  <img src={r.photo_url} alt="" class="review-thumb" loading="lazy" width="56" height="56" />
                   <div class="review-info">
                     <strong>{bookMap[r.book_id] || r.book_id}</strong>
                     <span class="review-stars">{stars(r.rating)}</span>
                     {r.review_text && <p class="review-text-preview">{r.review_text}</p>}
+                    {r.status === "rejected" && r.reviewer_note && (
+                      <p class="reviewer-note">💬 {text.reviewerNote}: {r.reviewer_note}</p>
+                    )}
                   </div>
-                  <span class={`review-status status-${r.status}`}>
-                    {r.status === "pending" ? text.reviewPending : r.status === "approved" ? text.reviewApproved : text.reviewRejected}
-                  </span>
+                  <div class="review-actions-user">
+                    <span class={`review-status status-${r.status}`}>
+                      {r.status === "pending" ? text.reviewPending : r.status === "approved" ? text.reviewApproved : text.reviewRejected}
+                    </span>
+                    {r.status === "rejected" && (
+                      <form method="POST" style="margin-top:0.3rem;">
+                        <input type="hidden" name="action" value="delete_review" />
+                        <input type="hidden" name="review_id" value={r.id} />
+                        <button type="submit" class="btn-small btn-retry">🔄 {text.reviewTryAgain}</button>
+                      </form>
+                    )}
+                    {(r.status === "pending" || r.status === "approved") && (
+                      <div class="review-edit-actions">
+                        <button type="button" class="btn-small btn-edit" data-edit={JSON.stringify({id: r.id, book_id: r.book_id, rating: r.rating, review_text: r.review_text || ""})}>
+                          ✏️ {text.reviewEdit}
+                        </button>
+                        <form method="POST" style="display:inline;" onsubmit={`return confirm('${text.reviewDeleteConfirm}')`}>
+                          <input type="hidden" name="action" value="delete_review" />
+                          <input type="hidden" name="review_id" value={r.id} />
+                          <button type="submit" class="btn-small btn-delete">🗑 {text.reviewDelete}</button>
+                        </form>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -390,11 +509,9 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     }
 
     // ── Client-side image compression ────────────
-    // Resizes to max 800px, converts to JPEG 0.7 quality
-    // Result: ~80-150 KB instead of 3-8 MB phone photos
     const MAX_DIM = 800;
     const JPEG_QUALITY = 0.7;
-    const MAX_BYTES = 500 * 1024; // 500 KB
+    const MAX_BYTES = 500 * 1024;
 
     const fileInput = document.getElementById("photo");
     const status = document.getElementById("photoStatus");
@@ -446,7 +563,6 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
             e.target.value = "";
             return;
           }
-          // Replace the file input with the compressed version
           const compressed = new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
           const dt = new DataTransfer();
           dt.items.add(compressed);
@@ -465,22 +581,87 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
         }
       });
     }
+
+    // ── Edit review buttons ──────────────────────
+    document.querySelectorAll(".btn-edit").forEach(btn => {
+      btn.addEventListener("click", () => {
+        try {
+          const data = JSON.parse(btn.getAttribute("data-edit"));
+          const form = document.getElementById("shareForm");
+          if (!form) return;
+          document.getElementById("editId").value = data.id;
+          const bookSelect = document.getElementById("book_id");
+          if (bookSelect) {
+            // Add the book option if not present (already reviewed books are filtered out)
+            let found = false;
+            for (const opt of bookSelect.options) {
+              if (opt.value === data.book_id) { found = true; break; }
+            }
+            if (!found) {
+              const opt = document.createElement("option");
+              opt.value = data.book_id;
+              opt.textContent = data.book_id;
+              bookSelect.appendChild(opt);
+            }
+            bookSelect.value = data.book_id;
+            bookSelect.disabled = true;
+          }
+          const reviewField = document.getElementById("review_text");
+          if (reviewField) reviewField.value = data.review_text;
+          // Set rating
+          const ratingInputs = form.querySelectorAll('input[name="rating"]');
+          const starLabels = picker ? picker.querySelectorAll(".star-label") : [];
+          ratingInputs.forEach((input, i) => {
+            if (parseInt(input.value) === data.rating) {
+              input.checked = true;
+              starLabels.forEach((l, j) => l.classList.toggle("selected", j <= i));
+            }
+          });
+          // Make photo optional for edits
+          const photoInput = document.getElementById("photo");
+          if (photoInput) photoInput.removeAttribute("required");
+          // Scroll to form
+          form.scrollIntoView({ behavior: "smooth", block: "start" });
+        } catch(e) { console.error(e); }
+      });
+    });
+
+    // ── Claim countdown ──────────────────────────
+    const countdownEl = document.querySelector(".claim-countdown");
+    const daysEl = document.getElementById("claimDays");
+    if (countdownEl && daysEl) {
+      const deadline = new Date(countdownEl.getAttribute("data-deadline"));
+      const now = new Date();
+      const diffMs = deadline - now;
+      const days = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+      daysEl.textContent = days;
+    }
   });
 </script>
 
 <style>
-  .steps-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    gap: 0.8rem;
-  }
-  .steps-list li {
+  /* ── Visual Steps ── */
+  .steps-row {
     display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .step-card {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.8rem;
-    font-size: 1.02rem;
+    text-align: center;
+    padding: 0.8rem 0.6rem;
+    max-width: 10rem;
+    flex: 1;
+    min-width: 7rem;
+  }
+  .step-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.3rem;
   }
   .step-num {
     display: inline-flex;
@@ -495,12 +676,94 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     font-weight: 700;
     font-size: 1rem;
     flex-shrink: 0;
+    margin-bottom: 0.4rem;
   }
+  .step-text {
+    font-size: 0.88rem;
+    margin: 0;
+    color: var(--ink-soft);
+    line-height: 1.35;
+  }
+  .step-arrow {
+    font-size: 1.5rem;
+    color: var(--accent-gold);
+    align-self: center;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  @media (max-width: 600px) {
+    .steps-row { flex-direction: column; align-items: center; }
+    .step-arrow { transform: rotate(90deg); font-size: 1.2rem; }
+  }
+
+  /* ── Claim Card ── */
   .claim-card {
     padding: 1.6rem;
     margin-bottom: 1.5rem;
     border: 2px solid var(--accent-gold);
+    background: linear-gradient(135deg, rgba(211,164,66,0.06), rgba(211,164,66,0.02));
   }
+  .claim-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+  }
+  .claim-confetti { font-size: 1.6rem; }
+  .claim-countdown {
+    text-align: center;
+    font-weight: 700;
+    font-family: "Baloo 2", sans-serif;
+    color: var(--accent-coral);
+    font-size: 1.1rem;
+    margin: 0.5rem 0 1rem;
+  }
+  .claim-days {
+    display: inline-block;
+    background: var(--accent-coral);
+    color: #fff;
+    padding: 0.15rem 0.55rem;
+    border-radius: var(--radius-sm);
+    font-size: 1.3rem;
+    margin-right: 0.3rem;
+  }
+  .claim-book-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+  }
+  .claim-book-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.6rem;
+    border: 2px solid var(--line);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    text-align: center;
+  }
+  .claim-book-option:has(input:checked) {
+    border-color: var(--brand-blue);
+    box-shadow: 0 0 0 2px rgba(31,79,134,0.2);
+  }
+  .claim-book-option input { display: none; }
+  .claim-book-cover {
+    width: 80px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 4px;
+  }
+  .claim-book-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+
   .msg {
     padding: 0.8rem;
     border-radius: 0.5rem;
@@ -575,7 +838,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
   .review-row {
     display: flex;
     gap: 0.8rem;
-    align-items: center;
+    align-items: flex-start;
     padding: 0.6rem;
     border-radius: var(--radius-sm);
     border: 1px solid var(--line);
@@ -608,6 +871,27 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .reviewer-note {
+    margin: 0.3rem 0 0;
+    font-size: 0.82rem;
+    color: var(--accent-coral);
+    font-style: italic;
+    background: rgba(217,130,95,0.08);
+    padding: 0.3rem 0.5rem;
+    border-radius: var(--radius-sm);
+  }
+  .review-actions-user {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+  .review-edit-actions {
+    display: flex;
+    gap: 0.3rem;
+    margin-top: 0.2rem;
+  }
   .review-status {
     font-family: "Baloo 2", sans-serif;
     font-weight: 700;
@@ -620,6 +904,25 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
   .status-pending { background: rgba(211, 164, 66, 0.15); color: var(--accent-gold); }
   .status-approved { background: rgba(92, 150, 80, 0.14); color: var(--brand-green); }
   .status-rejected { background: rgba(220, 50, 50, 0.08); color: #8f1f18; }
+  .btn-small {
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .btn-retry { color: var(--brand-blue); border-color: var(--brand-blue); }
+  .btn-retry:hover { background: rgba(31,79,134,0.1); }
+  .btn-edit { color: var(--accent-gold); border-color: var(--accent-gold); }
+  .btn-edit:hover { background: rgba(211,164,66,0.1); }
+  .btn-delete { color: #8f1f18; border-color: rgba(220,50,50,0.3); }
+  .btn-delete:hover { background: rgba(220,50,50,0.08); }
+
   .winners-list { display: grid; gap: 0.5rem; }
   .winner-row {
     display: grid;
