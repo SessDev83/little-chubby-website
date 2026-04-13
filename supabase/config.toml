@@ -239,11 +239,11 @@ subject = "You're Invited to Little Chubby Press! ✨"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.confirmation]
-subject = "Welcome to Little Chubby Press! ✅ Confirm Your Email"
+subject = "✅ Confirm your email for Little Chubby Press"
 content_path = "./supabase/templates/confirm.html"
 
 [auth.email.template.magic_link]
-subject = "Your Little Chubby Press Magic Login Link 🪄"
+subject = "🪄 Your magic login link"
 content_path = "./supabase/templates/magic_link.html"
 
 [auth.email.template.recovery]

@@ -1,39 +1,12 @@
 ---
 export const prerender = false;
 
-import { supabase } from "../../../lib/supabase";
 import { getLangFromParam } from "../../../data/i18n";
 import type { Lang } from "../../../data/i18n";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 
-// PKCE flow: exchange authorization code for session
-const code = Astro.url.searchParams.get("code");
-
-if (code) {
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-  if (!error && data.session) {
-    Astro.cookies.set("sb-access-token", data.session.access_token, {
-      path: "/",
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-    Astro.cookies.set("sb-refresh-token", data.session.refresh_token, {
-      path: "/",
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
-    return Astro.redirect(`/${lang}/profile/`);
-  }
-}
-
-// Legacy implicit flow fallback: tokens as query params
+// Server-side: if tokens arrive as query params, set cookies and redirect
 const accessToken = Astro.url.searchParams.get("access_token");
 const refreshToken = Astro.url.searchParams.get("refresh_token");
 
@@ -56,6 +29,30 @@ if (accessToken && refreshToken) {
   return Astro.redirect(`/${lang}/profile/`);
 }
 
-// If no tokens, redirect to login
-return Astro.redirect(`/${lang}/login/`);
+// If no query params, render a page that reads the hash fragment client-side
+// Supabase implicit flow puts tokens in #access_token=...&refresh_token=...
 ---
+<html lang="en">
+<head><meta charset="utf-8"><title>Signing in…</title></head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#2f261f;background:#f6f1e7;">
+  <p id="msg" style="font-size:1.2rem;">Signing you in…</p>
+  <script define:vars={{ lang }}>
+    // Read tokens from URL hash fragment
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      // Redirect to the same route with tokens as query params (server can read these)
+      window.location.replace(
+        `/${lang}/auth/callback/?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}`
+      );
+    } else {
+      // No tokens found at all — redirect to login
+      document.getElementById("msg").textContent = "Session expired. Redirecting to login…";
+      setTimeout(() => { window.location.replace(`/${lang}/login/`); }, 1500);
+    }
+  </script>
+</body>
+</html>
