@@ -258,35 +258,40 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       <p>{text.lotteryDescription}</p>
     </div>
 
-    <!-- How It Works — Visual Steps -->
-    <div class="lottery-steps surface-card" style="max-width:42rem; margin:0 auto 2rem; padding:1.6rem;">
-      <h2 style="text-align:center; margin-bottom:1.2rem;">{text.lotteryHowItWorks}</h2>
-      <div class="steps-row">
-        <div class="step-card">
-          <span class="step-icon">📚</span>
-          <span class="step-num">1</span>
-          <p class="step-text">{text.lotteryStep1}</p>
-        </div>
-        <span class="step-arrow">→</span>
-        <div class="step-card">
-          <span class="step-icon">📸</span>
-          <span class="step-num">2</span>
-          <p class="step-text">{text.lotteryStep2}</p>
-        </div>
-        <span class="step-arrow">→</span>
-        <div class="step-card">
-          <span class="step-icon">🎫</span>
-          <span class="step-num">3</span>
-          <p class="step-text">{text.lotteryStep3}</p>
-        </div>
-        <span class="step-arrow">→</span>
-        <div class="step-card">
-          <span class="step-icon">🎁</span>
-          <span class="step-num">4</span>
-          <p class="step-text">{text.lotteryStep4}</p>
+    <!-- How It Works — Accordion on mobile, open on desktop -->
+    <details class="lottery-steps surface-card" style="max-width:42rem; margin:0 auto 2rem; padding:0;" open>
+      <summary class="steps-summary">
+        <h2>{text.lotteryHowItWorks}</h2>
+        <svg class="steps-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </summary>
+      <div class="steps-body">
+        <div class="steps-row">
+          <div class="step-card">
+            <span class="step-icon">📚</span>
+            <span class="step-num">1</span>
+            <p class="step-text">{text.lotteryStep1}</p>
+          </div>
+          <span class="step-arrow">→</span>
+          <div class="step-card">
+            <span class="step-icon">📸</span>
+            <span class="step-num">2</span>
+            <p class="step-text">{text.lotteryStep2}</p>
+          </div>
+          <span class="step-arrow">→</span>
+          <div class="step-card">
+            <span class="step-icon">🎫</span>
+            <span class="step-num">3</span>
+            <p class="step-text">{text.lotteryStep3}</p>
+          </div>
+          <span class="step-arrow">→</span>
+          <div class="step-card">
+            <span class="step-icon">🎁</span>
+            <span class="step-num">4</span>
+            <p class="step-text">{text.lotteryStep4}</p>
+          </div>
         </div>
       </div>
-    </div>
+    </details>
 
     {!user ? (
       <!-- Not logged in -->
@@ -514,6 +519,12 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 
 <script is:inline>
   document.addEventListener("DOMContentLoaded", () => {
+    // ── Auto-collapse "How it works" on mobile ──
+    const stepsDetails = document.querySelector("details.lottery-steps");
+    if (stepsDetails && window.innerWidth <= 600) {
+      stepsDetails.removeAttribute("open");
+    }
+
     // ── Searchable book selector ─────────────────
     const searchInput = document.getElementById("bookSearch");
     const hiddenInput = document.getElementById("book_id");
@@ -804,9 +815,50 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     font-weight: 700;
     flex-shrink: 0;
   }
+
+  /* ── Accordion Summary ── */
+  .steps-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: default;
+    list-style: none;
+    padding: 1.2rem 1.6rem;
+  }
+  .steps-summary::-webkit-details-marker { display: none; }
+  .steps-summary h2 {
+    margin: 0;
+    text-align: center;
+  }
+  .steps-chevron {
+    display: none;
+    color: var(--brand-brown);
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+  }
+  details.lottery-steps[open] .steps-chevron {
+    transform: rotate(180deg);
+  }
+  .steps-body {
+    padding: 0 1.6rem 1.6rem;
+  }
+
   @media (max-width: 600px) {
-    .steps-row { flex-direction: column; align-items: center; }
+    .steps-row { flex-direction: column; align-items: center; gap: 0; }
     .step-arrow { transform: rotate(90deg); font-size: 1.2rem; }
+    .step-card { max-width: 100%; min-width: 0; padding: 0.5rem 0.6rem; }
+
+    /* Collapsed by default on mobile */
+    details.lottery-steps:not([open]) .steps-body { display: none; }
+    .steps-summary {
+      cursor: pointer;
+      justify-content: space-between;
+      padding: 1rem 1.2rem;
+    }
+    .steps-chevron {
+      display: block;
+    }
   }
 
   /* ── Claim Card ── */
