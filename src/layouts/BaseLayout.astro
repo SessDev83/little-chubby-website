@@ -103,15 +103,23 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     <meta name="x-sb-url" content={import.meta.env.PUBLIC_SUPABASE_URL} />
     <meta name="x-sb-key" content={import.meta.env.PUBLIC_SUPABASE_ANON_KEY} />
 
-    <!-- Prevent dark-mode flash (runs before paint) -->
+    <!-- Auto dark mode from OS preference -->
     <script is:inline>
       (function(){
-        var t = localStorage.getItem("lcp-theme");
-        if (t === "dark" || (!t && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
-          document.documentElement.setAttribute("data-theme", "dark");
-          var mc = document.querySelector('meta[name="theme-color"]');
-          if (mc) mc.setAttribute("content", "#1a1613");
+        function applyTheme() {
+          var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (dark) {
+            document.documentElement.setAttribute("data-theme", "dark");
+            var mc = document.querySelector('meta[name="theme-color"]');
+            if (mc) mc.setAttribute("content", "#1a1613");
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+            var mc = document.querySelector('meta[name="theme-color"]');
+            if (mc) mc.setAttribute("content", "#f6f1e7");
+          }
         }
+        applyTheme();
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
       })();
     </script>
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
