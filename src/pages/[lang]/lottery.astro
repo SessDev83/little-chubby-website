@@ -82,7 +82,7 @@ if (user) {
 
       const MAX_BYTES = 500 * 1024;
       const MAX_PHOTOS = 5;
-      const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+      const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
       const validPhotos = photos.filter(f => f && f.size > 0);
       const tooLarge = validPhotos.some(f => f.size > MAX_BYTES);
@@ -403,7 +403,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
                   type="file"
                   id="photos"
                   name="photos"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/*"
                   multiple
                   required
                   class="file-input"
@@ -645,9 +645,15 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       });
     }
 
+    // Compressed blobs stored here — avoids DataTransfer API (broken on mobile Safari/Android)
+    var compressedBlobs = [];
+    var originalFiles = [];
+
     if (fileInput) {
-      fileInput.addEventListener("change", async (e) => {
-        const files = Array.from(e.target.files);
+      fileInput.addEventListener("change", async function (e) {
+        compressedBlobs = [];
+        originalFiles = [];
+        var files = Array.from(e.target.files);
         if (!files.length) return;
 
         if (files.length > MAX_FILES) {
@@ -660,6 +666,8 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
           return;
         }
 
+        originalFiles = files;
+
         if (status) {
           status.style.display = "block";
           status.textContent = "⏳ Compressing " + files.length + " photo" + (files.length > 1 ? "s" : "") + "...";
@@ -668,45 +676,101 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
         if (preview) preview.innerHTML = "";
 
         try {
-          const dt = new DataTransfer();
-          let totalKb = 0;
-
-          for (let i = 0; i < files.length; i++) {
-            const blob = await compressImage(files[i]);
+          var totalKb = 0;
+          for (var i = 0; i < files.length; i++) {
+            var blob = await compressImage(files[i]);
             if (blob.size > MAX_BYTES) {
               if (status) {
                 status.textContent = "❌ Photo " + (i + 1) + " still too large after compression.";
                 status.className = "photo-status photo-error";
               }
-              e.target.value = "";
+              compressedBlobs = [];
               if (preview) preview.innerHTML = "";
               return;
             }
-            const compressed = new File([blob], "photo_" + (i + 1) + ".jpg", { type: "image/jpeg" });
-            dt.items.add(compressed);
+            compressedBlobs.push(blob);
             totalKb += Math.round(blob.size / 1024);
 
             // Show thumbnail preview
             if (preview) {
-              const thumb = document.createElement("img");
+              var thumb = document.createElement("img");
               thumb.src = URL.createObjectURL(blob);
               thumb.className = "preview-thumb";
               preview.appendChild(thumb);
             }
           }
 
-          e.target.files = dt.files;
           if (status) {
             status.textContent = "✅ " + files.length + " photo" + (files.length > 1 ? "s" : "") + " — " + totalKb + " KB total";
             status.className = "photo-status photo-ok";
           }
         } catch (err) {
+          // Compression failed — keep originals as fallback
+          compressedBlobs = [];
           if (status) {
-            status.textContent = "❌ Could not process image(s).";
+            // Don't block; we'll send originals on submit
+            status.style.display = "block";
+            status.textContent = "⚠️ Could not compress — originals will be uploaded.";
+            status.className = "photo-status";
+          }
+        }
+      });
+    }
+
+    // ── Form submit via fetch (avoids DataTransfer) ──
+    var shareForm = document.getElementById("shareForm");
+    if (shareForm) {
+      shareForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        var submitBtn = shareForm.querySelector('button[type="submit"]');
+        var origLabel = submitBtn ? submitBtn.textContent : "";
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = "⏳ Uploading…";
+        }
+
+        try {
+          var fd = new FormData();
+          // Copy all non-file fields from the form
+          var formElements = shareForm.elements;
+          for (var i = 0; i < formElements.length; i++) {
+            var el = formElements[i];
+            if (!el.name || el.name === "photos" || el.type === "submit") continue;
+            if (el.type === "checkbox") {
+              if (el.checked) fd.append(el.name, "on");
+            } else {
+              fd.append(el.name, el.value);
+            }
+          }
+
+          // Add photos: prefer compressed blobs, fallback to originals
+          var photosToSend = compressedBlobs.length > 0
+            ? compressedBlobs.map(function (b, i) { return new File([b], "photo_" + (i + 1) + ".jpg", { type: "image/jpeg" }); })
+            : originalFiles;
+
+          for (var i = 0; i < photosToSend.length; i++) {
+            fd.append("photos", photosToSend[i]);
+          }
+
+          var res = await fetch(window.location.pathname, {
+            method: "POST",
+            body: fd,
+            credentials: "same-origin",
+          });
+
+          if (!res.ok) throw new Error("status " + res.status);
+          // Reload to show the server-rendered messages & updated reviews
+          window.location.reload();
+        } catch (err) {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = origLabel;
+          }
+          if (status) {
+            status.style.display = "block";
+            status.textContent = "❌ Upload failed. Please try again.";
             status.className = "photo-status photo-error";
           }
-          e.target.value = "";
-          if (preview) preview.innerHTML = "";
         }
       });
     }

@@ -267,8 +267,8 @@ async function resolveImage(post, data, opts) {
 
   // For all other types (or if blog image failed): generate with AI + retry
   if (post.imagePrompt && process.env.NANO_BANANA_API_KEY) {
-    const IMG_MAX_RETRIES = 3;
-    const IMG_RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+    const IMG_MAX_RETRIES = 2;
+    const IMG_RETRY_DELAY_MS = 2 * 60 * 1000; // 2 minutes
 
     for (let attempt = 1; attempt <= IMG_MAX_RETRIES; attempt++) {
       try {
@@ -281,7 +281,7 @@ async function resolveImage(post, data, opts) {
       } catch (err) {
         console.log(`⚠️  Image generation failed: ${err.message}`);
         if (attempt < IMG_MAX_RETRIES) {
-          console.log(`⏳ Retrying image in 5 minutes... (attempt ${attempt}/${IMG_MAX_RETRIES})\n`);
+          console.log(`⏳ Retrying image in 2 minutes... (attempt ${attempt}/${IMG_MAX_RETRIES})\n`);
           await new Promise((r) => setTimeout(r, IMG_RETRY_DELAY_MS));
         } else {
           console.log(`⚠️  Image generation failed after ${IMG_MAX_RETRIES} attempts — posting without image.`);
@@ -481,8 +481,8 @@ async function main() {
   let post;
   let aiUsed = false;
 
-  const MAX_RETRIES = 6;          // 6 retries × 5 min = 30 min max wait
-  const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+  const MAX_RETRIES = 2;          // 2 retries × 2 min = 4 min max wait
+  const RETRY_DELAY_MS = 2 * 60 * 1000; // 2 minutes
 
   if (!opts.noAi && process.env.ANTHROPIC_API_KEY) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -497,12 +497,10 @@ async function main() {
       } catch (err) {
         console.log(`⚠️  AI generation failed: ${err.message}`);
         if (attempt < MAX_RETRIES) {
-          console.log(`⏳ Retrying in 5 minutes... (attempt ${attempt}/${MAX_RETRIES})\n`);
+          console.log(`⏳ Retrying in 2 minutes... (attempt ${attempt}/${MAX_RETRIES})\n`);
           await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
         } else {
-          console.error(`\n❌ AI generation failed after ${MAX_RETRIES} attempts. Aborting.`);
-          console.error("   Fix the issue and try again, or use --no-ai for static templates.\n");
-          process.exit(1);
+          console.log(`\n⚠️  AI generation failed after ${MAX_RETRIES} attempts — falling back to static templates.\n`);
         }
       }
     }
