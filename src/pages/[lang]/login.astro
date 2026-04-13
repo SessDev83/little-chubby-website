@@ -18,7 +18,7 @@ if (user) {
 
 let message = "";
 let messageType: "success" | "error" | "" = "";
-let activeTab: "magic" | "password" = "magic";
+let showMagicLink = false;
 
 if (Astro.request.method === "POST") {
   const formData = await Astro.request.formData();
@@ -26,7 +26,7 @@ if (Astro.request.method === "POST") {
   const email = formData.get("email")?.toString().trim() || "";
 
   if (action === "magic-link" && email) {
-    activeTab = "magic";
+    showMagicLink = true;
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -42,7 +42,6 @@ if (Astro.request.method === "POST") {
       messageType = "success";
     }
   } else if (action === "password" && email) {
-    activeTab = "password";
     const password = formData.get("password")?.toString() || "";
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -94,59 +93,8 @@ if (Astro.request.method === "POST") {
 
       {messageType !== "success" && (
         <>
-          <div class="auth-tabs" role="tablist">
-            <button
-              role="tab"
-              class={`auth-tab ${activeTab === "magic" ? "active" : ""}`}
-              data-tab="magic"
-              aria-selected={activeTab === "magic" ? "true" : "false"}
-            >
-              {text.loginTabMagicLink}
-            </button>
-            <button
-              role="tab"
-              class={`auth-tab ${activeTab === "password" ? "active" : ""}`}
-              data-tab="password"
-              aria-selected={activeTab === "password" ? "true" : "false"}
-            >
-              {text.loginTabPassword}
-            </button>
-          </div>
-
-          {/* Magic Link form */}
-          <form
-            method="POST"
-            class="form-grid auth-panel"
-            id="panel-magic"
-            style={activeTab === "magic" ? "" : "display:none"}
-          >
-            <input type="hidden" name="action" value="magic-link" />
-            <p style="color:var(--ink-soft); font-size:0.95rem; margin-bottom:0.5rem;">
-              {text.loginSubheading}
-            </p>
-            <div class="form-group">
-              <label for="email-magic">{text.loginEmailLabel}</label>
-              <input
-                type="email"
-                id="email-magic"
-                name="email"
-                required
-                autocomplete="email"
-                inputmode="email"
-              />
-            </div>
-            <button type="submit" class="btn btn-primary" style="width:100%;">
-              {text.loginSubmit}
-            </button>
-          </form>
-
-          {/* Password form */}
-          <form
-            method="POST"
-            class="form-grid auth-panel"
-            id="panel-password"
-            style={activeTab === "password" ? "" : "display:none"}
-          >
+          {/* Password form — primary */}
+          <form method="POST" class="form-grid">
             <input type="hidden" name="action" value="password" />
             <div class="form-group">
               <label for="email-password">{text.loginEmailLabel}</label>
@@ -184,6 +132,38 @@ if (Astro.request.method === "POST") {
             {text.loginNoAccount}{" "}
             <a href={`/${lang}/register/`}><strong>{text.loginCreateAccount}</strong></a>
           </p>
+
+          {/* Magic link — secondary collapsed */}
+          <div class="magic-link-toggle">
+            <button type="button" class="toggle-magic" id="toggle-magic" aria-expanded={showMagicLink ? "true" : "false"}>
+              {text.loginOrMagicLink}
+            </button>
+            <form
+              method="POST"
+              class="form-grid magic-link-form"
+              id="magic-link-form"
+              style={showMagicLink ? "" : "display:none"}
+            >
+              <input type="hidden" name="action" value="magic-link" />
+              <p style="color:var(--ink-soft); font-size:0.9rem; margin-bottom:0.5rem;">
+                {text.loginSubheading}
+              </p>
+              <div class="form-group">
+                <label for="email-magic">{text.loginEmailLabel}</label>
+                <input
+                  type="email"
+                  id="email-magic"
+                  name="email"
+                  required
+                  autocomplete="email"
+                  inputmode="email"
+                />
+              </div>
+              <button type="submit" class="btn btn-outline" style="width:100%;">
+                {text.loginSubmit}
+              </button>
+            </form>
+          </div>
         </>
       )}
     </div>
@@ -191,22 +171,17 @@ if (Astro.request.method === "POST") {
 </BaseLayout>
 
 <script is:inline>
-  document.querySelectorAll(".auth-tab").forEach(function(tab) {
-    tab.addEventListener("click", function() {
-      var target = tab.getAttribute("data-tab");
-      document.querySelectorAll(".auth-tab").forEach(function(t) {
-        t.classList.remove("active");
-        t.setAttribute("aria-selected", "false");
+  (function() {
+    var btn = document.getElementById("toggle-magic");
+    var form = document.getElementById("magic-link-form");
+    if (btn && form) {
+      btn.addEventListener("click", function() {
+        var open = form.style.display === "none";
+        form.style.display = open ? "" : "none";
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
       });
-      tab.classList.add("active");
-      tab.setAttribute("aria-selected", "true");
-      document.querySelectorAll(".auth-panel").forEach(function(p) {
-        p.style.display = "none";
-      });
-      var panel = document.getElementById("panel-" + target);
-      if (panel) panel.style.display = "";
-    });
-  });
+    }
+  })();
 </script>
 
 <style>
@@ -235,33 +210,29 @@ if (Astro.request.method === "POST") {
     border: 1px solid rgba(220, 50, 50, 0.25);
   }
 
-  .auth-tabs {
-    display: flex;
-    gap: 0;
-    margin-bottom: 1.2rem;
-    border-bottom: 2px solid var(--line);
+  .magic-link-toggle {
+    margin-top: 1.5rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--line);
+    text-align: center;
   }
 
-  .auth-tab {
-    flex: 1;
-    padding: 0.7rem 1rem;
+  .toggle-magic {
     background: none;
     border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
     cursor: pointer;
     font: inherit;
-    font-weight: 600;
+    font-size: 0.9rem;
     color: var(--ink-soft);
-    transition: color 0.2s, border-color 0.2s;
+    text-decoration: underline;
+    transition: color 0.2s;
   }
 
-  .auth-tab.active {
+  .toggle-magic:hover {
     color: var(--brand-blue);
-    border-bottom-color: var(--brand-blue);
   }
 
-  .auth-tab:hover {
-    color: var(--ink);
+  .magic-link-form {
+    margin-top: 1rem;
   }
 </style>
