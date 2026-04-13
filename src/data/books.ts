@@ -205,7 +205,9 @@ export const books: Book[] = [
       en: "Ages 4-8"
     },
     ageCategories: ["4-8"],
-    pages: 90
+    pages: 90,
+    ratingValue: 5,
+    ratingCount: 1
   },
   {
     id: "coloring-emotions",
@@ -286,7 +288,9 @@ export const books: Book[] = [
       en: "Ages 4-8"
     },
     ageCategories: ["4-8"],
-    pages: 90
+    pages: 90,
+    ratingValue: 5,
+    ratingCount: 1
   },
   {
     id: "blast-off-space",
@@ -370,6 +374,7 @@ export const books: Book[] = [
     pages: 110,
     ratingValue: 5,
     ratingCount: 2
+
   },
   {
     id: "awesome-airplanes",
@@ -399,6 +404,7 @@ export const books: Book[] = [
     pages: 90,
     ratingValue: 5,
     ratingCount: 2
+
   },
   {
     id: "alphabet-coloring-book",

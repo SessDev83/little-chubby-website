@@ -16,7 +16,9 @@
     "social:post": "node scripts/social/post.mjs post",
     "social:calendar": "node scripts/social/post.mjs calendar",
     "social:monitor": "node scripts/social/engage.mjs monitor",
-    "social:outreach": "node scripts/social/engage.mjs outreach"
+    "social:outreach": "node scripts/social/engage.mjs outreach",
+    "ratings:sync": "node scripts/sync-amazon-ratings.mjs",
+    "ratings:preview": "node scripts/sync-amazon-ratings.mjs --dry-run"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.18",
