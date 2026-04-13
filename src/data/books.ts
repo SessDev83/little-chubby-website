@@ -208,6 +208,7 @@ export const books: Book[] = [
     pages: 90,
     ratingValue: 5,
     ratingCount: 1
+
   },
   {
     id: "coloring-emotions",
@@ -291,6 +292,7 @@ export const books: Book[] = [
     pages: 90,
     ratingValue: 5,
     ratingCount: 1
+
   },
   {
     id: "blast-off-space",
@@ -375,6 +377,7 @@ export const books: Book[] = [
     ratingValue: 5,
     ratingCount: 2
 
+
   },
   {
     id: "awesome-airplanes",
@@ -404,6 +407,7 @@ export const books: Book[] = [
     pages: 90,
     ratingValue: 5,
     ratingCount: 2
+
 
   },
   {
