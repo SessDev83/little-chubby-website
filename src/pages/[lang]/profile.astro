@@ -605,3 +605,14 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     border: 1px solid rgba(220, 50, 50, 0.25);
   }
 </style>
+
+<script is:inline define:vars={{ displayName: profile?.display_name || "" }}>
+  if (displayName) {
+    localStorage.setItem("lcp-display-name", displayName);
+  } else {
+    localStorage.removeItem("lcp-display-name");
+  }
+  // Update header username immediately if element already exists
+  var el = document.getElementById("auth-username");
+  if (el) el.textContent = displayName || "";
+</script>

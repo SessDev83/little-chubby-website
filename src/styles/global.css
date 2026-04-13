@@ -219,6 +219,93 @@ main {
   background: rgba(31, 79, 134, 0.1);
 }
 
+/* ── Username Display ───────────────────────── */
+.header-username {
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--brand-brown);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 8rem;
+}
+
+/* ── Settings Button & Dropdown ─────────────── */
+.settings-wrapper {
+  position: relative;
+}
+
+.settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--brand-blue);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  padding: 0;
+}
+
+.settings-btn:hover {
+  background: rgba(31, 79, 134, 0.1);
+  transform: rotate(30deg);
+}
+
+.settings-btn[aria-expanded="true"] {
+  background: rgba(31, 79, 134, 0.15);
+  transform: rotate(45deg);
+}
+
+.settings-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 10rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.settings-dropdown.is-open {
+  display: block;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  text-decoration: none;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--brand-blue);
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.settings-item:hover {
+  background: rgba(31, 79, 134, 0.08);
+}
+
+.settings-item--logout {
+  border-top: 1px solid var(--line);
+  color: var(--accent-coral);
+}
+
+.settings-item--logout:hover {
+  background: rgba(217, 130, 95, 0.08);
+}
+
 /* ── Hamburger Button ───────────────────────── */
 .hamburger {
   display: none;
@@ -260,6 +347,24 @@ main {
     display: flex;
   }
 
+  .brand-link span {
+    font-size: 0.95rem;
+  }
+
+  .brand-link img {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .header-actions {
+    gap: 0.45rem;
+  }
+
+  .header-username {
+    max-width: 5.5rem;
+    font-size: 0.75rem;
+  }
+
   .header-nav {
     display: grid;
     grid-template-rows: 0fr;
@@ -291,6 +396,16 @@ main {
   .header-nav a {
     display: block;
     padding: 0.65rem 0.8rem;
+  }
+}
+
+@media (max-width: 22.5rem) {
+  .header-username {
+    display: none !important;
+  }
+
+  .brand-link span {
+    font-size: 0.82rem;
   }
 }
 

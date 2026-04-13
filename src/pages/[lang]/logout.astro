@@ -11,5 +11,6 @@ Astro.cookies.delete("sb-access-token", { path: "/" });
 Astro.cookies.delete("sb-refresh-token", { path: "/" });
 Astro.cookies.delete("sb-logged-in", { path: "/" });
 
-return Astro.redirect(`/${lang}/`);
+// Redirect to home with a query param that triggers localStorage cleanup
+return Astro.redirect(`/${lang}/?logged-out=1`);
 ---

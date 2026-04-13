@@ -32,8 +32,7 @@ const navItems = [
 
       <div class="header-actions">
         <a href={`/${lang}/login/`} class="header-login" id="auth-login">{text.navLogin}</a>
-        <a href={`/${lang}/profile/`} class="header-login" id="auth-profile" style="display:none;">{text.navProfile}</a>
-        <a href={`/${lang}/logout/`} class="header-login" id="auth-logout" style="display:none;">{text.navLogout}</a>
+        <span class="header-username" id="auth-username" style="display:none;"></span>
         <div class="lang-toggle" role="group" aria-label={text.languageToggleLabel}>
           <a
             href={lang === "en" && alternatePath ? alternatePath : switchLangPath(pathname, "es")}
@@ -53,6 +52,30 @@ const navItems = [
           >
             EN
           </a>
+        </div>
+        <div class="settings-wrapper" id="auth-settings" style="display:none;">
+          <button
+            class="settings-btn"
+            type="button"
+            aria-label={lang === "es" ? "Configuración" : "Settings"}
+            aria-expanded="false"
+            aria-controls="settings-dropdown"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M17.727 7.844l-1.266-.382a6.534 6.534 0 0 0-.553-1.334l.592-1.196a.5.5 0 0 0-.09-.577l-1.764-1.764a.5.5 0 0 0-.577-.09l-1.196.592a6.545 6.545 0 0 0-1.334-.553L11.157 1.273A.5.5 0 0 0 10.67 1H8.33a.5.5 0 0 0-.487.273L7.461 2.54a6.534 6.534 0 0 0-1.334.553l-1.196-.592a.5.5 0 0 0-.577.09L2.59 4.355a.5.5 0 0 0-.09.577l.592 1.196a6.534 6.534 0 0 0-.553 1.334l-1.266.382A.5.5 0 0 0 1 8.33v2.34a.5.5 0 0 0 .273.487l1.266.382c.135.468.322.914.553 1.334l-.592 1.196a.5.5 0 0 0 .09.577l1.764 1.764a.5.5 0 0 0 .577.09l1.196-.592c.42.231.866.418 1.334.553l.382 1.266A.5.5 0 0 0 8.33 18h2.34a.5.5 0 0 0 .487-.273l.382-1.266a6.534 6.534 0 0 0 1.334-.553l1.196.592a.5.5 0 0 0 .577-.09l1.764-1.764a.5.5 0 0 0 .09-.577l-.592-1.196c.231-.42.418-.866.553-1.334l1.266-.382A.5.5 0 0 0 18 10.67V8.33a.5.5 0 0 0-.273-.487Z" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+          </button>
+          <div class="settings-dropdown" id="settings-dropdown">
+            <a href={`/${lang}/profile/`} class="settings-item">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+              {text.navProfile}
+            </a>
+            <a href={`/${lang}/logout/`} class="settings-item settings-item--logout">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              {text.navLogout}
+            </a>
+          </div>
         </div>
         <button
           class="hamburger"
@@ -92,15 +115,29 @@ const navItems = [
 
 <script is:inline>
   function initHeader() {
-    // Auth state: toggle login vs profile/logout
-    // Middleware clears sb-logged-in when tokens expire, so this is reliable
+    // Clean up display name cache on logout
+    if (window.location.search.indexOf("logged-out=1") !== -1) {
+      localStorage.removeItem("lcp-display-name");
+      // Remove query param from URL without reload
+      var cleanUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState(null, "", cleanUrl);
+    }
+
+    // Auth state: toggle login vs username/settings
     var loggedIn = document.cookie.indexOf("sb-logged-in=") !== -1;
     var loginEl = document.getElementById("auth-login");
-    var profileEl = document.getElementById("auth-profile");
-    var logoutEl = document.getElementById("auth-logout");
+    var usernameEl = document.getElementById("auth-username");
+    var settingsEl = document.getElementById("auth-settings");
+
     if (loginEl) loginEl.style.display = loggedIn ? "none" : "";
-    if (profileEl) profileEl.style.display = loggedIn ? "" : "none";
-    if (logoutEl) logoutEl.style.display = loggedIn ? "" : "none";
+    if (usernameEl) {
+      usernameEl.style.display = loggedIn ? "" : "none";
+      if (loggedIn) {
+        var name = localStorage.getItem("lcp-display-name") || "";
+        usernameEl.textContent = name || "";
+      }
+    }
+    if (settingsEl) settingsEl.style.display = loggedIn ? "" : "none";
 
     const rootLang = document.documentElement.getAttribute("lang");
     if (rootLang === "es" || rootLang === "en") {
@@ -118,6 +155,27 @@ const navItems = [
         }
       });
     });
+
+    // Settings dropdown — clone+replace to avoid duplicate listeners
+    var oldSettingsBtn = document.querySelector(".settings-btn");
+    var dropdown = document.getElementById("settings-dropdown");
+    if (oldSettingsBtn && dropdown) {
+      var settingsBtn = oldSettingsBtn.cloneNode(true);
+      oldSettingsBtn.parentNode.replaceChild(settingsBtn, oldSettingsBtn);
+      settingsBtn.addEventListener("click", function(e) {
+        e.stopPropagation();
+        var isOpen = settingsBtn.getAttribute("aria-expanded") === "true";
+        settingsBtn.setAttribute("aria-expanded", String(!isOpen));
+        dropdown.classList.toggle("is-open");
+      });
+      // Close dropdown when clicking outside
+      document.addEventListener("click", function(e) {
+        if (!dropdown.contains(e.target) && !settingsBtn.contains(e.target)) {
+          settingsBtn.setAttribute("aria-expanded", "false");
+          dropdown.classList.remove("is-open");
+        }
+      });
+    }
 
     // Hamburger menu — clone+replace to avoid duplicate listeners
     var oldBtn = document.querySelector(".hamburger");
