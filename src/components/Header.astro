@@ -31,7 +31,9 @@ const navItems = [
       </a>
 
       <div class="header-actions">
-        <a href={`/${lang}/login/`} class="header-login">{text.navLogin}</a>
+        <a href={`/${lang}/login/`} class="header-login" id="auth-login">{text.navLogin}</a>
+        <a href={`/${lang}/profile/`} class="header-login" id="auth-profile" style="display:none;">{text.navProfile}</a>
+        <a href={`/${lang}/logout/`} class="header-login" id="auth-logout" style="display:none;">{text.navLogout}</a>
         <div class="lang-toggle" role="group" aria-label={text.languageToggleLabel}>
           <a
             href={lang === "en" && alternatePath ? alternatePath : switchLangPath(pathname, "es")}
@@ -90,6 +92,15 @@ const navItems = [
 
 <script is:inline>
   function initHeader() {
+    // Auth state: toggle login vs profile/logout
+    var loggedIn = document.cookie.indexOf("sb-logged-in=") !== -1;
+    var loginEl = document.getElementById("auth-login");
+    var profileEl = document.getElementById("auth-profile");
+    var logoutEl = document.getElementById("auth-logout");
+    if (loginEl) loginEl.style.display = loggedIn ? "none" : "";
+    if (profileEl) profileEl.style.display = loggedIn ? "" : "none";
+    if (logoutEl) logoutEl.style.display = loggedIn ? "" : "none";
+
     const rootLang = document.documentElement.getAttribute("lang");
     if (rootLang === "es" || rootLang === "en") {
       localStorage.setItem("lcp-lang", rootLang);

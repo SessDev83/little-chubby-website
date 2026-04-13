@@ -9,6 +9,7 @@ const lang = getLangFromParam(Astro.params.lang) as Lang;
 // Clear auth cookies
 Astro.cookies.delete("sb-access-token", { path: "/" });
 Astro.cookies.delete("sb-refresh-token", { path: "/" });
+Astro.cookies.delete("sb-logged-in", { path: "/" });
 
 return Astro.redirect(`/${lang}/`);
 ---
