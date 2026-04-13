@@ -17,7 +17,7 @@ const user = Astro.locals.user;
 const sc = getServiceClient();
 
 // ── User state ───────────────────────────────────────
-let myReviews: { id: string; book_id: string; photo_url: string; rating: number; review_text: string; status: string; submitted_at: string; reviewer_note?: string }[] = [];
+let myReviews: { id: string; book_id: string; photo_url: string; extra_photos?: string[]; rating: number; review_text: string; status: string; submitted_at: string; reviewer_note?: string }[] = [];
 let pendingClaim: any = null;
 let shareMsg = "";
 let shareMsgType: "success" | "error" | "" = "";
@@ -28,7 +28,7 @@ if (user) {
   // Get user's reviews
   const { data: reviewData } = await supabase
     .from("book_reviews")
-    .select("id, book_id, photo_url, rating, review_text, status, submitted_at, reviewer_note")
+    .select("id, book_id, photo_url, extra_photos, rating, review_text, status, submitted_at, reviewer_note")
     .eq("user_id", user.id)
     .order("submitted_at", { ascending: false });
   myReviews = reviewData ?? [];
@@ -62,7 +62,7 @@ if (user) {
           // Refresh reviews
           const { data: refreshed } = await supabase
             .from("book_reviews")
-            .select("id, book_id, photo_url, rating, review_text, status, submitted_at, reviewer_note")
+            .select("id, book_id, photo_url, extra_photos, rating, review_text, status, submitted_at, reviewer_note")
             .eq("user_id", user.id)
             .order("submitted_at", { ascending: false });
           myReviews = refreshed ?? [];
@@ -77,39 +77,53 @@ if (user) {
       const rating = parseInt(formData.get("rating")?.toString() || "0", 10);
       const reviewText = formData.get("review_text")?.toString().trim() || "";
       const showGallery = formData.get("show_in_gallery") === "on";
-      const photo = formData.get("photo") as File | null;
+      const photos = formData.getAll("photos") as File[];
       const editId = formData.get("edit_id")?.toString() || "";
 
       const MAX_BYTES = 500 * 1024;
+      const MAX_PHOTOS = 5;
       const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-      const hasNewPhoto = photo && photo.size > 0;
+      const validPhotos = photos.filter(f => f && f.size > 0);
+      const tooLarge = validPhotos.some(f => f.size > MAX_BYTES);
+      const badType = validPhotos.some(f => !ALLOWED_TYPES.includes(f.type));
 
-      if (hasNewPhoto && photo!.size > MAX_BYTES) {
+      if (tooLarge) {
         shareMsg = text.shareTooLarge;
         shareMsgType = "error";
-      } else if (hasNewPhoto && !ALLOWED_TYPES.includes(photo!.type)) {
+      } else if (badType) {
         shareMsg = text.shareInvalidType;
+        shareMsgType = "error";
+      } else if (validPhotos.length > MAX_PHOTOS) {
+        shareMsg = text.shareTooLarge;
         shareMsgType = "error";
       } else if (!bookId || rating < 1 || rating > 5) {
         shareMsg = text.loginError;
         shareMsgType = "error";
       } else {
         let photoUrl = "";
+        let extraPhotos: string[] = [];
 
-        if (hasNewPhoto) {
-          const filePath = `${user.id}/${bookId}.jpg`;
-          const arrayBuf = await photo!.arrayBuffer();
-          const buffer = new Uint8Array(arrayBuf);
-          const { error: uploadError } = await sc.storage
-            .from("book-photos")
-            .upload(filePath, buffer, { contentType: "image/jpeg", upsert: true });
-          if (uploadError) {
-            shareMsg = text.loginError;
-            shareMsgType = "error";
-          } else {
+        if (validPhotos.length > 0) {
+          for (let i = 0; i < validPhotos.length; i++) {
+            const suffix = i === 0 ? "" : `_${i + 1}`;
+            const filePath = `${user.id}/${bookId}${suffix}.jpg`;
+            const arrayBuf = await validPhotos[i].arrayBuffer();
+            const buffer = new Uint8Array(arrayBuf);
+            const { error: uploadError } = await sc.storage
+              .from("book-photos")
+              .upload(filePath, buffer, { contentType: "image/jpeg", upsert: true });
+            if (uploadError) {
+              shareMsg = text.loginError;
+              shareMsgType = "error";
+              break;
+            }
             const { data: urlData } = sc.storage.from("book-photos").getPublicUrl(filePath);
-            photoUrl = urlData.publicUrl;
+            if (i === 0) {
+              photoUrl = urlData.publicUrl;
+            } else {
+              extraPhotos.push(urlData.publicUrl);
+            }
           }
         }
 
@@ -125,6 +139,7 @@ if (user) {
               reviewer_note: null,
             };
             if (photoUrl) updateData.photo_url = photoUrl;
+            if (extraPhotos.length > 0) updateData.extra_photos = extraPhotos;
 
             const { error: updateError } = await sc
               .from("book_reviews")
@@ -151,6 +166,7 @@ if (user) {
                   user_id: user.id,
                   book_id: bookId,
                   photo_url: photoUrl,
+                  extra_photos: extraPhotos,
                   rating,
                   review_text: reviewText,
                   show_in_gallery: formData.get("show_in_gallery") === "on",
@@ -172,7 +188,7 @@ if (user) {
           // Refresh reviews
           const { data: refreshed } = await supabase
             .from("book_reviews")
-            .select("id, book_id, photo_url, rating, review_text, status, submitted_at, reviewer_note")
+            .select("id, book_id, photo_url, extra_photos, rating, review_text, status, submitted_at, reviewer_note")
             .eq("user_id", user.id)
             .order("submitted_at", { ascending: false });
           myReviews = refreshed ?? [];
@@ -354,40 +370,55 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
               <input type="hidden" name="action" value="share_book" />
               <input type="hidden" name="edit_id" id="editId" value="" />
 
+              {/* Searchable book selector */}
               <div class="form-group">
-                <label for="book_id">{text.shareBookLabel}</label>
-                <select id="book_id" name="book_id" class="form-select" required>
-                  <option value="">—</option>
-                  {availableBooks.map(b => (
-                    <option value={b.id}>{b.title}</option>
-                  ))}
-                </select>
+                <label for="bookSearch">{text.shareBookLabel}</label>
+                <input type="hidden" id="book_id" name="book_id" value="" required />
+                <div class="book-combo" id="bookCombo">
+                  <input
+                    type="text"
+                    id="bookSearch"
+                    class="book-search-input"
+                    placeholder={text.shareBookSearch}
+                    autocomplete="off"
+                    required
+                  />
+                  <ul class="book-dropdown" id="bookDropdown" role="listbox">
+                    {availableBooks.map(b => (
+                      <li class="book-option" role="option" data-value={b.id}>{b.title}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
 
+              {/* Multi-photo upload */}
               <div class="form-group">
-                <label for="photo">{text.sharePhotoLabel}</label>
+                <label for="photos">{text.sharePhotoLabel}</label>
                 <input
                   type="file"
-                  id="photo"
-                  name="photo"
+                  id="photos"
+                  name="photos"
                   accept="image/jpeg,image/png,image/webp"
+                  multiple
                   required
                   class="file-input"
                 />
                 <small style="color:var(--ink-soft);">{text.sharePhotoHint}</small>
+                <div id="photoPreview" class="photo-preview"></div>
                 <small id="photoStatus" class="photo-status" style="display:none;"></small>
               </div>
 
+              {/* Star rating — mobile-friendly */}
               <div class="form-group">
                 <label>{text.shareRatingLabel}</label>
                 <div class="star-picker" id="starPicker">
                   {[1, 2, 3, 4, 5].map(n => (
-                    <label class="star-label">
-                      <input type="radio" name="rating" value={n.toString()} required />
+                    <button type="button" class="star-btn" data-value={n.toString()} aria-label={`${n} star${n > 1 ? "s" : ""}`}>
                       <span class="star-icon">★</span>
-                    </label>
+                    </button>
                   ))}
                 </div>
+                <input type="hidden" name="rating" id="ratingInput" value="" required />
               </div>
 
               <div class="form-group">
@@ -417,7 +448,12 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
             <div class="reviews-list">
               {myReviews.map(r => (
                 <div class="review-row">
-                  <img src={r.photo_url} alt="" class="review-thumb" loading="lazy" width="56" height="56" />
+                  <div class="review-thumbs">
+                    <img src={r.photo_url} alt="" class="review-thumb" loading="lazy" width="56" height="56" />
+                    {(r.extra_photos || []).map((url: string) => (
+                      <img src={url} alt="" class="review-thumb review-thumb-extra" loading="lazy" width="36" height="36" />
+                    ))}
+                  </div>
                   <div class="review-info">
                     <strong>{bookMap[r.book_id] || r.book_id}</strong>
                     <span class="review-stars">{stars(r.rating)}</span>
@@ -478,33 +514,97 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 
 <script is:inline>
   document.addEventListener("DOMContentLoaded", () => {
-    // ── Star picker ──────────────────────────────
-    const picker = document.getElementById("starPicker");
-    if (picker) {
-      const labels = picker.querySelectorAll(".star-label");
-      labels.forEach((label, i) => {
-        label.addEventListener("mouseenter", () => {
-          labels.forEach((l, j) => l.classList.toggle("hovered", j <= i));
+    // ── Searchable book selector ─────────────────
+    const searchInput = document.getElementById("bookSearch");
+    const hiddenInput = document.getElementById("book_id");
+    const dropdown = document.getElementById("bookDropdown");
+    const combo = document.getElementById("bookCombo");
+
+    if (searchInput && dropdown && hiddenInput) {
+      const allOptions = Array.from(dropdown.querySelectorAll(".book-option"));
+
+      searchInput.addEventListener("focus", () => {
+        dropdown.classList.add("open");
+        filterOptions();
+      });
+
+      searchInput.addEventListener("input", () => {
+        dropdown.classList.add("open");
+        filterOptions();
+        // Clear hidden value when typing (must re-select)
+        hiddenInput.value = "";
+        searchInput.setCustomValidity("Please select a book from the list");
+      });
+
+      function filterOptions() {
+        const q = searchInput.value.toLowerCase().trim();
+        let visible = 0;
+        allOptions.forEach(opt => {
+          const match = !q || opt.textContent.toLowerCase().includes(q);
+          opt.style.display = match ? "" : "none";
+          if (match) visible++;
         });
-        label.addEventListener("mouseleave", () => {
-          labels.forEach(l => l.classList.remove("hovered"));
+      }
+
+      allOptions.forEach(opt => {
+        opt.addEventListener("click", () => {
+          hiddenInput.value = opt.getAttribute("data-value");
+          searchInput.value = opt.textContent;
+          searchInput.setCustomValidity("");
+          dropdown.classList.remove("open");
         });
-        const radio = label.querySelector("input");
-        if (radio) {
-          radio.addEventListener("change", () => {
-            labels.forEach((l, j) => l.classList.toggle("selected", j <= i));
-          });
+        // Touch support for mobile
+        opt.addEventListener("touchend", (e) => {
+          e.preventDefault();
+          opt.click();
+        });
+      });
+
+      // Close dropdown on outside click
+      document.addEventListener("click", (e) => {
+        if (!combo.contains(e.target)) {
+          dropdown.classList.remove("open");
         }
       });
     }
 
-    // ── Client-side image compression ────────────
+    // ── Star picker (mobile-friendly buttons) ────
+    const picker = document.getElementById("starPicker");
+    const ratingInput = document.getElementById("ratingInput");
+    if (picker && ratingInput) {
+      const stars = picker.querySelectorAll(".star-btn");
+
+      function setRating(value) {
+        ratingInput.value = value;
+        stars.forEach((s, i) => {
+          s.classList.toggle("selected", i < value);
+        });
+      }
+
+      stars.forEach((star, i) => {
+        star.addEventListener("click", (e) => {
+          e.preventDefault();
+          setRating(i + 1);
+        });
+        // Hover effect (desktop)
+        star.addEventListener("mouseenter", () => {
+          stars.forEach((s, j) => s.classList.toggle("hovered", j <= i));
+        });
+        star.addEventListener("mouseleave", () => {
+          stars.forEach(s => s.classList.remove("hovered"));
+        });
+      });
+    }
+
+    // ── Client-side multi-image compression ──────
     const MAX_DIM = 800;
     const JPEG_QUALITY = 0.7;
     const MAX_BYTES = 500 * 1024;
+    const MAX_FILES = 5;
 
-    const fileInput = document.getElementById("photo");
+    const fileInput = document.getElementById("photos");
     const status = document.getElementById("photoStatus");
+    const preview = document.getElementById("photoPreview");
 
     function compressImage(file) {
       return new Promise((resolve, reject) => {
@@ -536,38 +636,66 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 
     if (fileInput) {
       fileInput.addEventListener("change", async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+
+        if (files.length > MAX_FILES) {
+          if (status) {
+            status.style.display = "block";
+            status.textContent = "❌ Max " + MAX_FILES + " photos.";
+            status.className = "photo-status photo-error";
+          }
+          e.target.value = "";
+          return;
+        }
+
         if (status) {
           status.style.display = "block";
-          status.textContent = "⏳ Compressing...";
+          status.textContent = "⏳ Compressing " + files.length + " photo" + (files.length > 1 ? "s" : "") + "...";
           status.className = "photo-status";
         }
+        if (preview) preview.innerHTML = "";
+
         try {
-          const blob = await compressImage(file);
-          if (blob.size > MAX_BYTES) {
-            if (status) {
-              status.textContent = "❌ Still too large after compression. Try a smaller photo.";
-              status.className = "photo-status photo-error";
-            }
-            e.target.value = "";
-            return;
-          }
-          const compressed = new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
           const dt = new DataTransfer();
-          dt.items.add(compressed);
+          let totalKb = 0;
+
+          for (let i = 0; i < files.length; i++) {
+            const blob = await compressImage(files[i]);
+            if (blob.size > MAX_BYTES) {
+              if (status) {
+                status.textContent = "❌ Photo " + (i + 1) + " still too large after compression.";
+                status.className = "photo-status photo-error";
+              }
+              e.target.value = "";
+              if (preview) preview.innerHTML = "";
+              return;
+            }
+            const compressed = new File([blob], "photo_" + (i + 1) + ".jpg", { type: "image/jpeg" });
+            dt.items.add(compressed);
+            totalKb += Math.round(blob.size / 1024);
+
+            // Show thumbnail preview
+            if (preview) {
+              const thumb = document.createElement("img");
+              thumb.src = URL.createObjectURL(blob);
+              thumb.className = "preview-thumb";
+              preview.appendChild(thumb);
+            }
+          }
+
           e.target.files = dt.files;
-          const kb = Math.round(blob.size / 1024);
           if (status) {
-            status.textContent = "✅ " + kb + " KB — ready to upload";
+            status.textContent = "✅ " + files.length + " photo" + (files.length > 1 ? "s" : "") + " — " + totalKb + " KB total";
             status.className = "photo-status photo-ok";
           }
         } catch (err) {
           if (status) {
-            status.textContent = "❌ Could not process image.";
+            status.textContent = "❌ Could not process image(s).";
             status.className = "photo-status photo-error";
           }
           e.target.value = "";
+          if (preview) preview.innerHTML = "";
         }
       });
     }
@@ -580,36 +708,31 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
           const form = document.getElementById("shareForm");
           if (!form) return;
           document.getElementById("editId").value = data.id;
-          const bookSelect = document.getElementById("book_id");
-          if (bookSelect) {
-            // Add the book option if not present (already reviewed books are filtered out)
-            let found = false;
-            for (const opt of bookSelect.options) {
-              if (opt.value === data.book_id) { found = true; break; }
-            }
-            if (!found) {
-              const opt = document.createElement("option");
-              opt.value = data.book_id;
-              opt.textContent = data.book_id;
-              bookSelect.appendChild(opt);
-            }
-            bookSelect.value = data.book_id;
-            bookSelect.disabled = true;
+
+          // Set book via searchable input
+          if (hiddenInput) hiddenInput.value = data.book_id;
+          if (searchInput) {
+            // Find book title from options
+            const opt = allOptions ? allOptions.find(o => o.getAttribute("data-value") === data.book_id) : null;
+            searchInput.value = opt ? opt.textContent : data.book_id;
+            searchInput.setCustomValidity("");
+            searchInput.readOnly = true;
           }
+
           const reviewField = document.getElementById("review_text");
           if (reviewField) reviewField.value = data.review_text;
-          // Set rating
-          const ratingInputs = form.querySelectorAll('input[name="rating"]');
-          const starLabels = picker ? picker.querySelectorAll(".star-label") : [];
-          ratingInputs.forEach((input, i) => {
-            if (parseInt(input.value) === data.rating) {
-              input.checked = true;
-              starLabels.forEach((l, j) => l.classList.toggle("selected", j <= i));
-            }
-          });
-          // Make photo optional for edits
-          const photoInput = document.getElementById("photo");
-          if (photoInput) photoInput.removeAttribute("required");
+
+          // Set rating via star buttons
+          if (ratingInput && picker) {
+            ratingInput.value = data.rating;
+            const starBtns = picker.querySelectorAll(".star-btn");
+            starBtns.forEach((s, j) => s.classList.toggle("selected", j < data.rating));
+          }
+
+          // Make photos optional for edits
+          const photosInput = document.getElementById("photos");
+          if (photosInput) photosInput.removeAttribute("required");
+
           // Scroll to form
           form.scrollIntoView({ behavior: "smooth", block: "start" });
         } catch(e) { console.error(e); }
@@ -792,32 +915,96 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
   .photo-ok { color: var(--brand-green); }
   .photo-error { color: #8f1f18; }
 
-  /* Star picker */
+  /* Searchable book combo */
+  .book-combo {
+    position: relative;
+  }
+  .book-search-input {
+    width: 100%;
+    padding: 0.7rem 0.82rem;
+    border: 1px solid var(--line);
+    border-radius: 0.8rem;
+    background: var(--surface);
+    font: inherit;
+  }
+  .book-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 14rem;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 0 0 0.8rem 0.8rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 10;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .book-dropdown.open {
+    display: block;
+  }
+  .book-option {
+    padding: 0.65rem 0.82rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background 0.15s;
+  }
+  .book-option:hover,
+  .book-option:active {
+    background: rgba(31,79,134,0.08);
+  }
+
+  /* Photo preview thumbnails */
+  .photo-preview {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+  }
+  .preview-thumb {
+    width: 3.5rem;
+    height: 3.5rem;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 2px solid var(--line);
+  }
+
+  /* Star picker — button-based for mobile */
   .star-picker {
     display: flex;
-    gap: 0.2rem;
-    font-size: 1.8rem;
-    cursor: pointer;
+    gap: 0.3rem;
   }
-  .star-label {
+  .star-btn {
+    background: none;
+    border: none;
     cursor: pointer;
+    padding: 0.3rem;
+    font-size: 2rem;
+    line-height: 1;
     transition: transform 0.12s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
-  .star-label input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-  }
-  .star-icon {
+  .star-btn .star-icon {
     color: var(--line);
     transition: color 0.15s;
   }
-  .star-label.hovered .star-icon,
-  .star-label.selected .star-icon {
+  .star-btn.hovered .star-icon,
+  .star-btn.selected .star-icon {
     color: var(--accent-gold);
   }
-  .star-label:hover {
+  .star-btn:hover {
     transform: scale(1.15);
+  }
+  @media (max-width: 600px) {
+    .star-btn {
+      font-size: 2.4rem;
+      padding: 0.4rem;
+    }
   }
 
   /* Reviews list */
@@ -833,12 +1020,22 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     border-radius: var(--radius-sm);
     border: 1px solid var(--line);
   }
+  .review-thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
   .review-thumb {
     width: 3.5rem;
     height: 3.5rem;
     object-fit: cover;
     border-radius: var(--radius-sm);
     flex-shrink: 0;
+  }
+  .review-thumb-extra {
+    width: 2.2rem;
+    height: 2.2rem;
   }
   .review-info {
     flex: 1;
