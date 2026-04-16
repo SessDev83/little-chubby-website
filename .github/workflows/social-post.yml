@@ -14,24 +14,17 @@ concurrency:
 
 on:
   schedule:
-    # ── Morning slot — 10:00 AM ET (14:00 UTC) ──
-    - cron: "0 14 * * 1"   # Monday    — book promo (EN)
-    - cron: "0 14 * * 2"   # Tuesday   — parenting tip (EN)
-    - cron: "0 14 * * 3"   # Wednesday — blog share (ES)
-    - cron: "0 14 * * 4"   # Thursday  — behind scenes (EN)
-    - cron: "0 14 * * 5"   # Friday    — fun fact (EN)
-    - cron: "0 14 * * 6"   # Saturday  — community (ES)
-    - cron: "0 14 * * 0"   # Sunday    — blog share (EN)
-    # ── Afternoon slot — 4:00 PM ET (20:00 UTC) ──
-    - cron: "0 20 * * 1"   # Monday    — community (ES)
-    - cron: "0 20 * * 2"   # Tuesday   — engagement (EN)
-    - cron: "0 20 * * 3"   # Wednesday — fun fact (EN)
-    - cron: "0 20 * * 4"   # Thursday  — parenting tip (ES)
-    - cron: "0 20 * * 5"   # Friday    — behind scenes (ES)
-    - cron: "0 20 * * 6"   # Saturday  — book promo (EN)
-    # ── Sunday extra slots — 3 blog shares throughout the day ──
-    - cron: "0 18 * * 0"   # Sunday    — blog share (ES) — 2:00 PM ET
-    - cron: "0 22 * * 0"   # Sunday    — blog share (EN) — 6:00 PM ET
+    # ── Every 4 hours from 8 AM to 12 AM ET ──
+    # 8:00 AM ET = 12:00 UTC
+    - cron: "0 12 * * *"
+    # 12:00 PM ET = 16:00 UTC
+    - cron: "0 16 * * *"
+    # 4:00 PM ET = 20:00 UTC
+    - cron: "0 20 * * *"
+    # 8:00 PM ET = 00:00 UTC (next day)
+    - cron: "0 0 * * *"
+    # 12:00 AM ET = 04:00 UTC (next day)
+    - cron: "0 4 * * *"
   workflow_dispatch:
     inputs:
       type:
@@ -91,40 +84,38 @@ jobs:
         if: github.event_name == 'schedule'
         id: schedule
         run: |
+          # 7 content categories — rotate through them sequentially
+          TYPES=("book-promo" "parenting-tip" "blog-share" "behind-scenes" "fun-fact" "community" "engagement")
+
+          # Day of week (1=Mon..7=Sun) and slot within the day (0-4)
           DAY=$(date -u +%u)
           HOUR=$(date -u +%H)
-          if [ "$DAY" -eq 7 ]; then
-            # Sunday — 3 blog shares at 10 AM, 2 PM, 6 PM ET
-            if [ "$HOUR" -lt 16 ]; then
-              echo "type=blog-share" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT
-            elif [ "$HOUR" -lt 20 ]; then
-              echo "type=blog-share" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT
-            else
-              echo "type=blog-share" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT
-            fi
-          elif [ "$HOUR" -lt 17 ]; then
-            # Morning slot (14:00 UTC)
-            case $DAY in
-              1) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-              2) echo "type=parenting-tip" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-              3) echo "type=blog-share" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
-              4) echo "type=behind-scenes" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-              5) echo "type=fun-fact" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-              6) echo "type=community" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
-              *) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-            esac
+
+          # Map UTC hour to slot index: 04→0, 12→1, 16→2, 20→3, 00→4
+          case $HOUR in
+            04) SLOT=0 ;;
+            12) SLOT=1 ;;
+            16) SLOT=2 ;;
+            20) SLOT=3 ;;
+            00) SLOT=4 ;;
+            *)  SLOT=0 ;;
+          esac
+
+          # Calculate a unique index across the week: (day-1)*5 + slot = 0..34
+          INDEX=$(( (DAY - 1) * 5 + SLOT ))
+          TYPE_INDEX=$(( INDEX % 7 ))
+          TYPE="${TYPES[$TYPE_INDEX]}"
+
+          # Alternate language: even index = EN, odd index = ES
+          if [ $(( INDEX % 2 )) -eq 0 ]; then
+            LANG="en"
           else
-            # Afternoon slot (20:00 UTC)
-            case $DAY in
-              1) echo "type=community" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
-              2) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-              3) echo "type=fun-fact" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-              4) echo "type=parenting-tip" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
-              5) echo "type=behind-scenes" >> $GITHUB_OUTPUT; echo "lang=es" >> $GITHUB_OUTPUT ;;
-              6) echo "type=book-promo" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-              *) echo "type=engagement" >> $GITHUB_OUTPUT; echo "lang=en" >> $GITHUB_OUTPUT ;;
-            esac
+            LANG="es"
           fi
+
+          echo "type=$TYPE" >> $GITHUB_OUTPUT
+          echo "lang=$LANG" >> $GITHUB_OUTPUT
+          echo "📋 Slot $INDEX → $TYPE ($LANG) [Day $DAY, Hour $HOUR, Slot $SLOT]"
 
       - name: Post to social media
         env:
