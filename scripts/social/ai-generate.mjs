@@ -47,9 +47,10 @@ PLATFORM-SPECIFIC RULES:
 
 BLUESKY (max 280 characters for text body, hashtags counted separately):
 - Ultra-concise, punchy, conversational
-- Do NOT include URLs in the text — links are attached as embed cards separately
+- Include URLs in the text when relevant — they become clickable links automatically
+- Keep the URL short (Amazon short link or direct URL, no UTM params)
 - 2-3 hashtags maximum
-- Text body MUST be 280 characters or fewer
+- Text body MUST be 280 characters or fewer (URL counts toward this limit)
 
 FACEBOOK (300-600 characters):
 - Longer, conversational, storytelling tone
@@ -71,7 +72,7 @@ The JSON must have this exact structure:
 {
   "concept": "one-line summary of the post idea",
   "bluesky": {
-    "text": "post text, max 280 chars, no URLs",
+    "text": "post text, max 280 chars, can include URLs",
     "hashtags": "#Tag1 #Tag2"
   },
   "facebook": {
@@ -117,8 +118,8 @@ Amazon link: ${data.amazonUrl}
 Make it feel like a genuine recommendation from a friend, NOT an advertisement. Focus on the experience a child will have.
 
 For Facebook: include the Amazon URL naturally in the text.
-For Bluesky: do NOT include the URL (it will be attached as a link card).
-For Instagram: do NOT include URLs, say "Link in bio" instead.
+For Bluesky: include the Amazon URL in the text (it becomes a clickable link automatically). Keep text+URL under 280 chars.
+For Instagram: do NOT include URLs (they are NOT clickable), say "Link in bio" instead.
 
 Set "imagePrompt" to null — we will use the book cover photo.`;
 
@@ -132,7 +133,7 @@ Blog URL: ${SITE_URL}/${lang}/blog/${data.slug[lang]}
 Make it intriguing — give a taste of the value without giving everything away.
 
 For Facebook: include the blog URL naturally.
-For Bluesky: do NOT include the URL (it will be attached as a link card).
+For Bluesky: include the blog URL in the text (it becomes a clickable link). Keep text+URL under 280 chars.
 For Instagram: say "Link in bio" instead of the URL.
 ${IMAGE_GUIDELINES}`;
 
@@ -199,7 +200,7 @@ Pick ONE approach:
 - Thank the community and celebrate a milestone
 
 For Facebook: include the relevant page URL naturally.
-For Bluesky: do NOT include URLs (link card will be attached).
+For Bluesky: include the relevant URL in the text (it becomes a clickable link). Keep text+URL under 280 chars.
 For Instagram: say "Link in bio" instead.
 ${IMAGE_GUIDELINES}`;
 
