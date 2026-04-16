@@ -73,7 +73,7 @@ async function upsertInsight(row) {
     console.log(`  [DRY RUN] ${row.source_category}/${row.source_detail || "(none)"}: ${row.pageviews} pv, ${row.unique_visitors} uv`);
     return;
   }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/traffic_insights`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/traffic_insights?on_conflict=date,source_category,source_detail`, {
     method: "POST",
     headers: {
       apikey: SUPABASE_KEY,
