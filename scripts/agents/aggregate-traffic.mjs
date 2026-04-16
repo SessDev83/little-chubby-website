@@ -85,6 +85,30 @@ async function upsertInsight(row) {
   });
   if (!res.ok) {
     const body = await res.text();
+    // Fallback: row already exists — update it via PATCH
+    if (res.status === 409) {
+      const filter = `date=eq.${row.date}&source_category=eq.${encodeURIComponent(row.source_category)}&source_detail=eq.${encodeURIComponent(row.source_detail)}`;
+      const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/traffic_insights?${filter}`, {
+        method: "PATCH",
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          sessions: row.sessions,
+          pageviews: row.pageviews,
+          unique_visitors: row.unique_visitors,
+          top_pages: row.top_pages,
+        }),
+      });
+      if (!patchRes.ok) {
+        const patchBody = await patchRes.text();
+        throw new Error(`PATCH failed (${patchRes.status}): ${patchBody}`);
+      }
+      return;
+    }
     throw new Error(`Upsert failed (${res.status}): ${body}`);
   }
 }
