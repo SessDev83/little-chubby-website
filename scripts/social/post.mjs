@@ -18,6 +18,7 @@
  *   --book <id>          Use a specific book by ID (e.g. "magical-creatures")
  *   --dry-run            Show what would be posted without actually posting
  *   --no-ai              Force static templates instead of AI generation
+ *   --smart              Use AI agent intelligence to optimize content (requires agent data)
  *
  * Examples:
  *   node scripts/social/post.mjs generate --type engagement --lang es
@@ -34,6 +35,7 @@ import { generateAIPost } from "./ai-generate.mjs";
 import { generateImage, downloadImage } from "./image-generate.mjs";
 import { postToBluesky } from "./platforms/bluesky.mjs";
 import { postToFacebook, postToInstagram } from "./platforms/meta.mjs";
+import { getSmartContext } from "../agents/smart-selector.mjs";
 
 const SITE_URL = "https://www.littlechubbypress.com";
 
@@ -139,6 +141,7 @@ function parseArgs() {
     book: null,
     dryRun: false,
     noAi: false,
+    smart: false,
   };
 
   for (let i = 1; i < args.length; i++) {
@@ -160,6 +163,9 @@ function parseArgs() {
         break;
       case "--no-ai":
         opts.noAi = true;
+        break;
+      case "--smart":
+        opts.smart = true;
         break;
     }
   }
@@ -484,11 +490,23 @@ async function main() {
   const MAX_RETRIES = 2;          // 2 retries × 2 min = 4 min max wait
   const RETRY_DELAY_MS = 2 * 60 * 1000; // 2 minutes
 
+  // Fetch smart context if --smart flag is used
+  let smartContext = null;
+  if (opts.smart && !opts.noAi) {
+    console.log("🧠 Fetching smart context from agent intelligence...\n");
+    smartContext = await getSmartContext();
+    if (smartContext) {
+      console.log("✅ Smart context loaded — AI will use performance data to optimize content.\n");
+    } else {
+      console.log("⚠️  No smart data available yet. Using standard AI generation.\n");
+    }
+  }
+
   if (!opts.noAi && process.env.ANTHROPIC_API_KEY) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         console.log(`🤖 Generating content with AI (Claude)...${attempt > 1 ? ` (attempt ${attempt}/${MAX_RETRIES})` : ""}\n`);
-        const aiPost = await generateAIPost(opts.type, opts.lang, data);
+        const aiPost = await generateAIPost(opts.type, opts.lang, data, smartContext);
         if (aiPost) {
           post = aiPost;
           aiUsed = true;

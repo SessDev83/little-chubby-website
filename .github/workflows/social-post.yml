@@ -135,11 +135,13 @@ jobs:
           META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NANO_BANANA_API_KEY: ${{ secrets.NANO_BANANA_API_KEY }}
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           TYPE="${{ github.event.inputs.type || steps.schedule.outputs.type || 'book-promo' }}"
           PLATFORM="${{ github.event.inputs.platform || 'all' }}"
           LANG="${{ github.event.inputs.lang || steps.schedule.outputs.lang || 'en' }}"
-          node scripts/social/post.mjs post --type "$TYPE" --platform "$PLATFORM" --lang "$LANG"
+          node scripts/social/post.mjs post --type "$TYPE" --platform "$PLATFORM" --lang "$LANG" --smart
 
       - name: Save post state
         if: always()

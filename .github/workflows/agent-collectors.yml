@@ -1,0 +1,88 @@
+# Agent data collectors — Layer 1
+# Runs every 6 hours to collect social metrics, aggregate traffic,
+# and link content performance across all platforms (Bluesky, Facebook, Instagram).
+
+name: Agent — Data Collectors
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    # Every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      collector:
+        description: "Which collector to run"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - social-metrics
+          - aggregate-traffic
+          - link-performance
+      dry_run:
+        description: "Preview only"
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Collect social metrics
+        if: >-
+          github.event_name == 'schedule'
+          || github.event.inputs.collector == 'all'
+          || github.event.inputs.collector == 'social-metrics'
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BLUESKY_HANDLE: littlechubbypress.bsky.social
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+        run: |
+          ARGS=()
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          node scripts/agents/collect-social-metrics.mjs "${ARGS[@]}"
+
+      - name: Aggregate traffic
+        if: >-
+          github.event_name == 'schedule'
+          || github.event.inputs.collector == 'all'
+          || github.event.inputs.collector == 'aggregate-traffic'
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          ARGS=()
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          node scripts/agents/aggregate-traffic.mjs "${ARGS[@]}"
+
+      - name: Link content performance
+        if: >-
+          github.event_name == 'schedule'
+          || github.event.inputs.collector == 'all'
+          || github.event.inputs.collector == 'link-performance'
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BLUESKY_HANDLE: littlechubbypress.bsky.social
+          META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
+          META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
+          META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+        run: |
+          ARGS=()
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          node scripts/agents/link-content-performance.mjs "${ARGS[@]}"

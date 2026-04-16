@@ -31,6 +31,7 @@ import {
   getPagePosts, getPostComments, replyToFBComment,
   getIGMedia, getIGComments, replyToIGComment,
 } from "./platforms/meta.mjs";
+import { getOutreachPriorities } from "../agents/smart-selector.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "../..");
@@ -357,7 +358,20 @@ async function runOutreach(opts) {
 
   console.log(`\n🔍 Bluesky outreach (${opts.lang}, max ${opts.limit} engagements)...\n`);
   const state = loadState();
-  const queries = opts.lang === "es" ? SEARCH_QUERIES_ES : SEARCH_QUERIES_EN;
+  const baseQueries = opts.lang === "es" ? SEARCH_QUERIES_ES : SEARCH_QUERIES_EN;
+
+  // Inject AI-recommended outreach topics if available
+  let queries = [...baseQueries];
+  try {
+    const priorities = await getOutreachPriorities();
+    if (priorities.length > 0) {
+      console.log(`  🧠 Smart outreach: injecting ${priorities.length} AI-recommended topic(s)`);
+      for (const p of priorities) console.log(`     🎯 ${p}`);
+      console.log();
+      // Add priority topics at the front so they get picked first
+      queries = [...priorities, ...baseQueries];
+    }
+  } catch { /* smart context unavailable, use defaults */ }
 
   // Pick 2-3 random queries to search
   const shuffled = [...queries].sort(() => Math.random() - 0.5);

@@ -273,8 +273,14 @@ function parseAIResponse(raw) {
  *   aiGenerated: boolean
  * } | null>}
  */
-export async function generateAIPost(type, lang, data) {
-  const prompt = buildPrompt(type, lang, data);
+export async function generateAIPost(type, lang, data, smartContext = null) {
+  let prompt = buildPrompt(type, lang, data);
+
+  // Inject smart context from agent intelligence if available
+  if (smartContext) {
+    prompt += `\n\n═══ PERFORMANCE INTELLIGENCE (use this to optimize your content) ═══\n${smartContext}\n\nUse the above data to make this post MORE effective:\n- Lean into content styles that get higher engagement\n- Use language patterns from top-performing posts\n- Consider platform-specific insights\n- Follow the AI strategist recommendations when relevant`;
+  }
+
   const raw = await callClaude(prompt);
   if (!raw) return null;
 

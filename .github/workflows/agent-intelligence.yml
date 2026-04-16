@@ -1,0 +1,49 @@
+# Agent intelligence — Layer 2 (Brain)
+# Runs weekly to analyze all collected data, generate strategic
+# recommendations, and store decisions for the smart executor.
+
+name: Agent — Weekly Intelligence
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    # Sunday 10:00 PM ET (Monday 02:00 UTC) — after a full week of data
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days of data to analyze"
+        required: true
+        default: "7"
+        type: string
+      dry_run:
+        description: "Preview only (no DB writes, no email)"
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run weekly intelligence analysis
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ANALYTICS_EMAIL: ${{ secrets.ANALYTICS_EMAIL }}
+        run: |
+          DAYS="${{ github.event.inputs.days || '7' }}"
+          ARGS=(--days "$DAYS")
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          node scripts/agents/weekly-intelligence.mjs "${ARGS[@]}"
