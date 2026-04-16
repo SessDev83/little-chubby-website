@@ -74,7 +74,8 @@ async function upsertPerformance(row) {
     console.log(`  [DRY RUN] ${row.platform}/${row.post_type}: ${row.likes}L ${row.comments}C ${row.shares}S ${row.clicks} clicks`);
     return;
   }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/content_performance`, {
+  const payload = { ...row, updated_at: new Date().toISOString() };
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/content_performance?on_conflict=post_id,platform`, {
     method: "POST",
     headers: {
       apikey: SUPABASE_KEY,
@@ -82,10 +83,38 @@ async function upsertPerformance(row) {
       "Content-Type": "application/json",
       Prefer: "resolution=merge-duplicates,return=minimal",
     },
-    body: JSON.stringify({ ...row, updated_at: new Date().toISOString() }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const body = await res.text();
+    // Fallback: row already exists — update it via PATCH
+    if (res.status === 409) {
+      const filter = `post_id=eq.${encodeURIComponent(row.post_id)}&platform=eq.${encodeURIComponent(row.platform)}`;
+      const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/content_performance?${filter}`, {
+        method: "PATCH",
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          post_type: row.post_type,
+          posted_at: row.posted_at,
+          likes: row.likes,
+          comments: row.comments,
+          shares: row.shares,
+          clicks: row.clicks,
+          utm_campaign: row.utm_campaign,
+          updated_at: payload.updated_at,
+        }),
+      });
+      if (!patchRes.ok) {
+        const patchBody = await patchRes.text();
+        throw new Error(`PATCH failed (${patchRes.status}): ${patchBody}`);
+      }
+      return;
+    }
     throw new Error(`Upsert failed (${res.status}): ${body}`);
   }
 }
