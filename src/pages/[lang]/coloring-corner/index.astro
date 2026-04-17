@@ -37,16 +37,16 @@ const artworkCategories = [
         <p>{text.coloringCornerDescription}</p>
       </div>
 
-      <!-- Points banner (shown for logged-in users) -->
+      <!-- Peanuts banner (shown for logged-in users) -->
       <div id="cc-points-banner" class="cc-points-banner" style="display:none;">
         <div class="cc-points-inner">
-          <span class="cc-points-icon">⭐</span>
-          <span class="cc-points-label">{lang === "es" ? "Tus puntos:" : "Your points:"}</span>
+          <span class="cc-points-icon">🥜</span>
+          <span class="cc-points-label">{lang === "es" ? "Tus Peanuts:" : "Your Peanuts:"}</span>
           <span id="cc-points-value" class="cc-points-value">0</span>
         </div>
         <p class="cc-points-hint">{lang === "es"
-          ? "Gana puntos compartiendo (+1, máx 3/día) y con reviews de libros (+5). Usa puntos para descargar y participar en giveaways."
-          : "Earn points by sharing (+1, max 3/day) and book reviews (+5). Use points to download and enter giveaways."}</p>
+          ? "Gana Peanuts compartiendo (+1, máx 3/día) y con reviews de libros (+5). Usa Peanuts para descargar y participar en giveaways."
+          : "Earn Peanuts by sharing (+1, max 3/day) and book reviews (+5). Use Peanuts to download and enter giveaways."}</p>
       </div>
 
       <!-- Category filters -->
@@ -77,7 +77,7 @@ const artworkCategories = [
       <!-- CTA for non-logged-in users -->
       <div id="cc-cta-login" class="coloring-corner-cta" style="display:none;">
         <h2>{lang === "es" ? "¡Crea tu cuenta gratis!" : "Create your free account!"}</h2>
-        <p>{lang === "es" ? "Inicia sesión para ganar puntos, descargar imágenes y participar en giveaways." : "Log in to earn points, download images, and enter giveaways."}</p>
+        <p>{lang === "es" ? "Inicia sesión para ganar Peanuts 🥜, descargar imágenes y participar en giveaways." : "Log in to earn Peanuts 🥜, download images, and enter giveaways."}</p>
         <div class="card-actions" style="justify-content:center;">
           <Button href={`/${lang}/login/`} label={text.navLogin} variant="primary" />
           <Button href={`/${lang}/register/`} label={lang === "es" ? "Crear cuenta" : "Create account"} variant="ghost" />
@@ -150,6 +150,12 @@ function initColoringCorner() {
     if (pointsBanner && pointsValue) {
       pointsValue.textContent = userBalance;
       pointsBanner.style.display = "";
+    }
+    // Sync header peanuts badge
+    var headerCount = document.getElementById("peanuts-count");
+    if (headerCount) {
+      headerCount.textContent = String(userBalance);
+      sessionStorage.setItem("lcp-peanuts", String(userBalance));
     }
   }
 
@@ -238,7 +244,7 @@ function initColoringCorner() {
     .then(function(res) { return res.json().then(function(d) { return { status: res.status, data: d }; }); })
     .then(function(result) {
       if (result.status === 403 && result.data.error === "no_credits") {
-        btn.innerHTML = lang === "es" ? "⭐ Sin puntos" : "⭐ No points";
+        btn.innerHTML = lang === "es" ? "🥜 Sin Peanuts" : "🥜 No Peanuts";
         setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 2500);
         return;
       }
@@ -305,7 +311,7 @@ function initColoringCorner() {
       if (data.credited) {
         userBalance = data.balance;
         updatePointsDisplay();
-        btn.innerHTML = '<span style="color:var(--brand-green)">+1 ⭐</span>';
+        btn.innerHTML = '<span style="color:var(--brand-green)">+1 🥜</span>';
       } else if (platform === "copy-link") {
         btn.innerHTML = '✓';
       }

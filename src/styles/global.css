@@ -220,6 +220,30 @@ main {
 }
 
 /* ── Username Display ───────────────────────── */
+.header-peanuts {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  text-decoration: none;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--brand-brown);
+  background: #fdf6e3;
+  border: 1.5px solid #e6d5a8;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  white-space: nowrap;
+  transition: background-color 0.2s ease;
+}
+.header-peanuts:hover {
+  background: #f5ecd3;
+}
+.header-peanuts #peanuts-count {
+  color: var(--accent-gold, #b8860b);
+  min-width: 1ch;
+}
+
 .header-username {
   font-family: "Baloo 2", "Trebuchet MS", sans-serif;
   font-weight: 700;
@@ -363,6 +387,11 @@ main {
   .header-username {
     max-width: 5.5rem;
     font-size: 0.75rem;
+  }
+
+  .header-peanuts {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.45rem;
   }
 
   .header-nav {

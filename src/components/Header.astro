@@ -33,6 +33,9 @@ const navItems = [
 
       <div class="header-actions">
         <a href={`/${lang}/login/`} class="header-login" id="auth-login">{text.navLogin}</a>
+        <a href={`/${lang}/coloring-corner/`} class="header-peanuts" id="auth-peanuts" style="display:none;" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
+          🥜 <span id="peanuts-count">0</span>
+        </a>
         <span class="header-username" id="auth-username" style="display:none;"></span>
         <div class="lang-toggle" role="group" aria-label={text.languageToggleLabel}>
           <a
@@ -129,6 +132,8 @@ const navItems = [
     var loginEl = document.getElementById("auth-login");
     var usernameEl = document.getElementById("auth-username");
     var settingsEl = document.getElementById("auth-settings");
+    var peanutsEl = document.getElementById("auth-peanuts");
+    var peanutsCount = document.getElementById("peanuts-count");
 
     if (loginEl) loginEl.style.display = loggedIn ? "none" : "";
     if (usernameEl) {
@@ -139,6 +144,22 @@ const navItems = [
       }
     }
     if (settingsEl) settingsEl.style.display = loggedIn ? "" : "none";
+    if (peanutsEl) peanutsEl.style.display = loggedIn ? "" : "none";
+
+    // Fetch peanuts balance
+    if (loggedIn && peanutsCount) {
+      var cached = sessionStorage.getItem("lcp-peanuts");
+      if (cached !== null) peanutsCount.textContent = cached;
+      fetch("/api/me/", { credentials: "same-origin" })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.balance !== undefined) {
+            peanutsCount.textContent = String(d.balance);
+            sessionStorage.setItem("lcp-peanuts", String(d.balance));
+          }
+        })
+        .catch(function() {});
+    }
 
     const rootLang = document.documentElement.getAttribute("lang");
     if (rootLang === "es" || rootLang === "en") {
