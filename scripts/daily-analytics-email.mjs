@@ -162,6 +162,55 @@ function parseUtmSources(rows) {
   return Object.entries(utmCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
 }
 
+// ─── User & Newsletter stats ───────────────────────────────────────────────
+async function fetchUserStats(date) {
+  const dayStart = `${date}T00:00:00.000Z`;
+  const dayEnd = `${date}T23:59:59.999Z`;
+  const range = `created_at=gte.${dayStart}&created_at=lte.${dayEnd}`;
+
+  // New registered users yesterday (via Supabase auth admin API)
+  let newUsers = 0;
+  let totalUsers = 0;
+  try {
+    // List users from auth.users via admin API
+    const usersRes = await fetch(
+      `${SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=1000`,
+      { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (usersRes.ok) {
+      const usersData = await usersRes.json();
+      const users = usersData.users || usersData || [];
+      totalUsers = users.length;
+      for (const u of users) {
+        const created = u.created_at?.slice(0, 10);
+        if (created === date) newUsers++;
+      }
+    }
+  } catch (e) {
+    console.log(`  ⚠️  Auth users fetch error: ${e.message}`);
+  }
+
+  // Newsletter subscribers yesterday
+  const { count: newSubs } = await query(
+    "newsletter_subscribers",
+    `select=id&${range}`
+  );
+
+  // Total newsletter subscribers
+  const { count: totalSubs } = await query(
+    "newsletter_subscribers",
+    `select=id`
+  );
+
+  // Confirmed newsletter subscribers
+  const { count: confirmedSubs } = await query(
+    "newsletter_subscribers",
+    `select=id&confirmed=eq.true`
+  );
+
+  return { newUsers, totalUsers, newSubs, totalSubs, confirmedSubs };
+}
+
 // ─── Social media stats (Bluesky public API, no auth needed) ───────────────
 async function fetchBlueskyStats() {
   try {
@@ -291,7 +340,7 @@ async function fetchMetaStats() {
 }
 
 // ─── Build email ───────────────────────────────────────────────────────────
-function buildEmailHtml(date, stats, weekAgo, bluesky, utmSources, meta) {
+function buildEmailHtml(date, stats, weekAgo, bluesky, utmSources, meta, userStats) {
   const fmtDate = formatDate(date);
   const tableRow = (label, value) =>
     `<tr><td style="padding:6px 12px;border-bottom:1px solid #eee">${label}</td>` +
@@ -356,6 +405,15 @@ function buildEmailHtml(date, stats, weekAgo, bluesky, utmSources, meta) {
       ${tableRow("👥 Unique Visitors", `${stats.uniqueVisitors}${visitorChange}`)}
       ${tableRow("📄 Page Views", `${stats.totalPageviews}${viewChange}`)}
     </table>
+
+    ${userStats ? `
+    ${sectionHeader("👤", "Users & Newsletter")}
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      ${tableRow("🆕 New Registrations", userStats.newUsers)}
+      ${tableRow("👥 Total Registered Users", userStats.totalUsers)}
+      ${tableRow("📬 New Newsletter Subs", userStats.newSubs)}
+      ${tableRow("📧 Total Newsletter Subs", `${userStats.confirmedSubs} confirmed / ${userStats.totalSubs} total`)}
+    </table>` : ""}
 
     ${sectionHeader("🏆", "Top Pages")}
     <table style="width:100%;border-collapse:collapse">
@@ -488,6 +546,13 @@ if (utmSources.length > 0) {
 }
 
 // Social media stats
+console.log(`\n👤 Fetching user & newsletter stats...`);
+const userStats = await fetchUserStats(date);
+console.log(`  New users:       ${userStats.newUsers}`);
+console.log(`  Total users:     ${userStats.totalUsers}`);
+console.log(`  New newsletter:  ${userStats.newSubs}`);
+console.log(`  Total newsletter: ${userStats.confirmedSubs} confirmed / ${userStats.totalSubs} total`);
+
 console.log(`\n🦋 Fetching Bluesky stats...`);
 const bluesky = await fetchBlueskyStats();
 if (bluesky) {
@@ -509,8 +574,8 @@ if (meta?.instagram) {
   console.log(`  IG Recent likes: ${meta.instagram.recentLikes}`);
 }
 
-const subject = `📊 ${formatDate(date)} — ${stats.uniqueVisitors} visitors, ${stats.totalPageviews} views`;
-const html = buildEmailHtml(date, stats, weekAgo, bluesky, utmSources, meta);
+const subject = `📊 ${formatDate(date)} — ${stats.uniqueVisitors} visitors, ${stats.totalPageviews} views, ${userStats.newUsers} new users`;
+const html = buildEmailHtml(date, stats, weekAgo, bluesky, utmSources, meta, userStats);
 
 if (DRY_RUN) {
   console.log(`\n--- DRY RUN ---`);
