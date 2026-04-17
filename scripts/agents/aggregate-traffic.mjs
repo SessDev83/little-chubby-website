@@ -73,7 +73,7 @@ async function upsertInsight(row) {
     console.log(`  [DRY RUN] ${row.source_category}/${row.source_detail || "(none)"}: ${row.pageviews} pv, ${row.unique_visitors} uv`);
     return;
   }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/traffic_insights`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/traffic_insights?on_conflict=date,source_category,source_detail`, {
     method: "POST",
     headers: {
       apikey: SUPABASE_KEY,
@@ -83,10 +83,34 @@ async function upsertInsight(row) {
     },
     body: JSON.stringify(row),
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Upsert failed (${res.status}): ${body}`);
+  if (res.ok) return;
+
+  // 409 = duplicate key — fall back to PATCH to update existing row
+  if (res.status === 409) {
+    const filter =
+      `date=eq.${row.date}&source_category=eq.${encodeURIComponent(row.source_category)}` +
+      `&source_detail=eq.${encodeURIComponent(row.source_detail)}`;
+    const { date, source_category, source_detail, ...updates } = row;
+    const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/traffic_insights?${filter}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(updates),
+    });
+    if (!patchRes.ok) {
+      const body = await patchRes.text();
+      throw new Error(`PATCH fallback failed (${patchRes.status}): ${body}`);
+    }
+    console.log(`  ↻ Updated existing row for ${row.source_category}/${row.source_detail || "(none)"}`);
+    return;
   }
+
+  const body = await res.text();
+  throw new Error(`Upsert failed (${res.status}): ${body}`);
 }
 
 // ─── Source classification ─────────────────────────────────────────────────
