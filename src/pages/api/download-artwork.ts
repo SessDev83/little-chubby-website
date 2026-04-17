@@ -1,38 +1,49 @@
 import type { APIRoute } from "astro";
-import { getServiceClient } from "../../lib/supabase";
+import { getServiceClient, supabase } from "../../lib/supabase";
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   const headers = { "Content-Type": "application/json" };
 
   try {
-    const body = await request.json();
-    const { user_id, artwork_id, image_path } = body;
+    // 1. Authenticate from httpOnly cookies (not client input)
+    const accessToken = cookies.get("sb-access-token")?.value;
+    const refreshToken = cookies.get("sb-refresh-token")?.value;
 
-    if (!user_id || !artwork_id || !image_path) {
+    if (!accessToken || !refreshToken) {
+      return new Response(JSON.stringify({ error: "Not authenticated" }), {
+        status: 401, headers,
+      });
+    }
+
+    const { data: sessionData, error: sessionErr } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (sessionErr || !sessionData.session?.user) {
+      return new Response(JSON.stringify({ error: "Invalid session" }), {
+        status: 401, headers,
+      });
+    }
+
+    const user_id = sessionData.session.user.id;
+
+    // 2. Parse request body (only need artwork_id and image_path)
+    const body = await request.json();
+    const { artwork_id, image_path } = body;
+
+    if (!artwork_id || !image_path) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400, headers,
       });
     }
 
-    const supabase = getServiceClient();
+    const svc = getServiceClient();
 
-    // 1. Verify user exists
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", user_id)
-      .single();
-
-    if (!profile) {
-      return new Response(JSON.stringify({ error: "User not found" }), {
-        status: 404, headers,
-      });
-    }
-
-    // 2. Check credit balance server-side
-    const { data: balanceData } = await supabase.rpc("get_user_credits", {
+    // 3. Check credit balance server-side
+    const { data: balanceData } = await svc.rpc("get_user_credits", {
       p_user_id: user_id,
     });
 
@@ -45,8 +56,8 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // 3. Record the download
-    const { error: dlErr } = await supabase
+    // 4. Record the download
+    const { error: dlErr } = await svc
       .from("artwork_downloads")
       .insert({ user_id, artwork_id });
 
@@ -56,8 +67,8 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // 4. Deduct 1 credit
-    const { error: crErr } = await supabase
+    // 5. Deduct 1 credit
+    const { error: crErr } = await svc
       .from("credit_transactions")
       .insert({
         user_id,
@@ -72,8 +83,8 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // 5. Generate signed download URL (1 hour)
-    const { data: signedData, error: signErr } = await supabase.storage
+    // 6. Generate signed download URL (1 hour)
+    const { data: signedData, error: signErr } = await svc.storage
       .from("free-artworks")
       .createSignedUrl(image_path, 3600);
 

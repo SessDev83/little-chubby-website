@@ -109,31 +109,6 @@ function initColoringCorner() {
   var userBalance = 0;
   var userId = "";
 
-  // Get user id from JWT
-  function getAccessToken() {
-    var cookies = document.cookie.split(";");
-    for (var i = 0; i < cookies.length; i++) {
-      var c = cookies[i].trim();
-      if (c.startsWith("sb-access-token=")) return c.substring("sb-access-token=".length);
-    }
-    return "";
-  }
-
-  function getUserId() {
-    var token = getAccessToken();
-    if (!token) return "";
-    try {
-      var parts = token.split(".");
-      if (parts.length >= 2) {
-        var payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-        return payload.sub || "";
-      }
-    } catch(e) {}
-    return "";
-  }
-
-  userId = getUserId();
-
   // Show login CTA if not logged in
   if (!isLoggedIn && ctaLogin) ctaLogin.style.display = "";
 
@@ -150,27 +125,23 @@ function initColoringCorner() {
       return;
     }
     renderArtworks(allArtworks);
-    if (isLoggedIn && userId) fetchUserBalance();
+    // If logged in, fetch user info from server-side API (httpOnly cookies)
+    if (isLoggedIn) fetchUserInfo();
   })
   .catch(function() {
     if (loading) loading.textContent = lang === "es" ? "Error al cargar." : "Failed to load.";
   });
 
-  // Fetch user balance via RPC
-  function fetchUserBalance() {
-    fetch(supabaseUrl + "/rest/v1/rpc/get_user_credits", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": supabaseKey,
-        "Authorization": "Bearer " + getAccessToken()
-      },
-      body: JSON.stringify({ p_user_id: userId })
-    })
+  // Fetch user ID + balance via server-side API (reads httpOnly auth cookies)
+  function fetchUserInfo() {
+    fetch("/api/me/", { credentials: "same-origin" })
     .then(function(r) { return r.json(); })
-    .then(function(balance) {
-      userBalance = typeof balance === "number" ? balance : 0;
-      updatePointsDisplay();
+    .then(function(data) {
+      if (data.user && data.user.id) {
+        userId = data.user.id;
+        userBalance = data.balance || 0;
+        updatePointsDisplay();
+      }
     })
     .catch(function() {});
   }
@@ -261,7 +232,8 @@ function initColoringCorner() {
     fetch("/api/download-artwork/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, artwork_id: artworkId, image_path: imagePath })
+      credentials: "same-origin",
+      body: JSON.stringify({ artwork_id: artworkId, image_path: imagePath })
     })
     .then(function(res) { return res.json().then(function(d) { return { status: res.status, data: d }; }); })
     .then(function(result) {
@@ -325,7 +297,8 @@ function initColoringCorner() {
     fetch("/api/track-share/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, platform: platform, shared_url: pageUrl })
+      credentials: "same-origin",
+      body: JSON.stringify({ platform: platform, shared_url: pageUrl })
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
