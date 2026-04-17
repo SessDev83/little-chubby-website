@@ -197,7 +197,7 @@ function initColoringCorner() {
           '<button class="artwork-download-btn" data-artwork-id="' + art.id + '" data-image-path="' + art.image_path + '">' +
             '<span class="dl-icon">⬇</span> ' +
             (lang === "es" ? "Descargar" : "Download") +
-            ' <span class="dl-cost">(-1 ⭐)</span>' +
+            ' <span class="dl-cost">(-1 🥜)</span>' +
           '</button>' +
           shareRow +
         '</div>';
@@ -339,6 +339,17 @@ function initColoringCorner() {
       if (emptyMsg) emptyMsg.style.display = filtered.length === 0 ? "" : "none";
     });
   });
+
+  // Add shadow when filter bar is stuck
+  var filtersEl = document.querySelector(".blog-filters");
+  var headerEl = document.querySelector(".site-header");
+  if (filtersEl && headerEl) {
+    var obs = new IntersectionObserver(
+      function(entries) { filtersEl.classList.toggle("stuck", entries[0].intersectionRatio < 1); },
+      { threshold: [1], rootMargin: "-" + (headerEl.offsetHeight + 1) + "px 0px 0px 0px" }
+    );
+    obs.observe(filtersEl);
+  }
 }
 
 initColoringCorner();

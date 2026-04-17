@@ -241,7 +241,8 @@ main {
 }
 .header-peanuts #peanuts-count {
   color: var(--accent-gold, #b8860b);
-  min-width: 1ch;
+  min-width: 1.2em;
+  text-align: center;
 }
 
 .header-username {
@@ -1645,6 +1646,10 @@ main {
   margin-left: -1rem;
   margin-right: -1rem;
   transition: box-shadow 0.25s ease;
+}
+
+.blog-filters.stuck {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .blog-filter-btn {

@@ -225,6 +225,16 @@ const navItems = [
         });
       });
     }
+
+    // Set --header-h CSS var so sticky filter bars sit below the header
+    var headerEl = document.querySelector(".site-header");
+    if (headerEl) {
+      function syncHeaderH() {
+        document.documentElement.style.setProperty("--header-h", headerEl.offsetHeight + "px");
+      }
+      syncHeaderH();
+      window.addEventListener("resize", syncHeaderH);
+    }
   }
   initHeader();
   document.addEventListener("astro:after-swap", initHeader);

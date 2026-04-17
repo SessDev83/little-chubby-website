@@ -84,6 +84,17 @@ function initBlogFilters() {
       });
     });
   });
+
+  // Add shadow when filter bar is stuck
+  var filtersEl = document.querySelector(".blog-filters");
+  var headerEl = document.querySelector(".site-header");
+  if (filtersEl && headerEl) {
+    var obs = new IntersectionObserver(
+      function(entries) { filtersEl.classList.toggle("stuck", entries[0].intersectionRatio < 1); },
+      { threshold: [1], rootMargin: "-" + (headerEl.offsetHeight + 1) + "px 0px 0px 0px" }
+    );
+    obs.observe(filtersEl);
+  }
 }
 initBlogFilters();
 document.addEventListener("astro:after-swap", initBlogFilters);
