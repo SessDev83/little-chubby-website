@@ -137,21 +137,17 @@ function initLeadMagnet() {
       return;
     }
 
-    // Insert subscriber directly via Supabase REST API (anon insert policy)
-    fetch(supabaseUrl + "/rest/v1/newsletter_subscribers", {
+    // Insert subscriber via server-side API (sends admin notification)
+    fetch("/api/subscribe-newsletter/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": supabaseKey,
-        "Authorization": "Bearer " + supabaseKey,
-        "Prefer": "return=minimal"
       },
       body: JSON.stringify({
         email: email,
         name: name,
         source: "popup",
         lang_pref: lang,
-        confirmed: false
       })
     }).then(function(res) {
       // 201 = created, 409 = already exists — both are fine

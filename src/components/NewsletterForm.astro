@@ -93,6 +93,19 @@ const successUrl = new URL(siteConfig.newsletter.successRedirect[lang], siteConf
 
       // Show loading state
       if (submitBtn) submitBtn.classList.add('is-loading');
+
+      // Also save to our DB + send admin notification (non-blocking, doesn't stop Buttondown submit)
+      const nameInput = newsletterForm.querySelector('input[name="name"]');
+      fetch("/api/subscribe-newsletter/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailInput.value.trim(),
+          name: nameInput ? nameInput.value.trim() : "",
+          source: "newsletter-page",
+          lang_pref: currentLang,
+        })
+      }).catch(function() {});
     });
   }
 </script>
