@@ -20,7 +20,6 @@ const allPosts = await getCollection("blog", (entry) => entry.data.lang === lang
 const sortedPosts = allPosts.sort((a, b) => b.data.date.localeCompare(a.data.date));
 
 const categories = [
-  { value: "all", label: text.blogFilterAll },
   { value: "article", label: text.blogFilterArticles },
   { value: "fun-fact", label: text.blogFilterFunFacts },
   { value: "joke", label: text.blogFilterJokes },
@@ -42,7 +41,7 @@ const categories = [
       <div class="blog-filters" role="group" aria-label={text.blogFilterLabel}>
         {categories.map((cat) => (
           <button
-            class:list={["blog-filter-btn", { active: cat.value === "all" }]}
+            class:list={["blog-filter-btn", { active: cat.value === "article" }]}
             data-blog-category={cat.value}
             type="button"
           >
@@ -51,17 +50,20 @@ const categories = [
         ))}
       </div>
 
-      <div class="grid-cards posts" id="blog-grid">
-        {sortedPosts.map((post) => (
-          <div class="blog-post-wrapper" data-category={post.data.category || "article"}>
-            <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />
+      {categories.map((cat) => (
+        <div class="blog-category-section" data-section={cat.value} style={cat.value !== "article" ? "display:none;" : ""}>
+          <div class="grid-cards posts">
+            {sortedPosts.filter((p) => (p.data.category || "article") === cat.value).length > 0
+              ? sortedPosts.filter((p) => (p.data.category || "article") === cat.value).map((post) => (
+                  <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />
+                ))
+              : <p class="blog-empty-msg">
+                  {lang === "es" ? "No hay publicaciones en esta categoría todavía." : "No posts in this category yet."}
+                </p>
+            }
           </div>
-        ))}
-      </div>
-
-      <p class="blog-empty-msg" id="blog-empty" style="display:none;">
-        {lang === "es" ? "No hay publicaciones en esta categoría todavía." : "No posts in this category yet."}
-      </p>
+        </div>
+      ))}
     </div>
   </section>
 </BaseLayout>
@@ -69,8 +71,7 @@ const categories = [
 <script is:inline>
 function initBlogFilters() {
   var btns = document.querySelectorAll("[data-blog-category]");
-  var items = document.querySelectorAll(".blog-post-wrapper");
-  var emptyMsg = document.getElementById("blog-empty");
+  var sections = document.querySelectorAll("[data-section]");
   if (!btns.length) return;
 
   btns.forEach(function(btn) {
@@ -78,16 +79,9 @@ function initBlogFilters() {
       btns.forEach(function(b) { b.classList.remove("active"); });
       btn.classList.add("active");
       var cat = btn.getAttribute("data-blog-category");
-      var visibleCount = 0;
-      items.forEach(function(item) {
-        if (cat === "all" || item.getAttribute("data-category") === cat) {
-          item.style.display = "";
-          visibleCount++;
-        } else {
-          item.style.display = "none";
-        }
+      sections.forEach(function(sec) {
+        sec.style.display = sec.getAttribute("data-section") === cat ? "" : "none";
       });
-      if (emptyMsg) emptyMsg.style.display = visibleCount === 0 ? "" : "none";
     });
   });
 }
