@@ -306,7 +306,7 @@ function initColoringCorner() {
     if (platform === "whatsapp") {
       window.open("https://wa.me/?text=" + encodeURIComponent(shareText + artworkUrl), "_blank");
     } else if (platform === "facebook") {
-      window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(artworkUrl), "_blank", "width=600,height=400");
+      window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(artworkUrl) + "&quote=" + encodeURIComponent(shareText), "_blank", "width=600,height=400");
     } else if (platform === "bluesky") {
       window.open("https://bsky.app/intent/compose?text=" + encodeURIComponent(shareText + artworkUrl), "_blank");
     } else if (platform === "copy-link") {
