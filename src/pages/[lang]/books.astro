@@ -22,7 +22,8 @@ const bookCardLabels = {
   noReviews: text.ratingNoReviews,
   outOfFive: text.ratingOutOfFive,
   reviewSingular: text.ratingReviewSingular,
-  reviewPlural: text.ratingReviewPlural
+  reviewPlural: text.ratingReviewPlural,
+  copyLink: text.copyLink
 };
 
 const booksJsonLd = JSON.stringify({
@@ -163,5 +164,49 @@ const booksJsonLd = JSON.stringify({
     // Run on initial load and on Astro page transitions
     initBookFilters();
     document.addEventListener('astro:after-swap', initBookFilters);
+  </script>
+
+  <script>
+    function fallbackCopy(text: string): boolean {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch {}
+      document.body.removeChild(ta);
+      return ok;
+    }
+
+    function initCopyLinks() {
+      document.querySelectorAll("[data-copy-url]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const url = btn.getAttribute("data-copy-url");
+          if (!url) return;
+          let copied = false;
+          try {
+            if (navigator.clipboard && window.isSecureContext) {
+              await navigator.clipboard.writeText(url);
+              copied = true;
+            } else {
+              copied = fallbackCopy(url);
+            }
+          } catch {
+            copied = fallbackCopy(url);
+          }
+          const label = btn.querySelector(".copy-label");
+          if (label) {
+            const original = label.textContent;
+            label.textContent = copied ? "✓ Copiado" : "✗ Error";
+            setTimeout(() => { label.textContent = original; }, 2000);
+          }
+        });
+      });
+    }
+
+    initCopyLinks();
+    document.addEventListener('astro:after-swap', initCopyLinks);
   </script>
 </BaseLayout>

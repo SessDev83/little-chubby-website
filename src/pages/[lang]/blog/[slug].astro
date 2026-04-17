@@ -158,19 +158,40 @@ const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(
 </BaseLayout>
 
 <script>
+  function fallbackCopy(text: string): boolean {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+
   document.querySelectorAll("[data-copy-url]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const url = btn.getAttribute("data-copy-url");
       if (!url) return;
+      let copied = false;
       try {
-        await navigator.clipboard.writeText(url);
-        const label = btn.querySelector(".copy-label");
-        if (label) {
-          const original = label.textContent;
-          label.textContent = "✓";
-          setTimeout(() => { label.textContent = original; }, 2000);
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(url);
+          copied = true;
+        } else {
+          copied = fallbackCopy(url);
         }
-      } catch {}
+      } catch {
+        copied = fallbackCopy(url);
+      }
+      const label = btn.querySelector(".copy-label");
+      if (label) {
+        const original = label.textContent;
+        label.textContent = copied ? "✓ Copiado" : "✗ Error";
+        setTimeout(() => { label.textContent = original; }, 2000);
+      }
     });
   });
 </script>

@@ -932,6 +932,18 @@ main {
   gap: 0.65rem;
 }
 
+.copy-link-btn {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surface-strong);
+  font-size: 0.82rem;
+}
+
+.copy-link-btn:hover {
+  border-color: var(--brand-blue);
+  color: var(--brand-blue);
+}
+
 .post-date {
   color: var(--brand-blue);
   font-family: "Baloo 2", "Trebuchet MS", sans-serif;
