@@ -166,8 +166,10 @@ const shareUrl = new URL(pathname, siteConfig.siteUrl).toString();
   // Show login CTA if not logged in
   if (!isLoggedIn) {
     if (ctaLogin) ctaLogin.style.display = "";
-    // Hide download button for non-logged-in
+    // Hide download button and share section for non-logged-in
     if (downloadBtn) downloadBtn.style.display = "none";
+    var shareSection = document.querySelector(".artwork-detail-share");
+    if (shareSection) shareSection.style.display = "none";
     return;
   }
 
