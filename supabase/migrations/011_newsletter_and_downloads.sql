@@ -87,15 +87,14 @@ create table if not exists public.social_shares (
   user_id    uuid not null references public.profiles(id) on delete cascade,
   platform   text not null default 'copy-link',   -- facebook | whatsapp | bluesky | copy-link
   shared_url text not null default '',
-  created_at timestamptz default now()
+  share_date date not null default current_date,
+  created_at timestamptz default now(),
+  -- Prevent spam: one share per platform per URL per day
+  constraint unique_share_per_day unique (user_id, platform, shared_url, share_date)
 );
 
--- Prevent spam: one share per platform per URL per day
-create unique index idx_unique_share_per_day
-  on public.social_shares (user_id, platform, shared_url, (created_at::date));
-
 create index idx_shares_user_date
-  on public.social_shares (user_id, created_at);
+  on public.social_shares (user_id, share_date);
 
 alter table public.social_shares enable row level security;
 
