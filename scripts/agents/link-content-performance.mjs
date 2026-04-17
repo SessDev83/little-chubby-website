@@ -74,7 +74,7 @@ async function upsertPerformance(row) {
     console.log(`  [DRY RUN] ${row.platform}/${row.post_type}: ${row.likes}L ${row.comments}C ${row.shares}S ${row.clicks} clicks`);
     return;
   }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/content_performance`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/content_performance?on_conflict=post_id,platform`, {
     method: "POST",
     headers: {
       apikey: SUPABASE_KEY,
@@ -84,10 +84,34 @@ async function upsertPerformance(row) {
     },
     body: JSON.stringify({ ...row, updated_at: new Date().toISOString() }),
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Upsert failed (${res.status}): ${body}`);
+  if (res.ok) return;
+
+  // 409 = duplicate key — fall back to PATCH to update existing row
+  if (res.status === 409) {
+    const filter =
+      `post_id=eq.${encodeURIComponent(row.post_id)}&platform=eq.${encodeURIComponent(row.platform)}`;
+    const { post_id, platform, ...updates } = row;
+    updates.updated_at = new Date().toISOString();
+    const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/content_performance?${filter}`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(updates),
+    });
+    if (!patchRes.ok) {
+      const body = await patchRes.text();
+      throw new Error(`PATCH fallback failed (${patchRes.status}): ${body}`);
+    }
+    console.log(`  ↻ Updated existing row for ${row.platform}/${row.post_id}`);
+    return;
   }
+
+  const body = await res.text();
+  throw new Error(`Upsert failed (${res.status}): ${body}`);
 }
 
 // ─── Fetch UTM-tagged clicks from pageviews ────────────────────────────────
