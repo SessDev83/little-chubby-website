@@ -2076,6 +2076,144 @@ main {
   margin-bottom: 0.8rem;
 }
 
+/* ── Claim Peanut Button ────────────────────── */
+.artwork-claim-btn {
+  appearance: none;
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.45rem 1rem;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #5a3e1a;
+  background: linear-gradient(135deg, #fdf6e3, #f5ecd3);
+  border: 1.5px solid var(--accent-gold);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.artwork-claim-btn:hover {
+  background: linear-gradient(135deg, #f5ecd3, #efe0b8);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(184,134,11,0.2);
+}
+.artwork-claim-btn--pulse {
+  animation: claimPulse 1.5s ease-in-out infinite;
+}
+@keyframes claimPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(184,134,11,0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(184,134,11,0); }
+}
+
+/* ── Artwork Detail Page ────────────────────── */
+.artwork-detail {
+  max-width: 56rem;
+  margin: 0 auto;
+}
+.artwork-back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--brand-blue);
+  text-decoration: none;
+}
+.artwork-back-link:hover { text-decoration: underline; }
+.artwork-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+.artwork-detail-image {
+  background: #fff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.artwork-detail-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.artwork-detail-info h1 {
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: 1.6rem;
+  color: var(--brand-brown);
+  margin-bottom: 0.5rem;
+}
+.artwork-detail-desc {
+  font-size: 1rem;
+  color: var(--ink-soft);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+.artwork-detail-download {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.7rem 1.2rem;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  background: var(--brand-green, #4caf50);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
+}
+.artwork-detail-download:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+}
+.artwork-detail-download .dl-cost { opacity: 0.8; font-weight: 400; }
+.artwork-detail-share {
+  margin-top: 0.5rem;
+}
+.artwork-detail-share-label {
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin-bottom: 0.5rem;
+}
+.artwork-share-row--detail {
+  gap: 0.6rem;
+}
+.artwork-share-row--detail .artwork-share-btn {
+  width: 40px;
+  height: 40px;
+  text-decoration: none;
+}
+.artwork-detail-more {
+  text-align: center;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px dashed var(--line);
+}
+
+@media (max-width: 47.99rem) {
+  .artwork-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+  }
+  .artwork-detail-info h1 {
+    font-size: 1.3rem;
+  }
+}
+
 /* ── Share Buttons (WhatsApp addition) ──────── */
 .social-share-row .share-whatsapp {
   color: #25d366;

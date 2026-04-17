@@ -1,0 +1,319 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import Button from "../../../components/Button.astro";
+import { getLangFromParam, ui } from "../../../data/i18n";
+import { siteConfig } from "../../../data/site";
+import { getServiceClient } from "../../../lib/supabase";
+
+export const prerender = false;
+
+const lang = getLangFromParam(Astro.params.lang);
+const artworkId = Astro.params.id;
+const text = ui[lang];
+
+if (!artworkId) return Astro.redirect(`/${lang}/coloring-corner/`);
+
+// Fetch artwork from DB
+const svc = getServiceClient();
+const { data: art, error } = await svc
+  .from("free_artworks")
+  .select("id,title_es,title_en,category,image_path,thumbnail_path,active")
+  .eq("id", artworkId)
+  .single();
+
+if (error || !art || !art.active) {
+  return Astro.redirect(`/${lang}/coloring-corner/`);
+}
+
+const title = (lang === "es" ? art.title_es : art.title_en) || art.title_en || art.title_es || "Coloring Page";
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const imageSrc = supabaseUrl + "/storage/v1/object/public/free-artworks/" + art.image_path;
+const thumbSrc = art.thumbnail_path
+  ? supabaseUrl + "/storage/v1/object/public/free-artworks/" + art.thumbnail_path
+  : imageSrc;
+
+const pageTitle = lang === "es"
+  ? `${title} — Página para Colorear Gratis | Little Chubby Press`
+  : `${title} — Free Coloring Page | Little Chubby Press`;
+const pageDescription = lang === "es"
+  ? `Descarga esta adorable página para colorear "${title}" gratis. ¡Perfecta para tus peques!`
+  : `Download this adorable "${title}" coloring page for free. Perfect for your little ones!`;
+const pathname = `/${lang}/coloring-corner/${artworkId}/`;
+const alternateLang = lang === "es" ? "en" : "es";
+const alternatePath = `/${alternateLang}/coloring-corner/${artworkId}/`;
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: text.coloringCornerHeading, url: `/${lang}/coloring-corner/` },
+  { name: title, url: pathname },
+];
+
+// Share text
+const shareTextEn = `🎨 Look what I found! "${title}" — a free coloring page so cute! Download yours at Little Chubby Press 🐘`;
+const shareTextEs = `🎨 ¡Mira qué lindo! "${title}" — página para colorear gratis. ¡Descarga la tuya en Little Chubby Press! 🐘`;
+const shareText = lang === "es" ? shareTextEs : shareTextEn;
+const shareUrl = new URL(pathname, siteConfig.siteUrl).toString();
+---
+
+<BaseLayout
+  lang={lang}
+  title={pageTitle}
+  description={pageDescription}
+  pathname={pathname}
+  alternatePath={alternatePath}
+  breadcrumbs={breadcrumbs}
+  ogImage={thumbSrc}
+>
+  <section class="page-section">
+    <div class="container">
+      <div class="artwork-detail">
+        <a href={`/${lang}/coloring-corner/`} class="artwork-back-link">
+          ← {lang === "es" ? "Volver al Rincón" : "Back to Gallery"}
+        </a>
+
+        <div class="artwork-detail-grid">
+          <div class="artwork-detail-image">
+            <img src={thumbSrc} alt={title} width="600" height="600" />
+          </div>
+
+          <div class="artwork-detail-info">
+            <h1>{title}</h1>
+
+            <p class="artwork-detail-desc">
+              {lang === "es"
+                ? "Descarga esta imagen para colorear gratis. ¡Es perfecta para disfrutar con tus peques!"
+                : "Download this free coloring page. Perfect for quality time with your little ones!"}
+            </p>
+
+            <!-- Points banner -->
+            <div id="ad-points" class="cc-points-banner" style="display:none;">
+              <div class="cc-points-inner">
+                <span class="cc-points-icon">🥜</span>
+                <span class="cc-points-label">{lang === "es" ? "Tus Peanuts:" : "Your Peanuts:"}</span>
+                <span id="ad-points-value" class="cc-points-value">0</span>
+              </div>
+            </div>
+
+            <!-- Download button -->
+            <button class="artwork-detail-download" id="ad-download" data-artwork-id={art.id} data-image-path={art.image_path}>
+              <span class="dl-icon">⬇</span>
+              {lang === "es" ? "Descargar" : "Download"}
+              <span class="dl-cost">(-1 🥜)</span>
+            </button>
+
+            <!-- Share section -->
+            <div class="artwork-detail-share">
+              <p class="artwork-detail-share-label">
+                {lang === "es" ? "Comparte y gana +1 🥜" : "Share & earn +1 🥜"}
+              </p>
+              <div class="artwork-share-row artwork-share-row--detail">
+                <a class="artwork-share-btn share-wa" href={"https://wa.me/?text=" + encodeURIComponent(shareText + " " + shareUrl)} target="_blank" rel="noopener" title="WhatsApp">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"></path></svg>
+                </a>
+                <a class="artwork-share-btn share-fb" href={"https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(shareUrl)} target="_blank" rel="noopener" title="Facebook">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"></path></svg>
+                </a>
+                <a class="artwork-share-btn share-bs" href={"https://bsky.app/intent/compose?text=" + encodeURIComponent(shareText + " " + shareUrl)} target="_blank" rel="noopener" title="Bluesky">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm4.5 14.5h-2.25v-3.75c0-.621-.252-1.125-.75-1.125s-.75.504-.75 1.125V16.5H10.5V9h2.25v.938c.375-.563.938-.938 1.688-.938 1.5 0 2.062 1.125 2.062 2.625V16.5z"></path></svg>
+                </a>
+                <button class="artwork-share-btn share-cl" id="ad-copy-link" title={lang === "es" ? "Copiar enlace" : "Copy link"}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                </button>
+              </div>
+
+              <!-- Claim peanut button (appears after sharing) -->
+              <button id="ad-claim-btn" class="artwork-claim-btn" style="display:none;">
+                🥜 {lang === "es" ? "¡Reclamar mi Peanut!" : "Claim my Peanut!"}
+              </button>
+            </div>
+
+            <!-- CTA for non-logged-in -->
+            <div id="ad-cta-login" class="coloring-corner-cta" style="display:none;">
+              <h2>{lang === "es" ? "¡Crea tu cuenta gratis!" : "Create your free account!"}</h2>
+              <p>{lang === "es" ? "Inicia sesión para descargar y ganar Peanuts 🥜" : "Log in to download and earn Peanuts 🥜"}</p>
+              <div class="card-actions" style="justify-content:center;">
+                <Button href={`/${lang}/login/`} label={text.navLogin} variant="primary" />
+                <Button href={`/${lang}/register/`} label={lang === "es" ? "Crear cuenta" : "Create account"} variant="ghost" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- More coloring pages CTA -->
+        <div class="artwork-detail-more">
+          <a href={`/${lang}/coloring-corner/`} class="btn btn--ghost">
+            🎨 {lang === "es" ? "Ver todas las páginas para colorear" : "See all coloring pages"}
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script is:inline>
+(function() {
+  var isLoggedIn = document.cookie.indexOf("sb-logged-in=") !== -1;
+  var lang = document.documentElement.getAttribute("lang") || "en";
+  var downloadBtn = document.getElementById("ad-download");
+  var pointsBanner = document.getElementById("ad-points");
+  var pointsValue = document.getElementById("ad-points-value");
+  var ctaLogin = document.getElementById("ad-cta-login");
+  var claimBtn = document.getElementById("ad-claim-btn");
+  var copyBtn = document.getElementById("ad-copy-link");
+  var userId = "";
+  var userBalance = 0;
+  var sharedPlatform = "";
+
+  // Show login CTA if not logged in
+  if (!isLoggedIn) {
+    if (ctaLogin) ctaLogin.style.display = "";
+    // Hide download button for non-logged-in
+    if (downloadBtn) downloadBtn.style.display = "none";
+    return;
+  }
+
+  // Fetch user info
+  fetch("/api/me/", { credentials: "same-origin" })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.user && data.user.id) {
+        userId = data.user.id;
+        userBalance = data.balance || 0;
+        if (pointsBanner && pointsValue) {
+          pointsValue.textContent = userBalance;
+          pointsBanner.style.display = "";
+        }
+      }
+    })
+    .catch(function() {});
+
+  // Download handler
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", function() {
+      if (!userId) return;
+      var artworkId = downloadBtn.getAttribute("data-artwork-id");
+      var imagePath = downloadBtn.getAttribute("data-image-path");
+      downloadBtn.disabled = true;
+      var origHTML = downloadBtn.innerHTML;
+      downloadBtn.textContent = "...";
+
+      fetch("/api/download-artwork/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ artwork_id: artworkId, image_path: imagePath })
+      })
+      .then(function(res) { return res.json().then(function(d) { return { status: res.status, data: d }; }); })
+      .then(function(result) {
+        if (result.status === 403 && result.data.error === "no_credits") {
+          downloadBtn.innerHTML = lang === "es" ? "🥜 Sin Peanuts" : "🥜 No Peanuts";
+          setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2500);
+          return;
+        }
+        if (result.status !== 200 || !result.data.ok) {
+          downloadBtn.textContent = "Error";
+          setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2000);
+          return;
+        }
+        // Blob download
+        fetch(result.data.signedUrl)
+          .then(function(r) { return r.blob(); })
+          .then(function(blob) {
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = imagePath.split("/").pop() || "coloring-page.png";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          });
+        userBalance = result.data.balance;
+        updateDisplay();
+        downloadBtn.innerHTML = "✅ " + (lang === "es" ? "Descargado" : "Downloaded");
+        setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2000);
+      })
+      .catch(function() {
+        downloadBtn.textContent = "Error";
+        setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2000);
+      });
+    });
+  }
+
+  // Share link click — track which platform was used, show claim button
+  var shareLinks = document.querySelectorAll(".artwork-share-row--detail .artwork-share-btn");
+  shareLinks.forEach(function(link) {
+    link.addEventListener("click", function() {
+      if (!userId) return;
+      var platform = "";
+      if (link.classList.contains("share-wa")) platform = "whatsapp";
+      else if (link.classList.contains("share-fb")) platform = "facebook";
+      else if (link.classList.contains("share-bs")) platform = "bluesky";
+      else if (link.classList.contains("share-cl")) platform = "copy-link";
+
+      sharedPlatform = platform;
+
+      // Show claim button after share dialog opens
+      if (claimBtn) {
+        claimBtn.style.display = "";
+        claimBtn.classList.add("artwork-claim-btn--pulse");
+      }
+    });
+  });
+
+  // Copy link handler
+  if (copyBtn) {
+    copyBtn.addEventListener("click", function() {
+      var url = window.location.href;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url);
+      } else {
+        var ta = document.createElement("textarea"); ta.value = url;
+        document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+      }
+    });
+  }
+
+  // Claim peanut button
+  if (claimBtn) {
+    claimBtn.addEventListener("click", function() {
+      if (!userId || !sharedPlatform) return;
+      claimBtn.disabled = true;
+      claimBtn.textContent = "...";
+
+      fetch("/api/track-share/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ platform: sharedPlatform, shared_url: window.location.href })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.credited) {
+          userBalance = data.balance;
+          updateDisplay();
+          claimBtn.innerHTML = '<span style="color:var(--brand-green)">✅ +1 🥜!</span>';
+          claimBtn.classList.remove("artwork-claim-btn--pulse");
+        } else if (data.duplicate) {
+          claimBtn.textContent = lang === "es" ? "Ya reclamado hoy" : "Already claimed today";
+        } else {
+          claimBtn.textContent = lang === "es" ? "Máximo diario alcanzado" : "Daily max reached";
+        }
+        setTimeout(function() { claimBtn.style.display = "none"; claimBtn.disabled = false; }, 3000);
+      })
+      .catch(function() {
+        claimBtn.textContent = "Error";
+        setTimeout(function() { claimBtn.style.display = "none"; claimBtn.disabled = false; }, 2000);
+      });
+    });
+  }
+
+  function updateDisplay() {
+    if (pointsValue) pointsValue.textContent = userBalance;
+    var headerCount = document.getElementById("peanuts-count");
+    if (headerCount) {
+      headerCount.textContent = String(userBalance);
+      sessionStorage.setItem("lcp-peanuts", String(userBalance));
+    }
+  }
+})();
+</script>
