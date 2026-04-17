@@ -70,6 +70,27 @@ async function insertMetric(row) {
   }
 }
 
+async function insertSnapshot(row) {
+  if (DRY_RUN) {
+    console.log(`  [DRY RUN] Snapshot: ${row.platform}/${row.post_id.slice(0, 40)} — ${row.likes}L ${row.comments}C ${row.shares}S`);
+    return;
+  }
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/engagement_snapshots`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(row),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    console.log(`  ⚠️  Snapshot insert failed (${res.status}): ${body.slice(0, 100)}`);
+  }
+}
+
 // ─── Bluesky collector (public API, no auth) ───────────────────────────────
 
 async function collectBluesky() {
@@ -149,6 +170,22 @@ async function collectBluesky() {
     });
 
     console.log(`  ✅ Engagement: ${totalLikes} likes, ${totalReposts} reposts, ${totalReplies} replies across ${feedData.feed?.length || 0} posts`);
+
+    // Save per-post engagement snapshots for growth tracking
+    let snapCount = 0;
+    for (const item of feedData.feed || []) {
+      const post = item.post;
+      await insertSnapshot({
+        platform: "bluesky",
+        post_id: post.uri,
+        likes: post.likeCount || 0,
+        comments: post.replyCount || 0,
+        shares: post.repostCount || 0,
+        followers: profile.followersCount || 0,
+      });
+      snapCount++;
+    }
+    console.log(`  📸 ${snapCount} engagement snapshots saved`);
   } catch (err) {
     console.error(`  ❌ Bluesky error: ${err.message}`);
   }
@@ -239,6 +276,21 @@ async function collectFacebook() {
     });
 
     console.log(`  ✅ Engagement: ${totalLikes} likes, ${totalComments} comments, ${totalShares} shares across ${posts.length} posts`);
+
+    // Save per-post engagement snapshots
+    let snapCount = 0;
+    for (const post of posts) {
+      await insertSnapshot({
+        platform: "facebook",
+        post_id: post.id,
+        likes: post.likes?.summary?.total_count || 0,
+        comments: post.comments?.summary?.total_count || 0,
+        shares: post.shares?.count || 0,
+        followers: page.followers_count || 0,
+      });
+      snapCount++;
+    }
+    console.log(`  📸 ${snapCount} engagement snapshots saved`);
   } catch (err) {
     console.error(`  ❌ Facebook error: ${err.message}`);
   }
@@ -324,6 +376,21 @@ async function collectInstagram() {
     });
 
     console.log(`  ✅ Engagement: ${totalLikes} likes, ${totalComments} comments across ${media.length} media`);
+
+    // Save per-post engagement snapshots
+    let snapCount = 0;
+    for (const item of media) {
+      await insertSnapshot({
+        platform: "instagram",
+        post_id: item.id,
+        likes: item.like_count || 0,
+        comments: item.comments_count || 0,
+        shares: 0,
+        followers: profile.followers_count || 0,
+      });
+      snapCount++;
+    }
+    console.log(`  📸 ${snapCount} engagement snapshots saved`);
   } catch (err) {
     console.error(`  ❌ Instagram error: ${err.message}`);
   }

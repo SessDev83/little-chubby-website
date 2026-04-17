@@ -34,7 +34,7 @@ import { generatePost, generateWeeklyCalendar, buildUtmUrl } from "./content-tem
 import { generateAIPost } from "./ai-generate.mjs";
 import { generateImage, downloadImage } from "./image-generate.mjs";
 import { postToBluesky } from "./platforms/bluesky.mjs";
-import { postToFacebook, postToInstagram } from "./platforms/meta.mjs";
+import { postToFacebook, postToInstagram, postToFacebookGroup } from "./platforms/meta.mjs";
 import { getSmartContext } from "../agents/smart-selector.mjs";
 
 const SITE_URL = "https://www.littlechubbypress.com";
@@ -556,6 +556,34 @@ async function main() {
 
     console.log(`\n📤 Publishing to: ${opts.platform}...\n`);
     const results = await publishPost(post, opts.platform, imageData, data, opts.lang);
+
+    // Cross-post to Facebook Groups if configured
+    const groupIds = (process.env.FB_GROUP_IDS || "").split(",").map(g => g.trim()).filter(Boolean);
+    if (groupIds.length > 0 && (opts.platform === "all" || opts.platform === "facebook")) {
+      console.log(`\n👥 Cross-posting to ${groupIds.length} Facebook Group(s)...\n`);
+      const fbContent = post.platforms.facebook;
+      if (fbContent) {
+        const fullText = buildFullText(fbContent);
+        for (const groupId of groupIds) {
+          try {
+            if (opts.dryRun) {
+              console.log(`  [DRY RUN] Would post to group ${groupId}`);
+              continue;
+            }
+            const fbOpts = {};
+            if (data?.amazonUrl) fbOpts.link = data.amazonUrl;
+            if (imageData?.url) fbOpts.imageUrl = imageData.url;
+            const result = await postToFacebookGroup(groupId, fullText, fbOpts);
+            results.push({ platform: `fb-group-${groupId}`, success: true, result });
+            console.log(`  ✅ Group ${groupId}: posted successfully (${result.id})`);
+          } catch (err) {
+            results.push({ platform: `fb-group-${groupId}`, success: false, error: err.message });
+            console.error(`  ⚠️  Group ${groupId}: ${err.message}`);
+          }
+        }
+      }
+    }
+
     console.log("\n✨ Done!\n");
 
     // Fail the process if any Meta platform post failed, so CI shows a red X

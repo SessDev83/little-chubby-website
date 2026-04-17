@@ -16,7 +16,7 @@ on:
       days:
         description: "Days of data to analyze"
         required: true
-        default: "7"
+        default: "30"
         type: string
       dry_run:
         description: "Preview only (no DB writes, no email)"
@@ -43,7 +43,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           ANALYTICS_EMAIL: ${{ secrets.ANALYTICS_EMAIL }}
         run: |
-          DAYS="${{ github.event.inputs.days || '7' }}"
+          DAYS="${{ github.event.inputs.days || '30' }}"
           ARGS=(--days "$DAYS")
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
           node scripts/agents/weekly-intelligence.mjs "${ARGS[@]}"

@@ -2,14 +2,15 @@
 /**
  * Weekly Intelligence Report — Agent Layer 2 (Brain)
  *
- * Queries 7 days of social_metrics, traffic_insights, and content_performance
- * from Supabase, sends the data to Claude for deep analysis, stores the
- * recommendations in agent_decisions, and emails a summary report.
+ * Queries 30 days of social_metrics, traffic_insights, content_performance,
+ * and engagement_snapshots from Supabase, sends the data to Claude for deep
+ * analysis, stores the recommendations in agent_decisions, and emails a
+ * summary report.
  *
  * Combines: trend analysis, timing optimization, content A/B insights,
- * and outreach priority recommendations into a single weekly brain session.
+ * engagement growth curves, and outreach priority recommendations.
  *
- * Usage:  node scripts/agents/weekly-intelligence.mjs [--dry-run] [--days 7]
+ * Usage:  node scripts/agents/weekly-intelligence.mjs [--dry-run] [--days 30]
  *
  * Required env vars:
  *   PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ANTHROPIC_API_KEY
@@ -59,8 +60,8 @@ if (!ANTHROPIC_API_KEY) {
 
 function getLookbackDays() {
   const idx = process.argv.indexOf("--days");
-  if (idx !== -1 && process.argv[idx + 1]) return parseInt(process.argv[idx + 1], 10) || 7;
-  return 7;
+  if (idx !== -1 && process.argv[idx + 1]) return parseInt(process.argv[idx + 1], 10) || 30;
+  return 30;
 }
 
 function sinceDate(days) {
@@ -110,23 +111,25 @@ async function fetchData(days) {
   console.log("📊 Fetching data...\n");
 
   // Current period
-  const [socialMetrics, trafficInsights, contentPerf] = await Promise.all([
-    querySupabase("social_metrics", `select=*&collected_at=gte.${since}&order=collected_at.desc&limit=500`),
-    querySupabase("traffic_insights", `select=*&date=gte.${since.slice(0, 10)}&order=date.desc&limit=200`),
-    querySupabase("content_performance", `select=*&created_at=gte.${since}&order=created_at.desc&limit=500`),
+  const [socialMetrics, trafficInsights, contentPerf, engSnapshots] = await Promise.all([
+    querySupabase("social_metrics", `select=*&collected_at=gte.${since}&order=collected_at.desc&limit=1000`),
+    querySupabase("traffic_insights", `select=*&date=gte.${since.slice(0, 10)}&order=date.desc&limit=500`),
+    querySupabase("content_performance", `select=*&created_at=gte.${since}&order=created_at.desc&limit=1000`),
+    querySupabase("engagement_snapshots", `select=*&snapshot_at=gte.${since}&order=snapshot_at.desc&limit=2000`),
   ]);
 
   // Previous period (for comparison)
   const [prevTraffic, prevContent] = await Promise.all([
-    querySupabase("traffic_insights", `select=*&date=gte.${prevSince.slice(0, 10)}&date=lt.${since.slice(0, 10)}&order=date.desc&limit=200`),
-    querySupabase("content_performance", `select=*&created_at=gte.${prevSince}&created_at=lt.${since}&order=created_at.desc&limit=500`),
+    querySupabase("traffic_insights", `select=*&date=gte.${prevSince.slice(0, 10)}&date=lt.${since.slice(0, 10)}&order=date.desc&limit=500`),
+    querySupabase("content_performance", `select=*&created_at=gte.${prevSince}&created_at=lt.${since}&order=created_at.desc&limit=1000`),
   ]);
 
   console.log(`   Social metrics:       ${socialMetrics.length} rows`);
   console.log(`   Traffic insights:      ${trafficInsights.length} rows (prev: ${prevTraffic.length})`);
   console.log(`   Content performance:   ${contentPerf.length} rows (prev: ${prevContent.length})`);
+  console.log(`   Engagement snapshots:  ${engSnapshots.length} rows`);
 
-  return { socialMetrics, trafficInsights, contentPerf, prevTraffic, prevContent };
+  return { socialMetrics, trafficInsights, contentPerf, prevTraffic, prevContent, engSnapshots };
 }
 
 // ─── Build analysis prompt ─────────────────────────────────────────────────
@@ -181,6 +184,52 @@ function buildAnalysisPrompt(data, days) {
     postingTimes[key].totalEng += eng;
   }
 
+  // Engagement growth trends from snapshots
+  const engGrowth = {};
+  for (const snap of (data.engSnapshots || [])) {
+    const key = `${snap.platform}|${snap.post_id}`;
+    if (!engGrowth[key]) engGrowth[key] = [];
+    engGrowth[key].push({
+      likes: snap.likes, comments: snap.comments, shares: snap.shares,
+      at: snap.snapshot_at,
+    });
+  }
+  // Find top growing posts (biggest engagement delta first→last snapshot)
+  const growthDeltas = [];
+  for (const [key, snaps] of Object.entries(engGrowth)) {
+    if (snaps.length < 2) continue;
+    snaps.sort((a, b) => new Date(a.at) - new Date(b.at));
+    const first = snaps[0], last = snaps[snaps.length - 1];
+    const delta = (last.likes + last.comments + last.shares) -
+                  (first.likes + first.comments + first.shares);
+    if (delta > 0) {
+      const [platform, post_id] = key.split("|");
+      growthDeltas.push({ platform, post_id: post_id.slice(0, 60), delta, snapshots: snaps.length });
+    }
+  }
+  growthDeltas.sort((a, b) => b.delta - a.delta);
+
+  // Follower growth from social_metrics profile_stats over time
+  const followerTimeline = {};
+  for (const m of data.socialMetrics.filter(m => m.metric_type === "profile_stats")) {
+    if (!followerTimeline[m.platform]) followerTimeline[m.platform] = [];
+    followerTimeline[m.platform].push({
+      followers: m.value?.followers || m.value?.fans || 0,
+      date: m.collected_at,
+    });
+  }
+  const followerGrowth = {};
+  for (const [plat, timeline] of Object.entries(followerTimeline)) {
+    if (timeline.length < 2) continue;
+    timeline.sort((a, b) => new Date(a.date) - new Date(b.date));
+    followerGrowth[plat] = {
+      start: timeline[0].followers,
+      end: timeline[timeline.length - 1].followers,
+      change: timeline[timeline.length - 1].followers - timeline[0].followers,
+      datapoints: timeline.length,
+    };
+  }
+
   return `You are the AI strategist for Little Chubby Press, an independent publisher of children's coloring books.
 Analyze the following ${days}-day performance data and provide actionable intelligence.
 
@@ -196,6 +245,12 @@ ${JSON.stringify(perfByType, null, 2)}
 ═══ POSTING TIMES vs ENGAGEMENT ═══
 ${JSON.stringify(postingTimes, null, 2)}
 
+═══ ENGAGEMENT GROWTH (top posts gaining traction) ═══
+${growthDeltas.length > 0 ? JSON.stringify(growthDeltas.slice(0, 15), null, 2) : "No engagement growth data yet — snapshots will populate over the next few days."}
+
+═══ FOLLOWER GROWTH (${days} days) ═══
+${Object.keys(followerGrowth).length > 0 ? JSON.stringify(followerGrowth, null, 2) : "Insufficient data — need multiple collection runs to track growth."}
+
 ═══ PERIOD COMPARISON ═══
 Current ${days}d traffic: ${currTrafficTotal} pageviews
 Previous ${days}d traffic: ${prevTrafficTotal} pageviews (${prevTrafficTotal > 0 ? ((currTrafficTotal - prevTrafficTotal) / prevTrafficTotal * 100).toFixed(1) : "N/A"}% change)
@@ -210,11 +265,12 @@ Our posting schedule (ET timezone):
 Content rotation: Mon(book-promo), Tue(parenting-tip), Wed(blog-share), Thu(behind-scenes), Fri(fun-fact), Sat(community), Sun(blog-share×3)
 Platforms: Bluesky, Facebook, Instagram (all three for every post)
 Languages: EN and ES alternating
+We also cross-post to Facebook Groups for wider reach.
 
 ═══ YOUR TASK ═══
 Provide your analysis as VALID JSON with this exact structure:
 {
-  "summary": "2-3 sentence executive summary of this week's performance",
+  "summary": "2-3 sentence executive summary of this period's performance",
   "content_recommendations": [
     {
       "action": "specific actionable recommendation",
@@ -243,6 +299,9 @@ Provide your analysis as VALID JSON with this exact structure:
     "method": "how to test it",
     "duration_days": 7
   },
+  "group_recommendations": [
+    "specific recommendation for Facebook Group cross-posting — e.g. which post types perform best in parenting groups, what content to share, what to avoid"
+  ],
   "risk_alerts": ["any concerning trends or issues to watch"]
 }
 
@@ -328,6 +387,16 @@ async function storeDecisions(analysis) {
       reasoning: analysis.ab_test_suggestion.method,
       confidence_score: 0.6,
       context_data: analysis.ab_test_suggestion,
+    });
+  }
+
+  // Group posting recommendations
+  for (const rec of analysis.group_recommendations || []) {
+    await insertDecision({
+      decision_type: "group_recommendation",
+      recommended_action: rec,
+      reasoning: "Weekly intelligence — Facebook Group cross-posting strategy",
+      confidence_score: 0.7,
     });
   }
 

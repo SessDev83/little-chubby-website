@@ -141,6 +141,59 @@ export async function postToInstagram(caption, imageUrl) {
 // ─── Token diagnostics ──────────────────────────────────────────────────────
 
 /**
+ * Post a text (+ optional link/image) to a Facebook Group.
+ * Requires publish_to_groups permission on your access token.
+ *
+ * @param {string} groupId - The Facebook Group ID.
+ * @param {string} message - Post text.
+ * @param {object} [options]
+ * @param {string} [options.link] - URL to attach as a link preview.
+ * @param {string} [options.imageUrl] - Public URL of an image to post.
+ * @returns {{ id: string }}
+ */
+export async function postToFacebookGroup(groupId, message, options = {}) {
+  const token = process.env.META_PAGE_ACCESS_TOKEN;
+
+  if (!token) {
+    throw new Error("Missing META_PAGE_ACCESS_TOKEN env var");
+  }
+  if (!groupId) {
+    throw new Error("Missing groupId parameter");
+  }
+
+  let endpoint;
+  const params = new URLSearchParams({
+    access_token: token,
+    message,
+  });
+
+  if (options.imageUrl) {
+    endpoint = `${GRAPH_API}/${encodeURIComponent(groupId)}/photos`;
+    params.set("url", options.imageUrl);
+  } else {
+    endpoint = `${GRAPH_API}/${encodeURIComponent(groupId)}/feed`;
+    if (options.link) {
+      params.set("link", options.link);
+    }
+  }
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Facebook Group post failed (${res.status}): ${body}`);
+  }
+
+  return res.json();
+}
+
+// ─── Token diagnostics ── (original section) ───────────────────────────────
+
+/**
  * Check whether the configured page access token is still valid.
  * Makes a lightweight call to the Graph API and returns status info.
  *
