@@ -37,13 +37,16 @@ const artworkCategories = [
         <p>{text.coloringCornerDescription}</p>
       </div>
 
-      <!-- Download counter (shown for logged-in newsletter subscribers) -->
-      <div id="cc-download-counter" class="download-counter" style="display:none;">
-        <span id="cc-remaining">0</span> {text.coloringCornerRemaining}
-      </div>
-
-      <div id="cc-bonus-info" class="download-bonus-info" style="display:none;">
-        {text.coloringCornerBonusInfo}
+      <!-- Points banner (shown for logged-in users) -->
+      <div id="cc-points-banner" class="cc-points-banner" style="display:none;">
+        <div class="cc-points-inner">
+          <span class="cc-points-icon">⭐</span>
+          <span class="cc-points-label">{lang === "es" ? "Tus puntos:" : "Your points:"}</span>
+          <span id="cc-points-value" class="cc-points-value">0</span>
+        </div>
+        <p class="cc-points-hint">{lang === "es"
+          ? "Gana puntos compartiendo (+1, máx 3/día) y con reviews de libros (+5). Usa puntos para descargar y participar en giveaways."
+          : "Earn points by sharing (+1, max 3/day) and book reviews (+5). Use points to download and enter giveaways."}</p>
       </div>
 
       <!-- Category filters -->
@@ -61,7 +64,6 @@ const artworkCategories = [
 
       <!-- Artwork grid (populated client-side from Supabase) -->
       <div id="cc-grid" class="artwork-grid">
-        <!-- Loading placeholder -->
         <p id="cc-loading" style="text-align:center; grid-column: 1/-1; color: var(--ink-soft);">
           {lang === "es" ? "Cargando imagenes..." : "Loading images..."}
         </p>
@@ -72,40 +74,10 @@ const artworkCategories = [
         {lang === "es" ? "Aun no hay imagenes en esta categoria. ¡Pronto anadiremos mas!" : "No images in this category yet. More coming soon!"}
       </p>
 
-      <!-- Share buttons -->
-      <div id="cc-share-section" class="share-section" style="display:none;">
-        <h3>{lang === "es" ? "💚 Comparte y desbloquea más descargas" : "💚 Share & unlock more downloads"}</h3>
-        <p class="share-hint">{lang === "es" ? "Cada vez que compartes, ganas +1 descarga diaria extra (máx. 5/día)." : "Each share earns you +1 extra daily download (max 5/day)."}</p>
-        <div class="share-buttons">
-          <button id="cc-share-whatsapp" class="share-btn share-whatsapp" type="button">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            WhatsApp
-          </button>
-          <button id="cc-share-facebook" class="share-btn share-facebook" type="button">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-            Facebook
-          </button>
-          <button id="cc-share-copy" class="share-btn share-copy-link" type="button">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            {lang === "es" ? "Copiar enlace" : "Copy link"}
-          </button>
-        </div>
-      </div>
-
-      <!-- CTA for non-subscribers -->
-      <div id="cc-cta-subscribe" class="coloring-corner-cta" style="display:none;">
-        <h2>{lang === "es" ? "¿Quieres descargar estas imagenes?" : "Want to download these images?"}</h2>
-        <p>{text.coloringCornerSubscribeRequired}</p>
-        <div class="card-actions" style="justify-content:center;">
-          <Button href={`/${lang}/register/`} label={lang === "es" ? "Crear cuenta gratis" : "Create free account"} variant="primary" />
-          <Button href={`/${lang}/newsletter/`} label={text.ctaSubscribe} variant="ghost" />
-        </div>
-      </div>
-
       <!-- CTA for non-logged-in users -->
       <div id="cc-cta-login" class="coloring-corner-cta" style="display:none;">
-        <h2>{text.coloringCornerLoginRequired}</h2>
-        <p>{lang === "es" ? "Inicia sesion para acceder a descargas gratuitas." : "Log in to access free downloads."}</p>
+        <h2>{lang === "es" ? "¡Crea tu cuenta gratis!" : "Create your free account!"}</h2>
+        <p>{lang === "es" ? "Inicia sesión para ganar puntos, descargar imágenes y participar en giveaways." : "Log in to earn points, download images, and enter giveaways."}</p>
         <div class="card-actions" style="justify-content:center;">
           <Button href={`/${lang}/login/`} label={text.navLogin} variant="primary" />
           <Button href={`/${lang}/register/`} label={lang === "es" ? "Crear cuenta" : "Create account"} variant="ghost" />
@@ -120,11 +92,9 @@ function initColoringCorner() {
   var grid = document.getElementById("cc-grid");
   var loading = document.getElementById("cc-loading");
   var emptyMsg = document.getElementById("cc-empty");
-  var counterEl = document.getElementById("cc-download-counter");
-  var remainingEl = document.getElementById("cc-remaining");
-  var bonusInfo = document.getElementById("cc-bonus-info");
+  var pointsBanner = document.getElementById("cc-points-banner");
+  var pointsValue = document.getElementById("cc-points-value");
   var ctaLogin = document.getElementById("cc-cta-login");
-  var ctaSubscribe = document.getElementById("cc-cta-subscribe");
   if (!grid) return;
 
   var sb = document.querySelector("meta[name='x-sb-url']");
@@ -136,8 +106,33 @@ function initColoringCorner() {
   var isLoggedIn = document.cookie.indexOf("sb-logged-in=") !== -1;
   var lang = document.documentElement.getAttribute("lang") || "en";
   var allArtworks = [];
-  var dailyLimit = 0;
-  var todayDownloads = 0;
+  var userBalance = 0;
+  var userId = "";
+
+  // Get user id from JWT
+  function getAccessToken() {
+    var cookies = document.cookie.split(";");
+    for (var i = 0; i < cookies.length; i++) {
+      var c = cookies[i].trim();
+      if (c.startsWith("sb-access-token=")) return c.substring("sb-access-token=".length);
+    }
+    return "";
+  }
+
+  function getUserId() {
+    var token = getAccessToken();
+    if (!token) return "";
+    try {
+      var parts = token.split(".");
+      if (parts.length >= 2) {
+        var payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+        return payload.sub || "";
+      }
+    } catch(e) {}
+    return "";
+  }
+
+  userId = getUserId();
 
   // Show login CTA if not logged in
   if (!isLoggedIn && ctaLogin) ctaLogin.style.display = "";
@@ -150,92 +145,48 @@ function initColoringCorner() {
   .then(function(artworks) {
     if (loading) loading.style.display = "none";
     allArtworks = artworks || [];
-
     if (allArtworks.length === 0) {
       if (emptyMsg) emptyMsg.style.display = "";
       return;
     }
-
     renderArtworks(allArtworks);
-
-    // If logged in, check download limits
-    if (isLoggedIn) {
-      checkDownloadLimits();
-      initShareButtons();
-    }
+    if (isLoggedIn && userId) fetchUserBalance();
   })
   .catch(function() {
     if (loading) loading.textContent = lang === "es" ? "Error al cargar." : "Failed to load.";
   });
 
-  function checkDownloadLimits() {
-    // Get access token from cookies
-    var cookies = document.cookie.split(";");
-    var accessToken = "";
-    for (var i = 0; i < cookies.length; i++) {
-      var c = cookies[i].trim();
-      if (c.startsWith("sb-access-token=")) {
-        accessToken = c.substring("sb-access-token=".length);
-        break;
-      }
-    }
-    if (!accessToken) return;
-
-    // Get today's download count
-    var today = new Date().toISOString().slice(0, 10);
-    fetch(supabaseUrl + "/rest/v1/artwork_downloads?select=id&downloaded_at=gte." + today + "T00:00:00", {
+  // Fetch user balance via RPC
+  function fetchUserBalance() {
+    fetch(supabaseUrl + "/rest/v1/rpc/get_user_credits", {
+      method: "POST",
       headers: {
+        "Content-Type": "application/json",
         "apikey": supabaseKey,
-        "Authorization": "Bearer " + accessToken
-      }
+        "Authorization": "Bearer " + getAccessToken()
+      },
+      body: JSON.stringify({ p_user_id: userId })
     })
     .then(function(r) { return r.json(); })
-    .then(function(downloads) {
-      todayDownloads = Array.isArray(downloads) ? downloads.length : 0;
-
-      // Get approved reviews count
-      return fetch(supabaseUrl + "/rest/v1/book_reviews?select=id&status=eq.approved", {
-        headers: {
-          "apikey": supabaseKey,
-          "Authorization": "Bearer " + accessToken
-        }
-      });
+    .then(function(balance) {
+      userBalance = typeof balance === "number" ? balance : 0;
+      updatePointsDisplay();
     })
-    .then(function(r) { return r.json(); })
-    .then(function(reviews) {
-      var reviewCount = Array.isArray(reviews) ? reviews.length : 0;
-
-      // Get unique share days count
-      return fetch(supabaseUrl + "/rest/v1/social_shares?select=id", {
-        headers: {
-          "apikey": supabaseKey,
-          "Authorization": "Bearer " + accessToken
-        }
-      }).then(function(r) { return r.json(); }).then(function(shares) {
-        var shareCount = Array.isArray(shares) ? shares.length : 0;
-
-        // Formula: min(1 + reviews + shares, 5)
-        dailyLimit = Math.min(1 + reviewCount + shareCount, 5);
-        var remaining = Math.max(dailyLimit - todayDownloads, 0);
-
-        if (counterEl && remainingEl) {
-          remainingEl.textContent = remaining + " / " + dailyLimit;
-          counterEl.style.display = "";
-        }
-        if (bonusInfo) bonusInfo.style.display = "";
-
-        // Enable/disable download buttons
-        var btns = grid.querySelectorAll(".artwork-download-btn");
-        btns.forEach(function(btn) {
-          if (remaining <= 0) {
-            btn.disabled = true;
-            btn.textContent = lang === "es" ? "Limite alcanzado" : "Limit reached";
-          }
-        });
-      });
-    })
-    .catch(function() { /* fail silently, downloads just won't show counter */ });
+    .catch(function() {});
   }
+
+  function updatePointsDisplay() {
+    if (pointsBanner && pointsValue) {
+      pointsValue.textContent = userBalance;
+      pointsBanner.style.display = "";
+    }
+  }
+
+  // SVG icons as strings
+  var svgWhatsApp = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>';
+  var svgFacebook = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>';
+  var svgBluesky = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zm4.5 14.5h-2.25v-3.75c0-.621-.252-1.125-.75-1.125s-.75.504-.75 1.125V16.5H10.5V9h2.25v.938c.375-.563.938-.938 1.688-.938 1.5 0 2.062 1.125 2.062 2.625V16.5z"/></svg>';
+  var svgCopyLink = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
 
   function renderArtworks(artworks) {
     grid.innerHTML = "";
@@ -247,18 +198,31 @@ function initColoringCorner() {
       card.className = "artwork-card";
       card.setAttribute("data-artwork-cat", art.category);
 
-      // Use signed URL for thumbnail or fallback to path
       var thumbSrc = art.thumbnail_path
         ? supabaseUrl + "/storage/v1/object/public/free-artworks/" + art.thumbnail_path
         : supabaseUrl + "/storage/v1/object/public/free-artworks/" + art.image_path;
 
+      var shareRow = isLoggedIn
+        ? '<div class="artwork-share-row">' +
+            '<button class="artwork-share-btn share-wa" data-platform="whatsapp" title="WhatsApp">' + svgWhatsApp + '</button>' +
+            '<button class="artwork-share-btn share-fb" data-platform="facebook" title="Facebook">' + svgFacebook + '</button>' +
+            '<button class="artwork-share-btn share-bs" data-platform="bluesky" title="Bluesky">' + svgBluesky + '</button>' +
+            '<button class="artwork-share-btn share-cl" data-platform="copy-link" title="' + (lang === "es" ? "Copiar enlace" : "Copy link") + '">' + svgCopyLink + '</button>' +
+          '</div>'
+        : '';
+
       card.innerHTML =
-        '<img src="' + thumbSrc + '" alt="' + (title || "Coloring page").replace(/"/g, "&quot;") + '" loading="lazy" width="300" height="300" />' +
+        '<div class="artwork-img-wrap">' +
+          '<img src="' + thumbSrc + '" alt="' + (title || "Coloring page").replace(/"/g, "&quot;") + '" loading="lazy" />' +
+        '</div>' +
         '<div class="artwork-card-body">' +
           '<h3>' + (title || "Coloring page") + '</h3>' +
           '<button class="artwork-download-btn" data-artwork-id="' + art.id + '" data-image-path="' + art.image_path + '">' +
+            '<span class="dl-icon">⬇</span> ' +
             (lang === "es" ? "Descargar" : "Download") +
+            ' <span class="dl-cost">(-1 ⭐)</span>' +
           '</button>' +
+          shareRow +
         '</div>';
 
       grid.appendChild(card);
@@ -268,204 +232,121 @@ function initColoringCorner() {
     grid.querySelectorAll(".artwork-download-btn").forEach(function(btn) {
       btn.addEventListener("click", function() {
         if (!isLoggedIn) {
-          if (ctaLogin) ctaLogin.style.display = "";
-          ctaLogin.scrollIntoView({ behavior: "smooth" });
+          if (ctaLogin) { ctaLogin.style.display = ""; ctaLogin.scrollIntoView({ behavior: "smooth" }); }
           return;
         }
         handleDownload(btn);
       });
     });
-  }
 
-  function handleDownload(btn) {
-    var artworkId = btn.getAttribute("data-artwork-id");
-    var imagePath = btn.getAttribute("data-image-path");
-
-    // Get access token
-    var cookies = document.cookie.split(";");
-    var accessToken = "";
-    for (var i = 0; i < cookies.length; i++) {
-      var c = cookies[i].trim();
-      if (c.startsWith("sb-access-token=")) {
-        accessToken = c.substring("sb-access-token=".length);
-        break;
-      }
-    }
-    if (!accessToken) return;
-
-    btn.disabled = true;
-    btn.textContent = "...";
-
-    // Record download
-    // First get user id from JWT (simple base64 decode of payload)
-    var payload = {};
-    try {
-      var parts = accessToken.split(".");
-      if (parts.length >= 2) {
-        payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-      }
-    } catch(e) {}
-
-    if (!payload.sub) {
-      btn.disabled = false;
-      btn.textContent = "Error";
-      return;
-    }
-
-    // Insert download record
-    fetch(supabaseUrl + "/rest/v1/artwork_downloads", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": supabaseKey,
-        "Authorization": "Bearer " + accessToken,
-        "Prefer": "return=minimal"
-      },
-      body: JSON.stringify({
-        user_id: payload.sub,
-        artwork_id: artworkId
-      })
-    })
-    .then(function(res) {
-      if (!res.ok) throw new Error("Download record failed");
-
-      // Generate signed download URL
-      return fetch(supabaseUrl + "/storage/v1/object/sign/free-artworks/" + imagePath, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": supabaseKey,
-          "Authorization": "Bearer " + accessToken
-        },
-        body: JSON.stringify({ expiresIn: 3600 })
+    // Share button handlers
+    grid.querySelectorAll(".artwork-share-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var platform = btn.getAttribute("data-platform");
+        handleShare(platform, btn);
       });
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.signedURL || data.signedUrl) {
-        var url = data.signedURL || data.signedUrl;
-        // Use full URL if relative
-        if (url.startsWith("/")) url = supabaseUrl + "/storage/v1" + url;
-        var a = document.createElement("a");
-        a.href = url;
-        a.download = imagePath.split("/").pop() || "coloring-page.png";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        todayDownloads++;
-        var remaining = Math.max(dailyLimit - todayDownloads, 0);
-        if (remainingEl) remainingEl.textContent = remaining + " / " + dailyLimit;
-
-        btn.textContent = "✓";
-        setTimeout(function() {
-          btn.textContent = lang === "es" ? "Descargar" : "Download";
-          btn.disabled = remaining <= 0;
-          if (remaining <= 0) btn.textContent = lang === "es" ? "Limite alcanzado" : "Limit reached";
-        }, 1500);
-
-        // Disable all buttons if limit reached
-        if (remaining <= 0) {
-          grid.querySelectorAll(".artwork-download-btn").forEach(function(b) {
-            b.disabled = true;
-            b.textContent = lang === "es" ? "Limite alcanzado" : "Limit reached";
-          });
-        }
-      }
-    })
-    .catch(function() {
-      btn.disabled = false;
-      btn.textContent = "Error";
-      setTimeout(function() {
-        btn.textContent = lang === "es" ? "Descargar" : "Download";
-      }, 2000);
     });
   }
 
-  // Share buttons
-  function initShareButtons() {
-    var shareSection = document.getElementById("cc-share-section");
-    var shareWhatsapp = document.getElementById("cc-share-whatsapp");
-    var shareFacebook = document.getElementById("cc-share-facebook");
-    var shareCopy = document.getElementById("cc-share-copy");
-    if (!shareSection) return;
+  function handleDownload(btn) {
+    if (!userId) return;
+    var artworkId = btn.getAttribute("data-artwork-id");
+    var imagePath = btn.getAttribute("data-image-path");
 
-    shareSection.style.display = "";
+    btn.disabled = true;
+    var origHTML = btn.innerHTML;
+    btn.textContent = "...";
 
+    // Server-side credit check + download via API
+    fetch("/api/download-artwork/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, artwork_id: artworkId, image_path: imagePath })
+    })
+    .then(function(res) { return res.json().then(function(d) { return { status: res.status, data: d }; }); })
+    .then(function(result) {
+      if (result.status === 403 && result.data.error === "no_credits") {
+        btn.innerHTML = lang === "es" ? "⭐ Sin puntos" : "⭐ No points";
+        setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 2500);
+        return;
+      }
+      if (result.status !== 200 || !result.data.ok) {
+        btn.textContent = "Error";
+        setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 2000);
+        return;
+      }
+
+      // Trigger download
+      var a = document.createElement("a");
+      a.href = result.data.signedUrl;
+      a.download = imagePath.split("/").pop() || "coloring-page.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Update balance
+      userBalance = result.data.balance;
+      updatePointsDisplay();
+
+      btn.innerHTML = "✅ " + (lang === "es" ? "Descargado" : "Downloaded");
+      setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 2000);
+    })
+    .catch(function() {
+      btn.textContent = "Error";
+      setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 2000);
+    });
+  }
+
+  function handleShare(platform, btn) {
+    if (!userId) return;
     var pageUrl = window.location.href;
     var shareText = lang === "es"
       ? "🎨 ¡Mira estas láminas para colorear gratis! "
       : "🎨 Check out these free coloring pages! ";
 
-    // Get user id from JWT
-    function getUserId() {
-      var cookies = document.cookie.split(";");
-      for (var i = 0; i < cookies.length; i++) {
-        var c = cookies[i].trim();
-        if (c.startsWith("sb-access-token=")) {
-          var token = c.substring("sb-access-token=".length);
-          try {
-            var parts = token.split(".");
-            if (parts.length >= 2) {
-              var payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-              return payload.sub || "";
-            }
-          } catch(e) {}
-        }
+    // Open share target
+    if (platform === "whatsapp") {
+      window.open("https://wa.me/?text=" + encodeURIComponent(shareText + pageUrl), "_blank");
+    } else if (platform === "facebook") {
+      window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(pageUrl), "_blank", "width=600,height=400");
+    } else if (platform === "bluesky") {
+      window.open("https://bsky.app/intent/compose?text=" + encodeURIComponent(shareText + pageUrl), "_blank");
+    } else if (platform === "copy-link") {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(pageUrl);
+      } else {
+        var ta = document.createElement("textarea"); ta.value = pageUrl;
+        document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
       }
-      return "";
     }
 
-    function trackShare(platform) {
-      var userId = getUserId();
-      if (!userId) return;
-      fetch("/api/track-share/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, platform: platform, shared_url: pageUrl })
-      }).catch(function() {});
-    }
-
-    if (shareWhatsapp) {
-      shareWhatsapp.addEventListener("click", function() {
-        trackShare("whatsapp");
-        window.open("https://wa.me/?text=" + encodeURIComponent(shareText + pageUrl), "_blank");
-      });
-    }
-
-    if (shareFacebook) {
-      shareFacebook.addEventListener("click", function() {
-        trackShare("facebook");
-        window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(pageUrl), "_blank", "width=600,height=400");
-      });
-    }
-
-    if (shareCopy) {
-      shareCopy.addEventListener("click", function() {
-        trackShare("copy-link");
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(pageUrl).then(function() {
-            shareCopy.textContent = lang === "es" ? "✓ Copiado" : "✓ Copied";
-            setTimeout(function() { shareCopy.innerHTML = shareCopy.getAttribute("data-original"); }, 2000);
-          });
-        } else {
-          // Fallback
-          var ta = document.createElement("textarea");
-          ta.value = pageUrl;
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
-          shareCopy.textContent = lang === "es" ? "✓ Copiado" : "✓ Copied";
-          setTimeout(function() { shareCopy.innerHTML = shareCopy.getAttribute("data-original"); }, 2000);
-        }
-      });
-      // Store original HTML for restore
-      shareCopy.setAttribute("data-original", shareCopy.innerHTML);
-    }
+    // Track share + earn credit
+    var origHTML = btn.innerHTML;
+    fetch("/api/track-share/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, platform: platform, shared_url: pageUrl })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.credited) {
+        userBalance = data.balance;
+        updatePointsDisplay();
+        btn.innerHTML = '<span style="color:var(--brand-green)">+1 ⭐</span>';
+      } else if (platform === "copy-link") {
+        btn.innerHTML = '✓';
+      }
+      setTimeout(function() { btn.innerHTML = origHTML; }, 2000);
+    })
+    .catch(function() {
+      if (platform === "copy-link") {
+        btn.innerHTML = '✓';
+        setTimeout(function() { btn.innerHTML = origHTML; }, 1500);
+      }
+    });
   }
 
-  // Category filter — re-render the grid with filtered artworks
+  // Category filter
   var filterBtns = document.querySelectorAll("[data-artwork-category]");
   filterBtns.forEach(function(btn) {
     btn.addEventListener("click", function() {
