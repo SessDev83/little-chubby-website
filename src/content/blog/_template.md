@@ -4,6 +4,7 @@ title: ""
 date: "2025-01-01"
 summary: ""
 lang: "en"
+category: "article"
 bookId: ""
 image: ""
 tags: []

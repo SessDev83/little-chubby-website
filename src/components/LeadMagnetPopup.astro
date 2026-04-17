@@ -1,0 +1,187 @@
+---
+import type { Lang } from "../data/i18n";
+import { ui } from "../data/i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const text = ui[lang];
+---
+
+<div id="lead-magnet-overlay" class="lead-magnet-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label={text.leadMagnetHeadline}>
+  <div class="lead-magnet-popup">
+    <button class="lead-magnet-close" id="lead-magnet-close" type="button" aria-label={lang === "es" ? "Cerrar" : "Close"}>&times;</button>
+
+    <h2>{text.leadMagnetHeadline}</h2>
+    <p class="lead-subtitle">{text.leadMagnetSubheadline}</p>
+
+    <div id="lead-magnet-form-section">
+      <form class="lead-magnet-form" id="lead-magnet-form" novalidate>
+        <input type="text" name="name" placeholder={text.formName} autocomplete="given-name" />
+        <input type="email" name="email" placeholder={text.formEmail} required autocomplete="email" />
+        <input type="text" name="company" style="display:none;" tabindex="-1" autocomplete="off" />
+        <input type="hidden" name="lang" value={lang} />
+        <button type="submit" class="btn btn-primary" style="width:100%;">
+          🎨 {text.leadMagnetCta}
+        </button>
+      </form>
+      <button class="lead-magnet-dismiss" id="lead-magnet-dismiss" type="button">
+        {text.leadMagnetDismiss}
+      </button>
+    </div>
+
+    <div id="lead-magnet-success" class="lead-magnet-success" style="display:none;">
+      <p>🎉 {text.leadMagnetSuccess}</p>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+function initLeadMagnet() {
+  var overlay = document.getElementById("lead-magnet-overlay");
+  var closeBtn = document.getElementById("lead-magnet-close");
+  var dismissBtn = document.getElementById("lead-magnet-dismiss");
+  var form = document.getElementById("lead-magnet-form");
+  var formSection = document.getElementById("lead-magnet-form-section");
+  var successSection = document.getElementById("lead-magnet-success");
+  if (!overlay || !form) return;
+
+  // Don't show if user is logged in
+  if (document.cookie.indexOf("sb-logged-in=") !== -1) return;
+
+  // Don't show if already registered or recently dismissed
+  var stored = localStorage.getItem("lcp-lead-magnet");
+  if (stored === "registered") return;
+  if (stored) {
+    try {
+      var data = JSON.parse(stored);
+      if (data.dismissed) {
+        var daysSince = (Date.now() - data.timestamp) / (1000 * 60 * 60 * 24);
+        if (daysSince < 7) return; // Re-show after 7 days
+      }
+    } catch (e) { /* continue */ }
+  }
+
+  // Show popup after 5 seconds
+  var timer = setTimeout(function() {
+    overlay.style.display = "";
+    document.body.style.overflow = "hidden";
+  }, 5000);
+
+  function closePopup() {
+    overlay.style.display = "none";
+    document.body.style.overflow = "";
+    clearTimeout(timer);
+  }
+
+  function dismiss() {
+    localStorage.setItem("lcp-lead-magnet", JSON.stringify({
+      dismissed: true,
+      timestamp: Date.now()
+    }));
+    closePopup();
+  }
+
+  closeBtn.addEventListener("click", dismiss);
+  dismissBtn.addEventListener("click", dismiss);
+
+  // Close on overlay click (outside popup)
+  overlay.addEventListener("click", function(e) {
+    if (e.target === overlay) dismiss();
+  });
+
+  // Close on Escape key
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape" && overlay.style.display !== "none") dismiss();
+  });
+
+  form.addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    // Honeypot check
+    var honeypot = form.querySelector("[name='company']");
+    if (honeypot && honeypot.value) return;
+
+    var emailInput = form.querySelector("[name='email']");
+    var nameInput = form.querySelector("[name='name']");
+    var langInput = form.querySelector("[name='lang']");
+    var email = emailInput ? emailInput.value.trim() : "";
+    var name = nameInput ? nameInput.value.trim() : "";
+    var lang = langInput ? langInput.value : "en";
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      emailInput.style.borderColor = "var(--accent-coral)";
+      emailInput.focus();
+      return;
+    }
+
+    var btn = form.querySelector("button[type='submit']");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "...";
+    }
+
+    // Get Supabase config from meta tags
+    var sbUrl = document.querySelector("meta[name='x-sb-url']");
+    var sbKey = document.querySelector("meta[name='x-sb-key']");
+    var supabaseUrl = sbUrl ? sbUrl.getAttribute("content") : "";
+    var supabaseKey = sbKey ? sbKey.getAttribute("content") : "";
+
+    if (!supabaseUrl || !supabaseKey) {
+      // Fallback: just mark as registered and offer direct download
+      localStorage.setItem("lcp-lead-magnet", "registered");
+      formSection.style.display = "none";
+      successSection.style.display = "";
+      return;
+    }
+
+    // Insert subscriber directly via Supabase REST API (anon insert policy)
+    fetch(supabaseUrl + "/rest/v1/newsletter_subscribers", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": supabaseKey,
+        "Authorization": "Bearer " + supabaseKey,
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        email: email,
+        name: name,
+        source: "popup",
+        lang_pref: lang,
+        confirmed: false
+      })
+    }).then(function(res) {
+      // 201 = created, 409 = already exists — both are fine
+      localStorage.setItem("lcp-lead-magnet", "registered");
+      formSection.style.display = "none";
+      successSection.style.display = "";
+
+      // Trigger download of the PDF directly
+      var downloadLink = document.createElement("a");
+      downloadLink.href = "/downloads/mini-coloring-book.pdf";
+      downloadLink.download = "Little-Chubby-Press-Mini-Coloring-Book.pdf";
+      downloadLink.style.display = "none";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+
+      // Close popup after 3 seconds
+      setTimeout(function() {
+        overlay.style.display = "none";
+        document.body.style.overflow = "";
+      }, 3000);
+    }).catch(function() {
+      // On error, still give the download (generous approach)
+      localStorage.setItem("lcp-lead-magnet", "registered");
+      formSection.style.display = "none";
+      successSection.style.display = "";
+    });
+  });
+}
+
+initLeadMagnet();
+document.addEventListener("astro:after-swap", initLeadMagnet);
+</script>

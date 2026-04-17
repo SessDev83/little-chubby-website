@@ -1599,3 +1599,438 @@ main {
   from { opacity: 1; transform: translateX(0); }
   to { opacity: 0; transform: translateX(60px); }
 }
+
+/* ── Blog Category Filters ──────────────────── */
+.blog-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.4rem;
+  position: sticky;
+  top: var(--header-h, 0px);
+  z-index: 20;
+  background: color-mix(in srgb, var(--bg-paper) 92%, transparent 8%);
+  backdrop-filter: blur(10px);
+  padding: 0.7rem 0.5rem;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  transition: box-shadow 0.25s ease;
+}
+
+.blog-filter-btn {
+  appearance: none;
+  border: 1.5px solid var(--brand-brown);
+  background: transparent;
+  color: var(--brand-brown);
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 0.38rem 1.1rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+  line-height: 1.3;
+}
+
+.blog-filter-btn:hover {
+  background: rgba(117, 70, 36, 0.1);
+}
+
+.blog-filter-btn.active {
+  background: var(--brand-brown);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(117, 70, 36, 0.2);
+}
+
+[data-theme="dark"] .blog-filter-btn {
+  border-color: var(--brand-brown);
+  color: var(--brand-brown);
+}
+
+[data-theme="dark"] .blog-filter-btn:hover {
+  background: rgba(199, 145, 95, 0.15);
+}
+
+[data-theme="dark"] .blog-filter-btn.active {
+  background: var(--brand-brown);
+  color: #1a1613;
+}
+
+.blog-post-wrapper {
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.blog-empty-msg {
+  text-align: center;
+  color: var(--ink-soft);
+  font-style: italic;
+  font-size: 1.05rem;
+  padding: 2rem 1rem;
+  margin: 0;
+}
+
+/* ── Category Badge ─────────────────────────── */
+.category-badge {
+  display: inline-block;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--badge-color, var(--brand-blue));
+  border: 1.5px solid var(--badge-color, var(--brand-blue));
+  padding: 0.15rem 0.65rem;
+  border-radius: 2rem;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.post-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.post-card-meta .post-date {
+  margin: 0;
+}
+
+.post-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.post-detail-meta .post-date {
+  margin: 0;
+}
+
+/* ── Lead Magnet Popup ──────────────────────── */
+.lead-magnet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: popup-fade-in 0.35s ease;
+}
+
+.lead-magnet-popup {
+  background: linear-gradient(160deg, var(--surface) 0%, var(--surface-strong) 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  max-width: 28rem;
+  width: 100%;
+  padding: clamp(1.2rem, 3vw, 2rem);
+  position: relative;
+  animation: popup-slide-up 0.4s ease;
+}
+
+.lead-magnet-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.8rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 0.3rem;
+  line-height: 1;
+}
+
+.lead-magnet-close:hover {
+  color: var(--ink);
+}
+
+.lead-magnet-popup h2 {
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  margin-bottom: 0.4rem;
+  text-align: center;
+}
+
+.lead-magnet-popup .lead-subtitle {
+  text-align: center;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+.lead-magnet-preview {
+  width: 100%;
+  max-width: 200px;
+  margin: 0 auto 1rem;
+  display: block;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.lead-magnet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.lead-magnet-form input {
+  padding: 0.65rem 0.9rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.95rem;
+  background: var(--bg-soft);
+  color: var(--ink);
+}
+
+.lead-magnet-form input:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 3px rgba(211, 164, 66, 0.2);
+}
+
+.lead-magnet-form .btn {
+  margin-top: 0.25rem;
+}
+
+.lead-magnet-dismiss {
+  display: block;
+  margin: 0.7rem auto 0;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.3rem;
+}
+
+.lead-magnet-dismiss:hover {
+  color: var(--ink);
+}
+
+.lead-magnet-success {
+  text-align: center;
+  padding: 1rem 0;
+  color: var(--brand-green);
+  font-weight: 700;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+}
+
+@keyframes popup-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popup-slide-up {
+  from { opacity: 0; transform: translateY(30px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Coloring Corner Gallery ────────────────── */
+.coloring-corner-hero {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.coloring-corner-hero h1 {
+  margin-bottom: 0.5rem;
+}
+
+.artwork-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.2rem;
+}
+
+.artwork-card {
+  background: linear-gradient(160deg, var(--surface) 0%, var(--surface-strong) 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.artwork-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.artwork-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.artwork-card-body {
+  padding: 0.7rem 0.85rem;
+}
+
+.artwork-card-body h3 {
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+}
+
+.artwork-card-body .category-badge {
+  font-size: 0.65rem;
+  margin-bottom: 0.45rem;
+}
+
+.artwork-download-btn {
+  width: 100%;
+  appearance: none;
+  border: 1.5px solid var(--brand-green);
+  background: transparent;
+  color: var(--brand-green);
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.22s ease, color 0.22s ease;
+  margin-top: 0.35rem;
+}
+
+.artwork-download-btn:hover {
+  background: var(--brand-green);
+  color: #fff;
+}
+
+.artwork-download-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.download-counter {
+  text-align: center;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: 0.92rem;
+  color: var(--brand-green);
+  font-weight: 700;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  background: var(--surface-strong);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+
+.download-bonus-info {
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin-bottom: 1.2rem;
+}
+
+.coloring-corner-cta {
+  text-align: center;
+  padding: 2rem 1rem;
+  background: var(--surface-strong);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+
+.coloring-corner-cta p {
+  margin-bottom: 0.8rem;
+}
+
+/* ── Share Buttons (WhatsApp addition) ──────── */
+.social-share-row .share-whatsapp {
+  color: #25d366;
+  border-color: #25d366;
+}
+
+.social-share-row .share-whatsapp:hover {
+  background: rgba(37, 211, 102, 0.1);
+}
+
+/* ── Share Section (Coloring Corner) ──────── */
+.share-section {
+  text-align: center;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  background: var(--surface-strong);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+
+.share-section h3 {
+  margin: 0 0 0.3rem;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+
+.share-hint {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin: 0 0 1rem;
+}
+
+.share-buttons {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.2rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-paper);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.share-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.share-btn.share-whatsapp {
+  color: #25d366;
+  border-color: #25d366;
+}
+.share-btn.share-whatsapp:hover {
+  background: rgba(37, 211, 102, 0.08);
+}
+
+.share-btn.share-facebook {
+  color: #1877f2;
+  border-color: #1877f2;
+}
+.share-btn.share-facebook:hover {
+  background: rgba(24, 119, 242, 0.08);
+}
+
+.share-btn.share-copy-link {
+  color: var(--brand-brown);
+  border-color: var(--brand-brown);
+}
+.share-btn.share-copy-link:hover {
+  background: rgba(117, 70, 36, 0.06);
+}
+
+@media (max-width: 480px) {
+  .artwork-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.8rem;
+  }
+  .lead-magnet-popup {
+    padding: 1rem;
+  }
+  .lead-magnet-preview {
+    max-width: 140px;
+  }
+}

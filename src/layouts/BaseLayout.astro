@@ -3,6 +3,7 @@ import { ClientRouter } from "astro:transitions";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import CookieConsent from "../components/CookieConsent.astro";
+import LeadMagnetPopup from "../components/LeadMagnetPopup.astro";
 import { siteConfig } from "../data/site";
 import type { Lang } from "../data/i18n";
 import { switchLangPath } from "../data/i18n";
@@ -25,6 +26,10 @@ interface Props {
 }
 
 const { lang, title, description, pathname, alternatePath, breadcrumbs, articleSchema, ogImage: customOgImage } = Astro.props;
+
+// Show lead magnet popup on public-facing pages only
+const hidePopupPaths = ["/admin", "/login", "/register", "/thanks", "/auth", "/logout", "/forgot-password"];
+const showLeadMagnet = !hidePopupPaths.some((p) => pathname.includes(p));
 const canonical = new URL(pathname, siteConfig.siteUrl).toString();
 const ogImage = customOgImage
   ? new URL(customOgImage, siteConfig.siteUrl).toString()
@@ -181,6 +186,7 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     </main>
     <Footer lang={lang} />
     <CookieConsent lang={lang} />
+    {showLeadMagnet && <LeadMagnetPopup lang={lang} />}
 
     <!-- Vercel Analytics & Speed Insights (cookie-free, GDPR-compliant) -->
     <script>

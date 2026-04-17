@@ -1,6 +1,6 @@
 ---
 import type { Lang } from "../data/i18n";
-import { formatDate } from "../data/i18n";
+import { formatDate, ui } from "../data/i18n";
 import Button from "./Button.astro";
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
       summary: string;
       lang: string;
       image?: string;
+      category?: string;
     };
   };
   lang: Lang;
@@ -22,6 +23,24 @@ interface Props {
 const { post, lang, readLabel } = Astro.props;
 const slug = post.id.replace(/^(es|en)\//, "");
 const postHref = `/${lang}/blog/${slug}/`;
+const text = ui[lang];
+
+const categoryLabels: Record<string, string> = {
+  "article": text.categoryArticle,
+  "fun-fact": text.categoryFunFact,
+  "joke": text.categoryJoke,
+  "coloring-corner": text.categoryColoringCorner,
+};
+const category = post.data.category || "article";
+const categoryLabel = categoryLabels[category] || categoryLabels["article"];
+
+const categoryColors: Record<string, string> = {
+  "article": "var(--brand-blue)",
+  "fun-fact": "var(--brand-green)",
+  "joke": "var(--accent-coral)",
+  "coloring-corner": "var(--accent-gold)",
+};
+const categoryColor = categoryColors[category] || categoryColors["article"];
 ---
 
 <article class="post-card" aria-labelledby={`post-${post.data.postId}`}>
@@ -31,7 +50,10 @@ const postHref = `/${lang}/blog/${slug}/`;
     </a>
   )}
   <div class="post-card-body">
-    <p class="post-date">{formatDate(post.data.date, lang)}</p>
+    <div class="post-card-meta">
+      <span class="category-badge" style={`--badge-color: ${categoryColor};`}>{categoryLabel}</span>
+      <p class="post-date">{formatDate(post.data.date, lang)}</p>
+    </div>
     <h3 id={`post-${post.data.postId}`}>{post.data.title}</h3>
     <p>{post.data.summary}</p>
     <div class="card-actions">

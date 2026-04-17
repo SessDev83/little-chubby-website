@@ -1,0 +1,492 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import Button from "../../../components/Button.astro";
+import { languages, getLangFromParam, ui } from "../../../data/i18n";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/coloring-corner/`;
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: text.coloringCornerHeading, url: pathname }
+];
+
+const artworkCategories = [
+  { value: "all", label: text.blogFilterAll },
+  { value: "animal-nature", label: lang === "es" ? "Animales y Naturaleza" : "Animals & Nature" },
+  { value: "space", label: lang === "es" ? "Espacio" : "Space" },
+  { value: "basic", label: lang === "es" ? "Elementos Basicos" : "Basic Elements" },
+  { value: "dinosaur", label: lang === "es" ? "Dinosaurios" : "Dinosaurs" },
+  { value: "food-drink", label: lang === "es" ? "Comida y Bebida" : "Food & Drinks" },
+  { value: "jobs", label: lang === "es" ? "Profesiones" : "Jobs" },
+  { value: "kids-favorites", label: lang === "es" ? "Favoritos de los Peques" : "Kids Favorites" },
+  { value: "machines", label: lang === "es" ? "Maquinas" : "Machines" },
+  { value: "mini-scenes", label: lang === "es" ? "Mini Escenas" : "Mini Scenes" },
+];
+---
+
+<BaseLayout lang={lang} title={text.coloringCornerMetaTitle} description={text.coloringCornerMetaDescription} pathname={pathname} breadcrumbs={breadcrumbs}>
+  <section class="page-section">
+    <div class="container">
+      <div class="coloring-corner-hero">
+        <h1>🎨 {text.coloringCornerHeading}</h1>
+        <p>{text.coloringCornerDescription}</p>
+      </div>
+
+      <!-- Download counter (shown for logged-in newsletter subscribers) -->
+      <div id="cc-download-counter" class="download-counter" style="display:none;">
+        <span id="cc-remaining">0</span> {text.coloringCornerRemaining}
+      </div>
+
+      <div id="cc-bonus-info" class="download-bonus-info" style="display:none;">
+        {text.coloringCornerBonusInfo}
+      </div>
+
+      <!-- Category filters -->
+      <div class="blog-filters" role="group" aria-label={lang === "es" ? "Filtrar por categoria" : "Filter by category"}>
+        {artworkCategories.map((cat) => (
+          <button
+            class:list={["blog-filter-btn", { active: cat.value === "all" }]}
+            data-artwork-category={cat.value}
+            type="button"
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      <!-- Artwork grid (populated client-side from Supabase) -->
+      <div id="cc-grid" class="artwork-grid">
+        <!-- Loading placeholder -->
+        <p id="cc-loading" style="text-align:center; grid-column: 1/-1; color: var(--ink-soft);">
+          {lang === "es" ? "Cargando imagenes..." : "Loading images..."}
+        </p>
+      </div>
+
+      <!-- Empty state -->
+      <p id="cc-empty" class="blog-empty-msg" style="display:none;">
+        {lang === "es" ? "Aun no hay imagenes en esta categoria. ¡Pronto anadiremos mas!" : "No images in this category yet. More coming soon!"}
+      </p>
+
+      <!-- Share buttons -->
+      <div id="cc-share-section" class="share-section" style="display:none;">
+        <h3>{lang === "es" ? "💚 Comparte y desbloquea más descargas" : "💚 Share & unlock more downloads"}</h3>
+        <p class="share-hint">{lang === "es" ? "Cada vez que compartes, ganas +1 descarga diaria extra (máx. 5/día)." : "Each share earns you +1 extra daily download (max 5/day)."}</p>
+        <div class="share-buttons">
+          <button id="cc-share-whatsapp" class="share-btn share-whatsapp" type="button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            WhatsApp
+          </button>
+          <button id="cc-share-facebook" class="share-btn share-facebook" type="button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            Facebook
+          </button>
+          <button id="cc-share-copy" class="share-btn share-copy-link" type="button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            {lang === "es" ? "Copiar enlace" : "Copy link"}
+          </button>
+        </div>
+      </div>
+
+      <!-- CTA for non-subscribers -->
+      <div id="cc-cta-subscribe" class="coloring-corner-cta" style="display:none;">
+        <h2>{lang === "es" ? "¿Quieres descargar estas imagenes?" : "Want to download these images?"}</h2>
+        <p>{text.coloringCornerSubscribeRequired}</p>
+        <div class="card-actions" style="justify-content:center;">
+          <Button href={`/${lang}/register/`} label={lang === "es" ? "Crear cuenta gratis" : "Create free account"} variant="primary" />
+          <Button href={`/${lang}/newsletter/`} label={text.ctaSubscribe} variant="ghost" />
+        </div>
+      </div>
+
+      <!-- CTA for non-logged-in users -->
+      <div id="cc-cta-login" class="coloring-corner-cta" style="display:none;">
+        <h2>{text.coloringCornerLoginRequired}</h2>
+        <p>{lang === "es" ? "Inicia sesion para acceder a descargas gratuitas." : "Log in to access free downloads."}</p>
+        <div class="card-actions" style="justify-content:center;">
+          <Button href={`/${lang}/login/`} label={text.navLogin} variant="primary" />
+          <Button href={`/${lang}/register/`} label={lang === "es" ? "Crear cuenta" : "Create account"} variant="ghost" />
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script is:inline>
+function initColoringCorner() {
+  var grid = document.getElementById("cc-grid");
+  var loading = document.getElementById("cc-loading");
+  var emptyMsg = document.getElementById("cc-empty");
+  var counterEl = document.getElementById("cc-download-counter");
+  var remainingEl = document.getElementById("cc-remaining");
+  var bonusInfo = document.getElementById("cc-bonus-info");
+  var ctaLogin = document.getElementById("cc-cta-login");
+  var ctaSubscribe = document.getElementById("cc-cta-subscribe");
+  if (!grid) return;
+
+  var sb = document.querySelector("meta[name='x-sb-url']");
+  var sk = document.querySelector("meta[name='x-sb-key']");
+  if (!sb || !sk) { if (loading) loading.textContent = "Configuration error"; return; }
+  var supabaseUrl = sb.getAttribute("content");
+  var supabaseKey = sk.getAttribute("content");
+
+  var isLoggedIn = document.cookie.indexOf("sb-logged-in=") !== -1;
+  var lang = document.documentElement.getAttribute("lang") || "en";
+  var allArtworks = [];
+  var dailyLimit = 0;
+  var todayDownloads = 0;
+
+  // Show login CTA if not logged in
+  if (!isLoggedIn && ctaLogin) ctaLogin.style.display = "";
+
+  // Fetch artworks
+  fetch(supabaseUrl + "/rest/v1/free_artworks?active=eq.true&order=sort_order.asc,created_at.desc", {
+    headers: { "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(artworks) {
+    if (loading) loading.style.display = "none";
+    allArtworks = artworks || [];
+
+    if (allArtworks.length === 0) {
+      if (emptyMsg) emptyMsg.style.display = "";
+      return;
+    }
+
+    renderArtworks(allArtworks);
+
+    // If logged in, check download limits
+    if (isLoggedIn) {
+      checkDownloadLimits();
+      initShareButtons();
+    }
+  })
+  .catch(function() {
+    if (loading) loading.textContent = lang === "es" ? "Error al cargar." : "Failed to load.";
+  });
+
+  function checkDownloadLimits() {
+    // Get access token from cookies
+    var cookies = document.cookie.split(";");
+    var accessToken = "";
+    for (var i = 0; i < cookies.length; i++) {
+      var c = cookies[i].trim();
+      if (c.startsWith("sb-access-token=")) {
+        accessToken = c.substring("sb-access-token=".length);
+        break;
+      }
+    }
+    if (!accessToken) return;
+
+    // Get today's download count
+    var today = new Date().toISOString().slice(0, 10);
+    fetch(supabaseUrl + "/rest/v1/artwork_downloads?select=id&downloaded_at=gte." + today + "T00:00:00", {
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": "Bearer " + accessToken
+      }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(downloads) {
+      todayDownloads = Array.isArray(downloads) ? downloads.length : 0;
+
+      // Get approved reviews count
+      return fetch(supabaseUrl + "/rest/v1/book_reviews?select=id&status=eq.approved", {
+        headers: {
+          "apikey": supabaseKey,
+          "Authorization": "Bearer " + accessToken
+        }
+      });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(reviews) {
+      var reviewCount = Array.isArray(reviews) ? reviews.length : 0;
+
+      // Get unique share days count
+      return fetch(supabaseUrl + "/rest/v1/social_shares?select=id", {
+        headers: {
+          "apikey": supabaseKey,
+          "Authorization": "Bearer " + accessToken
+        }
+      }).then(function(r) { return r.json(); }).then(function(shares) {
+        var shareCount = Array.isArray(shares) ? shares.length : 0;
+
+        // Formula: min(1 + reviews + shares, 5)
+        dailyLimit = Math.min(1 + reviewCount + shareCount, 5);
+        var remaining = Math.max(dailyLimit - todayDownloads, 0);
+
+        if (counterEl && remainingEl) {
+          remainingEl.textContent = remaining + " / " + dailyLimit;
+          counterEl.style.display = "";
+        }
+        if (bonusInfo) bonusInfo.style.display = "";
+
+        // Enable/disable download buttons
+        var btns = grid.querySelectorAll(".artwork-download-btn");
+        btns.forEach(function(btn) {
+          if (remaining <= 0) {
+            btn.disabled = true;
+            btn.textContent = lang === "es" ? "Limite alcanzado" : "Limit reached";
+          }
+        });
+      });
+    })
+    .catch(function() { /* fail silently, downloads just won't show counter */ });
+  }
+
+  function renderArtworks(artworks) {
+    grid.innerHTML = "";
+    artworks.forEach(function(art) {
+      var title = lang === "es" ? art.title_es : art.title_en;
+      if (!title) title = lang === "es" ? art.title_en : art.title_es;
+
+      var card = document.createElement("div");
+      card.className = "artwork-card";
+      card.setAttribute("data-artwork-cat", art.category || "basic");
+
+      // Use signed URL for thumbnail or fallback to path
+      var thumbSrc = art.thumbnail_path
+        ? supabaseUrl + "/storage/v1/object/public/free-artworks/" + art.thumbnail_path
+        : supabaseUrl + "/storage/v1/object/public/free-artworks/" + art.image_path;
+
+      card.innerHTML =
+        '<img src="' + thumbSrc + '" alt="' + (title || "Coloring page").replace(/"/g, "&quot;") + '" loading="lazy" width="300" height="300" />' +
+        '<div class="artwork-card-body">' +
+          '<h3>' + (title || "Coloring page") + '</h3>' +
+          '<button class="artwork-download-btn" data-artwork-id="' + art.id + '" data-image-path="' + art.image_path + '">' +
+            (lang === "es" ? "Descargar" : "Download") +
+          '</button>' +
+        '</div>';
+
+      grid.appendChild(card);
+    });
+
+    // Download button handlers
+    grid.querySelectorAll(".artwork-download-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (!isLoggedIn) {
+          if (ctaLogin) ctaLogin.style.display = "";
+          ctaLogin.scrollIntoView({ behavior: "smooth" });
+          return;
+        }
+        handleDownload(btn);
+      });
+    });
+  }
+
+  function handleDownload(btn) {
+    var artworkId = btn.getAttribute("data-artwork-id");
+    var imagePath = btn.getAttribute("data-image-path");
+
+    // Get access token
+    var cookies = document.cookie.split(";");
+    var accessToken = "";
+    for (var i = 0; i < cookies.length; i++) {
+      var c = cookies[i].trim();
+      if (c.startsWith("sb-access-token=")) {
+        accessToken = c.substring("sb-access-token=".length);
+        break;
+      }
+    }
+    if (!accessToken) return;
+
+    btn.disabled = true;
+    btn.textContent = "...";
+
+    // Record download
+    // First get user id from JWT (simple base64 decode of payload)
+    var payload = {};
+    try {
+      var parts = accessToken.split(".");
+      if (parts.length >= 2) {
+        payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      }
+    } catch(e) {}
+
+    if (!payload.sub) {
+      btn.disabled = false;
+      btn.textContent = "Error";
+      return;
+    }
+
+    // Insert download record
+    fetch(supabaseUrl + "/rest/v1/artwork_downloads", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": supabaseKey,
+        "Authorization": "Bearer " + accessToken,
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        user_id: payload.sub,
+        artwork_id: artworkId
+      })
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error("Download record failed");
+
+      // Generate signed download URL
+      return fetch(supabaseUrl + "/storage/v1/object/sign/free-artworks/" + imagePath, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": supabaseKey,
+          "Authorization": "Bearer " + accessToken
+        },
+        body: JSON.stringify({ expiresIn: 3600 })
+      });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.signedURL || data.signedUrl) {
+        var url = data.signedURL || data.signedUrl;
+        // Use full URL if relative
+        if (url.startsWith("/")) url = supabaseUrl + "/storage/v1" + url;
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = imagePath.split("/").pop() || "coloring-page.png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        todayDownloads++;
+        var remaining = Math.max(dailyLimit - todayDownloads, 0);
+        if (remainingEl) remainingEl.textContent = remaining + " / " + dailyLimit;
+
+        btn.textContent = "✓";
+        setTimeout(function() {
+          btn.textContent = lang === "es" ? "Descargar" : "Download";
+          btn.disabled = remaining <= 0;
+          if (remaining <= 0) btn.textContent = lang === "es" ? "Limite alcanzado" : "Limit reached";
+        }, 1500);
+
+        // Disable all buttons if limit reached
+        if (remaining <= 0) {
+          grid.querySelectorAll(".artwork-download-btn").forEach(function(b) {
+            b.disabled = true;
+            b.textContent = lang === "es" ? "Limite alcanzado" : "Limit reached";
+          });
+        }
+      }
+    })
+    .catch(function() {
+      btn.disabled = false;
+      btn.textContent = "Error";
+      setTimeout(function() {
+        btn.textContent = lang === "es" ? "Descargar" : "Download";
+      }, 2000);
+    });
+  }
+
+  // Share buttons
+  function initShareButtons() {
+    var shareSection = document.getElementById("cc-share-section");
+    var shareWhatsapp = document.getElementById("cc-share-whatsapp");
+    var shareFacebook = document.getElementById("cc-share-facebook");
+    var shareCopy = document.getElementById("cc-share-copy");
+    if (!shareSection) return;
+
+    shareSection.style.display = "";
+
+    var pageUrl = window.location.href;
+    var shareText = lang === "es"
+      ? "🎨 ¡Mira estas láminas para colorear gratis! "
+      : "🎨 Check out these free coloring pages! ";
+
+    // Get user id from JWT
+    function getUserId() {
+      var cookies = document.cookie.split(";");
+      for (var i = 0; i < cookies.length; i++) {
+        var c = cookies[i].trim();
+        if (c.startsWith("sb-access-token=")) {
+          var token = c.substring("sb-access-token=".length);
+          try {
+            var parts = token.split(".");
+            if (parts.length >= 2) {
+              var payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+              return payload.sub || "";
+            }
+          } catch(e) {}
+        }
+      }
+      return "";
+    }
+
+    function trackShare(platform) {
+      var userId = getUserId();
+      if (!userId) return;
+      fetch("/api/track-share/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, platform: platform, shared_url: pageUrl })
+      }).catch(function() {});
+    }
+
+    if (shareWhatsapp) {
+      shareWhatsapp.addEventListener("click", function() {
+        trackShare("whatsapp");
+        window.open("https://wa.me/?text=" + encodeURIComponent(shareText + pageUrl), "_blank");
+      });
+    }
+
+    if (shareFacebook) {
+      shareFacebook.addEventListener("click", function() {
+        trackShare("facebook");
+        window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(pageUrl), "_blank", "width=600,height=400");
+      });
+    }
+
+    if (shareCopy) {
+      shareCopy.addEventListener("click", function() {
+        trackShare("copy-link");
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(pageUrl).then(function() {
+            shareCopy.textContent = lang === "es" ? "✓ Copiado" : "✓ Copied";
+            setTimeout(function() { shareCopy.innerHTML = shareCopy.getAttribute("data-original"); }, 2000);
+          });
+        } else {
+          // Fallback
+          var ta = document.createElement("textarea");
+          ta.value = pageUrl;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          shareCopy.textContent = lang === "es" ? "✓ Copiado" : "✓ Copied";
+          setTimeout(function() { shareCopy.innerHTML = shareCopy.getAttribute("data-original"); }, 2000);
+        }
+      });
+      // Store original HTML for restore
+      shareCopy.setAttribute("data-original", shareCopy.innerHTML);
+    }
+  }
+
+  // Category filter
+  var filterBtns = document.querySelectorAll("[data-artwork-category]");
+  filterBtns.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      filterBtns.forEach(function(b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      var cat = btn.getAttribute("data-artwork-category");
+      var cards = grid.querySelectorAll(".artwork-card");
+      var visible = 0;
+      cards.forEach(function(card) {
+        if (cat === "all" || card.getAttribute("data-artwork-cat") === cat) {
+          card.style.display = "";
+          visible++;
+        } else {
+          card.style.display = "none";
+        }
+      });
+      if (emptyMsg) emptyMsg.style.display = visible === 0 ? "" : "none";
+    });
+  });
+}
+
+initColoringCorner();
+document.addEventListener("astro:after-swap", initColoringCorner);
+</script>

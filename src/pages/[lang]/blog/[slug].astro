@@ -68,6 +68,23 @@ const articleSchema = {
   datePublished: post.data.date,
   url: pathname
 };
+
+const categoryLabels: Record<string, string> = {
+  "article": text.categoryArticle,
+  "fun-fact": text.categoryFunFact,
+  "joke": text.categoryJoke,
+  "coloring-corner": text.categoryColoringCorner,
+};
+const category = post.data.category || "article";
+const categoryLabel = categoryLabels[category] || categoryLabels["article"];
+const categoryColors: Record<string, string> = {
+  "article": "var(--brand-blue)",
+  "fun-fact": "var(--brand-green)",
+  "joke": "var(--accent-coral)",
+  "coloring-corner": "var(--accent-gold)",
+};
+const categoryColor = categoryColors[category] || categoryColors["article"];
+
 const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
 const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(post.data.title + " " + fullUrl)}`;
 ---
@@ -95,7 +112,10 @@ const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(
             loading="eager"
           />
         )}
-        <p class="post-date">{formatDate(post.data.date, lang)}</p>
+        <div class="post-detail-meta">
+          <span class="category-badge" style={`--badge-color: ${categoryColor};`}>{categoryLabel}</span>
+          <p class="post-date">{formatDate(post.data.date, lang)}</p>
+        </div>
         <h1 style="margin-top: 0.5rem;">{post.data.title}</h1>
         <p style="margin-top: 0.7rem;">{post.data.summary}</p>
 

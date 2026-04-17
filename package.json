@@ -30,6 +30,7 @@
     "astro": "^6.1.4"
   },
   "devDependencies": {
+    "pdf-lib": "^1.17.1",
     "sharp": "^0.34.5"
   }
 }
