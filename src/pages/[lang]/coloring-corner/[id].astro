@@ -278,6 +278,7 @@ const shareUrl = new URL(pathname, siteConfig.siteUrl).toString();
     claimBtn.addEventListener("click", function() {
       if (!userId || !sharedPlatform) return;
       claimBtn.disabled = true;
+      var origHTML = claimBtn.innerHTML;
       claimBtn.textContent = "...";
 
       fetch("/api/track-share/", {
@@ -298,11 +299,11 @@ const shareUrl = new URL(pathname, siteConfig.siteUrl).toString();
         } else {
           claimBtn.textContent = lang === "es" ? "Máximo diario alcanzado" : "Daily max reached";
         }
-        setTimeout(function() { claimBtn.style.display = "none"; claimBtn.disabled = false; }, 3000);
+        setTimeout(function() { claimBtn.style.display = "none"; claimBtn.innerHTML = origHTML; claimBtn.disabled = false; }, 3000);
       })
       .catch(function() {
         claimBtn.textContent = "Error";
-        setTimeout(function() { claimBtn.style.display = "none"; claimBtn.disabled = false; }, 2000);
+        setTimeout(function() { claimBtn.style.display = "none"; claimBtn.innerHTML = origHTML; claimBtn.disabled = false; }, 2000);
       });
     });
   }
