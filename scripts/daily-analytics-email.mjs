@@ -589,6 +589,13 @@ if (DRY_RUN) {
   if (bluesky) {
     console.log(`\nBluesky: ${bluesky.followers} followers, ${bluesky.recentLikes} recent likes`);
   }
+  // Save HTML preview to temp file
+  const { writeFileSync } = await import("fs");
+  const { fileURLToPath } = await import("url");
+  const { dirname, join } = await import("path");
+  const previewPath = join(dirname(fileURLToPath(import.meta.url)), "..", "analytics-preview.html");
+  writeFileSync(previewPath, html, "utf-8");
+  console.log(`\n📄 HTML preview saved to: ${previewPath}`);
 } else {
   await sendEmail(subject, html);
 }
