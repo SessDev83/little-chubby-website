@@ -143,7 +143,7 @@ function initColoringCorner() {
   if (!isLoggedIn && ctaLogin) ctaLogin.style.display = "";
 
   // Fetch artworks
-  fetch(supabaseUrl + "/rest/v1/free_artworks?active=eq.true&order=sort_order.asc,created_at.desc", {
+  fetch(supabaseUrl + "/rest/v1/free_artworks?select=id,title_es,title_en,category,image_path,thumbnail_path,active,sort_order&active=eq.true&order=sort_order.asc,created_at.desc", {
     headers: { "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey }
   })
   .then(function(r) { return r.json(); })
@@ -245,7 +245,7 @@ function initColoringCorner() {
 
       var card = document.createElement("div");
       card.className = "artwork-card";
-      card.setAttribute("data-artwork-cat", art.category || "basic");
+      card.setAttribute("data-artwork-cat", art.category);
 
       // Use signed URL for thumbnail or fallback to path
       var thumbSrc = art.thumbnail_path
@@ -465,24 +465,18 @@ function initColoringCorner() {
     }
   }
 
-  // Category filter
+  // Category filter — re-render the grid with filtered artworks
   var filterBtns = document.querySelectorAll("[data-artwork-category]");
   filterBtns.forEach(function(btn) {
     btn.addEventListener("click", function() {
       filterBtns.forEach(function(b) { b.classList.remove("active"); });
       btn.classList.add("active");
       var cat = btn.getAttribute("data-artwork-category");
-      var cards = grid.querySelectorAll(".artwork-card");
-      var visible = 0;
-      cards.forEach(function(card) {
-        if (cat === "all" || card.getAttribute("data-artwork-cat") === cat) {
-          card.style.display = "";
-          visible++;
-        } else {
-          card.style.display = "none";
-        }
-      });
-      if (emptyMsg) emptyMsg.style.display = visible === 0 ? "" : "none";
+      var filtered = cat === "all"
+        ? allArtworks
+        : allArtworks.filter(function(a) { return a.category === cat; });
+      renderArtworks(filtered);
+      if (emptyMsg) emptyMsg.style.display = filtered.length === 0 ? "" : "none";
     });
   });
 }
