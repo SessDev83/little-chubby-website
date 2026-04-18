@@ -39,6 +39,7 @@ async function processBook(book) {
     }
 
     const info = await sharp(input)
+      .rotate()  // auto-rotate based on EXIF orientation
       .resize({ width: WIDTH, withoutEnlargement: true })
       .webp({ quality: QUALITY })
       .toFile(output);

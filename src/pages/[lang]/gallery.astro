@@ -78,14 +78,18 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
       <div>
         {/* ── Filter Bar ── */}
         <div class="gallery-filters">
-          <div class="filter-group">
-            <label for="filterBook">{text.galleryFilterBook}</label>
-            <select id="filterBook" class="filter-select">
-              <option value="">{text.galleryFilterAll}</option>
-              {bookOptions.map(b => (
-                <option value={b.id}>{b.title}</option>
-              ))}
-            </select>
+          <div class="filter-group filter-group-book">
+            <label for="filterBookInput">{text.galleryFilterBook}</label>
+            <div class="filter-autocomplete" id="filterBookWrap">
+              <input type="text" id="filterBookInput" class="filter-input" placeholder={text.galleryFilterAll} autocomplete="off" />
+              <input type="hidden" id="filterBook" value="" />
+              <ul class="filter-dropdown" id="filterBookDropdown">
+                <li data-value="" class="filter-option">{text.galleryFilterAll}</li>
+                {bookOptions.map(b => (
+                  <li data-value={b.id} class="filter-option">{b.title}</li>
+                ))}
+              </ul>
+            </div>
           </div>
           <div class="filter-group">
             <label>{text.galleryFilterRating}</label>
@@ -119,7 +123,7 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
             const allPhotos = [item.photo_url, ...extras];
             return (
             <article
-              class={`gallery-card${item.featured ? " featured" : ""}${item.isSample ? " sample" : ""}`}
+              class={`gallery-card${item.featured ? " featured" : ""}`}
               id={`review-${item.id}`}
               data-book={item.book_id}
               data-rating={item.rating}
@@ -211,10 +215,12 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
   </div>
 </BaseLayout>
 
-<script is:inline define:vars={{ lang, siteUrl, PAGE_SIZE, bookMapJson: JSON.stringify(bookMap), textsJson: JSON.stringify({loadMore: text.galleryLoadMore, showing: text.galleryShowing, of: text.galleryOf, featured: text.galleryFeatured, share: text.galleryShareReview, copyLink: text.galleryCopyLink, linkCopied: text.galleryLinkCopied}) }}>
+<script is:inline define:vars={{ lang, siteUrl, PAGE_SIZE, bookMapJson: JSON.stringify(bookMap), sampleItemsJson: JSON.stringify(realCount < SAMPLE_THRESHOLD && !fetchError ? getSampleItems(lang) : []), bookOptionsJson: JSON.stringify(bookOptions), textsJson: JSON.stringify({loadMore: text.galleryLoadMore, showing: text.galleryShowing, of: text.galleryOf, featured: text.galleryFeatured, share: text.galleryShareReview, copyLink: text.galleryCopyLink, linkCopied: text.galleryLinkCopied, filterAll: text.galleryFilterAll}) }}>
 document.addEventListener("DOMContentLoaded", () => {
   const bookMap = JSON.parse(bookMapJson);
   const txt = JSON.parse(textsJson);
+  const sampleItems = JSON.parse(sampleItemsJson);
+  const bookOpts = JSON.parse(bookOptionsJson);
   const grid = document.getElementById("galleryGrid");
   const loadMoreBtn = document.getElementById("loadMoreBtn");
   const shownEl = document.getElementById("shownCount");
@@ -315,9 +321,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ── Filters ──
   const filterBook = document.getElementById("filterBook");
+  const filterBookInput = document.getElementById("filterBookInput");
+  const filterBookDropdown = document.getElementById("filterBookDropdown");
   const filterStars = document.getElementById("filterStars");
   const filterFeatured = document.getElementById("filterFeatured");
   const resetBtn = document.getElementById("resetFilters");
+
+  // ── Book Autocomplete ──
+  function showDropdown() { filterBookDropdown.classList.add("open"); }
+  function hideDropdown() { setTimeout(() => filterBookDropdown.classList.remove("open"), 150); }
+
+  if (filterBookInput) {
+    filterBookInput.addEventListener("focus", showDropdown);
+    filterBookInput.addEventListener("blur", hideDropdown);
+    filterBookInput.addEventListener("input", () => {
+      const q = filterBookInput.value.toLowerCase();
+      filterBookDropdown.querySelectorAll(".filter-option").forEach(li => {
+        const text = li.textContent.toLowerCase();
+        li.style.display = text.includes(q) || li.dataset.value === "" ? "" : "none";
+      });
+      showDropdown();
+      // If cleared, reset book filter
+      if (!q) { filterBook.value = ""; activeFilters.book = ""; applyFilters(); }
+    });
+    filterBookDropdown.addEventListener("mousedown", (e) => {
+      const li = e.target.closest(".filter-option");
+      if (!li) return;
+      e.preventDefault();
+      const val = li.dataset.value;
+      filterBook.value = val;
+      filterBookInput.value = val ? li.textContent : "";
+      activeFilters.book = val;
+      hideDropdown();
+      applyFilters();
+    });
+  }
+
+  /** Filter sample items client-side to match current filters */
+  function getFilteredSamples() {
+    return sampleItems.filter(s => {
+      if (activeFilters.book && s.book_id !== activeFilters.book) return false;
+      if (activeFilters.rating && s.rating !== parseInt(activeFilters.rating)) return false;
+      if (activeFilters.featured && !s.featured) return false;
+      return true;
+    });
+  }
 
   async function applyFilters() {
     skeleton.style.display = "grid";
@@ -330,16 +378,19 @@ document.addEventListener("DOMContentLoaded", () => {
     params.set("order", "featured.desc,submitted_at.desc");
     try {
       const data = await supabaseRest("gallery_feed", params, 0, PAGE_SIZE - 1);
-      data.forEach(item => grid.appendChild(createCard(item)));
+      // Merge matching samples first, then real data
+      const matchingSamples = getFilteredSamples();
+      const combined = [...matchingSamples, ...data];
+      combined.forEach(item => grid.appendChild(createCard(item)));
       offset = data.length;
-      if (shownEl) shownEl.textContent = data.length;
+      const totalShown = combined.length;
+      if (shownEl) shownEl.textContent = totalShown;
       if (loadMoreBtn) loadMoreBtn.style.display = data.length >= PAGE_SIZE ? "" : "none";
       observeCards();
     } catch(e) { console.error(e); }
     skeleton.style.display = "none";
   }
 
-  if (filterBook) filterBook.addEventListener("change", () => { activeFilters.book = filterBook.value; applyFilters(); });
   if (filterFeatured) filterFeatured.addEventListener("change", () => { activeFilters.featured = filterFeatured.checked; applyFilters(); });
   if (filterStars) {
     filterStars.querySelectorAll(".filter-star-btn").forEach(btn => {
@@ -355,6 +406,7 @@ document.addEventListener("DOMContentLoaded", () => {
     resetBtn.addEventListener("click", () => {
       activeFilters = { book: "", rating: "", featured: false };
       if (filterBook) filterBook.value = "";
+      if (filterBookInput) filterBookInput.value = "";
       if (filterFeatured) filterFeatured.checked = false;
       if (filterStars) {
         filterStars.querySelectorAll(".filter-star-btn").forEach((b, i) => b.classList.toggle("active", i === 0));
@@ -531,14 +583,47 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   .filter-group { display: flex; flex-direction: column; gap: 0.3rem; }
   .filter-group label { font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
-  .filter-select {
+
+  /* ── Book Autocomplete ── */
+  .filter-group-book { position: relative; }
+  .filter-autocomplete { position: relative; }
+  .filter-input {
     padding: 0.4rem 0.6rem;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     background: var(--bg);
     font-size: 0.88rem;
     min-width: 10rem;
+    width: 100%;
   }
+  .filter-input:focus { outline: 2px solid var(--accent-teal); outline-offset: -1px; }
+  .filter-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    max-height: 14rem;
+    overflow-y: auto;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .filter-dropdown.open { display: block; }
+  .filter-option {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.86rem;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .filter-option:hover { background: var(--accent-teal); color: #fff; }
+
   .filter-stars { display: flex; gap: 0.35rem; flex-wrap: wrap; }
   .filter-star-btn {
     padding: 0.3rem 0.55rem;
@@ -673,8 +758,7 @@ document.addEventListener("DOMContentLoaded", () => {
     color: var(--ink-soft);
   }
 
-  /* ── Sample card indicator ── */
-  .gallery-card.sample { border-style: dashed; }
+
 
   /* ── Lightbox Dots ── */
   .lightbox-dots {
