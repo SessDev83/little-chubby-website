@@ -50,14 +50,20 @@ if (Astro.request.method === "POST") {
     const maxWinners = parseInt(formData.get("max_winners")?.toString() || "3", 10);
     const winnerPct = parseFloat(formData.get("winner_pct")?.toString() || "1");
     const minPurchases = parseInt(formData.get("min_purchases")?.toString() || "0", 10);
+    const isActive = formData.get("is_active") === "on";
+    const drawDate = formData.get("draw_date")?.toString() || null;
+    const prizeDescription = formData.get("prize_description")?.toString() || "";
 
     await sc.from("lottery_config").update({
       max_winners: maxWinners,
       winner_pct: winnerPct,
       min_purchases: minPurchases,
+      is_active: isActive,
+      draw_date: drawDate || null,
+      prize_description: prizeDescription,
     }).eq("month", currentMonth);
 
-    config = { ...config!, max_winners: maxWinners, winner_pct: winnerPct, min_purchases: minPurchases };
+    config = { ...config!, max_winners: maxWinners, winner_pct: winnerPct, min_purchases: minPurchases, is_active: isActive, draw_date: drawDate, prize_description: prizeDescription };
     configMsg = "Config saved.";
   }
 
@@ -150,12 +156,25 @@ if (Astro.request.method === "POST") {
         .select("user_id")
         .eq("status", "approved");
 
-      if (!reviews || reviews.length === 0) {
-        drawError = "No approved reviews — nobody is eligible.";
+      // Also include paid lottery entries
+      const { data: paidEntries } = await sc
+        .from("lottery_entries")
+        .select("user_id, entry_count")
+        .eq("month", currentMonth);
+
+      if ((!reviews || reviews.length === 0) && (!paidEntries || paidEntries.length === 0)) {
+        drawError = "No approved reviews and no paid entries — nobody is eligible.";
       } else {
         const ticketMap = new Map<string, number>();
-        for (const r of reviews) {
+        for (const r of reviews!) {
           ticketMap.set(r.user_id, (ticketMap.get(r.user_id) || 0) + 5);
+        }
+
+        // Add purchased entries to ticket pool
+        if (paidEntries) {
+          for (const pe of paidEntries) {
+            ticketMap.set(pe.user_id, (ticketMap.get(pe.user_id) || 0) + pe.entry_count);
+          }
         }
 
         const minReq = config?.min_purchases ?? 0;
@@ -255,6 +274,13 @@ const { data: approvedUsers } = await sc
   .eq("status", "approved");
 const uniqueUserIds = new Set((approvedUsers ?? []).map(r => r.user_id));
 
+// Count total paid entries this month
+const { data: monthPaidEntries } = await sc
+  .from("lottery_entries")
+  .select("entry_count")
+  .eq("month", currentMonth);
+const totalPaidEntries = (monthPaidEntries ?? []).reduce((sum, e) => sum + (e.entry_count || 0), 0);
+
 const { data: winners } = await sc
   .from("lottery_winners")
   .select("month, book_chosen, claimed, shipping_name, shipping_address, claim_deadline, notified, profiles!inner(email, display_name)")
@@ -290,6 +316,21 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
           <label>Min reviews required</label>
           <input type="number" name="min_purchases" value={config?.min_purchases ?? 0} min="0" />
         </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+            <input type="checkbox" name="is_active" checked={config?.is_active} />
+            <strong>🎁 Activate Giveaway</strong>
+            <span style="font-size:0.85rem; color:var(--ink-soft);">{config?.is_active ? "🟢 ACTIVE" : "⚪ INACTIVE"}</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label>Draw Date</label>
+          <input type="date" name="draw_date" value={config?.draw_date ?? ""} />
+        </div>
+        <div class="form-group" style="grid-column:span 2;">
+          <label>Prize Description</label>
+          <input type="text" name="prize_description" value={config?.prize_description ?? ""} placeholder="e.g. Free coloring book of your choice" style="width:100%;" />
+        </div>
         <button type="submit" class="btn btn-secondary">Save Config</button>
       </form>
     </div>
@@ -297,7 +338,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     {/* ── Draw ── */}
     <div class="surface-card" style="padding:1.6rem; margin-top:1.5rem;">
       <h2>Draw — {currentMonth}</h2>
-      <p>Approved reviews: <strong>{totalApproved ?? 0}</strong> · Eligible users: <strong>{uniqueUserIds.size}</strong></p>
+      <p>Approved reviews: <strong>{totalApproved ?? 0}</strong> · Eligible users: <strong>{uniqueUserIds.size}</strong> · Paid entries: <strong>{totalPaidEntries}</strong></p>
 
       {drawResult && <p class="msg-ok">🎉 {drawResult}</p>}
       {drawError && <p class="msg-err">{drawError}</p>}

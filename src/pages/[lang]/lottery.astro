@@ -21,6 +21,29 @@ let myReviewCount = 0;
 let approvedCount = 0;
 let pendingClaim: any = null;
 let claimMsg = "";
+let purchasedEntries = 0;
+let isSubscribed = false;
+let isPending = false;
+
+// ── Giveaway state ───────────────────────────────────
+const currentMonth = new Date().toISOString().slice(0, 7);
+const { data: giveawayConfig } = await sc
+  .from("lottery_config")
+  .select("is_active, draw_date, prize_description")
+  .eq("month", currentMonth)
+  .maybeSingle();
+
+const isActive = giveawayConfig?.is_active ?? false;
+const drawDate = giveawayConfig?.draw_date ?? null;
+const prizeDescription = giveawayConfig?.prize_description ?? "";
+
+// Check if draw already happened
+const { data: monthWinners } = await sc
+  .from("lottery_winners")
+  .select("id")
+  .eq("month", currentMonth)
+  .limit(1);
+const drawDone = (monthWinners ?? []).length > 0;
 
 if (user) {
   const { data: reviewData } = await supabase
@@ -29,6 +52,28 @@ if (user) {
     .eq("user_id", user.id);
   myReviewCount = reviewData?.length ?? 0;
   approvedCount = reviewData?.filter(r => r.status === "approved").length ?? 0;
+
+  // Purchased lottery entries this month
+  const { data: paidData } = await sc
+    .from("lottery_entries")
+    .select("entry_count")
+    .eq("user_id", user.id)
+    .eq("month", currentMonth);
+  purchasedEntries = (paidData ?? []).reduce((sum, e) => sum + (e.entry_count || 0), 0);
+
+  // Newsletter subscription status
+  const userEmail = user.email?.toLowerCase();
+  if (userEmail) {
+    const { data: subData } = await sc
+      .from("newsletter_subscribers")
+      .select("confirmed")
+      .eq("email", userEmail)
+      .maybeSingle();
+    if (subData) {
+      isSubscribed = subData.confirmed === true;
+      isPending = subData.confirmed === false;
+    }
+  }
 
   // Check for unclaimed win
   const { data: winData } = await supabase
@@ -71,14 +116,16 @@ if (user) {
   }
 }
 
-// Compute tickets: each approved review = 5 tickets
-const totalTickets = approvedCount * 5;
+// Compute tickets: approved reviews + purchased entries
+const reviewTickets = approvedCount * 5;
+const totalTickets = reviewTickets + purchasedEntries;
 
 // ── Public winners ───────────────────────────────────
 const { data: publicWinners } = await supabase
   .from("lottery_winners_public")
   .select("month, book_chosen, display_name")
-  .limit(12);
+  .order("month", { ascending: false })
+  .limit(3);
 
 const bookOptions = books.map(b => ({ id: b.id, title: b.title[lang] }));
 const bookMap = Object.fromEntries(bookOptions.map(b => [b.id, b.title]));
@@ -101,128 +148,155 @@ const bookMap = Object.fromEntries(bookOptions.map(b => [b.id, b.title]));
       <p>{text.lotteryDescription}</p>
     </div>
 
-    <!-- How It Works — Accordion on mobile, open on desktop -->
-    <details class="lottery-steps surface-card" style="max-width:42rem; margin:0 auto 2rem; padding:0;" open>
-      <summary class="steps-summary">
-        <h2>{text.lotteryHowItWorks}</h2>
-        <svg class="steps-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </summary>
-      <div class="steps-body">
-        <div class="steps-row">
-          <div class="step-card">
-            <span class="step-icon">📚</span>
-            <span class="step-num">1</span>
-            <p class="step-text">{text.lotteryStep1}</p>
-          </div>
-          <span class="step-arrow">→</span>
-          <div class="step-card">
-            <span class="step-icon">📸</span>
-            <span class="step-num">2</span>
-            <p class="step-text">{text.lotteryStep2}</p>
-          </div>
-          <span class="step-arrow">→</span>
-          <div class="step-card">
-            <span class="step-icon">🎫</span>
-            <span class="step-num">3</span>
-            <p class="step-text">{text.lotteryStep3}</p>
-          </div>
-          <span class="step-arrow">→</span>
-          <div class="step-card">
-            <span class="step-icon">🎁</span>
-            <span class="step-num">4</span>
-            <p class="step-text">{text.lotteryStep4}</p>
-          </div>
+    <div style="max-width:42rem; margin:0 auto;">
+
+      {/* ── Giveaway Status Card ── */}
+      <div class={`surface-card status-card ${drawDone ? "status-drawn" : isActive ? "status-open" : "status-closed"}`}>
+        {drawDone ? (
+          <p class="status-text">{text.lotteryStatusDrawn}</p>
+        ) : isActive ? (
+          <Fragment>
+            <p class="status-text">{text.lotteryStatusOpen.replace("{date}", drawDate || "TBD")}</p>
+            {prizeDescription && <p class="status-prize">🎁 {text.lotteryPrize}: {prizeDescription}</p>}
+          </Fragment>
+        ) : (
+          <p class="status-text">{text.lotteryStatusClosed}</p>
+        )}
+      </div>
+
+      {!user ? (
+        <!-- Not logged in -->
+        <div class="surface-card" style="padding:2rem 1.6rem; text-align:center;">
+          <p>{text.lotteryNotLoggedIn}</p>
+          <a href={`/${lang}/login/`} class="btn btn-primary">{text.navLogin}</a>
         </div>
-      </div>
-    </details>
-
-    {!user ? (
-      <!-- Not logged in -->
-      <div class="surface-card" style="max-width:28rem; margin:0 auto; padding:2rem 1.6rem; text-align:center;">
-        <p>{text.lotteryNotLoggedIn}</p>
-        <a href={`/${lang}/login/`} class="btn btn-primary">{text.navLogin}</a>
-      </div>
-    ) : (
-      <div style="max-width:42rem; margin:0 auto;">
-
-        {/* ── Pending claim banner ── */}
-        {pendingClaim && !claimMsg && (
-          <div class="surface-card claim-card">
-            <div class="claim-header">
-              <span class="claim-confetti">🎉</span>
-              <h2>{text.claimCongrats} {text.claimTitle}</h2>
-              <span class="claim-confetti">🎉</span>
-            </div>
-            <p>{text.claimInstructions}</p>
-            <p class="claim-countdown" data-deadline={pendingClaim.claim_deadline}>
-              <span class="claim-days" id="claimDays"></span> {text.claimDaysLeft}
-            </p>
-            <form method="POST" class="form-grid">
-              <input type="hidden" name="action" value="claim" />
-              <div class="form-group">
-                <label for="book_chosen">{text.claimBookChoice}</label>
-                <div class="claim-book-grid">
-                  {bookOptions.map(b => {
-                    const book = books.find(bk => bk.id === b.id);
-                    return (
-                      <label class="claim-book-option">
-                        <input type="radio" name="book_chosen" value={b.id} required />
-                        {book?.coverSrc && <img src={book.coverSrc} alt={b.title} class="claim-book-cover" loading="lazy" width="80" height="100" />}
-                        <span class="claim-book-title">{b.title}</span>
-                      </label>
-                    );
-                  })}
+      ) : (
+        <Fragment>
+          {/* ── Pending claim banner ── */}
+          {pendingClaim && !claimMsg && (
+            <div class="surface-card claim-card">
+              <div class="claim-header">
+                <span class="claim-confetti">🎉</span>
+                <h2>{text.claimCongrats} {text.claimTitle}</h2>
+                <span class="claim-confetti">🎉</span>
+              </div>
+              <p>{text.claimInstructions}</p>
+              <p class="claim-countdown" data-deadline={pendingClaim.claim_deadline}>
+                <span class="claim-days" id="claimDays"></span> {text.claimDaysLeft}
+              </p>
+              <form method="POST" class="form-grid">
+                <input type="hidden" name="action" value="claim" />
+                <div class="form-group">
+                  <label for="book_chosen">{text.claimBookChoice}</label>
+                  <div class="claim-book-grid">
+                    {bookOptions.map(b => {
+                      const book = books.find(bk => bk.id === b.id);
+                      return (
+                        <label class="claim-book-option">
+                          <input type="radio" name="book_chosen" value={b.id} required />
+                          {book?.coverSrc && <img src={book.coverSrc} alt={b.title} class="claim-book-cover" loading="lazy" width="80" height="100" />}
+                          <span class="claim-book-title">{b.title}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-              <div class="form-group">
-                <label for="shipping_name">{text.claimShippingName}</label>
-                <input type="text" id="shipping_name" name="shipping_name" required />
-              </div>
-              <div class="form-group">
-                <label for="shipping_address">{text.claimShippingAddress}</label>
-                <textarea id="shipping_address" name="shipping_address" rows="3" required></textarea>
-              </div>
-              <button type="submit" class="btn btn-primary" style="width:100%;">{text.claimSubmit}</button>
-            </form>
-          </div>
-        )}
-
-        {claimMsg && (
-          <div class="surface-card" style="padding:1.6rem; margin-bottom:1.5rem; text-align:center; border:2px solid var(--brand-green);">
-            <h2>✅ {text.claimOrderSummary}</h2>
-            <p class="msg msg-success">{claimMsg}</p>
-          </div>
-        )}
-
-        {/* ── Tickets summary ── */}
-        <div class="surface-card" style="padding:1.4rem; margin-bottom:1.5rem; text-align:center;">
-          <h2>{text.lotteryTickets}: <strong style="color:var(--brand-blue);">{totalTickets}</strong></h2>
-          {totalTickets === 0 && <p style="color:var(--ink-soft);">{text.lotteryNoTickets}</p>}
-          {approvedCount > 0 && (
-            <p style="color:var(--ink-soft);">
-              {approvedCount} {approvedCount === 1 ? (lang === "es" ? "libro" : "book") : (lang === "es" ? "libros" : "books")} × 5 = {totalTickets} {lang === "es" ? "boletos" : "tickets"}
-            </p>
+                <div class="form-group">
+                  <label for="shipping_name">{text.claimShippingName}</label>
+                  <input type="text" id="shipping_name" name="shipping_name" required />
+                </div>
+                <div class="form-group">
+                  <label for="shipping_address">{text.claimShippingAddress}</label>
+                  <textarea id="shipping_address" name="shipping_address" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">{text.claimSubmit}</button>
+              </form>
+            </div>
           )}
-          <p style="margin-top:0.8rem;">
-            <a href={`/${lang}/reviews/`} class="btn btn-secondary">{text.reviewsHeading} →</a>
-          </p>
-          {myReviewCount === 0 && (
-            <p style="margin-top:0.5rem; font-size:0.9rem; color:var(--ink-soft);">
-              {lang === "es" ? "¡Escribe tu primera review para ganar boletos!" : "Write your first review to earn tickets!"}
-            </p>
+
+          {claimMsg && (
+            <div class="surface-card" style="padding:1.6rem; margin-bottom:1.5rem; text-align:center; border:2px solid var(--brand-green);">
+              <h2>✅ {text.claimOrderSummary}</h2>
+              <p class="msg msg-success">{claimMsg}</p>
+            </div>
           )}
-        </div>
 
-        {/* ── Buy extra lottery entries with Peanuts ── */}
-        <div class="surface-card" style="padding:1.4rem; margin-bottom:1.5rem; text-align:center;">
-          <h3>🥜 {text.peanutShopLottery}</h3>
-          <p style="font-size:0.9rem; color:var(--ink-soft);">{text.peanutShopLotteryDesc}</p>
-          <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-secondary">{text.peanutShopTitle} →</a>
-        </div>
-      </div>
-    )}
+          {/* ── Your Entries Card ── */}
+          <div class="surface-card entries-card">
+            <div class="entries-total">
+              <span class="entries-number">{totalTickets}</span>
+              <span class="entries-label">{text.lotteryTickets}</span>
+            </div>
+            {(reviewTickets > 0 || purchasedEntries > 0) && (
+              <p class="entries-breakdown">
+                {reviewTickets > 0 && <span>{reviewTickets} {text.lotteryFromReviews}</span>}
+                {reviewTickets > 0 && purchasedEntries > 0 && <span> · </span>}
+                {purchasedEntries > 0 && <span>{purchasedEntries} {text.lotteryPurchased}</span>}
+              </p>
+            )}
+            {myReviewCount === 0 && (
+              <p class="entries-hint">{text.lotteryFirstReview}</p>
+            )}
+            <div class="entries-actions">
+              <a href={`/${lang}/reviews/`} class="btn btn-secondary btn-sm">{text.reviewsHeading} →</a>
+              {isSubscribed && isActive && (
+                <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-primary">🥜 {text.lotteryBuyMoreLink}</a>
+              )}
+            </div>
 
-    {/* ── Past Winners ── */}
+            {/* ── Newsletter Gate Banner ── */}
+            {!isSubscribed && !isPending && (
+              <div class="newsletter-gate">
+                <p>{text.lotterySubscribeBanner}</p>
+                <a href={`/${lang}/newsletter/`} class="btn btn-sm btn-primary">{text.lotterySubscribeCta}</a>
+              </div>
+            )}
+            {isPending && (
+              <div class="newsletter-gate newsletter-gate--pending">
+                <p>📧 {text.lotterySubscribePending}</p>
+              </div>
+            )}
+          </div>
+        </Fragment>
+      )}
+
+      {/* ── How It Works — collapsed by default ── */}
+      <details class="lottery-steps surface-card" style="padding:0;">
+        <summary class="steps-summary">
+          <h2>{text.lotteryHowItWorks}</h2>
+          <svg class="steps-chevron" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="steps-body">
+          <div class="steps-row">
+            <div class="step-card">
+              <span class="step-icon">📚</span>
+              <span class="step-num">1</span>
+              <p class="step-text">{text.lotteryStep1}</p>
+            </div>
+            <span class="step-arrow">→</span>
+            <div class="step-card">
+              <span class="step-icon">📸</span>
+              <span class="step-num">2</span>
+              <p class="step-text">{text.lotteryStep2}</p>
+            </div>
+            <span class="step-arrow">→</span>
+            <div class="step-card">
+              <span class="step-icon">🎫</span>
+              <span class="step-num">3</span>
+              <p class="step-text">{text.lotteryStep3}</p>
+            </div>
+            <span class="step-arrow">→</span>
+            <div class="step-card">
+              <span class="step-icon">🎁</span>
+              <span class="step-num">4</span>
+              <p class="step-text">{text.lotteryStep4}</p>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    {/* ── Latest Winners ── */}
     {publicWinners && publicWinners.length > 0 && (
       <div style="max-width:42rem; margin:2.5rem auto 0;">
         <h2 style="text-align:center; margin-bottom:1rem;">{text.lotteryWinnersTitle}</h2>
@@ -235,19 +309,16 @@ const bookMap = Object.fromEntries(bookOptions.map(b => [b.id, b.title]));
             </div>
           ))}
         </div>
+        <p style="text-align:center; margin-top:1rem;">
+          <a href={`/${lang}/winners/`} class="btn btn-ghost btn-sm">{text.winnersSeeAll}</a>
+        </p>
       </div>
     )}
   </section>
 </BaseLayout>
 
 <script is:inline>
-  document.addEventListener("DOMContentLoaded", () => {
-    // ── Auto-collapse "How it works" on mobile ──
-    const stepsDetails = document.querySelector("details.lottery-steps");
-    if (stepsDetails && window.innerWidth <= 600) {
-      stepsDetails.removeAttribute("open");
-    }
-
+  document.addEventListener("astro:page-load", () => {
     // ── Claim countdown ──────────────────────────
     const countdownEl = document.querySelector(".claim-countdown");
     const daysEl = document.getElementById("claimDays");
@@ -458,4 +529,102 @@ const bookMap = Object.fromEntries(bookOptions.map(b => [b.id, b.title]));
   .winner-month { font-family: "Baloo 2", sans-serif; font-weight: 700; color: var(--brand-blue); }
   .winner-name { color: var(--brand-brown); font-weight: 700; }
   .winner-book { color: var(--ink-soft); }
+
+  /* ── Status Card ── */
+  .status-card {
+    padding: 1.2rem 1.6rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    border-radius: var(--radius);
+  }
+  .status-open {
+    border: 2px solid var(--brand-green);
+    background: rgba(92, 150, 80, 0.06);
+  }
+  .status-closed {
+    border: 2px solid var(--line);
+    background: var(--surface);
+  }
+  .status-drawn {
+    border: 2px solid var(--brand-blue);
+    background: rgba(31, 79, 134, 0.06);
+  }
+  .status-text {
+    font-size: 1.15rem;
+    font-weight: 700;
+    font-family: "Baloo 2", sans-serif;
+    margin: 0;
+  }
+  .status-prize {
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    margin: 0.4rem 0 0;
+  }
+
+  /* ── Entries Card ── */
+  .entries-card {
+    padding: 1.6rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+  .entries-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+  .entries-number {
+    font-size: 2.8rem;
+    font-weight: 800;
+    font-family: "Baloo 2", sans-serif;
+    color: var(--brand-blue);
+    line-height: 1;
+  }
+  .entries-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .entries-breakdown {
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    margin: 0 0 0.8rem;
+  }
+  .entries-hint {
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    margin: 0 0 0.8rem;
+  }
+  .entries-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.3rem;
+  }
+
+  /* ── Newsletter Gate ── */
+  .newsletter-gate {
+    margin-top: 1.2rem;
+    padding: 1rem 1.2rem;
+    border-radius: var(--radius-sm);
+    background: rgba(211, 164, 66, 0.08);
+    border: 1px dashed var(--accent-gold);
+    text-align: center;
+  }
+  .newsletter-gate p {
+    margin: 0 0 0.6rem;
+    font-size: 0.92rem;
+    color: var(--ink);
+  }
+  .newsletter-gate--pending {
+    background: rgba(31, 79, 134, 0.06);
+    border-color: var(--brand-blue);
+  }
+  .newsletter-gate--pending p {
+    margin: 0;
+    color: var(--brand-blue);
+    font-weight: 600;
+  }
 </style>

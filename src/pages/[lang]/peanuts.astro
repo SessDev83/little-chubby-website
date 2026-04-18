@@ -4,10 +4,33 @@ export const prerender = false;
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
+import { getServiceClient } from "../../lib/supabase";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
 const pathname = `/${lang}/peanuts/`;
+
+// Giveaway + newsletter state for lottery guard
+const sc = getServiceClient();
+const currentMonth = new Date().toISOString().slice(0, 7);
+const user = Astro.locals.user;
+
+const { data: lotteryConfig } = await sc
+  .from("lottery_config")
+  .select("is_active")
+  .eq("month", currentMonth)
+  .maybeSingle();
+const lotteryActive = lotteryConfig?.is_active ?? false;
+
+let userSubscribed = false;
+if (user?.email) {
+  const { data: sub } = await sc
+    .from("newsletter_subscribers")
+    .select("confirmed")
+    .eq("email", user.email.toLowerCase())
+    .maybeSingle();
+  userSubscribed = sub?.confirmed === true;
+}
 
 const reasonLabels: Record<string, string> = {
   review: text.peanutReasonReview,
@@ -124,14 +147,25 @@ const boostItems = [
           <span class="shop-icon">🎟️</span>
           <span class="shop-name">{text.lotteryBuyEntries}</span>
           <span class="shop-price">3 🥜 / {lang === "es" ? "entrada" : "entry"}</span>
-          <div class="lottery-qty">
-            <button class="qty-btn" id="qty-minus">−</button>
-            <span id="qty-value">1</span>
-            <button class="qty-btn" id="qty-plus">+</button>
-          </div>
-          <button class="btn btn-sm btn-buy" id="buy-lottery-btn">
-            {text.peanutBuy} (<span id="lottery-total-cost">3</span> 🥜)
-          </button>
+          {!lotteryActive ? (
+            <p style="color:var(--ink-soft); font-size:0.88rem; margin:0.5rem 0 0;">{text.lotteryNoActiveGiveaway}</p>
+          ) : !userSubscribed ? (
+            <div style="margin-top:0.5rem; text-align:center;">
+              <p style="color:var(--ink-soft); font-size:0.88rem; margin:0 0 0.4rem;">{text.lotterySubscribeBanner}</p>
+              <a href={`/${lang}/newsletter/`} class="btn btn-sm btn-secondary">{text.lotterySubscribeCta}</a>
+            </div>
+          ) : (
+            <Fragment>
+              <div class="lottery-qty">
+                <button class="qty-btn" id="qty-minus">−</button>
+                <span id="qty-value">1</span>
+                <button class="qty-btn" id="qty-plus">+</button>
+              </div>
+              <button class="btn btn-sm btn-buy" id="buy-lottery-btn">
+                {text.peanutBuy} (<span id="lottery-total-cost">3</span> 🥜)
+              </button>
+            </Fragment>
+          )}
         </div>
       </div>
 

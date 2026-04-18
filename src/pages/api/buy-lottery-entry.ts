@@ -44,6 +44,47 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const totalCost = ENTRY_COST * qty;
     const svc = getServiceClient();
 
+    // ── Guard: active giveaway ──
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    const { data: giveawayConfig } = await svc
+      .from("lottery_config")
+      .select("is_active")
+      .eq("month", month)
+      .maybeSingle();
+
+    if (!giveawayConfig?.is_active) {
+      return new Response(
+        JSON.stringify({ error: "no_active_giveaway" }),
+        { status: 403, headers }
+      );
+    }
+
+    // ── Guard: newsletter subscription ──
+    const { data: { user: authUser } } = await svc.auth.admin.getUserById(user_id);
+    const userEmail = authUser?.email?.toLowerCase();
+
+    if (!userEmail) {
+      return new Response(
+        JSON.stringify({ error: "no_email" }),
+        { status: 403, headers }
+      );
+    }
+
+    const { data: sub } = await svc
+      .from("newsletter_subscribers")
+      .select("confirmed")
+      .eq("email", userEmail)
+      .maybeSingle();
+
+    if (!sub?.confirmed) {
+      return new Response(
+        JSON.stringify({ error: "newsletter_required" }),
+        { status: 403, headers }
+      );
+    }
+
     // Check balance
     const { data: balanceData } = await svc.rpc("get_user_credits", {
       p_user_id: user_id,
@@ -56,10 +97,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         { status: 403, headers }
       );
     }
-
-    // Current month in YYYY-MM format
-    const now = new Date();
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
     // Insert lottery entry
     const { data: entry, error: entryErr } = await svc

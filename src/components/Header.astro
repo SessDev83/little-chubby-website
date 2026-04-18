@@ -19,7 +19,6 @@ const navItems = [
   { href: `/${lang}/blog/`, label: text.navBlog },
   { href: `/${lang}/coloring-corner/`, label: text.navColoringCorner },
   { href: `/${lang}/gallery/`, label: text.navGallery },
-  { href: `/${lang}/reviews/`, label: text.navReviews },
   { href: `/${lang}/contact/`, label: text.navContact },
 ];
 ---
@@ -78,6 +77,10 @@ const navItems = [
             <a href={`/${lang}/profile/`} class="settings-item">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
               {text.navProfile}
+            </a>
+            <a href={`/${lang}/reviews/`} class="settings-item">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5l1.76 3.57 3.94.57-2.85 2.78.67 3.93L8 10.67l-3.52 1.68.67-3.93L2.3 5.64l3.94-.57L8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              {text.navReviews}
             </a>
             <a href={`/${lang}/logout/`} class="settings-item settings-item--logout">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>

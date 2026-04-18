@@ -1,0 +1,159 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getLangFromParam, ui } from "../../data/i18n";
+import type { Lang } from "../../data/i18n";
+import { supabase } from "../../lib/supabase";
+import { books } from "../../data/books";
+
+const lang = getLangFromParam(Astro.params.lang) as Lang;
+const text = ui[lang];
+const pathname = `/${lang}/winners/`;
+
+const { data: allWinners } = await supabase
+  .from("lottery_winners_public")
+  .select("month, book_chosen, display_name")
+  .order("month", { ascending: false });
+
+const bookMap = Object.fromEntries(books.map(b => [b.id, b.title[lang]]));
+const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
+---
+
+<BaseLayout
+  lang={lang}
+  title={text.winnersMetaTitle}
+  description={text.winnersPageTitle}
+  pathname={pathname}
+  breadcrumbs={[
+    { name: text.navHome, url: `/${lang}/` },
+    { name: text.lotteryHeading, url: `/${lang}/lottery/` },
+    { name: text.winnersPageTitle, url: pathname }
+  ]}
+>
+  <section class="page-section container">
+    <div class="section-head" style="text-align:center; max-width:42rem; margin:0 auto 2rem;">
+      <h1>🏆 {text.winnersPageTitle}</h1>
+    </div>
+
+    <div style="max-width:42rem; margin:0 auto;">
+      {(!allWinners || allWinners.length === 0) ? (
+        <div class="surface-card" style="padding:2rem; text-align:center;">
+          <p style="font-size:1.1rem;">{text.winnersEmpty}</p>
+          <a href={`/${lang}/lottery/`} class="btn btn-primary" style="margin-top:1rem;">{text.lotteryHeading} →</a>
+        </div>
+      ) : (
+        <div class="winners-timeline">
+          {allWinners.map((w: any) => (
+            <div class="winner-timeline-card">
+              <div class="winner-timeline-month">{w.month}</div>
+              <div class="winner-timeline-body">
+                {w.book_chosen && coverMap[w.book_chosen] && (
+                  <img
+                    src={coverMap[w.book_chosen]}
+                    alt={bookMap[w.book_chosen] || w.book_chosen}
+                    class="winner-timeline-cover"
+                    loading="lazy"
+                    width="60"
+                    height="75"
+                  />
+                )}
+                <div class="winner-timeline-info">
+                  <span class="winner-timeline-name">{w.display_name || "—"}</span>
+                  {w.book_chosen && (
+                    <span class="winner-timeline-book">{bookMap[w.book_chosen] || w.book_chosen}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div class="winners-cta">
+        <p>{text.winnersYouCouldBeNext}</p>
+        <a href={`/${lang}/lottery/`} class="btn btn-primary">{text.lotteryHeading} →</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .winners-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .winner-timeline-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    border-radius: var(--radius);
+    background: var(--surface-card, var(--surface));
+    border: 1px solid var(--line);
+    position: relative;
+  }
+  .winner-timeline-card::before {
+    content: "🏆";
+    position: absolute;
+    left: -0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+  }
+  .winner-timeline-month {
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--brand-blue);
+    min-width: 5rem;
+    text-align: center;
+  }
+  .winner-timeline-body {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex: 1;
+  }
+  .winner-timeline-cover {
+    width: 60px;
+    height: 75px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .winner-timeline-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .winner-timeline-name {
+    font-weight: 700;
+    color: var(--brand-brown);
+  }
+  .winner-timeline-book {
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+  }
+  .winners-cta {
+    text-align: center;
+    margin-top: 2.5rem;
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(211,164,66,0.08), rgba(31,79,134,0.06));
+  }
+  .winners-cta p {
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-family: "Baloo 2", sans-serif;
+    margin: 0 0 0.8rem;
+    color: var(--brand-brown);
+  }
+
+  @media (max-width: 600px) {
+    .winner-timeline-card { flex-direction: column; align-items: flex-start; gap: 0.5rem; padding-left: 1.6rem; }
+    .winner-timeline-card::before { left: 0.3rem; top: 0.8rem; transform: none; }
+    .winner-timeline-month { text-align: left; }
+  }
+</style>
