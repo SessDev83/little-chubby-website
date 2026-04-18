@@ -216,7 +216,7 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
 </BaseLayout>
 
 <script is:inline define:vars={{ lang, siteUrl, PAGE_SIZE, bookMapJson: JSON.stringify(bookMap), sampleItemsJson: JSON.stringify(realCount < SAMPLE_THRESHOLD && !fetchError ? getSampleItems(lang) : []), bookOptionsJson: JSON.stringify(bookOptions), textsJson: JSON.stringify({loadMore: text.galleryLoadMore, showing: text.galleryShowing, of: text.galleryOf, featured: text.galleryFeatured, share: text.galleryShareReview, copyLink: text.galleryCopyLink, linkCopied: text.galleryLinkCopied, filterAll: text.galleryFilterAll}) }}>
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("astro:page-load", () => {
   const bookMap = JSON.parse(bookMapJson);
   const txt = JSON.parse(textsJson);
   const sampleItems = JSON.parse(sampleItemsJson);
