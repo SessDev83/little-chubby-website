@@ -78,6 +78,9 @@ if (user) {
       } else if (validPhotos.length > MAX_PHOTOS) {
         shareMsg = text.shareTooLarge;
         shareMsgType = "error";
+      } else if (!editId && validPhotos.length < 2) {
+        shareMsg = text.shareNeedInterior;
+        shareMsgType = "error";
       } else if (!bookId || rating < 1 || rating > 5) {
         shareMsg = text.loginError;
         shareMsgType = "error";
@@ -306,6 +309,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
                     name="interior_photos"
                     accept="image/*"
                     multiple
+                    required
                     class="dropzone-input"
                   />
                 </div>
@@ -783,6 +787,8 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
 
           const coverInput2 = document.getElementById("coverPhoto");
           if (coverInput2) coverInput2.removeAttribute("required");
+          const interiorsInput2 = document.getElementById("interiorPhotos");
+          if (interiorsInput2) interiorsInput2.removeAttribute("required");
 
           form.scrollIntoView({ behavior: "smooth", block: "start" });
         } catch(e) { console.error(e); }
