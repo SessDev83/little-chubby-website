@@ -239,7 +239,7 @@ if (Astro.request.method === "POST") {
 // ── Data for display ─────────────────────────────────
 const { data: pendingReviews } = await sc
   .from("book_reviews")
-  .select("id, book_id, photo_url, rating, review_text, featured, submitted_at, profiles!inner(email, display_name)")
+  .select("id, book_id, photo_url, extra_photos, rating, review_text, featured, submitted_at, profiles!inner(email, display_name)")
   .eq("status", "pending")
   .order("submitted_at", { ascending: true });
 
@@ -334,7 +334,16 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
                 <div class="review-checkbox">
                   <input type="checkbox" name="selected_ids" value={r.id} class="bulk-checkbox" />
                 </div>
-                <img src={r.photo_url} alt="" class="review-img-admin" loading="lazy" />
+                <div class="review-photos-admin">
+                  <div class="photo-label">📕 Cover</div>
+                  <img src={r.photo_url} alt="Cover" class="review-img-admin" loading="lazy" />
+                  {r.extra_photos && (r.extra_photos as string[]).length > 0 && (
+                    <div class="photo-label" style="margin-top:0.4rem;">📖 Interior</div>
+                  )}
+                  {r.extra_photos && (r.extra_photos as string[]).map((url: string) => (
+                    <img src={url} alt="Interior" class="review-img-admin review-img-interior" loading="lazy" />
+                  ))}
+                </div>
                 <div class="review-details">
                   <strong>{(r.profiles as any)?.display_name || (r.profiles as any)?.email}</strong>
                   <span class="review-book-name">{bookMap[r.book_id] || r.book_id}</span>
@@ -487,6 +496,19 @@ document.addEventListener("DOMContentLoaded", () => {
     background: var(--surface);
     flex-wrap: wrap;
   }
+  .review-photos-admin {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+  .photo-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
   .review-img-admin {
     width: 8rem;
     height: 8rem;
@@ -500,6 +522,10 @@ document.addEventListener("DOMContentLoaded", () => {
     position: relative;
     z-index: 10;
     box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  }
+  .review-img-interior {
+    width: 5rem;
+    height: 5rem;
   }
   .review-details {
     flex: 1;

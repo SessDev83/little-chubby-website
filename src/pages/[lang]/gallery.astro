@@ -583,6 +583,10 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
 
   // ── Fade-in on scroll ──
   function observeCards() {
+    if (!("IntersectionObserver" in window)) {
+      grid.querySelectorAll(".gallery-card").forEach(c => c.classList.add("visible"));
+      return;
+    }
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -590,8 +594,13 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
           observer.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.1 });
+    }, { threshold: 0.05, rootMargin: "50px" });
     grid.querySelectorAll(".gallery-card:not(.visible)").forEach(card => observer.observe(card));
+    // Fallback: if no card is visible after 800ms, force-show all
+    setTimeout(() => {
+      const hidden = grid.querySelectorAll(".gallery-card:not(.visible)");
+      if (hidden.length > 0) hidden.forEach(c => c.classList.add("visible"));
+    }, 800);
   }
   observeCards();
 })();

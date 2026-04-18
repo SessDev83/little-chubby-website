@@ -267,28 +267,51 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
                 </div>
               </div>
 
-              {/* ── Drag & drop photo zone ── */}
+              {/* ── Book Cover photo zone ── */}
               <div class="form-group">
-                <label>{text.sharePhotoLabel}</label>
-                <div class="photo-dropzone" id="photoDropzone">
+                <label>{text.reviewsCoverLabel}</label>
+                <small class="field-hint">{text.reviewsCoverHint}</small>
+                <div class="photo-dropzone" id="coverDropzone">
                   <div class="dropzone-content">
-                    <span class="dropzone-icon">📷</span>
-                    <p class="dropzone-text">{text.reviewsPhotoDropzone}</p>
-                    <small class="dropzone-hint">{text.sharePhotoHint}</small>
+                    <span class="dropzone-icon">📕</span>
+                    <p class="dropzone-text">{text.reviewsCoverDropzone}</p>
+                    <small class="dropzone-hint">{text.reviewsCoverHintFormat}</small>
                   </div>
                   <input
                     type="file"
-                    id="photos"
-                    name="photos"
+                    id="coverPhoto"
+                    name="cover_photo"
                     accept="image/*"
-                    multiple
                     required
                     class="dropzone-input"
                   />
                 </div>
-                <div id="photoPreview" class="photo-preview"></div>
-                <small id="photoCount" class="photo-count" style="display:none;"></small>
-                <small id="photoStatus" class="photo-status" style="display:none;"></small>
+                <div id="coverPreview" class="photo-preview"></div>
+                <small id="coverStatus" class="photo-status" style="display:none;"></small>
+              </div>
+
+              {/* ── Interior pages photo zone ── */}
+              <div class="form-group">
+                <label>{text.reviewsInteriorsLabel}</label>
+                <small class="field-hint">{text.reviewsInteriorsHint}</small>
+                <div class="photo-dropzone" id="interiorsDropzone">
+                  <div class="dropzone-content">
+                    <span class="dropzone-icon">📖</span>
+                    <p class="dropzone-text">{text.reviewsInteriorsDropzone}</p>
+                    <small class="dropzone-hint">{text.reviewsInteriorsHintFormat}</small>
+                  </div>
+                  <input
+                    type="file"
+                    id="interiorPhotos"
+                    name="interior_photos"
+                    accept="image/*"
+                    multiple
+                    class="dropzone-input"
+                  />
+                </div>
+                <div id="interiorsPreview" class="photo-preview"></div>
+                <small id="interiorsCount" class="photo-count" style="display:none;"></small>
+                <small id="interiorsStatus" class="photo-status" style="display:none;"></small>
               </div>
 
               <div class="form-group">
@@ -385,7 +408,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
 </BaseLayout>
 
 <script is:inline>
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("astro:page-load", () => {
     // ── Searchable book selector ─────────────────
     const searchInput = document.getElementById("bookSearch");
     const hiddenInput = document.getElementById("book_id");
@@ -463,42 +486,12 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       });
     }
 
-    // ── Drag & drop photo zone ──────────────────
-    const dropzone = document.getElementById("photoDropzone");
-    const fileInput = document.getElementById("photos");
-    const status = document.getElementById("photoStatus");
-    const preview = document.getElementById("photoPreview");
-    const countEl = document.getElementById("photoCount");
-
+    // ── Drag & drop photo zones ──────────────────
     const MAX_DIM = 800;
     const JPEG_QUALITY = 0.7;
     const MAX_BYTES = 500 * 1024;
-    const MAX_FILES = 5;
-
-    if (dropzone && fileInput) {
-      // Visual drag feedback
-      ["dragenter", "dragover"].forEach(evt => {
-        dropzone.addEventListener(evt, (e) => {
-          e.preventDefault();
-          dropzone.classList.add("dragover");
-        });
-      });
-      ["dragleave", "drop"].forEach(evt => {
-        dropzone.addEventListener(evt, (e) => {
-          e.preventDefault();
-          dropzone.classList.remove("dragover");
-        });
-      });
-
-      // Handle drop
-      dropzone.addEventListener("drop", (e) => {
-        const files = e.dataTransfer.files;
-        if (files.length) {
-          fileInput.files = files;
-          fileInput.dispatchEvent(new Event("change"));
-        }
-      });
-    }
+    const MAX_INTERIORS = 4;
+    const isEs = document.documentElement.lang === "es";
 
     function compressImage(file) {
       return new Promise((resolve, reject) => {
@@ -528,78 +521,156 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       });
     }
 
-    var compressedBlobs = [];
-    var originalFiles = [];
+    function setupDropzone(zoneId, inputId) {
+      const zone = document.getElementById(zoneId);
+      const input = document.getElementById(inputId);
+      if (!zone || !input) return;
+      ["dragenter", "dragover"].forEach(evt => {
+        zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add("dragover"); });
+      });
+      ["dragleave", "drop"].forEach(evt => {
+        zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove("dragover"); });
+      });
+      zone.addEventListener("drop", (e) => {
+        const dt = new DataTransfer();
+        Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+        input.files = dt.files;
+        input.dispatchEvent(new Event("change"));
+      });
+    }
 
-    if (fileInput) {
-      fileInput.addEventListener("change", async function (e) {
-        compressedBlobs = [];
-        originalFiles = [];
+    setupDropzone("coverDropzone", "coverPhoto");
+    setupDropzone("interiorsDropzone", "interiorPhotos");
+
+    // ── Cover photo handler ──
+    var coverBlob = null;
+    var coverOriginal = null;
+    const coverInput = document.getElementById("coverPhoto");
+    const coverPreview = document.getElementById("coverPreview");
+    const coverStatus = document.getElementById("coverStatus");
+
+    if (coverInput) {
+      coverInput.addEventListener("change", async function (e) {
+        coverBlob = null;
+        coverOriginal = null;
+        const file = e.target.files[0];
+        if (!file) return;
+        coverOriginal = file;
+
+        if (coverStatus) {
+          coverStatus.style.display = "block";
+          coverStatus.textContent = "⏳ " + (isEs ? "Comprimiendo portada..." : "Compressing cover...");
+          coverStatus.className = "photo-status";
+        }
+        if (coverPreview) coverPreview.innerHTML = "";
+
+        try {
+          const blob = await compressImage(file);
+          if (blob.size > MAX_BYTES) {
+            if (coverStatus) {
+              coverStatus.textContent = "❌ " + (isEs ? "Portada muy grande después de comprimir." : "Cover too large after compression.");
+              coverStatus.className = "photo-status photo-error";
+            }
+            return;
+          }
+          coverBlob = blob;
+          if (coverPreview) {
+            const thumb = document.createElement("img");
+            thumb.src = URL.createObjectURL(blob);
+            thumb.className = "preview-thumb cover-thumb";
+            coverPreview.appendChild(thumb);
+          }
+          if (coverStatus) {
+            coverStatus.textContent = "✅ " + (isEs ? "Portada lista" : "Cover ready") + " — " + Math.round(blob.size / 1024) + " KB";
+            coverStatus.className = "photo-status photo-ok";
+          }
+        } catch (err) {
+          coverBlob = null;
+          if (coverStatus) {
+            coverStatus.style.display = "block";
+            coverStatus.textContent = "⚠️ " + (isEs ? "No se pudo comprimir — se subirá el original." : "Could not compress — original will be uploaded.");
+            coverStatus.className = "photo-status";
+          }
+        }
+      });
+    }
+
+    // ── Interior photos handler ──
+    var interiorBlobs = [];
+    var interiorOriginals = [];
+    const interiorsInput = document.getElementById("interiorPhotos");
+    const interiorsPreview = document.getElementById("interiorsPreview");
+    const interiorsStatus = document.getElementById("interiorsStatus");
+    const interiorsCountEl = document.getElementById("interiorsCount");
+
+    if (interiorsInput) {
+      interiorsInput.addEventListener("change", async function (e) {
+        interiorBlobs = [];
+        interiorOriginals = [];
         var files = Array.from(e.target.files);
         if (!files.length) return;
 
-        if (files.length > MAX_FILES) {
-          if (status) {
-            status.style.display = "block";
-            status.textContent = "❌ Max " + MAX_FILES + " photos.";
-            status.className = "photo-status photo-error";
+        if (files.length > MAX_INTERIORS) {
+          if (interiorsStatus) {
+            interiorsStatus.style.display = "block";
+            interiorsStatus.textContent = "❌ Max " + MAX_INTERIORS + " " + (isEs ? "fotos de interiores." : "interior photos.");
+            interiorsStatus.className = "photo-status photo-error";
           }
           e.target.value = "";
           return;
         }
 
-        originalFiles = files;
+        interiorOriginals = files;
 
-        if (countEl) {
-          countEl.style.display = "block";
-          countEl.textContent = files.length + "/5 " + (document.documentElement.lang === "es" ? "fotos seleccionadas" : "photos selected");
+        if (interiorsCountEl) {
+          interiorsCountEl.style.display = "block";
+          interiorsCountEl.textContent = files.length + "/" + MAX_INTERIORS + " " + (isEs ? "fotos seleccionadas" : "photos selected");
         }
 
-        if (status) {
-          status.style.display = "block";
-          status.textContent = "⏳ " + (document.documentElement.lang === "es" ? "Comprimiendo" : "Compressing") + " " + files.length + " " + (document.documentElement.lang === "es" ? "foto" : "photo") + (files.length > 1 ? "s" : "") + "...";
-          status.className = "photo-status";
+        if (interiorsStatus) {
+          interiorsStatus.style.display = "block";
+          interiorsStatus.textContent = "⏳ " + (isEs ? "Comprimiendo" : "Compressing") + " " + files.length + " " + (isEs ? "foto" : "photo") + (files.length > 1 ? "s" : "") + "...";
+          interiorsStatus.className = "photo-status";
         }
-        if (preview) preview.innerHTML = "";
+        if (interiorsPreview) interiorsPreview.innerHTML = "";
 
         try {
           var totalKb = 0;
           for (var i = 0; i < files.length; i++) {
-            // Show progress
-            if (status) {
-              status.textContent = "⏳ " + (document.documentElement.lang === "es" ? "Comprimiendo" : "Compressing") + " " + (i + 1) + "/" + files.length + "...";
+            if (interiorsStatus) {
+              interiorsStatus.textContent = "⏳ " + (isEs ? "Comprimiendo" : "Compressing") + " " + (i + 1) + "/" + files.length + "...";
             }
             var blob = await compressImage(files[i]);
             if (blob.size > MAX_BYTES) {
-              if (status) {
-                status.textContent = "❌ " + (document.documentElement.lang === "es" ? "Foto" : "Photo") + " " + (i + 1) + " " + (document.documentElement.lang === "es" ? "muy grande después de comprimir." : "still too large after compression.");
-                status.className = "photo-status photo-error";
+              if (interiorsStatus) {
+                interiorsStatus.textContent = "❌ " + (isEs ? "Foto" : "Photo") + " " + (i + 1) + " " + (isEs ? "muy grande después de comprimir." : "still too large after compression.");
+                interiorsStatus.className = "photo-status photo-error";
               }
-              compressedBlobs = [];
-              if (preview) preview.innerHTML = "";
+              interiorBlobs = [];
+              if (interiorsPreview) interiorsPreview.innerHTML = "";
               return;
             }
-            compressedBlobs.push(blob);
+            interiorBlobs.push(blob);
             totalKb += Math.round(blob.size / 1024);
 
-            if (preview) {
+            if (interiorsPreview) {
               var thumb = document.createElement("img");
               thumb.src = URL.createObjectURL(blob);
               thumb.className = "preview-thumb";
-              preview.appendChild(thumb);
+              interiorsPreview.appendChild(thumb);
             }
           }
 
-          if (status) {
-            status.textContent = "✅ " + files.length + " " + (document.documentElement.lang === "es" ? "foto" : "photo") + (files.length > 1 ? "s" : "") + " — " + totalKb + " KB total";
-            status.className = "photo-status photo-ok";
+          if (interiorsStatus) {
+            interiorsStatus.textContent = "✅ " + files.length + " " + (isEs ? "foto" : "photo") + (files.length > 1 ? "s" : "") + " — " + totalKb + " KB total";
+            interiorsStatus.className = "photo-status photo-ok";
           }
         } catch (err) {
-          compressedBlobs = [];
-          if (status) {
-            status.style.display = "block";
-            status.textContent = "⚠️ " + (document.documentElement.lang === "es" ? "No se pudo comprimir — se subirán los originales." : "Could not compress — originals will be uploaded.");
-            status.className = "photo-status";
+          interiorBlobs = [];
+          if (interiorsStatus) {
+            interiorsStatus.style.display = "block";
+            interiorsStatus.textContent = "⚠️ " + (isEs ? "No se pudo comprimir — se subirán los originales." : "Could not compress — originals will be uploaded.");
+            interiorsStatus.className = "photo-status";
           }
         }
       });
@@ -630,7 +701,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
           var formElements = shareForm.elements;
           for (var i = 0; i < formElements.length; i++) {
             var el = formElements[i];
-            if (!el.name || el.name === "photos" || el.type === "submit") continue;
+            if (!el.name || el.name === "cover_photo" || el.name === "interior_photos" || el.type === "submit") continue;
             if (el.type === "checkbox") {
               if (el.checked) fd.append(el.name, "on");
             } else {
@@ -638,12 +709,18 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
             }
           }
 
-          var photosToSend = compressedBlobs.length > 0
-            ? compressedBlobs.map(function (b, i) { return new File([b], "photo_" + (i + 1) + ".jpg", { type: "image/jpeg" }); })
-            : originalFiles;
+          // Cover photo (first photo → photo_url)
+          var coverToSend = coverBlob
+            ? new File([coverBlob], "cover.jpg", { type: "image/jpeg" })
+            : coverOriginal;
+          if (coverToSend) fd.append("photos", coverToSend);
 
-          for (var i = 0; i < photosToSend.length; i++) {
-            fd.append("photos", photosToSend[i]);
+          // Interior photos (→ extra_photos)
+          var interiorsToSend = interiorBlobs.length > 0
+            ? interiorBlobs.map(function (b, i) { return new File([b], "interior_" + (i + 1) + ".jpg", { type: "image/jpeg" }); })
+            : interiorOriginals;
+          for (var i = 0; i < interiorsToSend.length; i++) {
+            fd.append("photos", interiorsToSend[i]);
           }
 
           // Simulate progress
@@ -669,10 +746,10 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
             submitBtn.textContent = origLabel;
           }
           if (progressWrap) progressWrap.remove();
-          if (status) {
-            status.style.display = "block";
-            status.textContent = "❌ Upload failed. Please try again.";
-            status.className = "photo-status photo-error";
+          if (coverStatus) {
+            coverStatus.style.display = "block";
+            coverStatus.textContent = "❌ Upload failed. Please try again.";
+            coverStatus.className = "photo-status photo-error";
           }
         }
       });
@@ -704,8 +781,8 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
             starBtns.forEach((s, j) => s.dataset.selected = j < data.rating ? "true" : "false");
           }
 
-          const photosInput = document.getElementById("photos");
-          if (photosInput) photosInput.removeAttribute("required");
+          const coverInput2 = document.getElementById("coverPhoto");
+          if (coverInput2) coverInput2.removeAttribute("required");
 
           form.scrollIntoView({ behavior: "smooth", block: "start" });
         } catch(e) { console.error(e); }
@@ -716,6 +793,12 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
 
 <style>
   /* ── Drag & Drop Photo Zone ── */
+  .field-hint {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    margin-bottom: 0.4rem;
+  }
   .photo-dropzone {
     position: relative;
     border: 2px dashed var(--line);
@@ -841,6 +924,11 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     object-fit: cover;
     border-radius: var(--radius-sm);
     border: 2px solid var(--line);
+  }
+  .preview-thumb.cover-thumb {
+    width: 5rem;
+    height: 6.5rem;
+    border-color: var(--brand-blue);
   }
 
   /* Star picker */
