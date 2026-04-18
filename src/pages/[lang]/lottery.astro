@@ -27,13 +27,33 @@ let isPending = false;
 
 // ── Giveaway state ───────────────────────────────────
 const currentMonth = new Date().toISOString().slice(0, 7);
-const { data: giveawayConfig } = await sc
+let { data: giveawayConfig } = await sc
   .from("lottery_config")
   .select("draw_date, prize_description")
   .eq("month", currentMonth)
   .maybeSingle();
 
-const drawDate = giveawayConfig?.draw_date ?? null;
+// Auto-create config row if missing (ensures giveaway always exists)
+if (!giveawayConfig) {
+  const now0 = new Date();
+  const nextFirst0 = new Date(now0.getFullYear(), now0.getMonth() + 1, 1);
+  await sc.from("lottery_config").insert({
+    month: currentMonth,
+    draw_date: nextFirst0.toISOString().slice(0, 10),
+  });
+  const { data: fresh } = await sc
+    .from("lottery_config")
+    .select("draw_date, prize_description")
+    .eq("month", currentMonth)
+    .single();
+  giveawayConfig = fresh;
+}
+
+// Default draw date: 1st of next month
+const now = new Date();
+const nextFirst = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+const defaultDrawDate = nextFirst.toISOString().slice(0, 10);
+const drawDate = giveawayConfig?.draw_date || defaultDrawDate;
 const prizeDescription = giveawayConfig?.prize_description ?? "";
 const prizeBook = getMonthlyPrizeBook(currentMonth);
 
@@ -127,12 +147,17 @@ const { data: publicWinners } = await supabase
   .order("month", { ascending: false })
   .limit(3);
 
-// Sample winners for preview if DB empty (1 per month, matching rotation)
-const samplePreviewWinners = [
-  { month: "2026-03", display_name: "Sofia Martinez", book_chosen: getMonthlyPrizeBook("2026-03").id, state: "New York", country: "US" },
-  { month: "2026-02", display_name: "Carlos Rodriguez", book_chosen: getMonthlyPrizeBook("2026-02").id, state: "Texas", country: "US" },
-  { month: "2026-01", display_name: "Maria Garcia", book_chosen: getMonthlyPrizeBook("2026-01").id, state: "Florida", country: "US" },
+// Sample winners for preview if DB empty (dynamic, relative to current month)
+const sampleNames = [
+  { display_name: "Sofia Martinez", state: "New York", country: "US" },
+  { display_name: "Carlos Rodriguez", state: "Texas", country: "US" },
+  { display_name: "Maria Garcia", state: "Florida", country: "US" },
 ];
+const samplePreviewWinners = sampleNames.map((s, i) => {
+  const d = new Date(now.getFullYear(), now.getMonth() - (i + 1), 1);
+  const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return { ...s, month: m, book_chosen: getMonthlyPrizeBook(m).id };
+});
 const previewWinners = (publicWinners && publicWinners.length > 0) ? publicWinners : samplePreviewWinners;
 
 function safeName(d: string | null) {

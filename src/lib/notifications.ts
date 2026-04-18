@@ -253,3 +253,52 @@ export async function emailUserLotteryWin(
   );
   await sendToUser(userEmail, subject, html);
 }
+
+// ── Admin monthly draw report ────────────────────────
+
+interface MonthlyDrawReport {
+  month: string;
+  prizeBook: string;
+  hasRealWinners: boolean;
+  winners: { name: string; email: string }[];
+  eligibleUsers: number;
+  totalTickets: number;
+  totalRegistered: number;
+  totalSubscribers: number;
+  nextMonth: string;
+  nextPrizeBook: string;
+  nextDrawDate: string;
+  summary: string;
+}
+
+/** Email admin with monthly giveaway draw results */
+export async function notifyAdminMonthlyDraw(report: MonthlyDrawReport): Promise<void> {
+  const winnersText = report.hasRealWinners
+    ? report.winners.map(w => `${w.name} (${w.email})`).join(", ")
+    : "None — no participants this month";
+
+  const rows: [string, string][] = [
+    ["Month", report.month],
+    ["Prize Book", report.prizeBook],
+    ["Eligible Users", String(report.eligibleUsers)],
+    ["Total Tickets", String(report.totalTickets)],
+    ["Winners", winnersText],
+    ["─────", "─────"],
+    ["Registered Users", String(report.totalRegistered)],
+    ["Newsletter Subs", String(report.totalSubscribers)],
+    ["─────", "─────"],
+    ["Next Month", report.nextMonth],
+    ["Next Prize", report.nextPrizeBook],
+    ["Next Draw Date", report.nextDrawDate],
+  ];
+
+  const emoji = report.hasRealWinners ? "🏆" : "📊";
+  const title = report.hasRealWinners
+    ? `Monthly Draw Complete — ${report.winners.length} Winner(s)!`
+    : "Monthly Draw — No Participants";
+
+  await send(
+    `${emoji} Giveaway ${report.month}: ${report.summary}`,
+    card(emoji, title, rows, report.summary)
+  );
+}
