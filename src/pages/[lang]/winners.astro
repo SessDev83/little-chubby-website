@@ -4,19 +4,88 @@ export const prerender = false;
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
-import { supabase } from "../../lib/supabase";
+import { supabase, getServiceClient } from "../../lib/supabase";
 import { books } from "../../data/books";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
 const pathname = `/${lang}/winners/`;
+const sc = getServiceClient();
+const user = Astro.locals.user;
 
-const { data: allWinners } = await supabase
+// ── Helpers ──────────────────────────────────────────
+function safeName(displayName: string | null): string {
+  if (!displayName) return "—";
+  const parts = displayName.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[1][0]}.`;
+}
+
+function formatLocation(state?: string | null, country?: string | null): string {
+  return [state, country].filter(Boolean).join(", ");
+}
+
+const rankBadges = ["🥇", "🥈", "🥉"];
+
+const monthLabel = (month: string) => {
+  const [y, m] = month.split("-");
+  const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+  return d.toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { month: "long", year: "numeric" });
+};
+
+// ── Ticket visibility gate (newsletter ≥15 days) ────
+let canSeeTickets = false;
+if (user?.email) {
+  const { data: sub } = await sc
+    .from("newsletter_subscribers")
+    .select("confirmed, created_at")
+    .eq("email", user.email.toLowerCase())
+    .maybeSingle();
+  if (sub?.confirmed) {
+    const subDate = new Date(sub.created_at);
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+    canSeeTickets = subDate <= fifteenDaysAgo;
+  }
+}
+
+// ── Real winners from DB ─────────────────────────────
+const { data: dbWinners } = await supabase
   .from("lottery_winners_public")
-  .select("month, book_chosen, display_name")
+  .select("month, book_chosen, display_name, state, country, total_tickets")
   .order("month", { ascending: false });
 
-const bookMap = Object.fromEntries(books.map(b => [b.id, b.title[lang]]));
+// ── Sample winners (demo data for Jan-Apr 2026) ──────
+const sampleWinners = [
+  { month: "2026-04", display_name: "Daniel Lopez", book_chosen: "easy-animals", state: "Illinois", country: "US", total_tickets: 35 },
+  { month: "2026-04", display_name: "Ana Perez", book_chosen: "awesome-girls", state: "Madrid", country: "ES", total_tickets: 15 },
+  { month: "2026-03", display_name: "Sofia Martinez", book_chosen: "coloring-emotions", state: "New York", country: "US", total_tickets: 20 },
+  { month: "2026-02", display_name: "Carlos Rodriguez", book_chosen: "awesome-boys", state: "Texas", country: "US", total_tickets: 25 },
+  { month: "2026-02", display_name: "Emily Thompson", book_chosen: "chic-styles", state: "California", country: "US", total_tickets: 10 },
+  { month: "2026-01", display_name: "Maria Garcia", book_chosen: "magical-creatures", state: "Florida", country: "US", total_tickets: 15 },
+];
+
+// Merge: use real winners when available, fill with samples for missing months
+const realMonths = new Set((dbWinners ?? []).map(w => w.month));
+const samplesForMissing = sampleWinners.filter(s => !realMonths.has(s.month));
+const allWinners = [...(dbWinners ?? []), ...samplesForMissing];
+
+// Group by month, sort desc
+const grouped = new Map<string, typeof allWinners>();
+for (const w of allWinners) {
+  if (!grouped.has(w.month)) grouped.set(w.month, []);
+  grouped.get(w.month)!.push(w);
+}
+// Sort each month group by tickets desc for ranking
+for (const [, arr] of grouped) {
+  arr.sort((a, b) => (b.total_tickets ?? 0) - (a.total_tickets ?? 0));
+}
+const sortedMonths = [...grouped.keys()].sort((a, b) => b.localeCompare(a));
+
+const totalWinnersCount = allWinners.length;
+const totalMonthsCount = sortedMonths.length;
+
+const bookTitleMap = Object.fromEntries(books.map(b => [b.id, b.title[lang]]));
 const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
 ---
 
@@ -32,42 +101,73 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
   ]}
 >
   <section class="page-section container">
-    <div class="section-head" style="text-align:center; max-width:42rem; margin:0 auto 2rem;">
+    <div class="section-head" style="text-align:center; max-width:42rem; margin:0 auto 1.5rem;">
       <h1>🏆 {text.winnersPageTitle}</h1>
+      {totalWinnersCount > 0 && (
+        <p class="winners-stats">
+          {totalWinnersCount} {totalWinnersCount === 1 ? text.winnersWinner : text.winnersWinners} · {totalMonthsCount} {lang === "es" ? "meses" : "months"}
+        </p>
+      )}
     </div>
 
     <div style="max-width:42rem; margin:0 auto;">
-      {(!allWinners || allWinners.length === 0) ? (
+      {sortedMonths.length === 0 ? (
         <div class="surface-card" style="padding:2rem; text-align:center;">
           <p style="font-size:1.1rem;">{text.winnersEmpty}</p>
           <a href={`/${lang}/lottery/`} class="btn btn-primary" style="margin-top:1rem;">{text.lotteryHeading} →</a>
         </div>
       ) : (
-        <div class="winners-timeline">
-          {allWinners.map((w: any) => (
-            <div class="winner-timeline-card">
-              <div class="winner-timeline-month">{w.month}</div>
-              <div class="winner-timeline-body">
-                {w.book_chosen && coverMap[w.book_chosen] && (
-                  <img
-                    src={coverMap[w.book_chosen]}
-                    alt={bookMap[w.book_chosen] || w.book_chosen}
-                    class="winner-timeline-cover"
-                    loading="lazy"
-                    width="60"
-                    height="75"
-                  />
-                )}
-                <div class="winner-timeline-info">
-                  <span class="winner-timeline-name">{w.display_name || "—"}</span>
-                  {w.book_chosen && (
-                    <span class="winner-timeline-book">{bookMap[w.book_chosen] || w.book_chosen}</span>
-                  )}
+        <div class="winners-accordion">
+          {sortedMonths.map((month, monthIdx) => {
+            const winners = grouped.get(month)!;
+            const isFirst = monthIdx === 0;
+            return (
+              <details class="winners-month" open={isFirst}>
+                <summary class="winners-month-summary">
+                  <span class="winners-month-label">📅 {monthLabel(month)}</span>
+                  <span class="winners-month-count">
+                    {winners.length} {winners.length === 1 ? text.winnersWinner : text.winnersWinners}
+                  </span>
+                  <svg class="winners-chevron" width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 8l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </summary>
+                <div class="winners-month-grid">
+                  {winners.map((w: any, idx: number) => {
+                    const badge = idx < 3 ? rankBadges[idx] : "";
+                    const name = safeName(w.display_name);
+                    const loc = formatLocation(w.state, w.country);
+                    const bookTitle = w.book_chosen ? (bookTitleMap[w.book_chosen] || w.book_chosen) : "";
+                    const cover = w.book_chosen ? coverMap[w.book_chosen] : null;
+                    return (
+                      <div class="winner-card">
+                        {badge && <span class="winner-badge">{badge}</span>}
+                        <div class="winner-card-body">
+                          {cover && (
+                            <img src={cover} alt={bookTitle} class="winner-cover" loading="lazy" width="56" height="70" />
+                          )}
+                          <div class="winner-info">
+                            <span class="winner-name">{name}</span>
+                            {bookTitle && <span class="winner-book">📖 {bookTitle}</span>}
+                            {loc && <span class="winner-location">📍 {loc}</span>}
+                            {canSeeTickets && w.total_tickets > 0 && (
+                              <span class="winner-tickets">🎫 {w.total_tickets} {text.winnersTicketsUsed}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            </div>
-          ))}
+              </details>
+            );
+          })}
         </div>
+      )}
+
+      {/* Ticket visibility hint for non-eligible users */}
+      {!canSeeTickets && sortedMonths.length > 0 && (
+        <p class="tickets-hint">
+          🎫 {text.winnersSubscribe15}
+        </p>
       )}
 
       <div class="winners-cta">
@@ -79,63 +179,129 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
 </BaseLayout>
 
 <style>
-  .winners-timeline {
+  .winners-stats {
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    margin-top: 0.3rem;
+  }
+
+  /* ── Accordion ── */
+  .winners-accordion {
     display: flex;
     flex-direction: column;
     gap: 1rem;
   }
-  .winner-timeline-card {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.2rem;
-    border-radius: var(--radius);
+  .winners-month {
     background: var(--surface-card, var(--surface));
     border: 1px solid var(--line);
-    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
   }
-  .winner-timeline-card::before {
-    content: "🏆";
-    position: absolute;
-    left: -0.6rem;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.2rem;
+  .winners-month[open] .winners-chevron {
+    transform: rotate(180deg);
   }
-  .winner-timeline-month {
-    font-family: "Baloo 2", sans-serif;
-    font-weight: 700;
-    font-size: 1rem;
-    color: var(--brand-blue);
-    min-width: 5rem;
-    text-align: center;
-  }
-  .winner-timeline-body {
+  .winners-month-summary {
     display: flex;
     align-items: center;
+    gap: 0.6rem;
+    padding: 1rem 1.2rem;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+  }
+  .winners-month-summary::-webkit-details-marker { display: none; }
+  .winners-month-label {
+    font-size: 1.05rem;
+    color: var(--brand-blue);
+    text-transform: capitalize;
+  }
+  .winners-month-count {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    font-weight: 500;
+    margin-left: auto;
+  }
+  .winners-chevron {
+    color: var(--ink-soft);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  /* ── Winner cards grid ── */
+  .winners-month-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 0 1.2rem 1.2rem;
+  }
+  .winner-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.8rem 1rem;
+    border-radius: calc(var(--radius) - 2px);
+    background: rgba(0,0,0,0.02);
+    border: 1px solid rgba(0,0,0,0.04);
+    position: relative;
+  }
+  .winner-badge {
+    font-size: 1.4rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 0.3rem;
+  }
+  .winner-card-body {
+    display: flex;
+    align-items: flex-start;
     gap: 0.8rem;
     flex: 1;
+    min-width: 0;
   }
-  .winner-timeline-cover {
-    width: 60px;
-    height: 75px;
+  .winner-cover {
+    width: 56px;
+    height: 70px;
     object-fit: cover;
     border-radius: 4px;
     flex-shrink: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
   }
-  .winner-timeline-info {
+  .winner-info {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.15rem;
+    min-width: 0;
   }
-  .winner-timeline-name {
+  .winner-name {
     font-weight: 700;
+    font-size: 1rem;
     color: var(--brand-brown);
   }
-  .winner-timeline-book {
+  .winner-book {
     font-size: 0.88rem;
     color: var(--ink-soft);
   }
+  .winner-location {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+  }
+  .winner-tickets {
+    font-size: 0.82rem;
+    color: var(--brand-blue);
+    font-weight: 600;
+  }
+
+  /* ── Ticket hint ── */
+  .tickets-hint {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin-top: 1rem;
+    font-style: italic;
+  }
+
+  /* ── CTA ── */
   .winners-cta {
     text-align: center;
     margin-top: 2.5rem;
@@ -152,8 +318,9 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
   }
 
   @media (max-width: 600px) {
-    .winner-timeline-card { flex-direction: column; align-items: flex-start; gap: 0.5rem; padding-left: 1.6rem; }
-    .winner-timeline-card::before { left: 0.3rem; top: 0.8rem; transform: none; }
-    .winner-timeline-month { text-align: left; }
+    .winners-month-summary { padding: 0.8rem 1rem; }
+    .winners-month-grid { padding: 0 0.8rem 0.8rem; }
+    .winner-card { flex-direction: column; }
+    .winner-card-body { flex-direction: row; }
   }
 </style>

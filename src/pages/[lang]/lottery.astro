@@ -123,12 +123,27 @@ const totalTickets = reviewTickets + purchasedEntries;
 // ── Public winners ───────────────────────────────────
 const { data: publicWinners } = await supabase
   .from("lottery_winners_public")
-  .select("month, book_chosen, display_name")
+  .select("month, book_chosen, display_name, state, country")
   .order("month", { ascending: false })
   .limit(3);
 
+// Sample winners for preview if DB empty
+const samplePreviewWinners = [
+  { month: "2026-04", display_name: "Daniel Lopez", book_chosen: "easy-animals", state: "Illinois", country: "US" },
+  { month: "2026-03", display_name: "Sofia Martinez", book_chosen: "coloring-emotions", state: "New York", country: "US" },
+  { month: "2026-02", display_name: "Carlos Rodriguez", book_chosen: "awesome-boys", state: "Texas", country: "US" },
+];
+const previewWinners = (publicWinners && publicWinners.length > 0) ? publicWinners : samplePreviewWinners;
+
+function safeName(d: string | null) {
+  if (!d) return "—";
+  const p = d.trim().split(/\s+/);
+  return p.length === 1 ? p[0] : `${p[0]} ${p[1][0]}.`;
+}
+
 const bookOptions = books.map(b => ({ id: b.id, title: b.title[lang] }));
 const bookMap = Object.fromEntries(bookOptions.map(b => [b.id, b.title]));
+const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
 ---
 
 <BaseLayout
@@ -297,17 +312,25 @@ const bookMap = Object.fromEntries(bookOptions.map(b => [b.id, b.title]));
     </div>
 
     {/* ── Latest Winners ── */}
-    {publicWinners && publicWinners.length > 0 && (
+    {previewWinners && previewWinners.length > 0 && (
       <div style="max-width:42rem; margin:2.5rem auto 0;">
         <h2 style="text-align:center; margin-bottom:1rem;">{text.lotteryWinnersTitle}</h2>
         <div class="winners-list">
-          {publicWinners.map((w: any) => (
-            <div class="winner-row">
-              <span class="winner-month">{w.month}</span>
-              <span class="winner-name">{w.display_name || "—"}</span>
-              <span class="winner-book">{w.book_chosen ? bookMap[w.book_chosen] || w.book_chosen : ""}</span>
-            </div>
-          ))}
+          {previewWinners.map((w: any) => {
+            const cover = w.book_chosen ? coverMap[w.book_chosen] : null;
+            const loc = [w.state, w.country].filter(Boolean).join(", ");
+            return (
+              <div class="winner-row">
+                <span class="winner-month">{w.month}</span>
+                {cover && <img src={cover} alt={bookMap[w.book_chosen] || w.book_chosen} class="winner-preview-cover" loading="lazy" width="40" height="50" />}
+                <div class="winner-preview-info">
+                  <span class="winner-name">{safeName(w.display_name)}</span>
+                  <span class="winner-book">{w.book_chosen ? bookMap[w.book_chosen] || w.book_chosen : ""}</span>
+                  {loc && <span class="winner-loc">{loc}</span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
         <p style="text-align:center; margin-top:1rem;">
           <a href={`/${lang}/winners/`} class="btn btn-ghost btn-sm">{text.winnersSeeAll}</a>
@@ -517,18 +540,21 @@ const bookMap = Object.fromEntries(bookOptions.map(b => [b.id, b.title]));
 
   .winners-list { display: grid; gap: 0.5rem; }
   .winner-row {
-    display: grid;
-    grid-template-columns: 6rem 1fr 1fr;
-    gap: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     padding: 0.6rem 0.8rem;
     border-radius: var(--radius-sm);
     background: var(--surface);
     border: 1px solid var(--line);
     font-size: 0.95rem;
   }
-  .winner-month { font-family: "Baloo 2", sans-serif; font-weight: 700; color: var(--brand-blue); }
+  .winner-month { font-family: "Baloo 2", sans-serif; font-weight: 700; color: var(--brand-blue); min-width: 5rem; }
+  .winner-preview-cover { width: 40px; height: 50px; object-fit: cover; border-radius: 3px; flex-shrink: 0; }
+  .winner-preview-info { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
   .winner-name { color: var(--brand-brown); font-weight: 700; }
-  .winner-book { color: var(--ink-soft); }
+  .winner-book { color: var(--ink-soft); font-size: 0.88rem; }
+  .winner-loc { color: var(--ink-soft); font-size: 0.82rem; }
 
   /* ── Status Card ── */
   .status-card {

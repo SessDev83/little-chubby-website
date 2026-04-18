@@ -338,6 +338,10 @@ export const ui = {
     winnersYouCouldBeNext: "¡El próximo podrías ser tú!",
     winnersSeeAll: "Ver todos los ganadores →",
     winnersEmpty: "Aún no hay ganadores. ¡Sé el primero!",
+    winnersTicketsUsed: "boletos usados",
+    winnersSubscribe15: "Suscríbete al newsletter por 15+ días para ver los boletos",
+    winnersWinners: "ganadores",
+    winnersWinner: "ganador",
     navWinners: "Ganadores",
     premiumBadge: "Premium"
   },
@@ -674,6 +678,10 @@ export const ui = {
     winnersYouCouldBeNext: "You could be next!",
     winnersSeeAll: "See all winners →",
     winnersEmpty: "No winners yet. Be the first!",
+    winnersTicketsUsed: "tickets used",
+    winnersSubscribe15: "Subscribe to newsletter for 15+ days to see ticket details",
+    winnersWinners: "winners",
+    winnersWinner: "winner",
     navWinners: "Past Winners",
     premiumBadge: "Premium"
   }
