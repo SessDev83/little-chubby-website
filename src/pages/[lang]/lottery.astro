@@ -6,6 +6,7 @@ import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase, getServiceClient } from "../../lib/supabase";
 import { books } from "../../data/books";
+import { notifyNewReview, notifyReviewUpdated, notifyLotteryClaim } from "../../lib/notifications";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
@@ -153,6 +154,9 @@ if (user) {
             } else {
               shareMsg = text.shareSuccess;
               shareMsgType = "success";
+              // Notify admin
+              const bTitle = books.find(b => b.id === bookId)?.title[lang] || bookId;
+              notifyReviewUpdated(user.email || "unknown", bTitle, rating);
             }
           } else {
             // New review
@@ -181,6 +185,9 @@ if (user) {
               } else {
                 shareMsg = text.shareSuccess;
                 shareMsgType = "success";
+                // Notify admin
+                const bTitle = books.find(b => b.id === bookId)?.title[lang] || bookId;
+                notifyNewReview(user.email || "unknown", bTitle, rating, reviewText);
               }
             }
           }
@@ -214,6 +221,8 @@ if (user) {
 
         claimMsg = text.claimSuccess;
         pendingClaim = null;
+        // Notify admin
+        notifyLotteryClaim(user.email || "unknown", bookChosen, shippingName, shippingAddress);
       }
     }
   }

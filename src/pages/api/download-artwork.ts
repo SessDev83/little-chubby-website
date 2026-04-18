@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
+import { notifyDownload } from "../../lib/notifications";
 
 export const prerender = false;
 
@@ -94,6 +95,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         { status: 500, headers }
       );
     }
+
+    // 7. Notify admin (non-blocking)
+    const userEmail = sessionData.session.user.email || "unknown";
+    const { data: artworkRow } = await svc
+      .from("free_artworks")
+      .select("title_en")
+      .eq("id", artwork_id)
+      .maybeSingle();
+    notifyDownload(userEmail, artworkRow?.title_en || artwork_id, balance - 1);
 
     return new Response(
       JSON.stringify({

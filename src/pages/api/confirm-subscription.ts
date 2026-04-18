@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { getServiceClient } from "../../lib/supabase";
+import { notifySubscriberConfirmed } from "../../lib/notifications";
 
 export const prerender = false;
 
@@ -17,7 +18,7 @@ export const GET: APIRoute = async ({ url }) => {
   // Find subscriber by confirm_token
   const { data: subscriber, error } = await supabase
     .from("newsletter_subscribers")
-    .select("id, confirmed")
+    .select("id, email, confirmed")
     .eq("confirm_token", token)
     .maybeSingle();
 
@@ -47,6 +48,9 @@ export const GET: APIRoute = async ({ url }) => {
       headers: { Location: `${siteUrl}/${lang}/?msg=error` },
     });
   }
+
+  // Notify admin (non-blocking)
+  notifySubscriberConfirmed(subscriber.email || "unknown");
 
   return new Response(null, {
     status: 302,
