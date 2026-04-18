@@ -108,6 +108,11 @@ const text = t[lang] || t.es;
 
 <script is:inline define:vars={{ lang, thinkingText: text.thinking, greetingText: text.greeting }}>
 (function () {
+  // Abort previous listeners to avoid duplicates on View Transitions
+  if (window.__chubbyAC) window.__chubbyAC.abort();
+  var ac = new AbortController();
+  window.__chubbyAC = ac;
+
   /* ── Knowledge Base ─────────────────────────────────────────── */
   const KB = {
     books: {
@@ -193,8 +198,8 @@ const text = t[lang] || t.es;
 
   /* ── Intent detection ───────────────────────────────────────── */
   var patterns = [
-    { key: "greeting_reply",  re: /^(hola|hi|hey|hello|buenos?\s*d[ií]as?|buenas?\s*(tardes?|noches?)|saludos|que\s*tal|what'?s?\s*up|sup|yo\b)/i },
-    { key: "thanks_reply",    re: /\b(gracias|thanks?|thank\s*you|genial|perfecto|great|awesome|cool|excelente|got it|entendido|vale|ok[ay]?)\b/i },
+    { key: "greeting_reply",  re: /^(hola|hi|hey|hello|buenos?\s*d[ií]as?|buenas?\s*(tardes?|noches?)|saludos|que\s*tal|what'?s?\s*up|sup)\s*[!.?🐘]*$/i },
+    { key: "thanks_reply",    re: /^(gracias|thanks?|thank\s*you|genial|perfecto|great|awesome|cool|excelente|got it|entendido|vale|ok[ay]?)[!.\s🐘💛]*$/i },
     { key: "books",        re: /libros?|books?|catálogo|catalog|títulos?|titles?|publicaciones/i },
     { key: "peanuts",      re: /peanuts?|🥜|créditos?|credits?|moneda|currency|saldo|balance|ganar peanuts|earn/i },
     { key: "giveaway",     re: /sorteo|giveaway|lotería|lottery|boletos?|tickets?|rifa|ganar gratis|win free|premio|prize|draw/i },
@@ -325,13 +330,13 @@ const text = t[lang] || t.es;
   }
 
   /* ── Events ─────────────────────────────────────────────────── */
-  toggle.addEventListener("click", toggleChat);
-  closeBtn.addEventListener("click", toggleChat);
+  toggle.addEventListener("click", toggleChat, { signal: ac.signal });
+  closeBtn.addEventListener("click", toggleChat, { signal: ac.signal });
 
   form.addEventListener("submit", function(e) {
     e.preventDefault();
     handleSend(input.value);
-  });
+  }, { signal: ac.signal });
 
   quick.addEventListener("click", function(e) {
     var btn = e.target.closest(".chubby-quick-btn");
@@ -345,19 +350,19 @@ const text = t[lang] || t.es;
       coloring: lang === "es" ? "¿Cómo descargo láminas gratis?" : "How do I download free coloring pages?"
     };
     handleSend(qMap[q] || btn.textContent);
-  });
+  }, { signal: ac.signal });
 
   // Close on Escape
   document.addEventListener("keydown", function(e) {
     if (e.key === "Escape" && isOpen) toggleChat();
-  });
+  }, { signal: ac.signal });
 
   // Close chat on outside click (overlay-like behavior on mobile)
   document.addEventListener("click", function(e) {
     if (isOpen && !chat.contains(e.target) && !toggle.contains(e.target)) {
       toggleChat();
     }
-  });
+  }, { signal: ac.signal });
 })();
 </script>
 
