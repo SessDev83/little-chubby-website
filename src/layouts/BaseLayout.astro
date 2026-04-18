@@ -4,6 +4,7 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import CookieConsent from "../components/CookieConsent.astro";
 import LeadMagnetPopup from "../components/LeadMagnetPopup.astro";
+import ChubbyChat from "../components/ChubbyChat.astro";
 import { siteConfig } from "../data/site";
 import type { Lang } from "../data/i18n";
 import { switchLangPath } from "../data/i18n";
@@ -187,6 +188,7 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     <Footer lang={lang} />
     <CookieConsent lang={lang} />
     {showLeadMagnet && <LeadMagnetPopup lang={lang} />}
+    {!pathname.startsWith("/admin") && <ChubbyChat lang={lang} />}
 
     <!-- Vercel Analytics & Speed Insights (cookie-free, GDPR-compliant) -->
     <script>

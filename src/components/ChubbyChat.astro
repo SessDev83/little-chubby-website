@@ -1,0 +1,756 @@
+---
+/**
+ * ChubbyChat — AI chat widget for Little Chubby Press.
+ * Reads from the CHUBBY_AGENT_REFERENCE knowledge base and responds as "Chubby",
+ * a friendly elephant mascot.  Fully responsive across all devices.
+ *
+ * Implementation: client-side only, no external AI API required for now.
+ * Uses a keyword/intent matching system with the pre-built knowledge base.
+ * Can be upgraded to an LLM backend by swapping the `getResponse()` function.
+ */
+interface Props {
+  lang: "es" | "en";
+}
+
+const { lang } = Astro.props;
+
+const t = {
+  es: {
+    greeting: "¡Hola! Soy Chubby 🐘, tu elefante favorito de Little Chubby Press. ¿En qué te puedo ayudar? Puedo contarte sobre nuestros libros, los Peanuts 🥜, el sorteo mensual, las láminas para colorear, y todo sobre nuestra web. ¡Pregúntame!",
+    placeholder: "Escribe tu mensaje...",
+    send: "Enviar",
+    title: "Chubby 🐘",
+    subtitle: "Tu asistente de Little Chubby Press",
+    close: "Cerrar chat",
+    open: "Hablar con Chubby",
+    thinking: "Chubby está pensando...",
+    poweredBy: "Asistente de Little Chubby Press",
+    quickQ1: "📚 ¿Qué libros tienen?",
+    quickQ2: "🥜 ¿Qué son los Peanuts?",
+    quickQ3: "🎁 ¿Cómo funciona el sorteo?",
+    quickQ4: "🎨 Láminas gratis",
+  },
+  en: {
+    greeting: "Hi there! I'm Chubby 🐘, your friendly elephant from Little Chubby Press. How can I help? I can tell you about our books, Peanuts 🥜, the monthly giveaway, coloring pages, and everything about our website!",
+    placeholder: "Type your message...",
+    send: "Send",
+    title: "Chubby 🐘",
+    subtitle: "Your Little Chubby Press assistant",
+    close: "Close chat",
+    open: "Chat with Chubby",
+    thinking: "Chubby is thinking...",
+    poweredBy: "Little Chubby Press assistant",
+    quickQ1: "📚 What books do you have?",
+    quickQ2: "🥜 What are Peanuts?",
+    quickQ3: "🎁 How does the giveaway work?",
+    quickQ4: "🎨 Free coloring pages",
+  },
+};
+
+const text = t[lang] || t.es;
+---
+
+<!-- Chat toggle button (floating) -->
+<button
+  id="chubby-toggle"
+  class="chubby-toggle"
+  aria-label={text.open}
+  title={text.open}
+>
+  <span class="chubby-toggle-icon" aria-hidden="true">🐘</span>
+  <span class="chubby-toggle-close" aria-hidden="true">&times;</span>
+</button>
+
+<!-- Chat window -->
+<div id="chubby-chat" class="chubby-chat" role="dialog" aria-label={text.title} aria-hidden="true">
+  <!-- Header -->
+  <div class="chubby-header">
+    <div class="chubby-header-info">
+      <span class="chubby-avatar" aria-hidden="true">🐘</span>
+      <div>
+        <div class="chubby-header-name">{text.title}</div>
+        <div class="chubby-header-sub">{text.subtitle}</div>
+      </div>
+    </div>
+    <button class="chubby-header-close" aria-label={text.close} id="chubby-close">&times;</button>
+  </div>
+
+  <!-- Messages -->
+  <div class="chubby-messages" id="chubby-messages">
+    <!-- Greeting is injected by JS -->
+  </div>
+
+  <!-- Quick questions -->
+  <div class="chubby-quick" id="chubby-quick">
+    <button class="chubby-quick-btn" data-q="books">{text.quickQ1}</button>
+    <button class="chubby-quick-btn" data-q="peanuts">{text.quickQ2}</button>
+    <button class="chubby-quick-btn" data-q="giveaway">{text.quickQ3}</button>
+    <button class="chubby-quick-btn" data-q="coloring">{text.quickQ4}</button>
+  </div>
+
+  <!-- Input -->
+  <form class="chubby-input" id="chubby-form" autocomplete="off">
+    <input
+      type="text"
+      id="chubby-input"
+      class="chubby-input-field"
+      placeholder={text.placeholder}
+      autocomplete="off"
+      maxlength="500"
+    />
+    <button type="submit" class="chubby-send" aria-label={text.send}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </form>
+
+  <div class="chubby-footer">{text.poweredBy}</div>
+</div>
+
+<script is:inline define:vars={{ lang, thinkingText: text.thinking, greetingText: text.greeting }}>
+(function () {
+  /* ── Knowledge Base ─────────────────────────────────────────── */
+  const KB = {
+    books: {
+      es: `¡Tenemos 15 libros de colorear increíbles! 📚 Aquí están algunos:\n\n• **Easy Animals** (3-8 años, 110 págs) — Animalitos fáciles, perfecto para empezar\n• **Awesome Girls** (4-8, 90 págs) — Aventuras para niñas ⭐ 5.0\n• **Awesome Boys** (4-8, 90 págs) — Aventuras para niños\n• **Magical Creatures** (4-8, 90 págs) — Unicornios, sirenas, dragones\n• **Blast Off!** (4-8, 90 págs) — Espacio y cohetes 🚀\n• **Mighty Machines** (3-8, 100 págs) — Vehículos y construcción\n• **Awesome Airplanes** (4-8, 90 págs) — Aviones ⭐ 5.0\n• **Chic Styles** (12-18+, 90 págs) — Moda para teens y adultos\n• **Dresses and Dolls** (4-8, 90 págs) — Moda y muñecas\n• **Pizza & Sweet Treats** (4-8, 90 págs) — Comida divertida 🍕\n• Y más!\n\nTodos están en Amazon. ¿Para qué edad buscas? Te puedo recomendar el perfecto. 😊\n\n👉 [Ver todos los libros](/${lang}/books/)`,
+      en: `We have 15 amazing coloring books! 📚 Here are some highlights:\n\n• **Easy Animals** (ages 3-8, 110 pages) — Simple animal designs, perfect for beginners\n• **Awesome Girls** (4-8, 90 pages) — Adventures for girls ⭐ 5.0\n• **Awesome Boys** (4-8, 90 pages) — Adventures for boys\n• **Magical Creatures** (4-8, 90 pages) — Unicorns, mermaids, dragons\n• **Blast Off!** (4-8, 90 pages) — Space and rockets 🚀\n• **Mighty Machines** (3-8, 100 pages) — Vehicles and construction\n• **Awesome Airplanes** (4-8, 90 pages) — Planes ⭐ 5.0\n• **Chic Styles** (12-18+, 90 pages) — Fashion for teens & adults\n• **Dresses and Dolls** (4-8, 90 pages) — Fashion & dolls\n• **Pizza & Sweet Treats** (4-8, 90 pages) — Fun food coloring 🍕\n• And more!\n\nAll available on Amazon. What age are you looking for? I can recommend the perfect one! 😊\n\n👉 [See all books](/${lang}/books/)`
+    },
+    peanuts: {
+      es: `Los **Peanuts** 🥜 son nuestra moneda de lealtad. ¡Así funcionan!\n\n**Cómo ganar:**\n• Publicar una reseña aprobada → **+5 🥜**\n• Compartir un enlace (galería o lámina) → **+1 🥜** (máx 3/día)\n\n**Cómo gastar:**\n• Badges de perfil → **15 🥜** (Marco Dorado, Plateado, Top Reviewer, Super Mamá/Papá)\n• Destacar review en galería → **10 🥜** (7 días)\n• Boletos extra del sorteo → **3 🥜** cada uno\n• Descargar lámina de colorear → **1 🥜**\n\nPuedes ver tu saldo en el header y tu historial completo en la página de Peanuts.\n\n👉 [Ir a mis Peanuts](/${lang}/peanuts/)`,
+      en: `**Peanuts** 🥜 are our loyalty currency! Here's how they work:\n\n**How to earn:**\n• Submit an approved review → **+5 🥜**\n• Share a link (gallery or coloring page) → **+1 🥜** (max 3/day)\n\n**How to spend:**\n• Profile badges → **15 🥜** (Gold Frame, Silver Frame, Top Reviewer, Super Parent)\n• Boost review in gallery → **10 🥜** (7 days)\n• Extra giveaway tickets → **3 🥜** each\n• Download coloring page → **1 🥜**\n\nYou can see your balance in the header and full history on the Peanuts page.\n\n👉 [Go to my Peanuts](/${lang}/peanuts/)`
+    },
+    giveaway: {
+      es: `¡Nuestro **Sorteo Mensual de Libros** es súper fácil! 🎁\n\n**5 pasos:**\n1️⃣ Compra cualquier libro en Amazon\n2️⃣ Sube una foto de portada + al menos 1 foto del interior\n3️⃣ Cada review aprobada = **5 boletos gratis**\n4️⃣ ¿Quieres más? Suscríbete al newsletter y usa tus Peanuts 🥜 para comprar boletos extra (3 🥜 cada uno)\n5️⃣ Sorteo automático el **1° de cada mes** — ¡gana un libro gratis!\n\n**Premio:** Un libro diferente cada mes (rotación automática)\n**Ganadores:** Hasta 3 por mes\n**Plazo para reclamar:** 14 días\n\n¡Solo necesitas una cuenta y una reseña aprobada para participar!\n\n👉 [Ir al sorteo](/${lang}/lottery/)`,
+      en: `Our **Monthly Book Giveaway** is super easy! 🎁\n\n**5 steps:**\n1️⃣ Buy any book on Amazon\n2️⃣ Upload a cover photo + at least 1 interior photo\n3️⃣ Each approved review = **5 free tickets**\n4️⃣ Want more? Subscribe to the newsletter and use your Peanuts 🥜 to buy extra tickets (3 🥜 each)\n5️⃣ Automatic draw on the **1st of each month** — win a free book!\n\n**Prize:** A different book each month (auto-rotated)\n**Winners:** Up to 3 per month\n**Claim deadline:** 14 days\n\nYou just need an account and one approved review to enter!\n\n👉 [Go to giveaway](/${lang}/lottery/)`
+    },
+    coloring: {
+      es: `¡El **Rincón de Colorear** tiene láminas gratis para descargar! 🎨\n\n**Categorías:**\n• Animales y Naturaleza 🦁\n• Astronautas y Espacio 🚀\n• Elementos Básicos\n• Dinosaurios 🦕\n• Comida y Bebidas 🍕\n• Profesiones\n• Favoritos de Niños (Juguetes, Fantasía)\n• Máquinas y Construcción 🏗️\n• Mini Escenas\n\n**¿Cómo descargar?**\n• Necesitas una cuenta y al menos 1 Peanut 🥜\n• Cada descarga cuesta 1 🥜\n• ¡Comparte láminas para ganar más Peanuts!\n\n👉 [Ir al Rincón de Colorear](/${lang}/coloring-corner/)`,
+      en: `The **Coloring Corner** has free coloring pages to download! 🎨\n\n**Categories:**\n• Animals & Nature 🦁\n• Astronauts & Space 🚀\n• Basic Elements\n• Dinosaurs 🦕\n• Food & Drinks 🍕\n• Jobs\n• Kids Favorites (Toys, Fantasy)\n• Machines & Construction 🏗️\n• Mini Scenes\n\n**How to download?**\n• You need an account and at least 1 Peanut 🥜\n• Each download costs 1 🥜\n• Share coloring pages to earn more Peanuts!\n\n👉 [Go to Coloring Corner](/${lang}/coloring-corner/)`
+    },
+    review: {
+      es: `¡Nos encantaría ver las creaciones de tus peques! 🎨\n\n**Cómo enviar tu reseña:**\n1. Ve a la Galería y haz clic en "Compartir tu reseña"\n2. Selecciona tu libro\n3. Sube una foto de portada (obligatoria)\n4. Sube al menos 1 foto del interior (obligatoria)\n5. Agrega tu calificación (1-5 estrellas)\n6. Envía — ¡nuestro equipo la revisará en 24-48 horas!\n\n**Formatos:** JPG, PNG, WebP, HEIC (máx 500KB cada una, máx 5 fotos)\n**Recompensa:** +5 Peanuts 🥜 + 5 boletos del sorteo\n\n👉 [Ir a la Galería](/${lang}/gallery/)`,
+      en: `We'd love to see your little ones' creations! 🎨\n\n**How to submit your review:**\n1. Go to Gallery and click "Share your review"\n2. Select your book\n3. Upload a cover photo (required)\n4. Upload at least 1 interior photo (required)\n5. Add your star rating (1-5)\n6. Submit — our team will review it within 24-48 hours!\n\n**Formats:** JPG, PNG, WebP, HEIC (max 500KB each, max 5 photos)\n**Reward:** +5 Peanuts 🥜 + 5 giveaway tickets\n\n👉 [Go to Gallery](/${lang}/gallery/)`
+    },
+    account: {
+      es: `**Tu cuenta** te da acceso a todo:\n\n• Peanuts 🥜 — gana y gasta\n• Galería — sube reseñas\n• Sorteo — participa cada mes\n• Rincón de Colorear — descarga láminas\n• Perfil — foto, nombre, idioma, dirección\n\n**Crear cuenta:** Correo + contraseña (mín 6 caracteres) → confirma por email\n**Iniciar sesión:** Correo + contraseña, o link mágico por email\n**¿Olvidaste tu contraseña?** Click en "¿Olvidaste tu contraseña?" en la página de login\n\n👉 [Iniciar sesión](/${lang}/login/) | [Crear cuenta](/${lang}/register/)`,
+      en: `**Your account** gives you access to everything:\n\n• Peanuts 🥜 — earn and spend\n• Gallery — upload reviews\n• Giveaway — enter every month\n• Coloring Corner — download pages\n• Profile — photo, name, language, address\n\n**Create account:** Email + password (min 6 characters) → confirm via email\n**Log in:** Email + password, or magic link via email\n**Forgot password?** Click "Forgot password?" on the login page\n\n👉 [Log in](/${lang}/login/) | [Create account](/${lang}/register/)`
+    },
+    newsletter: {
+      es: `¡Suscríbete gratis a nuestro **newsletter**! ✉️\n\n**¿Qué recibirás?**\n• Contenido útil sobre creatividad y tiempo en familia\n• Tips para colorear con tus peques\n• Novedades y promociones\n\n**Beneficio extra:** Los suscriptores pueden comprar boletos extra del sorteo con sus Peanuts 🥜\n\n**Nuestra promesa:** Emails útiles, cero spam. Cancela cuando quieras.\n\n¿También quieres un **mini libro de colorear gratis**? ¡Descárgalo al suscribirte! (10 páginas exclusivas) 🎨\n\n👉 [Suscribirme](/${lang}/#newsletter)`,
+      en: `Subscribe to our free **newsletter**! ✉️\n\n**What you'll get:**\n• Useful content about creativity and family time\n• Coloring tips for you and your little ones\n• News and promotions\n\n**Extra benefit:** Subscribers can buy extra giveaway tickets with their Peanuts 🥜\n\n**Our promise:** Useful emails only, no spam. Unsubscribe anytime.\n\nWant a **free mini coloring book** too? Download it when you subscribe! (10 exclusive pages) 🎨\n\n👉 [Subscribe](/${lang}/#newsletter)`
+    },
+    contact: {
+      es: `¡Puedes contactarnos de varias formas! 💌\n\n• **Formulario:** En nuestra página de contacto\n• **Email:** hello@littlechubbypress.com\n• **Instagram:** @LittleChubbyPress\n• **Facebook:** Little Chubby Press\n\nGeneralmente respondemos en **24-48 horas** hábiles.\n\n👉 [Ir al formulario de contacto](/${lang}/contact/)`,
+      en: `You can reach us in several ways! 💌\n\n• **Form:** On our contact page\n• **Email:** hello@littlechubbypress.com\n• **Instagram:** @LittleChubbyPress\n• **Facebook:** Little Chubby Press\n\nWe usually reply within **24-48 business hours**.\n\n👉 [Go to contact form](/${lang}/contact/)`
+    },
+    privacy: {
+      es: `Tu privacidad es importante para nosotros 🔒\n\n• Solo usamos **cookies esenciales** para login y preferencias\n• **No usamos** cookies de seguimiento ni rastreadores de terceros\n• Usamos analíticas sin cookies (Vercel) — no rastrean usuarios individuales\n• Solo recopilamos lo que tú nos das: email, nombre, fotos de reseñas\n\nPuedes leer la política completa aquí:\n👉 [Política de Privacidad](/${lang}/privacy/)`,
+      en: `Your privacy matters to us 🔒\n\n• We only use **essential cookies** for login and preferences\n• **No tracking cookies** or third-party trackers\n• We use cookie-free analytics (Vercel) — no individual user tracking\n• We only collect what you provide: email, name, review photos\n\nRead the full policy here:\n👉 [Privacy Policy](/${lang}/privacy/)`
+    },
+    recommend_young: {
+      es: `Para los más **peques (3-8 años)**, te recomiendo:\n\n🦁 **Easy Animals** — Diseños simples, 110 páginas, perfecto para empezar\n🦖 **Alphabet Coloring Book** — Aprende letras coloreando\n🍕 **Pizza & Sweet Treats** — ¡Comida divertida!\n😊 **Coloring Emotions** — Aprende sobre sentimientos\n🧸 **The Cozy Kids' Club** — Actividades acogedoras\n\n¿Tu peque tiene intereses específicos? ¡Cuéntame y te doy una mejor recomendación! 📚`,
+      en: `For **little ones (ages 3-8)**, I recommend:\n\n🦁 **Easy Animals** — Simple designs, 110 pages, perfect for beginners\n🦖 **Alphabet Coloring Book** — Learn letters through coloring\n🍕 **Pizza & Sweet Treats** — Fun food!\n😊 **Coloring Emotions** — Learn about feelings\n🧸 **The Cozy Kids' Club** — Cozy activities\n\nDoes your little one have specific interests? Tell me and I'll give a better recommendation! 📚`
+    },
+    recommend_boys: {
+      es: `Para **niños** (4-8 años) que aman la aventura:\n\n🚀 **Blast Off!** — Espacio y cohetes\n✈️ **Awesome Airplanes** — Aviones increíbles ⭐ 5.0\n🏗️ **Mighty Machines** — Vehículos y construcción (3-8 años)\n💪 **Awesome Boys** — Aventuras para niños\n🦁 **Easy Animals** — Animalitos fáciles ⭐ 5.0\n\nTodos tienen 90 páginas de diversión (Mighty Machines tiene 100). ¡Disponibles en Amazon! 📚`,
+      en: `For **boys** (ages 4-8) who love adventure:\n\n🚀 **Blast Off!** — Space and rockets\n✈️ **Awesome Airplanes** — Amazing planes ⭐ 5.0\n🏗️ **Mighty Machines** — Vehicles & construction (ages 3-8)\n💪 **Awesome Boys** — Adventures for boys\n🦁 **Easy Animals** — Simple animals ⭐ 5.0\n\nAll have 90 pages of fun (Mighty Machines has 100). Available on Amazon! 📚`
+    },
+    recommend_girls: {
+      es: `Para **niñas** (4-8 años) que aman la creatividad:\n\n🦄 **Magical Creatures** — Unicornios, sirenas, dragones\n👗 **Dresses and Dolls** — Moda y muñecas\n💖 **Awesome Girls** — Aventuras para niñas ⭐ 5.0\n🐣 **Enchanted Easter** — Temática de Pascua ⭐ 5.0\n👠 **Style Time Machine** — Moda a través del tiempo (4-18+)\n\n¡Todos llenos de diseños lindos y creativos! 📚`,
+      en: `For **girls** (ages 4-8) who love creativity:\n\n🦄 **Magical Creatures** — Unicorns, mermaids, dragons\n👗 **Dresses and Dolls** — Fashion & dolls\n💖 **Awesome Girls** — Adventures for girls ⭐ 5.0\n🐣 **Enchanted Easter** — Easter themed ⭐ 5.0\n👠 **Style Time Machine** — Fashion through the ages (4-18+)\n\nAll filled with cute, creative designs! 📚`
+    },
+    recommend_teens: {
+      es: `Para **adolescentes y adultos** (12+):\n\n👗 **Chic Styles** — Moda sofisticada, 90 páginas\n⏳ **Style Time Machine** — Moda a través de las épocas (4-18+)\n\nEstos libros tienen diseños más detallados y elegantes, perfectos para relajarse. ¡También son geniales para colorear en familia! 🎨`,
+      en: `For **teens and adults** (12+):\n\n👗 **Chic Styles** — Sophisticated fashion, 90 pages\n⏳ **Style Time Machine** — Fashion through the ages (4-18+)\n\nThese books have more detailed, elegant designs — perfect for relaxation. They're also great for family coloring time! 🎨`
+    },
+    amazon: {
+      es: `Todos nuestros libros están en **Amazon** 📦\n\n• Busca "Little Chubby Press" en Amazon\n• O usa los links directos en nuestra página de Libros\n• Envío disponible a múltiples países\n\n**¿Problemas con tu pedido?** Los pedidos se procesan por Amazon. Para devoluciones o problemas de envío, contacta directamente al soporte de Amazon.\n\n👉 [Ver libros con links a Amazon](/${lang}/books/)`,
+      en: `All our books are on **Amazon** 📦\n\n• Search "Little Chubby Press" on Amazon\n• Or use the direct links on our Books page\n• Shipping available to multiple countries\n\n**Order issues?** Orders are processed by Amazon. For returns or shipping problems, contact Amazon support directly.\n\n👉 [See books with Amazon links](/${lang}/books/)`
+    },
+    winners: {
+      es: `¡Puedes ver los **ganadores pasados** de nuestros sorteos! 🏆\n\nCada mes elegimos hasta 3 ganadores. Se muestra el nombre (primera letra del apellido por privacidad).\n\nLos suscriptores del newsletter con más de 15 días pueden ver los detalles de boletos.\n\n👉 [Ver ganadores](/${lang}/winners/)`,
+      en: `You can see **past winners** of our giveaways! 🏆\n\nEach month we pick up to 3 winners. Names are shown with last initial only for privacy.\n\nNewsletter subscribers of 15+ days can see ticket details.\n\n👉 [See winners](/${lang}/winners/)`
+    },
+    greeting_reply: {
+      es: `¡Hola! 🐘 ¡Qué gusto saludarte! Soy Chubby, tu asistente de Little Chubby Press.\n\n¿En qué te puedo ayudar hoy? Puedo contarte sobre nuestros libros, los Peanuts 🥜, el sorteo mensual, o las láminas para colorear. 🎨`,
+      en: `Hello! 🐘 Great to hear from you! I'm Chubby, your Little Chubby Press assistant.\n\nWhat can I help you with today? I can tell you about our books, Peanuts 🥜, the monthly giveaway, or coloring pages. 🎨`
+    },
+    thanks_reply: {
+      es: `¡De nada! 🐘 Me alegra poder ayudarte. Si tienes más preguntas sobre Little Chubby Press, ¡aquí estoy! 💛`,
+      en: `You're welcome! 🐘 Happy to help! If you have more questions about Little Chubby Press, I'm right here! 💛`
+    },
+    off_topic: {
+      es: `¡Soy Chubby y solo sé de Little Chubby Press! 🐘 No puedo ayudar con temas externos, pero soy experto en todo lo de nuestra web.\n\nPregúntame sobre:\n• 📚 Nuestros **libros** de colorear\n• 🥜 Los **Peanuts**\n• 🎁 El **sorteo mensual**\n• 🎨 **Láminas gratis**\n• ⭐ **Reseñas** y galería\n• 👤 Tu **cuenta**\n• ✉️ **Newsletter**\n\n¿Algo de nuestra web? ¡Con gusto te ayudo! 😊`,
+      en: `I'm Chubby and I only know about Little Chubby Press! 🐘 I can't help with outside topics, but I'm an expert on everything on our website.\n\nAsk me about:\n• 📚 Our coloring **books**\n• 🥜 **Peanuts** system\n• 🎁 Monthly **giveaway**\n• 🎨 Free **coloring pages**\n• ⭐ **Reviews** & gallery\n• 👤 Your **account**\n• ✉️ **Newsletter**\n\nAnything about our website? Happy to help! 😊`
+    },
+    fallback: {
+      es: `Hmm, no estoy seguro de entender tu pregunta. 🐘 Pero puedo ayudarte con todo lo de Little Chubby Press:\n\n• 📚 Nuestros **libros** de colorear\n• 🥜 El sistema de **Peanuts**\n• 🎁 El **sorteo mensual**\n• 🎨 El **Rincón de Colorear** (láminas gratis)\n• ⭐ Cómo **enviar reseñas**\n• 👤 Tu **cuenta** (login, perfil, contraseña)\n• ✉️ El **newsletter**\n• 📞 Cómo **contactarnos**\n\n¿O prefieres hablar con nuestro equipo? Escríbenos a hello@littlechubbypress.com 💌`,
+      en: `Hmm, I'm not sure I understand your question. 🐘 But I can help with everything about Little Chubby Press:\n\n• 📚 Our coloring **books**\n• 🥜 The **Peanuts** system\n• 🎁 The monthly **giveaway**\n• 🎨 The **Coloring Corner** (free pages)\n• ⭐ How to **submit reviews**\n• 👤 Your **account** (login, profile, password)\n• ✉️ The **newsletter**\n• 📞 How to **contact us**\n\nOr would you prefer to talk to our team? Email us at hello@littlechubbypress.com 💌`
+    }
+  };
+
+  /* ── Off-topic detection ─────────────────────────────────────── */
+  var offTopicPatterns = /\b(weather|clima|trump|politics|politic|gobierno|government|recipe|receta|math|matemat|calcul|code|program|javascript|python|html|css|song|cancion|movie|pelicula|sport|deporte|futbol|soccer|basketball|baseball|bitcoin|crypto|stock|acciones|translate|traduc|write me|escrib|essay|ensayo|homework|tarea|diet|dieta|doctor|medic|hospital|lawyer|abogado|invest|inversion|travel|viaj|hotel|flight|vuelo|restaurant|news|noticias|war|guerra|religion|iglesia|church)\b/i;
+
+  /* ── Intent detection ───────────────────────────────────────── */
+  var patterns = [
+    { key: "greeting_reply",  re: /^(hola|hi|hey|hello|buenos?\s*d[ií]as?|buenas?\s*(tardes?|noches?)|saludos|que\s*tal|what'?s?\s*up|sup|yo\b)/i },
+    { key: "thanks_reply",    re: /\b(gracias|thanks?|thank\s*you|genial|perfecto|great|awesome|cool|excelente|got it|entendido|vale|ok[ay]?)\b/i },
+    { key: "books",        re: /libros?|books?|catálogo|catalog|títulos?|titles?|publicaciones/i },
+    { key: "peanuts",      re: /peanuts?|🥜|créditos?|credits?|moneda|currency|saldo|balance|ganar peanuts|earn/i },
+    { key: "giveaway",     re: /sorteo|giveaway|lotería|lottery|boletos?|tickets?|rifa|ganar gratis|win free|premio|prize|draw/i },
+    { key: "coloring",     re: /colorear|coloring|láminas?|corner|descargar lámina|download page|rincón/i },
+    { key: "review",       re: /reseña|review|galería|gallery|subir foto|upload photo|compartir review|share review|fotos?/i },
+    { key: "account",      re: /cuenta|account|login|iniciar sesión|registr|sign up|contraseña|password|perfil|profile|avatar/i },
+    { key: "newsletter",   re: /newsletter|suscri|subscri|boletín|email list|mini.*coloring.*book|lead magnet|pdf gratis|free pdf/i },
+    { key: "contact",      re: /contacto|contact|email|correo|instagram|facebook|soporte|support|ayuda|help me/i },
+    { key: "privacy",      re: /privacidad|privacy|cookies?|datos|data|tracking|rastreo|seguridad|security/i },
+    { key: "recommend_boys",  re: /niños?|boys?|varón|masculino|hijo\b|aventura|space|espacio|aviones?|planes?|máquinas?|machines?|vehicles?|trucks?|dinosaur/i },
+    { key: "recommend_girls", re: /niñas?|girls?|hija\b|unicornio|unicorn|sirena|mermaid|princesa|princess|muñeca|doll|vestido|dress|moda|fashion/i },
+    { key: "recommend_teens", re: /adolescent|teen|adult|grande|mayor|12|13|14|15|16|17|18|grown/i },
+    { key: "recommend_young", re: /pequeño|pequeña|peque|toddler|young|3\s*años|4\s*años|beginner|empezar|primer|first/i },
+    { key: "amazon",       re: /amazon|comprar|buy|envío|shipping|pedido|order|devolución|return|precio|price|costo|cost/i },
+    { key: "winners",      re: /ganadores?|winners?|resultados?|results?|quién ganó|who won/i },
+  ];
+
+  function getIntent(msg) {
+    var normalized = msg.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    // Check off-topic FIRST — reject before matching website intents
+    if (offTopicPatterns.test(normalized)) return "off_topic";
+    for (var i = 0; i < patterns.length; i++) {
+      if (patterns[i].re.test(normalized) || patterns[i].re.test(msg)) return patterns[i].key;
+    }
+    return "fallback";
+  }
+
+  function getResponse(userMsg) {
+    var intent = getIntent(userMsg);
+    var entry = KB[intent];
+    return entry ? (entry[lang] || entry.es) : (KB.fallback[lang] || KB.fallback.es);
+  }
+
+  /* ── DOM helpers ────────────────────────────────────────────── */
+  var MAX_MESSAGES = 60;
+  var RATE_LIMIT_MS = 800;
+  var lastSendTime = 0;
+
+  var toggle = document.getElementById("chubby-toggle");
+  var chat = document.getElementById("chubby-chat");
+  var messages = document.getElementById("chubby-messages");
+  var form = document.getElementById("chubby-form");
+  var input = document.getElementById("chubby-input");
+  var quick = document.getElementById("chubby-quick");
+  var closeBtn = document.getElementById("chubby-close");
+  var isOpen = false;
+
+  function sanitizeUrl(url) {
+    // Only allow relative paths and https links — block javascript: etc.
+    if (/^\/[a-z]/.test(url)) return url;
+    if (/^https:\/\//i.test(url)) return url;
+    return "#";
+  }
+
+  function renderMarkdown(text) {
+    return text
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_, label, url) {
+        var safe = sanitizeUrl(url);
+        return '<a href="' + safe + '" class="chubby-link" rel="noopener noreferrer">' + label + '</a>';
+      })
+      .replace(/\n/g, "<br>");
+  }
+
+  function trimHistory() {
+    while (messages.children.length > MAX_MESSAGES) {
+      messages.removeChild(messages.firstChild);
+    }
+  }
+
+  function addMessage(text, sender) {
+    var bubble = document.createElement("div");
+    bubble.className = "chubby-bubble chubby-bubble--" + sender;
+    if (sender === "bot") {
+      bubble.innerHTML = renderMarkdown(text);
+    } else {
+      bubble.textContent = text;
+    }
+    messages.appendChild(bubble);
+    trimHistory();
+    messages.scrollTop = messages.scrollHeight;
+    return bubble;
+  }
+
+  function showTyping() {
+    var el = document.createElement("div");
+    el.className = "chubby-bubble chubby-bubble--bot chubby-typing";
+    el.innerHTML = '<span class="chubby-dot"></span><span class="chubby-dot"></span><span class="chubby-dot"></span>';
+    el.setAttribute("aria-label", thinkingText);
+    messages.appendChild(el);
+    messages.scrollTop = messages.scrollHeight;
+    return el;
+  }
+
+  function toggleChat() {
+    isOpen = !isOpen;
+    chat.setAttribute("aria-hidden", String(!isOpen));
+    chat.classList.toggle("chubby-chat--open", isOpen);
+    toggle.classList.toggle("chubby-toggle--open", isOpen);
+    if (isOpen) {
+      input.focus();
+      // Add greeting if first time
+      if (messages.children.length === 0) {
+        addMessage(greetingText, "bot");
+      }
+    }
+  }
+
+  function handleSend(text) {
+    if (!text.trim()) return;
+    // Rate-limit: ignore rapid-fire sends
+    var now = Date.now();
+    if (now - lastSendTime < RATE_LIMIT_MS) return;
+    lastSendTime = now;
+    // Limit input length client-side
+    var clean = text.trim().slice(0, 500);
+    addMessage(clean, "user");
+    quick.style.display = "none";
+    input.value = "";
+    input.focus();
+    var typing = showTyping();
+    var delay = 300 + Math.random() * 500;
+    setTimeout(function() {
+      typing.remove();
+      var response = getResponse(clean);
+      addMessage(response, "bot");
+    }, delay);
+  }
+
+  /* ── Events ─────────────────────────────────────────────────── */
+  toggle.addEventListener("click", toggleChat);
+  closeBtn.addEventListener("click", toggleChat);
+
+  form.addEventListener("submit", function(e) {
+    e.preventDefault();
+    handleSend(input.value);
+  });
+
+  quick.addEventListener("click", function(e) {
+    var btn = e.target.closest(".chubby-quick-btn");
+    if (!btn) return;
+    var q = btn.getAttribute("data-q");
+    // Map quick question key to a user-friendly message
+    var qMap = {
+      books:    lang === "es" ? "¿Qué libros tienen?" : "What books do you have?",
+      peanuts:  lang === "es" ? "¿Qué son los Peanuts?" : "What are Peanuts?",
+      giveaway: lang === "es" ? "¿Cómo funciona el sorteo?" : "How does the giveaway work?",
+      coloring: lang === "es" ? "¿Cómo descargo láminas gratis?" : "How do I download free coloring pages?"
+    };
+    handleSend(qMap[q] || btn.textContent);
+  });
+
+  // Close on Escape
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape" && isOpen) toggleChat();
+  });
+
+  // Close chat on outside click (overlay-like behavior on mobile)
+  document.addEventListener("click", function(e) {
+    if (isOpen && !chat.contains(e.target) && !toggle.contains(e.target)) {
+      toggleChat();
+    }
+  });
+})();
+</script>
+
+<style>
+  /* ── Toggle Button ────────────────────────────────────────── */
+  .chubby-toggle {
+    position: fixed;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    background: var(--brand-blue, #1f4f86);
+    color: #fff;
+    font-size: 1.7rem;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(31, 79, 134, 0.35);
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+  }
+  .chubby-toggle:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 28px rgba(31, 79, 134, 0.45);
+  }
+  .chubby-toggle-close {
+    display: none;
+    font-size: 2rem;
+    line-height: 1;
+  }
+  .chubby-toggle--open .chubby-toggle-icon {
+    display: none;
+  }
+  .chubby-toggle--open .chubby-toggle-close {
+    display: block;
+  }
+  .chubby-toggle--open {
+    background: var(--accent-coral, #d9825f);
+  }
+
+  /* ── Chat Window ──────────────────────────────────────────── */
+  .chubby-chat {
+    position: fixed;
+    bottom: 5.5rem;
+    right: 1.25rem;
+    width: min(400px, calc(100vw - 2rem));
+    max-height: min(600px, calc(100dvh - 7rem));
+    border-radius: 1.2rem;
+    background: var(--surface, #fffdf8);
+    border: 1px solid var(--line, #e2d4bd);
+    box-shadow: 0 12px 48px rgba(71, 52, 33, 0.18);
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .chubby-chat--open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  .chubby-chat[aria-hidden="true"] {
+    visibility: hidden;
+  }
+  .chubby-chat[aria-hidden="false"] {
+    visibility: visible;
+  }
+
+  /* ── Header ───────────────────────────────────────────────── */
+  .chubby-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    background: var(--brand-blue, #1f4f86);
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .chubby-header-info {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .chubby-avatar {
+    font-size: 1.6rem;
+    width: 2.2rem;
+    height: 2.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .chubby-header-name {
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1.2;
+  }
+  .chubby-header-sub {
+    font-size: 0.72rem;
+    opacity: 0.8;
+    line-height: 1.2;
+  }
+  .chubby-header-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 50%;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .chubby-header-close:hover {
+    background: rgba(255,255,255,0.15);
+  }
+
+  /* ── Messages Area ────────────────────────────────────────── */
+  .chubby-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-height: 0;
+    scroll-behavior: smooth;
+  }
+
+  /* ── Bubbles ──────────────────────────────────────────────── */
+  .chubby-bubble {
+    max-width: 85%;
+    padding: 0.7rem 0.9rem;
+    border-radius: 1rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+    animation: chubbyFadeIn 0.3s ease;
+  }
+  .chubby-bubble--bot {
+    background: var(--bg-soft, #fffaf2);
+    border: 1px solid var(--line, #e2d4bd);
+    color: var(--ink-soft, #4b4239);
+    align-self: flex-start;
+    border-bottom-left-radius: 0.3rem;
+    font-family: "Lora", Georgia, serif;
+  }
+  .chubby-bubble--user {
+    background: var(--brand-blue, #1f4f86);
+    color: #fff;
+    align-self: flex-end;
+    border-bottom-right-radius: 0.3rem;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+  .chubby-bubble :global(a.chubby-link) {
+    color: var(--brand-blue, #1f4f86);
+    text-decoration: underline;
+    font-weight: 600;
+  }
+  .chubby-bubble--bot :global(strong) {
+    color: var(--brand-brown, #754624);
+  }
+
+  @keyframes chubbyFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Typing indicator ─────────────────────────────────────── */
+  .chubby-typing {
+    display: flex;
+    gap: 0.3rem;
+    padding: 0.8rem 1rem;
+  }
+  .chubby-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--ink-soft, #4b4239);
+    border-radius: 50%;
+    opacity: 0.4;
+    animation: chubbyBounce 1.4s ease-in-out infinite;
+  }
+  .chubby-dot:nth-child(2) { animation-delay: 0.16s; }
+  .chubby-dot:nth-child(3) { animation-delay: 0.32s; }
+  @keyframes chubbyBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* ── Quick Questions ──────────────────────────────────────── */
+  .chubby-quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--line, #e2d4bd);
+    flex-shrink: 0;
+  }
+  .chubby-quick-btn {
+    background: var(--bg-paper, #f6f1e7);
+    border: 1px solid var(--line, #e2d4bd);
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    color: var(--brand-brown, #754624);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
+  }
+  .chubby-quick-btn:hover {
+    background: var(--brand-blue, #1f4f86);
+    color: #fff;
+    border-color: var(--brand-blue, #1f4f86);
+    transform: translateY(-1px);
+  }
+
+  /* ── Input Bar ────────────────────────────────────────────── */
+  .chubby-input {
+    display: flex;
+    padding: 0.6rem;
+    gap: 0.4rem;
+    border-top: 1px solid var(--line, #e2d4bd);
+    background: var(--bg-paper, #f6f1e7);
+    flex-shrink: 0;
+  }
+  .chubby-input-field {
+    flex: 1;
+    border: 1px solid var(--line, #e2d4bd);
+    border-radius: 999px;
+    padding: 0.55rem 1rem;
+    font-size: 0.88rem;
+    font-family: "Lora", Georgia, serif;
+    background: var(--surface, #fffdf8);
+    color: var(--ink, #2f261f);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .chubby-input-field:focus {
+    border-color: var(--brand-blue, #1f4f86);
+  }
+  .chubby-input-field::placeholder {
+    color: var(--ink-soft, #4b4239);
+    opacity: 0.5;
+  }
+  .chubby-send {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: var(--brand-blue, #1f4f86);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s;
+  }
+  .chubby-send:hover {
+    background: var(--brand-brown, #754624);
+    transform: scale(1.05);
+  }
+
+  /* ── Footer ───────────────────────────────────────────────── */
+  .chubby-footer {
+    text-align: center;
+    font-size: 0.65rem;
+    color: var(--ink-soft, #4b4239);
+    opacity: 0.5;
+    padding: 0.3rem;
+    font-family: "Baloo 2", sans-serif;
+    flex-shrink: 0;
+  }
+
+  /* ── MOBILE RESPONSIVE ────────────────────────────────────── */
+  @media (max-width: 480px) {
+    .chubby-chat {
+      bottom: 0;
+      right: 0;
+      left: 0;
+      width: 100%;
+      max-height: 100dvh;
+      border-radius: 0;
+      border: none;
+    }
+    .chubby-chat--open {
+      height: 100dvh;
+    }
+    .chubby-header {
+      padding: 0.9rem 1rem;
+      border-radius: 0;
+    }
+    .chubby-toggle {
+      bottom: 1rem;
+      right: 1rem;
+      width: 54px;
+      height: 54px;
+      font-size: 1.5rem;
+    }
+    .chubby-toggle--open {
+      bottom: auto;
+      top: 0.6rem;
+      right: 0.6rem;
+      z-index: 10002;
+      width: 40px;
+      height: 40px;
+    }
+    .chubby-quick-btn {
+      font-size: 0.7rem;
+      padding: 0.3rem 0.6rem;
+    }
+    .chubby-messages {
+      padding: 0.75rem;
+    }
+  }
+
+  /* ── TABLET ───────────────────────────────────────────────── */
+  @media (min-width: 481px) and (max-width: 768px) {
+    .chubby-chat {
+      width: min(380px, calc(100vw - 2rem));
+      max-height: min(550px, calc(100dvh - 7rem));
+    }
+  }
+
+  /* ── LARGE SCREENS ────────────────────────────────────────── */
+  @media (min-width: 1200px) {
+    .chubby-chat {
+      width: 420px;
+      max-height: 650px;
+    }
+    .chubby-toggle {
+      width: 64px;
+      height: 64px;
+      font-size: 1.8rem;
+    }
+  }
+
+  /* ── Dark mode ────────────────────────────────────────────── */
+  @media (prefers-color-scheme: dark) {
+    .chubby-toggle {
+      box-shadow: 0 4px 20px rgba(91, 155, 213, 0.3);
+    }
+    .chubby-chat {
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+    }
+    .chubby-bubble--user {
+      background: var(--brand-blue, #5b9bd5);
+    }
+    .chubby-bubble--bot :global(a.chubby-link) {
+      color: var(--brand-blue, #5b9bd5);
+    }
+  }
+
+  /* ── Reduced motion ───────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .chubby-chat {
+      transition: none;
+    }
+    .chubby-bubble {
+      animation: none;
+    }
+    .chubby-dot {
+      animation: none;
+      opacity: 0.6;
+    }
+    .chubby-toggle {
+      transition: none;
+    }
+  }
+
+  /* ── Print ────────────────────────────────────────────────── */
+  @media print {
+    .chubby-toggle,
+    .chubby-chat {
+      display: none !important;
+    }
+  }
+</style>
