@@ -216,7 +216,12 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
 </BaseLayout>
 
 <script is:inline define:vars={{ lang, siteUrl, PAGE_SIZE, bookMapJson: JSON.stringify(bookMap), sampleItemsJson: JSON.stringify(realCount < SAMPLE_THRESHOLD && !fetchError ? getSampleItems(lang) : []), bookOptionsJson: JSON.stringify(bookOptions), textsJson: JSON.stringify({loadMore: text.galleryLoadMore, showing: text.galleryShowing, of: text.galleryOf, featured: text.galleryFeatured, share: text.galleryShareReview, copyLink: text.galleryCopyLink, linkCopied: text.galleryLinkCopied, filterAll: text.galleryFilterAll}) }}>
-document.addEventListener("astro:page-load", () => {
+(function() {
+  // Abort any previous gallery listeners to avoid duplicates on View Transitions
+  if (window.__galleryAC) window.__galleryAC.abort();
+  const ac = new AbortController();
+  window.__galleryAC = ac;
+
   const bookMap = JSON.parse(bookMapJson);
   const txt = JSON.parse(textsJson);
   const sampleItems = JSON.parse(sampleItemsJson);
@@ -533,7 +538,7 @@ document.addEventListener("astro:page-load", () => {
     if (e.key === "Escape") closeLightbox();
     if (e.key === "ArrowLeft") lbPrevPhoto();
     if (e.key === "ArrowRight") lbNextPhoto();
-  });
+  }, { signal: ac.signal });
 
   // ── Share buttons ──
   document.addEventListener("click", (e) => {
@@ -554,7 +559,7 @@ document.addEventListener("astro:page-load", () => {
         setTimeout(() => { btn.textContent = "↗"; }, 2000);
       }).catch(() => {});
     }
-  });
+  }, { signal: ac.signal });
 
   // ── Fade-in on scroll ──
   function observeCards() {
@@ -569,7 +574,7 @@ document.addEventListener("astro:page-load", () => {
     grid.querySelectorAll(".gallery-card:not(.visible)").forEach(card => observer.observe(card));
   }
   observeCards();
-});
+})();
 </script>
 
 <style>
