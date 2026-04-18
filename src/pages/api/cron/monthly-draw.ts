@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { getServiceClient } from "../../../lib/supabase";
 import { getMonthlyPrizeBook } from "../../../data/books";
-import { emailUserLotteryWin, notifyAdminMonthlyDraw } from "../../../lib/notifications";
+import { emailUserLotteryWin, notifyAdminMonthlyDraw, notifyAdminCronError, notifyAdminExpiredClaims } from "../../../lib/notifications";
 
 export const prerender = false;
 
@@ -18,6 +18,8 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   const svc = getServiceClient();
+
+  try {
   const now = new Date();
 
   // Previous month = the giveaway that just ended
@@ -228,8 +230,37 @@ export const GET: APIRoute = async ({ request }) => {
     summary: drawSummary,
   });
 
+  // ── Step 4: Check for expired unclaimed prizes ───
+  const { data: expiredClaims } = await svc
+    .from("lottery_winners")
+    .select("user_id, month, claim_deadline")
+    .eq("claimed", false)
+    .lt("claim_deadline", now.toISOString());
+
+  if (expiredClaims && expiredClaims.length > 0) {
+    const details: { email: string; month: string; deadline: string }[] = [];
+    for (const ec of expiredClaims) {
+      const { data: authUser } = await svc.auth.admin.getUserById(ec.user_id);
+      details.push({
+        email: authUser?.user?.email || "unknown",
+        month: ec.month,
+        deadline: ec.claim_deadline?.toString().slice(0, 10) || "?",
+      });
+    }
+    await notifyAdminExpiredClaims(details);
+  }
+
   return new Response(
     JSON.stringify({ ok: true, month: prevMonth, summary: drawSummary }),
     { status: 200, headers }
   );
+
+  } catch (err: any) {
+    // Notify admin of cron failure
+    await notifyAdminCronError("monthly-draw", err?.message || String(err));
+    return new Response(
+      JSON.stringify({ error: err?.message || "Cron failed" }),
+      { status: 500, headers }
+    );
+  }
 };

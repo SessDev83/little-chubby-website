@@ -320,3 +320,28 @@ export async function notifyAdminMonthlyDraw(report: MonthlyDrawReport): Promise
     card(emoji, title, rows, report.summary)
   );
 }
+
+/** Notify admin that the cron job failed */
+export async function notifyAdminCronError(job: string, errorMsg: string): Promise<void> {
+  await send(
+    `🚨 CRON FAILED: ${job}`,
+    card("🚨", `Cron Job Failed: ${job}`, [
+      ["Error", errorMsg.slice(0, 500)],
+      ["Time", new Date().toISOString()],
+    ], "Check Vercel logs for full stack trace.")
+  );
+}
+
+/** Notify admin about expired unclaimed prizes */
+export async function notifyAdminExpiredClaims(
+  claims: { email: string; month: string; deadline: string }[]
+): Promise<void> {
+  const list = claims.map(c => `${c.email} (${c.month}, expired ${c.deadline})`).join("<br/>");
+  await send(
+    `⏰ ${claims.length} Unclaimed Prize(s) Expired`,
+    card("⏰", "Unclaimed Prizes Expired", [
+      ["Count", String(claims.length)],
+      ["Details", list],
+    ], "These winners did not submit shipping info in time. Consider re-drawing or carrying the prize forward.")
+  );
+}

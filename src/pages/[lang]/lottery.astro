@@ -53,7 +53,12 @@ if (!giveawayConfig) {
 const now = new Date();
 const nextFirst = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 const defaultDrawDate = nextFirst.toISOString().slice(0, 10);
-const drawDate = giveawayConfig?.draw_date || defaultDrawDate;
+const rawDrawDate = giveawayConfig?.draw_date || defaultDrawDate;
+// Format draw date in user-friendly locale
+const drawDate = new Date(rawDrawDate + "T00:00:00").toLocaleDateString(
+  lang === "es" ? "es-ES" : "en-US",
+  { month: "long", day: "numeric", year: "numeric" }
+);
 const prizeDescription = giveawayConfig?.prize_description ?? "";
 const prizeBook = getMonthlyPrizeBook(currentMonth);
 
@@ -113,24 +118,38 @@ if (user) {
     const action = formData.get("action")?.toString();
 
     if (action === "claim" && pendingClaim) {
-      const bookChosen = formData.get("book_chosen")?.toString() || "";
-      const shippingName = formData.get("shipping_name")?.toString().trim() || "";
-      const shippingAddress = formData.get("shipping_address")?.toString().trim() || "";
+      // Re-verify deadline hasn't expired since page load
+      const { data: freshClaim } = await sc
+        .from("lottery_winners")
+        .select("id, claimed, claim_deadline")
+        .eq("id", pendingClaim.id)
+        .eq("claimed", false)
+        .gt("claim_deadline", new Date().toISOString())
+        .maybeSingle();
 
-      if (bookChosen && shippingName && shippingAddress) {
-        await supabase
-          .from("lottery_winners")
-          .update({
-            book_chosen: bookChosen,
-            shipping_name: shippingName,
-            shipping_address: shippingAddress,
-            claimed: true,
-          })
-          .eq("id", pendingClaim.id);
-
-        claimMsg = text.claimSuccess;
+      if (!freshClaim) {
+        claimMsg = text.claimExpired;
         pendingClaim = null;
-        notifyLotteryClaim(user.email || "unknown", bookChosen, shippingName, shippingAddress);
+      } else {
+        const bookChosen = formData.get("book_chosen")?.toString() || "";
+        const shippingName = formData.get("shipping_name")?.toString().trim() || "";
+        const shippingAddress = formData.get("shipping_address")?.toString().trim() || "";
+
+        if (bookChosen && shippingName && shippingAddress) {
+          await sc
+            .from("lottery_winners")
+            .update({
+              book_chosen: bookChosen,
+              shipping_name: shippingName,
+              shipping_address: shippingAddress,
+              claimed: true,
+            })
+            .eq("id", pendingClaim.id);
+
+          claimMsg = text.claimSuccess;
+          pendingClaim = null;
+          notifyLotteryClaim(user.email || "unknown", bookChosen, shippingName, shippingAddress);
+        }
       }
     }
   }
