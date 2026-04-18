@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
 
 const WIDTH = 800;
+const HEIGHT = 800;
 const QUALITY = 80;
 
 /** Map of raw source files → output names, grouped by book */
@@ -40,7 +41,7 @@ async function processBook(book) {
 
     const info = await sharp(input)
       .rotate()  // auto-rotate based on EXIF orientation
-      .resize({ width: WIDTH, withoutEnlargement: true })
+      .resize({ width: WIDTH, height: HEIGHT, fit: "cover", position: "centre" })
       .webp({ quality: QUALITY })
       .toFile(output);
 

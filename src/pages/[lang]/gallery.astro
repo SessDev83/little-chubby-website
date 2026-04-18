@@ -685,8 +685,9 @@ document.addEventListener("DOMContentLoaded", () => {
   .gallery-img-wrap { overflow: hidden; }
   .gallery-img {
     width: 100%;
-    aspect-ratio: 3/4;
+    aspect-ratio: 1/1;
     object-fit: cover;
+    object-position: center;
     display: block;
     cursor: pointer;
     transition: transform 0.35s ease;
@@ -800,7 +801,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   .skeleton-img {
     width: 100%;
-    aspect-ratio: 3/4;
+    aspect-ratio: 1/1;
     background: linear-gradient(90deg, var(--line) 25%, var(--bg) 50%, var(--line) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.4s infinite;
