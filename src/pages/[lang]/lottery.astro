@@ -5,7 +5,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase, getServiceClient } from "../../lib/supabase";
-import { books } from "../../data/books";
+import { books, getMonthlyPrizeBook } from "../../data/books";
 import { notifyLotteryClaim } from "../../lib/notifications";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
@@ -36,6 +36,7 @@ const { data: giveawayConfig } = await sc
 const isActive = giveawayConfig?.is_active ?? false;
 const drawDate = giveawayConfig?.draw_date ?? null;
 const prizeDescription = giveawayConfig?.prize_description ?? "";
+const prizeBook = getMonthlyPrizeBook(currentMonth);
 
 // Check if draw already happened
 const { data: monthWinners } = await sc
@@ -127,11 +128,11 @@ const { data: publicWinners } = await supabase
   .order("month", { ascending: false })
   .limit(3);
 
-// Sample winners for preview if DB empty
+// Sample winners for preview if DB empty (1 per month, matching rotation)
 const samplePreviewWinners = [
-  { month: "2026-04", display_name: "Daniel Lopez", book_chosen: "easy-animals", state: "Illinois", country: "US" },
-  { month: "2026-03", display_name: "Sofia Martinez", book_chosen: "coloring-emotions", state: "New York", country: "US" },
-  { month: "2026-02", display_name: "Carlos Rodriguez", book_chosen: "awesome-boys", state: "Texas", country: "US" },
+  { month: "2026-03", display_name: "Sofia Martinez", book_chosen: getMonthlyPrizeBook("2026-03").id, state: "New York", country: "US" },
+  { month: "2026-02", display_name: "Carlos Rodriguez", book_chosen: getMonthlyPrizeBook("2026-02").id, state: "Texas", country: "US" },
+  { month: "2026-01", display_name: "Maria Garcia", book_chosen: getMonthlyPrizeBook("2026-01").id, state: "Florida", country: "US" },
 ];
 const previewWinners = (publicWinners && publicWinners.length > 0) ? publicWinners : samplePreviewWinners;
 
@@ -172,7 +173,14 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
         ) : isActive ? (
           <Fragment>
             <p class="status-text">{text.lotteryStatusOpen.replace("{date}", drawDate || "TBD")}</p>
-            {prizeDescription && <p class="status-prize">🎁 {text.lotteryPrize}: {prizeDescription}</p>}
+            <div class="prize-showcase">
+              <img src={prizeBook.coverSrc} alt={prizeBook.title[lang]} class="prize-cover" loading="lazy" width="64" height="80" />
+              <div class="prize-info">
+                <p class="prize-label">🎁 {text.lotteryPrize}</p>
+                <p class="prize-book-title">{prizeBook.title[lang]}</p>
+                {prizeDescription && <p class="prize-desc">{prizeDescription}</p>}
+              </div>
+            </div>
           </Fragment>
         ) : (
           <p class="status-text">{text.lotteryStatusClosed}</p>
@@ -581,10 +589,38 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
     font-family: "Baloo 2", sans-serif;
     margin: 0;
   }
-  .status-prize {
-    font-size: 0.95rem;
+  .prize-showcase {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 0.8rem;
+  }
+  .prize-cover {
+    width: 64px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    flex-shrink: 0;
+  }
+  .prize-info { text-align: left; }
+  .prize-label {
+    font-size: 0.85rem;
     color: var(--ink-soft);
-    margin: 0.4rem 0 0;
+    margin: 0;
+  }
+  .prize-book-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-family: "Baloo 2", sans-serif;
+    color: var(--brand-brown);
+    margin: 0.15rem 0 0;
+  }
+  .prize-desc {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin: 0.2rem 0 0;
   }
 
   /* ── Entries Card ── */

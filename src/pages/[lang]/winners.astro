@@ -5,7 +5,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase, getServiceClient } from "../../lib/supabase";
-import { books } from "../../data/books";
+import { books, getMonthlyPrizeBook } from "../../data/books";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
@@ -55,14 +55,11 @@ const { data: dbWinners } = await supabase
   .select("month, book_chosen, display_name, state, country, total_tickets")
   .order("month", { ascending: false });
 
-// ── Sample winners (demo data for Jan-Apr 2026) ──────
+// ── Sample winners (demo data, 1 per month, matching book rotation) ──
 const sampleWinners = [
-  { month: "2026-04", display_name: "Daniel Lopez", book_chosen: "easy-animals", state: "Illinois", country: "US", total_tickets: 35 },
-  { month: "2026-04", display_name: "Ana Perez", book_chosen: "awesome-girls", state: "Madrid", country: "ES", total_tickets: 15 },
-  { month: "2026-03", display_name: "Sofia Martinez", book_chosen: "coloring-emotions", state: "New York", country: "US", total_tickets: 20 },
-  { month: "2026-02", display_name: "Carlos Rodriguez", book_chosen: "awesome-boys", state: "Texas", country: "US", total_tickets: 25 },
-  { month: "2026-02", display_name: "Emily Thompson", book_chosen: "chic-styles", state: "California", country: "US", total_tickets: 10 },
-  { month: "2026-01", display_name: "Maria Garcia", book_chosen: "magical-creatures", state: "Florida", country: "US", total_tickets: 15 },
+  { month: "2026-03", display_name: "Sofia Martinez", book_chosen: getMonthlyPrizeBook("2026-03").id, state: "New York", country: "US", total_tickets: 20 },
+  { month: "2026-02", display_name: "Carlos Rodriguez", book_chosen: getMonthlyPrizeBook("2026-02").id, state: "Texas", country: "US", total_tickets: 25 },
+  { month: "2026-01", display_name: "Maria Garcia", book_chosen: getMonthlyPrizeBook("2026-01").id, state: "Florida", country: "US", total_tickets: 15 },
 ];
 
 // Merge: use real winners when available, fill with samples for missing months

@@ -462,3 +462,13 @@ export const booksByNewest: Book[] = [...books].sort((a, b) => {
   const bPriority = homePriorityById[b.id] ?? 999;
   return aPriority - bPriority;
 });
+
+/**
+ * Auto-rotate a different book each month as the giveaway prize.
+ * April 2026 → awesome-boys (index 5), then cycles through all 15.
+ */
+export function getMonthlyPrizeBook(month: string): Book {
+  const [y, m] = month.split("-").map(Number);
+  const idx = (y * 12 + m + 4) % books.length;
+  return books[idx];
+}

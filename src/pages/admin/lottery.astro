@@ -3,7 +3,7 @@ export const prerender = false;
 
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { ADMIN_EMAILS, getServiceClient } from "../../lib/supabase";
-import { books } from "../../data/books";
+import { books, getMonthlyPrizeBook } from "../../data/books";
 import { emailUserReviewApproved, emailUserLotteryWin } from "../../lib/notifications";
 
 const user = Astro.locals.user;
@@ -13,6 +13,7 @@ if (!user || !ADMIN_EMAILS.includes(user.email ?? "")) {
 
 const sc = getServiceClient();
 const currentMonth = new Date().toISOString().slice(0, 7);
+const prizeBook = getMonthlyPrizeBook(currentMonth);
 
 let drawResult = "";
 let drawError = "";
@@ -328,8 +329,9 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
           <input type="date" name="draw_date" value={config?.draw_date ?? ""} />
         </div>
         <div class="form-group" style="grid-column:span 2;">
-          <label>Prize Description</label>
-          <input type="text" name="prize_description" value={config?.prize_description ?? ""} placeholder="e.g. Free coloring book of your choice" style="width:100%;" />
+          <label>Prize Description <span style="font-size:0.8rem; color:var(--ink-soft);">(optional extra note)</span></label>
+          <p style="font-size:0.85rem; margin:0 0 0.4rem; color:var(--brand-blue);">📖 Auto-rotation: <strong>{prizeBook.title.en}</strong></p>
+          <input type="text" name="prize_description" value={config?.prize_description ?? ""} placeholder="e.g. Free shipping included!" style="width:100%;" />
         </div>
         <button type="submit" class="btn btn-secondary">Save Config</button>
       </form>
