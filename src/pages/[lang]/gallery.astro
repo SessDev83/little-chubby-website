@@ -6,6 +6,7 @@ import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase } from "../../lib/supabase";
 import { books } from "../../data/books";
+import { getSampleItems, SAMPLE_THRESHOLD } from "../../data/sample-reviews";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
@@ -30,12 +31,22 @@ try {
 
   const { data: gallery, error } = await supabase
     .from("gallery_feed")
-    .select("id, book_id, photo_url, rating, review_text, featured, submitted_at, display_name")
+    .select("id, book_id, photo_url, extra_photos, rating, review_text, featured, submitted_at, display_name")
     .range(0, PAGE_SIZE - 1);
   if (error) throw error;
   items = gallery ?? [];
 } catch {
   fetchError = true;
+}
+
+// Merge sample reviews when gallery is empty or has few real reviews
+const realCount = items.length;
+if (realCount < SAMPLE_THRESHOLD && !fetchError) {
+  const samples = getSampleItems(lang);
+  items = [...samples, ...items];
+  if (totalCount < SAMPLE_THRESHOLD) {
+    totalCount = items.length;
+  }
 }
 ---
 
@@ -103,14 +114,19 @@ try {
 
         {/* ── Grid ── */}
         <div class="gallery-grid" id="galleryGrid">
-          {items.map((item: any) => (
+          {items.map((item: any) => {
+            const extras: string[] = item.extra_photos || [];
+            const allPhotos = [item.photo_url, ...extras];
+            return (
             <article
-              class={`gallery-card${item.featured ? " featured" : ""}`}
+              class={`gallery-card${item.featured ? " featured" : ""}${item.isSample ? " sample" : ""}`}
               id={`review-${item.id}`}
               data-book={item.book_id}
               data-rating={item.rating}
               data-featured={item.featured ? "1" : "0"}
               data-photo={item.photo_url}
+              data-extras={JSON.stringify(extras)}
+              data-all-photos={JSON.stringify(allPhotos)}
               data-review={item.review_text || ""}
               data-author={item.display_name}
               data-id={item.id}
@@ -119,6 +135,18 @@ try {
               <div class="gallery-img-wrap">
                 <img src={item.photo_url} alt={bookMap[item.book_id] || item.book_id} class="gallery-img" loading="lazy" width="320" height="240" />
               </div>
+              {extras.length > 0 && (
+                <div class="gallery-thumbs">
+                  {extras.slice(0, 3).map((url: string, i: number) => (
+                    <button type="button" class="gallery-thumb" data-idx={i + 1}>
+                      <img src={url} alt={`Interior ${i + 1}`} loading="lazy" width="48" height="48" />
+                    </button>
+                  ))}
+                  {extras.length > 3 && (
+                    <span class="gallery-thumb-more">+{extras.length - 3}</span>
+                  )}
+                </div>
+              )}
               <div class="gallery-body">
                 <strong class="gallery-book">{bookMap[item.book_id] || item.book_id}</strong>
                 <span class="gallery-stars">{stars(item.rating)}</span>
@@ -131,7 +159,8 @@ try {
                 </div>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
 
         {/* ── Skeleton loader ── */}
@@ -171,6 +200,7 @@ try {
     <button class="lightbox-nav lightbox-next" id="lightboxNext" aria-label={text.galleryNext}>›</button>
     <div class="lightbox-content">
       <img id="lightboxImg" src="" alt="" class="lightbox-image" />
+      <div class="lightbox-dots" id="lightboxDots"></div>
       <div class="lightbox-info">
         <strong id="lightboxBook" class="lightbox-book"></strong>
         <span id="lightboxStars" class="lightbox-stars"></span>
@@ -198,18 +228,33 @@ document.addEventListener("DOMContentLoaded", () => {
   // ── Create card HTML ──
   function createCard(item) {
     const art = document.createElement("article");
+    const extras = item.extra_photos || [];
+    const allPhotos = [item.photo_url, ...extras];
     art.className = "gallery-card" + (item.featured ? " featured" : "");
     art.id = "review-" + item.id;
     art.dataset.book = item.book_id;
     art.dataset.rating = item.rating;
     art.dataset.featured = item.featured ? "1" : "0";
     art.dataset.photo = item.photo_url;
+    art.dataset.extras = JSON.stringify(extras);
+    art.dataset.allPhotos = JSON.stringify(allPhotos);
     art.dataset.review = item.review_text || "";
     art.dataset.author = item.display_name;
     art.dataset.id = item.id;
     const bookTitle = bookMap[item.book_id] || item.book_id;
+
+    let thumbsHtml = "";
+    if (extras.length > 0) {
+      const thumbItems = extras.slice(0, 3).map((url, i) =>
+        '<button type="button" class="gallery-thumb" data-idx="' + (i+1) + '"><img src="' + url + '" alt="Interior ' + (i+1) + '" loading="lazy" width="48" height="48" /></button>'
+      ).join("");
+      const moreHtml = extras.length > 3 ? '<span class="gallery-thumb-more">+' + (extras.length - 3) + '</span>' : '';
+      thumbsHtml = '<div class="gallery-thumbs">' + thumbItems + moreHtml + '</div>';
+    }
+
     art.innerHTML = (item.featured ? '<span class="featured-badge">' + txt.featured + '</span>' : '') +
       '<div class="gallery-img-wrap"><img src="' + item.photo_url + '" alt="' + bookTitle + '" class="gallery-img" loading="lazy" width="320" height="240" /></div>' +
+      thumbsHtml +
       '<div class="gallery-body">' +
         '<strong class="gallery-book">' + bookTitle + '</strong>' +
         '<span class="gallery-stars">' + starsStr(item.rating) + '</span>' +
@@ -227,7 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
       skeleton.style.display = "grid";
       try {
         const params = new URLSearchParams();
-        params.set("select", "id,book_id,photo_url,rating,review_text,featured,submitted_at,display_name");
+        params.set("select", "id,book_id,photo_url,extra_photos,rating,review_text,featured,submitted_at,display_name");
         const from = offset;
         const to = offset + PAGE_SIZE - 1;
 
@@ -278,7 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
     skeleton.style.display = "grid";
     grid.innerHTML = "";
     const params = new URLSearchParams();
-    params.set("select", "id,book_id,photo_url,rating,review_text,featured,submitted_at,display_name");
+    params.set("select", "id,book_id,photo_url,extra_photos,rating,review_text,featured,submitted_at,display_name");
     if (activeFilters.book) params.set("book_id", "eq." + activeFilters.book);
     if (activeFilters.rating) params.set("rating", "eq." + activeFilters.rating);
     if (activeFilters.featured) params.set("featured", "eq.true");
@@ -328,24 +373,70 @@ document.addEventListener("DOMContentLoaded", () => {
   const lbClose = document.getElementById("lightboxClose");
   const lbPrev = document.getElementById("lightboxPrev");
   const lbNext = document.getElementById("lightboxNext");
-  let lbIndex = 0;
+  const lbDots = document.getElementById("lightboxDots");
+  let lbIndex = 0;       // card index
+  let lbPhotoIdx = 0;    // photo index within current card
+  let lbPhotos = [];     // all photos for current card
 
   function getCards() { return grid.querySelectorAll(".gallery-card"); }
 
-  function openLightbox(idx) {
+  function renderDots() {
+    if (lbPhotos.length <= 1) { lbDots.innerHTML = ""; return; }
+    lbDots.innerHTML = lbPhotos.map((_, i) =>
+      '<button type="button" class="lb-dot' + (i === lbPhotoIdx ? ' active' : '') + '" data-pi="' + i + '"></button>'
+    ).join("") + '<span class="lb-counter">' + (lbPhotoIdx + 1) + '/' + lbPhotos.length + '</span>';
+  }
+
+  function showPhoto() {
+    lbImg.src = lbPhotos[lbPhotoIdx];
+    renderDots();
+  }
+
+  function openLightbox(idx, photoIdx) {
     const cards = getCards();
     if (idx < 0 || idx >= cards.length) return;
     lbIndex = idx;
+    lbPhotoIdx = photoIdx || 0;
     const card = cards[idx];
-    lbImg.src = card.dataset.photo;
+    try { lbPhotos = JSON.parse(card.dataset.allPhotos || "[]"); } catch { lbPhotos = [card.dataset.photo]; }
+    if (lbPhotos.length === 0) lbPhotos = [card.dataset.photo];
+    if (lbPhotoIdx >= lbPhotos.length) lbPhotoIdx = 0;
     lbImg.alt = bookMap[card.dataset.book] || card.dataset.book;
     lbBook.textContent = bookMap[card.dataset.book] || card.dataset.book;
     lbStars.textContent = starsStr(parseInt(card.dataset.rating));
     lbText.textContent = card.dataset.review || "";
     lbAuthor.textContent = "— " + card.dataset.author;
+    showPhoto();
     lightbox.classList.add("open");
     document.body.style.overflow = "hidden";
     lbClose.focus();
+  }
+
+  function lbPrevPhoto() {
+    if (lbPhotos.length > 1 && lbPhotoIdx > 0) {
+      lbPhotoIdx--;
+      showPhoto();
+    } else {
+      // go to previous card, last photo
+      const cards = getCards();
+      const prevIdx = lbIndex - 1;
+      if (prevIdx >= 0) {
+        const prevCard = cards[prevIdx];
+        let prevPhotos;
+        try { prevPhotos = JSON.parse(prevCard.dataset.allPhotos || "[]"); } catch { prevPhotos = [prevCard.dataset.photo]; }
+        openLightbox(prevIdx, (prevPhotos.length || 1) - 1);
+      }
+    }
+  }
+
+  function lbNextPhoto() {
+    if (lbPhotos.length > 1 && lbPhotoIdx < lbPhotos.length - 1) {
+      lbPhotoIdx++;
+      showPhoto();
+    } else {
+      // go to next card, first photo
+      openLightbox(lbIndex + 1, 0);
+    }
   }
 
   function closeLightbox() {
@@ -354,23 +445,38 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   grid.addEventListener("click", (e) => {
+    // Thumbnail click → open lightbox at that photo index
+    const thumb = e.target.closest(".gallery-thumb");
+    if (thumb) {
+      const card = thumb.closest(".gallery-card");
+      const cards = getCards();
+      const idx = [...cards].indexOf(card);
+      const photoIdx = parseInt(thumb.dataset.idx) || 0;
+      if (idx >= 0) openLightbox(idx, photoIdx);
+      return;
+    }
     const img = e.target.closest(".gallery-img");
     if (!img) return;
     const card = img.closest(".gallery-card");
     const cards = getCards();
     const idx = [...cards].indexOf(card);
-    if (idx >= 0) openLightbox(idx);
+    if (idx >= 0) openLightbox(idx, 0);
   });
 
   lbClose.addEventListener("click", closeLightbox);
-  lightbox.addEventListener("click", (e) => { if (e.target === lightbox) closeLightbox(); });
-  lbPrev.addEventListener("click", () => openLightbox(lbIndex - 1));
-  lbNext.addEventListener("click", () => openLightbox(lbIndex + 1));
+  lightbox.addEventListener("click", (e) => {
+    if (e.target === lightbox) closeLightbox();
+    // Dot click
+    const dot = e.target.closest(".lb-dot");
+    if (dot) { lbPhotoIdx = parseInt(dot.dataset.pi) || 0; showPhoto(); }
+  });
+  lbPrev.addEventListener("click", () => lbPrevPhoto());
+  lbNext.addEventListener("click", () => lbNextPhoto());
   document.addEventListener("keydown", (e) => {
     if (!lightbox.classList.contains("open")) return;
     if (e.key === "Escape") closeLightbox();
-    if (e.key === "ArrowLeft") openLightbox(lbIndex - 1);
-    if (e.key === "ArrowRight") openLightbox(lbIndex + 1);
+    if (e.key === "ArrowLeft") lbPrevPhoto();
+    if (e.key === "ArrowRight") lbNextPhoto();
   });
 
   // ── Share buttons ──
@@ -525,6 +631,76 @@ document.addEventListener("DOMContentLoaded", () => {
     transition: background 0.15s, color 0.15s;
   }
   .share-btn:hover { background: var(--accent-teal); color: #fff; border-color: var(--accent-teal); }
+
+  /* ── Extra-photos Thumbnails ── */
+  .gallery-thumbs {
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.4rem 0.6rem;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+  }
+  .gallery-thumb {
+    border: 2px solid var(--line);
+    border-radius: 4px;
+    padding: 0;
+    cursor: pointer;
+    overflow: hidden;
+    background: none;
+    transition: border-color 0.15s, transform 0.15s;
+    flex-shrink: 0;
+  }
+  .gallery-thumb:hover {
+    border-color: var(--accent-teal);
+    transform: scale(1.08);
+  }
+  .gallery-thumb img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    display: block;
+  }
+  .gallery-thumb-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border: 2px dashed var(--line);
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+
+  /* ── Sample card indicator ── */
+  .gallery-card.sample { border-style: dashed; }
+
+  /* ── Lightbox Dots ── */
+  .lightbox-dots {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    justify-content: center;
+    min-height: 1.4rem;
+  }
+  .lb-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.5);
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .lb-dot.active { background: #fff; border-color: #fff; }
+  .lb-dot:hover { border-color: #fff; }
+  .lb-counter {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.65);
+    margin-left: 0.4rem;
+  }
 
   /* ── Skeleton ── */
   .skeleton-grid { gap: 1.4rem; }
