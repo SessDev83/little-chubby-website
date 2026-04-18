@@ -44,19 +44,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const totalCost = ENTRY_COST * qty;
     const svc = getServiceClient();
 
-    // ── Guard: active giveaway ──
+    // ── Guard: draw not yet done for this month ──
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    const { data: giveawayConfig } = await svc
-      .from("lottery_config")
-      .select("is_active")
+    const { data: monthWinners } = await svc
+      .from("lottery_winners")
+      .select("id")
       .eq("month", month)
-      .maybeSingle();
+      .limit(1);
 
-    if (!giveawayConfig?.is_active) {
+    if (monthWinners && monthWinners.length > 0) {
       return new Response(
-        JSON.stringify({ error: "no_active_giveaway" }),
+        JSON.stringify({ error: "draw_already_done" }),
         { status: 403, headers }
       );
     }

@@ -29,11 +29,10 @@ let isPending = false;
 const currentMonth = new Date().toISOString().slice(0, 7);
 const { data: giveawayConfig } = await sc
   .from("lottery_config")
-  .select("is_active, draw_date, prize_description")
+  .select("draw_date, prize_description")
   .eq("month", currentMonth)
   .maybeSingle();
 
-const isActive = giveawayConfig?.is_active ?? false;
 const drawDate = giveawayConfig?.draw_date ?? null;
 const prizeDescription = giveawayConfig?.prize_description ?? "";
 const prizeBook = getMonthlyPrizeBook(currentMonth);
@@ -167,10 +166,10 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
     <div style="max-width:42rem; margin:0 auto;">
 
       {/* ── Giveaway Status Card ── */}
-      <div class={`surface-card status-card ${drawDone ? "status-drawn" : isActive ? "status-open" : "status-closed"}`}>
+      <div class={`surface-card status-card ${drawDone ? "status-drawn" : "status-open"}`}>
         {drawDone ? (
           <p class="status-text">{text.lotteryStatusDrawn}</p>
-        ) : isActive ? (
+        ) : (
           <Fragment>
             <p class="status-text">{text.lotteryStatusOpen.replace("{date}", drawDate || "TBD")}</p>
             <div class="prize-showcase">
@@ -182,8 +181,6 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
               </div>
             </div>
           </Fragment>
-        ) : (
-          <p class="status-text">{text.lotteryStatusClosed}</p>
         )}
       </div>
 
@@ -262,7 +259,7 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
             )}
             <div class="entries-actions">
               <a href={`/${lang}/reviews/`} class="btn btn-secondary btn-sm">{text.reviewsHeading} →</a>
-              {isSubscribed && isActive && (
+              {isSubscribed && !drawDone && (
                 <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-primary">🥜 {text.lotteryBuyMoreLink}</a>
               )}
             </div>
@@ -574,10 +571,6 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
   .status-open {
     border: 2px solid var(--brand-green);
     background: rgba(92, 150, 80, 0.06);
-  }
-  .status-closed {
-    border: 2px solid var(--line);
-    background: var(--surface);
   }
   .status-drawn {
     border: 2px solid var(--brand-blue);

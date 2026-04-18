@@ -59,12 +59,12 @@ if (Astro.request.method === "POST") {
       max_winners: maxWinners,
       winner_pct: winnerPct,
       min_purchases: minPurchases,
-      is_active: isActive,
+      is_active: true,
       draw_date: drawDate || null,
       prize_description: prizeDescription,
     }).eq("month", currentMonth);
 
-    config = { ...config!, max_winners: maxWinners, winner_pct: winnerPct, min_purchases: minPurchases, is_active: isActive, draw_date: drawDate, prize_description: prizeDescription };
+    config = { ...config!, max_winners: maxWinners, winner_pct: winnerPct, min_purchases: minPurchases, is_active: true, draw_date: drawDate, prize_description: prizeDescription };
     configMsg = "Config saved.";
   }
 
@@ -318,11 +318,11 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
           <input type="number" name="min_purchases" value={config?.min_purchases ?? 0} min="0" />
         </div>
         <div class="form-group" style="grid-column:1/-1;">
-          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
-            <input type="checkbox" name="is_active" checked={config?.is_active} />
-            <strong>🎁 Activate Giveaway</strong>
-            <span style="font-size:0.85rem; color:var(--ink-soft);">{config?.is_active ? "🟢 ACTIVE" : "⚪ INACTIVE"}</span>
-          </label>
+          <p style="display:flex; align-items:center; gap:0.5rem; margin:0;">
+            <strong>🎁 Giveaway</strong>
+            <span style="font-size:0.85rem; color:var(--brand-green); font-weight:700;">🟢 Always Active</span>
+            <span style="font-size:0.8rem; color:var(--ink-soft);">(auto-rotates book each month)</span>
+          </p>
         </div>
         <div class="form-group">
           <label>Draw Date</label>
