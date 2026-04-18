@@ -147,7 +147,7 @@ export const GET: APIRoute = async ({ request }) => {
 
           // Email winner
           if (authUser?.user?.email) {
-            emailUserLotteryWin(
+            await emailUserLotteryWin(
               authUser.user.email,
               claimDeadline.toISOString().slice(0, 10),
               profile?.lang_pref || "en",

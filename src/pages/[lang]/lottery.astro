@@ -148,7 +148,7 @@ if (user) {
 
           claimMsg = text.claimSuccess;
           pendingClaim = null;
-          notifyLotteryClaim(user.email || "unknown", bookChosen, shippingName, shippingAddress);
+          await notifyLotteryClaim(user.email || "unknown", bookChosen, shippingName, shippingAddress);
         }
       }
     }

@@ -88,7 +88,7 @@ if (Astro.request.method === "POST") {
         const lang = (profile?.lang_pref || "en") as "en" | "es";
         const bookTitle = books.find(b => b.id === rev.book_id)?.title[lang] || rev.book_id;
         if (authUser?.user?.email) {
-          emailUserReviewApproved(authUser.user.email, bookTitle, lang);
+          await emailUserReviewApproved(authUser.user.email, bookTitle, lang);
         }
       }
     }
@@ -115,7 +115,7 @@ if (Astro.request.method === "POST") {
             const uLang = (prof?.lang_pref || "en") as "en" | "es";
             const bTitle = books.find(b => b.id === rev.book_id)?.title[uLang] || rev.book_id;
             if (authU?.user?.email) {
-              emailUserReviewApproved(authU.user.email, bTitle, uLang);
+              await emailUserReviewApproved(authU.user.email, bTitle, uLang);
             }
           }
         }
@@ -224,7 +224,7 @@ if (Astro.request.method === "POST") {
                 // Send email + in-app notification to winner
                 const { data: authUser } = await sc.auth.admin.getUserById(winnerId);
                 if (authUser?.user?.email) {
-                  emailUserLotteryWin(authUser.user.email, claimDeadline.toISOString().slice(0, 10), profile?.lang_pref || "en", prizeBook.title[profile?.lang_pref === "es" ? "es" : "en"]);
+                  await emailUserLotteryWin(authUser.user.email, claimDeadline.toISOString().slice(0, 10), profile?.lang_pref || "en", prizeBook.title[profile?.lang_pref === "es" ? "es" : "en"]);
                 }
                 // In-app notification (via DB function)
                 await sc.rpc("notify_user", {

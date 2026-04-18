@@ -55,12 +55,18 @@ const { data: dbWinners } = await supabase
   .select("month, book_chosen, display_name, state, country, total_tickets")
   .order("month", { ascending: false });
 
-// ── Sample winners (demo data, 1 per month, matching book rotation) ──
-const sampleWinners = [
-  { month: "2026-03", display_name: "Sofia Martinez", book_chosen: getMonthlyPrizeBook("2026-03").id, state: "New York", country: "US", total_tickets: 20 },
-  { month: "2026-02", display_name: "Carlos Rodriguez", book_chosen: getMonthlyPrizeBook("2026-02").id, state: "Texas", country: "US", total_tickets: 25 },
-  { month: "2026-01", display_name: "Maria Garcia", book_chosen: getMonthlyPrizeBook("2026-01").id, state: "Florida", country: "US", total_tickets: 15 },
+// ── Sample winners (demo data, dynamic relative months) ──
+const sampleNames = [
+  { display_name: "Sofia Martinez", state: "New York", country: "US", total_tickets: 20 },
+  { display_name: "Carlos Rodriguez", state: "Texas", country: "US", total_tickets: 25 },
+  { display_name: "Maria Garcia", state: "Florida", country: "US", total_tickets: 15 },
 ];
+const now = new Date();
+const sampleWinners = sampleNames.map((s, i) => {
+  const d = new Date(now.getFullYear(), now.getMonth() - (i + 1), 1);
+  const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return { ...s, month: m, book_chosen: getMonthlyPrizeBook(m).id };
+});
 
 // Merge: use real winners when available, fill with samples for missing months
 const realMonths = new Set((dbWinners ?? []).map(w => w.month));
