@@ -61,6 +61,11 @@ const drawDate = new Date(rawDrawDate + "T00:00:00").toLocaleDateString(
 );
 const prizeDescription = giveawayConfig?.prize_description ?? "";
 const prizeBook = getMonthlyPrizeBook(currentMonth);
+// Human-friendly month name for the giveaway (e.g. "April" / "abril")
+const giveawayMonthName = new Date(now.getFullYear(), now.getMonth(), 1)
+  .toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { month: "long" });
+// ISO draw date string for countdown JS
+const drawDateISO = rawDrawDate;
 
 // Check if draw already happened
 const { data: monthWinners } = await sc
@@ -215,13 +220,27 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
           <p class="status-text">{text.lotteryStatusDrawn}</p>
         ) : (
           <Fragment>
+            <p class="status-month">{text.lotteryMonth.replace("{month}", giveawayMonthName)}</p>
             <p class="status-text">{text.lotteryStatusOpen.replace("{date}", drawDate || "TBD")}</p>
+
+            {/* ── Countdown ── */}
+            <div class="draw-countdown" data-draw-date={drawDateISO}>
+              <div class="cd-unit"><span class="cd-num" id="cdDays">--</span><span class="cd-label">{text.lotteryCountdownDays}</span></div>
+              <span class="cd-sep">:</span>
+              <div class="cd-unit"><span class="cd-num" id="cdHours">--</span><span class="cd-label">{text.lotteryCountdownHours}</span></div>
+              <span class="cd-sep">:</span>
+              <div class="cd-unit"><span class="cd-num" id="cdMin">--</span><span class="cd-label">{text.lotteryCountdownMin}</span></div>
+              <span class="cd-sep">:</span>
+              <div class="cd-unit"><span class="cd-num" id="cdSec">--</span><span class="cd-label">{text.lotteryCountdownSec}</span></div>
+            </div>
+
             <div class="prize-showcase">
-              <img src={prizeBook.coverSrc} alt={prizeBook.title[lang]} class="prize-cover" loading="lazy" width="64" height="80" />
+              <img src={prizeBook.coverSrc} alt={prizeBook.title[lang]} class="prize-cover" loading="lazy" width="96" height="128" />
               <div class="prize-info">
                 <p class="prize-label">🎁 {text.lotteryPrize}</p>
                 <p class="prize-book-title">{prizeBook.title[lang]}</p>
                 {prizeDescription && <p class="prize-desc">{prizeDescription}</p>}
+                <a href={prizeBook.amazonUrl} target="_blank" rel="noopener noreferrer" class="amazon-link">{text.lotteryViewOnAmazon}</a>
               </div>
             </div>
           </Fragment>
@@ -391,7 +410,7 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
 
 <script is:inline>
   document.addEventListener("astro:page-load", () => {
-    // ── Claim countdown ──────────────────────────
+    // ── Claim countdown (days only) ──────────────
     const countdownEl = document.querySelector(".claim-countdown");
     const daysEl = document.getElementById("claimDays");
     if (countdownEl && daysEl) {
@@ -401,6 +420,28 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
       const days = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
       daysEl.textContent = days;
     }
+
+    // ── Draw countdown (live ticker) ─────────────
+    const cdWrap = document.querySelector(".draw-countdown");
+    if (!cdWrap) return;
+    const target = new Date(cdWrap.getAttribute("data-draw-date") + "T08:00:00Z"); // draw at 8AM UTC
+    const $d = document.getElementById("cdDays");
+    const $h = document.getElementById("cdHours");
+    const $m = document.getElementById("cdMin");
+    const $s = document.getElementById("cdSec");
+    if (!$d || !$h || !$m || !$s) return;
+
+    function tick() {
+      const diff = Math.max(0, target - Date.now());
+      const s = Math.floor(diff / 1000);
+      $d.textContent = String(Math.floor(s / 86400)).padStart(2, "0");
+      $h.textContent = String(Math.floor((s % 86400) / 3600)).padStart(2, "0");
+      $m.textContent = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+      $s.textContent = String(s % 60).padStart(2, "0");
+      if (diff <= 0) clearInterval(timer);
+    }
+    tick();
+    const timer = setInterval(tick, 1000);
   });
 </script>
 
@@ -607,7 +648,7 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
 
   /* ── Status Card ── */
   .status-card {
-    padding: 1.2rem 1.6rem;
+    padding: 1.4rem 1.6rem;
     margin-bottom: 1.5rem;
     text-align: center;
     border-radius: var(--radius);
@@ -620,12 +661,77 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
     border: 2px solid var(--brand-blue);
     background: rgba(31, 79, 134, 0.06);
   }
+  .status-month {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    color: var(--ink-soft);
+    letter-spacing: 0.04em;
+    margin: 0 0 0.2rem;
+  }
   .status-text {
     font-size: 1.15rem;
     font-weight: 700;
     font-family: "Baloo 2", sans-serif;
     margin: 0;
   }
+
+  /* ── Draw Countdown ── */
+  .draw-countdown {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    margin: 0.8rem 0;
+  }
+  .cd-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 3rem;
+  }
+  .cd-num {
+    font-family: "Baloo 2", sans-serif;
+    font-size: 1.7rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--brand-blue);
+    background: rgba(31, 79, 134, 0.08);
+    border-radius: var(--radius-sm);
+    padding: 0.25rem 0.45rem;
+    min-width: 2.6rem;
+    text-align: center;
+  }
+  .cd-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-top: 0.15rem;
+    letter-spacing: 0.04em;
+  }
+  .cd-sep {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--brand-brown);
+    padding-bottom: 1rem;
+  }
+
+  /* ── Amazon Link ── */
+  .amazon-link {
+    display: inline-block;
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--brand-blue);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .amazon-link:hover {
+    color: var(--accent-coral);
+    text-decoration: underline;
+  }
+
   .prize-showcase {
     display: flex;
     align-items: center;
@@ -634,11 +740,11 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
     margin-top: 0.8rem;
   }
   .prize-cover {
-    width: 64px;
-    height: 80px;
-    object-fit: cover;
-    border-radius: 4px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    width: 96px;
+    height: 128px;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.13);
     flex-shrink: 0;
   }
   .prize-info { text-align: left; }
