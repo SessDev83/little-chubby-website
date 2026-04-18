@@ -188,3 +188,68 @@ export async function notifyReviewUpdated(
     ])
   );
 }
+
+// ── User-facing email notifications ──────────────────
+
+async function sendToUser(to: string, subject: string, html: string): Promise<void> {
+  if (!RESEND_API_KEY) return;
+  try {
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from: FROM, to: [to], subject, html }),
+    });
+  } catch {
+    // Non-blocking
+  }
+}
+
+/** Notify user their review was approved */
+export async function emailUserReviewApproved(
+  userEmail: string,
+  bookTitle: string,
+  lang: string
+): Promise<void> {
+  const isEs = lang === "es";
+  const subject = isEs
+    ? `🎉 ¡Tu review de "${bookTitle}" fue aprobada!`
+    : `🎉 Your review of "${bookTitle}" was approved!`;
+  const html = card(
+    "🎉",
+    isEs ? "¡Review Aprobada!" : "Review Approved!",
+    [
+      [isEs ? "Libro" : "Book", bookTitle],
+      [isEs ? "Peanuts ganados" : "Peanuts earned", "5 🥜"],
+    ],
+    isEs
+      ? "¡Puedes gastar tus Peanuts en la Tienda! Visita littlechubbypress.com"
+      : "Spend your Peanuts in the Shop! Visit littlechubbypress.com"
+  );
+  await sendToUser(userEmail, subject, html);
+}
+
+/** Notify user they won the lottery */
+export async function emailUserLotteryWin(
+  userEmail: string,
+  claimDeadline: string,
+  lang: string
+): Promise<void> {
+  const isEs = lang === "es";
+  const subject = isEs
+    ? "🏆 ¡Felicidades! ¡Ganaste el sorteo mensual!"
+    : "🏆 Congratulations! You won the monthly giveaway!";
+  const html = card(
+    "🏆",
+    isEs ? "¡Ganaste el Sorteo!" : "You Won the Giveaway!",
+    [
+      [isEs ? "Plazo para reclamar" : "Claim deadline", claimDeadline],
+    ],
+    isEs
+      ? "Inicia sesión y reclama tu premio en littlechubbypress.com"
+      : "Log in and claim your prize at littlechubbypress.com"
+  );
+  await sendToUser(userEmail, subject, html);
+}

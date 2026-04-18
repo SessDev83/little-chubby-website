@@ -43,21 +43,30 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const svc = getServiceClient();
 
-    // 3. Check credit balance server-side
+    // 3. Look up artwork to get dynamic peanut_cost
+    const { data: artwork, error: artErr } = await svc
+      .from("free_artworks")
+      .select("id, title_en, peanut_cost")
+      .eq("id", artwork_id)
+      .maybeSingle();
+
+    const cost = artwork?.peanut_cost ?? 1;
+
+    // 4. Check credit balance server-side
     const { data: balanceData } = await svc.rpc("get_user_credits", {
       p_user_id: user_id,
     });
 
     const balance = typeof balanceData === "number" ? balanceData : 0;
 
-    if (balance <= 0) {
+    if (balance < cost) {
       return new Response(
-        JSON.stringify({ error: "no_credits", balance }),
+        JSON.stringify({ error: "no_credits", balance, cost }),
         { status: 403, headers }
       );
     }
 
-    // 4. Record the download
+    // 5. Record the download
     const { error: dlErr } = await svc
       .from("artwork_downloads")
       .insert({ user_id, artwork_id });
@@ -68,12 +77,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // 5. Deduct 1 credit
+    // 6. Deduct credits (dynamic cost)
     const { error: crErr } = await svc
       .from("credit_transactions")
       .insert({
         user_id,
-        amount: -1,
+        amount: -cost,
         reason: "download",
         ref_id: artwork_id,
       });
@@ -84,7 +93,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // 6. Generate signed download URL (1 hour)
+    // 7. Generate signed download URL (1 hour)
     const { data: signedData, error: signErr } = await svc.storage
       .from("free-artworks")
       .createSignedUrl(image_path, 3600);
@@ -96,20 +105,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    // 7. Notify admin (non-blocking)
+    // 8. Notify admin (non-blocking)
     const userEmail = sessionData.session.user.email || "unknown";
-    const { data: artworkRow } = await svc
-      .from("free_artworks")
-      .select("title_en")
-      .eq("id", artwork_id)
-      .maybeSingle();
-    notifyDownload(userEmail, artworkRow?.title_en || artwork_id, balance - 1);
+    notifyDownload(userEmail, artwork?.title_en || artwork_id, balance - cost);
 
     return new Response(
       JSON.stringify({
         ok: true,
         signedUrl: signedData.signedUrl,
-        balance: balance - 1,
+        balance: balance - cost,
       }),
       { status: 200, headers }
     );

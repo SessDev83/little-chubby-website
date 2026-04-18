@@ -245,6 +245,60 @@ main {
   text-align: center;
 }
 
+/* ── Notification Bell ──────────────────────── */
+.header-bell {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+.header-bell:hover { background: #f5ecd3; }
+.bell-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  min-width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  border-radius: 99px;
+  padding: 0 3px;
+}
+.notif-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 300px;
+  max-height: 340px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e8e0d4;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 999;
+  display: none;
+}
+.notif-dropdown.open { display: block; }
+.notif-item {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f0ebe4;
+  font-size: 0.82rem;
+  color: #3d2c1e;
+}
+.notif-item.unread { background: #fdf6e3; }
+.notif-item:last-child { border-bottom: none; }
+.notif-title { font-weight: 700; margin-bottom: 0.15rem; }
+.notif-body { color: #888; font-size: 0.78rem; }
+.notif-empty { text-align: center; padding: 1.5rem; color: #aaa; }
+
 .header-username {
   font-family: "Baloo 2", "Trebuchet MS", sans-serif;
   font-weight: 700;

@@ -115,6 +115,21 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
   <section class="page-section container">
     <div class="profile-layout">
 
+      {/* ── Peanuts Summary Card ── */}
+      <div class="peanuts-summary surface-card" id="peanuts-profile-card" style="display:none;">
+        <div class="peanuts-summary-inner">
+          <span class="peanuts-summary-icon">🥜</span>
+          <div class="peanuts-summary-info">
+            <span class="peanuts-summary-balance" id="profile-peanuts-balance">0</span>
+            <span class="peanuts-summary-label">{text.peanutBalance}</span>
+          </div>
+          <div class="peanuts-summary-links">
+            <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-secondary">{text.peanutHistory}</a>
+            <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-primary">{text.peanutShopTitle}</a>
+          </div>
+        </div>
+      </div>
+
       {/* ── Avatar ── */}
       <div class="profile-avatar-section surface-card">
         <div class="avatar-wrapper">
@@ -604,6 +619,37 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     color: #8f1f18;
     border: 1px solid rgba(220, 50, 50, 0.25);
   }
+
+  /* ── Peanuts Summary ──────────── */
+  .peanuts-summary {
+    margin-bottom: 1rem;
+  }
+  .peanuts-summary-inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .peanuts-summary-icon { font-size: 2rem; }
+  .peanuts-summary-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .peanuts-summary-balance {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #8b6914;
+  }
+  .peanuts-summary-label {
+    font-size: 0.8rem;
+    color: #888;
+    text-transform: uppercase;
+  }
+  .peanuts-summary-links {
+    display: flex;
+    gap: 0.5rem;
+  }
 </style>
 
 <script is:inline define:vars={{ displayName: profile?.display_name || "" }}>
@@ -615,4 +661,17 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
   // Update header username immediately if element already exists
   var el = document.getElementById("auth-username");
   if (el) el.textContent = displayName || "";
+
+  // Peanuts balance for profile card
+  fetch("/api/me/", { credentials: "same-origin" })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.user && typeof d.balance === "number") {
+        var card = document.getElementById("peanuts-profile-card");
+        var bal = document.getElementById("profile-peanuts-balance");
+        if (card) card.style.display = "block";
+        if (bal) bal.textContent = String(d.balance);
+      }
+    })
+    .catch(function(){});
 </script>

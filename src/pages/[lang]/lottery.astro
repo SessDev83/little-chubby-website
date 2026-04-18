@@ -6,7 +6,7 @@ import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase, getServiceClient } from "../../lib/supabase";
 import { books } from "../../data/books";
-import { notifyNewReview, notifyReviewUpdated, notifyLotteryClaim } from "../../lib/notifications";
+import { notifyLotteryClaim } from "../../lib/notifications";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
@@ -14,25 +14,21 @@ const pathname = `/${lang}/lottery/`;
 
 // ── Auth ─────────────────────────────────────────────
 const user = Astro.locals.user;
-
 const sc = getServiceClient();
 
 // ── User state ───────────────────────────────────────
-let myReviews: { id: string; book_id: string; photo_url: string; extra_photos?: string[]; rating: number; review_text: string; status: string; submitted_at: string; reviewer_note?: string }[] = [];
+let myReviewCount = 0;
+let approvedCount = 0;
 let pendingClaim: any = null;
-let shareMsg = "";
-let shareMsgType: "success" | "error" | "" = "";
 let claimMsg = "";
-let editingReview: any = null;
 
 if (user) {
-  // Get user's reviews
   const { data: reviewData } = await supabase
     .from("book_reviews")
-    .select("id, book_id, photo_url, extra_photos, rating, review_text, status, submitted_at, reviewer_note")
-    .eq("user_id", user.id)
-    .order("submitted_at", { ascending: false });
-  myReviews = reviewData ?? [];
+    .select("id, status")
+    .eq("user_id", user.id);
+  myReviewCount = reviewData?.length ?? 0;
+  approvedCount = reviewData?.filter(r => r.status === "approved").length ?? 0;
 
   // Check for unclaimed win
   const { data: winData } = await supabase
@@ -50,158 +46,6 @@ if (user) {
   if (Astro.request.method === "POST") {
     const formData = await Astro.request.formData();
     const action = formData.get("action")?.toString();
-
-    if (action === "delete_review") {
-      const reviewId = formData.get("review_id")?.toString();
-      if (reviewId) {
-        // Find the review to delete its photo too
-        const toDelete = myReviews.find(r => r.id === reviewId);
-        if (toDelete) {
-          const photoPath = `${user.id}/${toDelete.book_id}.jpg`;
-          await sc.storage.from("book-photos").remove([photoPath]);
-          await sc.from("book_reviews").delete().eq("id", reviewId).eq("user_id", user.id);
-          // Refresh reviews
-          const { data: refreshed } = await supabase
-            .from("book_reviews")
-            .select("id, book_id, photo_url, extra_photos, rating, review_text, status, submitted_at, reviewer_note")
-            .eq("user_id", user.id)
-            .order("submitted_at", { ascending: false });
-          myReviews = refreshed ?? [];
-          shareMsg = lang === "es" ? "Review eliminada." : "Review deleted.";
-          shareMsgType = "success";
-        }
-      }
-    }
-
-    if (action === "share_book") {
-      const bookId = formData.get("book_id")?.toString() || "";
-      const rating = parseInt(formData.get("rating")?.toString() || "0", 10);
-      const reviewText = formData.get("review_text")?.toString().trim() || "";
-      const showGallery = formData.get("show_in_gallery") === "on";
-      const photos = formData.getAll("photos") as File[];
-      const editId = formData.get("edit_id")?.toString() || "";
-
-      const MAX_BYTES = 500 * 1024;
-      const MAX_PHOTOS = 5;
-      const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-
-      const validPhotos = photos.filter(f => f && f.size > 0);
-      const tooLarge = validPhotos.some(f => f.size > MAX_BYTES);
-      const badType = validPhotos.some(f => !ALLOWED_TYPES.includes(f.type));
-
-      if (tooLarge) {
-        shareMsg = text.shareTooLarge;
-        shareMsgType = "error";
-      } else if (badType) {
-        shareMsg = text.shareInvalidType;
-        shareMsgType = "error";
-      } else if (validPhotos.length > MAX_PHOTOS) {
-        shareMsg = text.shareTooLarge;
-        shareMsgType = "error";
-      } else if (!bookId || rating < 1 || rating > 5) {
-        shareMsg = text.loginError;
-        shareMsgType = "error";
-      } else {
-        let photoUrl = "";
-        let extraPhotos: string[] = [];
-
-        if (validPhotos.length > 0) {
-          for (let i = 0; i < validPhotos.length; i++) {
-            const suffix = i === 0 ? "" : `_${i + 1}`;
-            const filePath = `${user.id}/${bookId}${suffix}.jpg`;
-            const arrayBuf = await validPhotos[i].arrayBuffer();
-            const buffer = new Uint8Array(arrayBuf);
-            const { error: uploadError } = await sc.storage
-              .from("book-photos")
-              .upload(filePath, buffer, { contentType: "image/jpeg", upsert: true });
-            if (uploadError) {
-              shareMsg = text.loginError;
-              shareMsgType = "error";
-              break;
-            }
-            const { data: urlData } = sc.storage.from("book-photos").getPublicUrl(filePath);
-            if (i === 0) {
-              photoUrl = urlData.publicUrl;
-            } else {
-              extraPhotos.push(urlData.publicUrl);
-            }
-          }
-        }
-
-        if (shareMsgType !== "error") {
-          if (editId) {
-            // Update existing review — reset status to pending
-            const updateData: any = {
-              rating,
-              review_text: reviewText,
-              show_in_gallery: formData.get("show_in_gallery") === "on",
-              status: "pending",
-              reviewed_at: null,
-              reviewer_note: null,
-            };
-            if (photoUrl) updateData.photo_url = photoUrl;
-            if (extraPhotos.length > 0) updateData.extra_photos = extraPhotos;
-
-            const { error: updateError } = await sc
-              .from("book_reviews")
-              .update(updateData)
-              .eq("id", editId)
-              .eq("user_id", user.id);
-
-            if (updateError) {
-              shareMsg = text.loginError;
-              shareMsgType = "error";
-            } else {
-              shareMsg = text.shareSuccess;
-              shareMsgType = "success";
-              // Notify admin
-              const bTitle = books.find(b => b.id === bookId)?.title[lang] || bookId;
-              notifyReviewUpdated(user.email || "unknown", bTitle, rating);
-            }
-          } else {
-            // New review
-            if (!photoUrl) {
-              shareMsg = text.shareInvalidType;
-              shareMsgType = "error";
-            } else {
-              const { error: insertError } = await sc
-                .from("book_reviews")
-                .insert({
-                  user_id: user.id,
-                  book_id: bookId,
-                  photo_url: photoUrl,
-                  extra_photos: extraPhotos,
-                  rating,
-                  review_text: reviewText,
-                  show_in_gallery: formData.get("show_in_gallery") === "on",
-                });
-
-              if (insertError?.code === "23505") {
-                shareMsg = text.shareAlreadyReviewed;
-                shareMsgType = "error";
-              } else if (insertError) {
-                shareMsg = text.loginError;
-                shareMsgType = "error";
-              } else {
-                shareMsg = text.shareSuccess;
-                shareMsgType = "success";
-                // Notify admin
-                const bTitle = books.find(b => b.id === bookId)?.title[lang] || bookId;
-                notifyNewReview(user.email || "unknown", bTitle, rating, reviewText);
-              }
-            }
-          }
-
-          // Refresh reviews
-          const { data: refreshed } = await supabase
-            .from("book_reviews")
-            .select("id, book_id, photo_url, extra_photos, rating, review_text, status, submitted_at, reviewer_note")
-            .eq("user_id", user.id)
-            .order("submitted_at", { ascending: false });
-          myReviews = refreshed ?? [];
-        }
-      }
-    }
 
     if (action === "claim" && pendingClaim) {
       const bookChosen = formData.get("book_chosen")?.toString() || "";
@@ -221,7 +65,6 @@ if (user) {
 
         claimMsg = text.claimSuccess;
         pendingClaim = null;
-        // Notify admin
         notifyLotteryClaim(user.email || "unknown", bookChosen, shippingName, shippingAddress);
       }
     }
@@ -229,11 +72,7 @@ if (user) {
 }
 
 // Compute tickets: each approved review = 5 tickets
-const approvedCount = myReviews.filter(r => r.status === "approved").length;
 const totalTickets = approvedCount * 5;
-
-// Books already reviewed (to exclude from dropdown)
-const reviewedBookIds = new Set(myReviews.map(r => r.book_id));
 
 // ── Public winners ───────────────────────────────────
 const { data: publicWinners } = await supabase
@@ -241,13 +80,8 @@ const { data: publicWinners } = await supabase
   .select("month, book_chosen, display_name")
   .limit(12);
 
-// Book helpers
 const bookOptions = books.map(b => ({ id: b.id, title: b.title[lang] }));
-const availableBooks = bookOptions.filter(b => !reviewedBookIds.has(b.id));
 const bookMap = Object.fromEntries(bookOptions.map(b => [b.id, b.title]));
-
-// Star helper
-const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 ---
 
 <BaseLayout
@@ -369,142 +203,22 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
               {approvedCount} {approvedCount === 1 ? (lang === "es" ? "libro" : "book") : (lang === "es" ? "libros" : "books")} × 5 = {totalTickets} {lang === "es" ? "boletos" : "tickets"}
             </p>
           )}
+          <p style="margin-top:0.8rem;">
+            <a href={`/${lang}/reviews/`} class="btn btn-secondary">{text.reviewsHeading} →</a>
+          </p>
+          {myReviewCount === 0 && (
+            <p style="margin-top:0.5rem; font-size:0.9rem; color:var(--ink-soft);">
+              {lang === "es" ? "¡Escribe tu primera review para ganar boletos!" : "Write your first review to earn tickets!"}
+            </p>
+          )}
         </div>
 
-        {/* ── Share Your Book Form ── */}
-        {availableBooks.length > 0 && (
-          <div class="surface-card" style="padding:1.6rem; margin-bottom:1.5rem;">
-            <h2 style="margin-bottom:1rem;">📸 {text.shareYourBook}</h2>
-
-            {shareMsg && (
-              <p class={`msg ${shareMsgType === "success" ? "msg-success" : "msg-error"}`}>{shareMsg}</p>
-            )}
-
-            <form method="POST" enctype="multipart/form-data" class="form-grid" id="shareForm">
-              <input type="hidden" name="action" value="share_book" />
-              <input type="hidden" name="edit_id" id="editId" value="" />
-
-              {/* Searchable book selector */}
-              <div class="form-group">
-                <label for="bookSearch">{text.shareBookLabel}</label>
-                <input type="hidden" id="book_id" name="book_id" value="" required />
-                <div class="book-combo" id="bookCombo">
-                  <input
-                    type="text"
-                    id="bookSearch"
-                    class="book-search-input"
-                    placeholder={text.shareBookSearch}
-                    autocomplete="off"
-                    required
-                  />
-                  <ul class="book-dropdown" id="bookDropdown" role="listbox">
-                    {availableBooks.map(b => (
-                      <li class="book-option" role="option" data-value={b.id}>{b.title}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Multi-photo upload */}
-              <div class="form-group">
-                <label for="photos">{text.sharePhotoLabel}</label>
-                <input
-                  type="file"
-                  id="photos"
-                  name="photos"
-                  accept="image/*"
-                  multiple
-                  required
-                  class="file-input"
-                />
-                <small style="color:var(--ink-soft);">{text.sharePhotoHint}</small>
-                <div id="photoPreview" class="photo-preview"></div>
-                <small id="photoStatus" class="photo-status" style="display:none;"></small>
-              </div>
-
-              {/* Star rating — mobile-friendly */}
-              <div class="form-group">
-                <label>{text.shareRatingLabel}</label>
-                <div class="star-picker" id="starPicker">
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <button type="button" class="star-btn" data-value={n.toString()} aria-label={`${n} star${n > 1 ? "s" : ""}`}>
-                      <span class="star-icon">★</span>
-                    </button>
-                  ))}
-                </div>
-                <input type="hidden" name="rating" id="ratingInput" value="" required />
-              </div>
-
-              <div class="form-group">
-                <label for="review_text">{text.shareReviewLabel}</label>
-                <textarea
-                  id="review_text"
-                  name="review_text"
-                  rows="3"
-                  placeholder={text.shareReviewPlaceholder}
-                ></textarea>
-              </div>
-
-              <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
-                <input type="checkbox" id="show_in_gallery" name="show_in_gallery" checked />
-                <label for="show_in_gallery" style="margin:0; font-size:0.95rem;">{text.shareGalleryOptIn}</label>
-              </div>
-
-              <button type="submit" class="btn btn-primary" style="width:100%;">{text.shareSubmit}</button>
-            </form>
-          </div>
-        )}
-
-        {/* ── My Reviews ── */}
-        {myReviews.length > 0 && (
-          <div class="surface-card" style="padding:1.4rem; margin-bottom:1.5rem;">
-            <h2 style="margin-bottom:1rem;">{text.myReviews}</h2>
-            <div class="reviews-list">
-              {myReviews.map(r => (
-                <div class="review-row">
-                  <div class="review-thumbs">
-                    <img src={r.photo_url} alt="" class="review-thumb" loading="lazy" width="56" height="56" />
-                    {(r.extra_photos || []).map((url: string) => (
-                      <img src={url} alt="" class="review-thumb review-thumb-extra" loading="lazy" width="36" height="36" />
-                    ))}
-                  </div>
-                  <div class="review-info">
-                    <strong>{bookMap[r.book_id] || r.book_id}</strong>
-                    <span class="review-stars">{stars(r.rating)}</span>
-                    {r.review_text && <p class="review-text-preview">{r.review_text}</p>}
-                    {r.status === "rejected" && r.reviewer_note && (
-                      <p class="reviewer-note">💬 {text.reviewerNote}: {r.reviewer_note}</p>
-                    )}
-                  </div>
-                  <div class="review-actions-user">
-                    <span class={`review-status status-${r.status}`}>
-                      {r.status === "pending" ? text.reviewPending : r.status === "approved" ? text.reviewApproved : text.reviewRejected}
-                    </span>
-                    {r.status === "rejected" && (
-                      <form method="POST" style="margin-top:0.3rem;">
-                        <input type="hidden" name="action" value="delete_review" />
-                        <input type="hidden" name="review_id" value={r.id} />
-                        <button type="submit" class="btn-small btn-retry">🔄 {text.reviewTryAgain}</button>
-                      </form>
-                    )}
-                    {(r.status === "pending" || r.status === "approved") && (
-                      <div class="review-edit-actions">
-                        <button type="button" class="btn-small btn-edit" data-edit={JSON.stringify({id: r.id, book_id: r.book_id, rating: r.rating, review_text: r.review_text || ""})}>
-                          ✏️ {text.reviewEdit}
-                        </button>
-                        <form method="POST" style="display:inline;" onsubmit={`return confirm('${text.reviewDeleteConfirm}')`}>
-                          <input type="hidden" name="action" value="delete_review" />
-                          <input type="hidden" name="review_id" value={r.id} />
-                          <button type="submit" class="btn-small btn-delete">🗑 {text.reviewDelete}</button>
-                        </form>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* ── Buy extra lottery entries with Peanuts ── */}
+        <div class="surface-card" style="padding:1.4rem; margin-bottom:1.5rem; text-align:center;">
+          <h3>🥜 {text.peanutShopLottery}</h3>
+          <p style="font-size:0.9rem; color:var(--ink-soft);">{text.peanutShopLotteryDesc}</p>
+          <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-secondary">{text.peanutShopTitle} →</a>
+        </div>
       </div>
     )}
 
@@ -533,295 +247,6 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     if (stepsDetails && window.innerWidth <= 600) {
       stepsDetails.removeAttribute("open");
     }
-
-    // ── Searchable book selector ─────────────────
-    const searchInput = document.getElementById("bookSearch");
-    const hiddenInput = document.getElementById("book_id");
-    const dropdown = document.getElementById("bookDropdown");
-    const combo = document.getElementById("bookCombo");
-
-    if (searchInput && dropdown && hiddenInput) {
-      const allOptions = Array.from(dropdown.querySelectorAll(".book-option"));
-
-      searchInput.addEventListener("focus", () => {
-        dropdown.dataset.open = "true";
-        filterOptions();
-      });
-
-      searchInput.addEventListener("input", () => {
-        dropdown.dataset.open = "true";
-        filterOptions();
-        // Clear hidden value when typing (must re-select)
-        hiddenInput.value = "";
-        searchInput.setCustomValidity("Please select a book from the list");
-      });
-
-      function filterOptions() {
-        const q = searchInput.value.toLowerCase().trim();
-        let visible = 0;
-        allOptions.forEach(opt => {
-          const match = !q || opt.textContent.toLowerCase().includes(q);
-          opt.style.display = match ? "" : "none";
-          if (match) visible++;
-        });
-      }
-
-      allOptions.forEach(opt => {
-        opt.addEventListener("click", () => {
-          hiddenInput.value = opt.getAttribute("data-value");
-          searchInput.value = opt.textContent;
-          searchInput.setCustomValidity("");
-          dropdown.dataset.open = "false";
-        });
-        // Touch support for mobile
-        opt.addEventListener("touchend", (e) => {
-          e.preventDefault();
-          opt.click();
-        });
-      });
-
-      // Close dropdown on outside click
-      document.addEventListener("click", (e) => {
-        if (!combo.contains(e.target)) {
-          dropdown.dataset.open = "false";
-        }
-      });
-    }
-
-    // ── Star picker (mobile-friendly buttons) ────
-    const picker = document.getElementById("starPicker");
-    const ratingInput = document.getElementById("ratingInput");
-    if (picker && ratingInput) {
-      const stars = picker.querySelectorAll(".star-btn");
-
-      function setRating(value) {
-        ratingInput.value = value;
-        stars.forEach((s, i) => {
-          s.dataset.selected = i < value ? "true" : "false";
-        });
-      }
-
-      stars.forEach((star, i) => {
-        star.addEventListener("click", (e) => {
-          e.preventDefault();
-          setRating(i + 1);
-        });
-        // Hover effect (desktop)
-        star.addEventListener("mouseenter", () => {
-          stars.forEach((s, j) => s.dataset.hovered = j <= i ? "true" : "false");
-        });
-        star.addEventListener("mouseleave", () => {
-          stars.forEach(s => s.dataset.hovered = "false");
-        });
-      });
-    }
-
-    // ── Client-side multi-image compression ──────
-    const MAX_DIM = 800;
-    const JPEG_QUALITY = 0.7;
-    const MAX_BYTES = 500 * 1024;
-    const MAX_FILES = 5;
-
-    const fileInput = document.getElementById("photos");
-    const status = document.getElementById("photoStatus");
-    const preview = document.getElementById("photoPreview");
-
-    function compressImage(file) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = () => {
-          URL.revokeObjectURL(url);
-          let w = img.width, h = img.height;
-          if (w > MAX_DIM || h > MAX_DIM) {
-            const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
-            w = Math.round(w * ratio);
-            h = Math.round(h * ratio);
-          }
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, w, h);
-          canvas.toBlob(
-            (blob) => blob ? resolve(blob) : reject(new Error("Compression failed")),
-            "image/jpeg",
-            JPEG_QUALITY
-          );
-        };
-        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Invalid image")); };
-        img.src = url;
-      });
-    }
-
-    // Compressed blobs stored here — avoids DataTransfer API (broken on mobile Safari/Android)
-    var compressedBlobs = [];
-    var originalFiles = [];
-
-    if (fileInput) {
-      fileInput.addEventListener("change", async function (e) {
-        compressedBlobs = [];
-        originalFiles = [];
-        var files = Array.from(e.target.files);
-        if (!files.length) return;
-
-        if (files.length > MAX_FILES) {
-          if (status) {
-            status.style.display = "block";
-            status.textContent = "❌ Max " + MAX_FILES + " photos.";
-            status.className = "photo-status photo-error";
-          }
-          e.target.value = "";
-          return;
-        }
-
-        originalFiles = files;
-
-        if (status) {
-          status.style.display = "block";
-          status.textContent = "⏳ Compressing " + files.length + " photo" + (files.length > 1 ? "s" : "") + "...";
-          status.className = "photo-status";
-        }
-        if (preview) preview.innerHTML = "";
-
-        try {
-          var totalKb = 0;
-          for (var i = 0; i < files.length; i++) {
-            var blob = await compressImage(files[i]);
-            if (blob.size > MAX_BYTES) {
-              if (status) {
-                status.textContent = "❌ Photo " + (i + 1) + " still too large after compression.";
-                status.className = "photo-status photo-error";
-              }
-              compressedBlobs = [];
-              if (preview) preview.innerHTML = "";
-              return;
-            }
-            compressedBlobs.push(blob);
-            totalKb += Math.round(blob.size / 1024);
-
-            // Show thumbnail preview
-            if (preview) {
-              var thumb = document.createElement("img");
-              thumb.src = URL.createObjectURL(blob);
-              thumb.className = "preview-thumb";
-              preview.appendChild(thumb);
-            }
-          }
-
-          if (status) {
-            status.textContent = "✅ " + files.length + " photo" + (files.length > 1 ? "s" : "") + " — " + totalKb + " KB total";
-            status.className = "photo-status photo-ok";
-          }
-        } catch (err) {
-          // Compression failed — keep originals as fallback
-          compressedBlobs = [];
-          if (status) {
-            // Don't block; we'll send originals on submit
-            status.style.display = "block";
-            status.textContent = "⚠️ Could not compress — originals will be uploaded.";
-            status.className = "photo-status";
-          }
-        }
-      });
-    }
-
-    // ── Form submit via fetch (avoids DataTransfer) ──
-    var shareForm = document.getElementById("shareForm");
-    if (shareForm) {
-      shareForm.addEventListener("submit", async function (e) {
-        e.preventDefault();
-        var submitBtn = shareForm.querySelector('button[type="submit"]');
-        var origLabel = submitBtn ? submitBtn.textContent : "";
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.textContent = "⏳ Uploading…";
-        }
-
-        try {
-          var fd = new FormData();
-          // Copy all non-file fields from the form
-          var formElements = shareForm.elements;
-          for (var i = 0; i < formElements.length; i++) {
-            var el = formElements[i];
-            if (!el.name || el.name === "photos" || el.type === "submit") continue;
-            if (el.type === "checkbox") {
-              if (el.checked) fd.append(el.name, "on");
-            } else {
-              fd.append(el.name, el.value);
-            }
-          }
-
-          // Add photos: prefer compressed blobs, fallback to originals
-          var photosToSend = compressedBlobs.length > 0
-            ? compressedBlobs.map(function (b, i) { return new File([b], "photo_" + (i + 1) + ".jpg", { type: "image/jpeg" }); })
-            : originalFiles;
-
-          for (var i = 0; i < photosToSend.length; i++) {
-            fd.append("photos", photosToSend[i]);
-          }
-
-          var res = await fetch(window.location.pathname, {
-            method: "POST",
-            body: fd,
-            credentials: "same-origin",
-          });
-
-          if (!res.ok) throw new Error("status " + res.status);
-          // Reload to show the server-rendered messages & updated reviews
-          window.location.reload();
-        } catch (err) {
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = origLabel;
-          }
-          if (status) {
-            status.style.display = "block";
-            status.textContent = "❌ Upload failed. Please try again.";
-            status.className = "photo-status photo-error";
-          }
-        }
-      });
-    }
-
-    // ── Edit review buttons ──────────────────────
-    document.querySelectorAll(".btn-edit").forEach(btn => {
-      btn.addEventListener("click", () => {
-        try {
-          const data = JSON.parse(btn.getAttribute("data-edit"));
-          const form = document.getElementById("shareForm");
-          if (!form) return;
-          document.getElementById("editId").value = data.id;
-
-          // Set book via searchable input
-          if (hiddenInput) hiddenInput.value = data.book_id;
-          if (searchInput) {
-            // Find book title from options
-            const opt = allOptions ? allOptions.find(o => o.getAttribute("data-value") === data.book_id) : null;
-            searchInput.value = opt ? opt.textContent : data.book_id;
-            searchInput.setCustomValidity("");
-            searchInput.readOnly = true;
-          }
-
-          const reviewField = document.getElementById("review_text");
-          if (reviewField) reviewField.value = data.review_text;
-
-          // Set rating via star buttons
-          if (ratingInput && picker) {
-            ratingInput.value = data.rating;
-            const starBtns = picker.querySelectorAll(".star-btn");
-            starBtns.forEach((s, j) => s.dataset.selected = j < data.rating ? "true" : "false");
-          }
-
-          // Make photos optional for edits
-          const photosInput = document.getElementById("photos");
-          if (photosInput) photosInput.removeAttribute("required");
-
-          // Scroll to form
-          form.scrollIntoView({ behavior: "smooth", block: "start" });
-        } catch(e) { console.error(e); }
-      });
-    });
 
     // ── Claim countdown ──────────────────────────
     const countdownEl = document.querySelector(".claim-countdown");
@@ -1018,222 +443,6 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     color: #8f1f18;
     border: 1px solid rgba(220, 50, 50, 0.25);
   }
-  .form-select {
-    width: 100%;
-    border-radius: 0.8rem;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    padding: 0.7rem 0.82rem;
-    font: inherit;
-  }
-  .file-input {
-    width: 100%;
-    padding: 0.5rem 0;
-    font: inherit;
-  }
-  .photo-status {
-    display: block;
-    margin-top: 0.3rem;
-    font-size: 0.85rem;
-    color: var(--ink-soft);
-  }
-  .photo-ok { color: var(--brand-green); }
-  .photo-error { color: #8f1f18; }
-
-  /* Searchable book combo */
-  .book-combo {
-    position: relative;
-  }
-  .book-search-input {
-    width: 100%;
-    padding: 0.7rem 0.82rem;
-    border: 1px solid var(--line);
-    border-radius: 0.8rem;
-    background: var(--surface);
-    font: inherit;
-  }
-  .book-dropdown {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    max-height: 14rem;
-    overflow-y: auto;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 0 0 0.8rem 0.8rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    z-index: 10;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  .book-dropdown[data-open="true"] {
-    display: block;
-  }
-  .book-option {
-    padding: 0.65rem 0.82rem;
-    cursor: pointer;
-    font-size: 0.95rem;
-    transition: background 0.15s;
-  }
-  .book-option:hover,
-  .book-option:active {
-    background: rgba(31,79,134,0.08);
-  }
-
-  /* Photo preview thumbnails */
-  .photo-preview {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-top: 0.5rem;
-  }
-  .preview-thumb {
-    width: 3.5rem;
-    height: 3.5rem;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    border: 2px solid var(--line);
-  }
-
-  /* Star picker — button-based for mobile */
-  .star-picker {
-    display: flex;
-    gap: 0.3rem;
-  }
-  .star-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0.3rem;
-    font-size: 2rem;
-    line-height: 1;
-    transition: transform 0.12s;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-  .star-btn .star-icon {
-    color: var(--line);
-    transition: color 0.15s;
-  }
-  .star-btn[data-hovered="true"] .star-icon,
-  .star-btn[data-selected="true"] .star-icon {
-    color: var(--accent-gold);
-  }
-  .star-btn:hover {
-    transform: scale(1.15);
-  }
-  @media (max-width: 600px) {
-    .star-btn {
-      font-size: 2.4rem;
-      padding: 0.4rem;
-    }
-  }
-
-  /* Reviews list */
-  .reviews-list {
-    display: grid;
-    gap: 0.8rem;
-  }
-  .review-row {
-    display: flex;
-    gap: 0.8rem;
-    align-items: flex-start;
-    padding: 0.6rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--line);
-  }
-  .review-thumbs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-    flex-shrink: 0;
-  }
-  .review-thumb {
-    width: 3.5rem;
-    height: 3.5rem;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    flex-shrink: 0;
-  }
-  .review-thumb-extra {
-    width: 2.2rem;
-    height: 2.2rem;
-  }
-  .review-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .review-info strong {
-    display: block;
-    font-size: 0.95rem;
-  }
-  .review-stars {
-    color: var(--accent-gold);
-    font-size: 0.9rem;
-    letter-spacing: 0.05em;
-  }
-  .review-text-preview {
-    margin: 0.2rem 0 0;
-    font-size: 0.85rem;
-    color: var(--ink-soft);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .reviewer-note {
-    margin: 0.3rem 0 0;
-    font-size: 0.82rem;
-    color: var(--accent-coral);
-    font-style: italic;
-    background: rgba(217,130,95,0.08);
-    padding: 0.3rem 0.5rem;
-    border-radius: var(--radius-sm);
-  }
-  .review-actions-user {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.3rem;
-    flex-shrink: 0;
-  }
-  .review-edit-actions {
-    display: flex;
-    gap: 0.3rem;
-    margin-top: 0.2rem;
-  }
-  .review-status {
-    font-family: "Baloo 2", sans-serif;
-    font-weight: 700;
-    font-size: 0.8rem;
-    padding: 0.2rem 0.6rem;
-    border-radius: 999px;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .status-pending { background: rgba(211, 164, 66, 0.15); color: var(--accent-gold); }
-  .status-approved { background: rgba(92, 150, 80, 0.14); color: var(--brand-green); }
-  .status-rejected { background: rgba(220, 50, 50, 0.08); color: #8f1f18; }
-  .btn-small {
-    font-family: "Baloo 2", sans-serif;
-    font-weight: 700;
-    font-size: 0.72rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-    cursor: pointer;
-    transition: background 0.2s;
-    white-space: nowrap;
-  }
-  .btn-retry { color: var(--brand-blue); border-color: var(--brand-blue); }
-  .btn-retry:hover { background: rgba(31,79,134,0.1); }
-  .btn-edit { color: var(--accent-gold); border-color: var(--accent-gold); }
-  .btn-edit:hover { background: rgba(211,164,66,0.1); }
-  .btn-delete { color: #8f1f18; border-color: rgba(220,50,50,0.3); }
-  .btn-delete:hover { background: rgba(220,50,50,0.08); }
 
   .winners-list { display: grid; gap: 0.5rem; }
   .winner-row {

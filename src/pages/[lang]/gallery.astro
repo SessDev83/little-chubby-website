@@ -540,7 +540,7 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
     if (e.key === "ArrowRight") lbNextPhoto();
   }, { signal: ac.signal });
 
-  // ── Share buttons ──
+  // ── Share buttons (with Peanut reward) ──
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".share-btn");
     if (!btn) return;
@@ -551,11 +551,31 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
       ? "Mira mi review de " + bookTitle + " en @LittleChubbyPress!"
       : "Check out my review of " + bookTitle + " on @LittleChubbyPress!");
 
+    function creditShare() {
+      fetch("/api/share-reward/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ review_id: reviewId }),
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.credited) {
+          btn.textContent = "+1🥜";
+          setTimeout(function() { btn.textContent = "↗"; }, 2500);
+          // Update header peanuts
+          var pc = document.getElementById("peanuts-count");
+          if (pc && d.balance !== undefined) pc.textContent = String(d.balance);
+        }
+      }).catch(function() {});
+    }
+
     if (navigator.share) {
-      navigator.share({ title: bookTitle, text: shareText, url: shareUrl }).catch(() => {});
+      navigator.share({ title: bookTitle, text: shareText, url: shareUrl }).then(function() {
+        creditShare();
+      }).catch(() => {});
     } else {
       navigator.clipboard.writeText(shareUrl).then(() => {
         btn.textContent = "✓";
+        creditShare();
         setTimeout(() => { btn.textContent = "↗"; }, 2000);
       }).catch(() => {});
     }

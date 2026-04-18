@@ -4,6 +4,7 @@ export const prerender = false;
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { ADMIN_EMAILS, getServiceClient } from "../../lib/supabase";
 import { books } from "../../data/books";
+import { emailUserReviewApproved, emailUserLotteryWin } from "../../lib/notifications";
 
 const user = Astro.locals.user;
 if (!user || !ADMIN_EMAILS.includes(user.email ?? "")) {
@@ -71,6 +72,20 @@ if (Astro.request.method === "POST") {
       reviewer_note: reviewerNote,
     }).eq("id", reviewId);
 
+    // Send user email for approved reviews
+    if (newStatus === "approved" && reviewId) {
+      const { data: rev } = await sc.from("book_reviews").select("user_id, book_id").eq("id", reviewId).single();
+      if (rev) {
+        const { data: profile } = await sc.from("profiles").select("lang_pref").eq("id", rev.user_id).single();
+        const { data: authUser } = await sc.auth.admin.getUserById(rev.user_id);
+        const lang = (profile?.lang_pref || "en") as "en" | "es";
+        const bookTitle = books.find(b => b.id === rev.book_id)?.title[lang] || rev.book_id;
+        if (authUser?.user?.email) {
+          emailUserReviewApproved(authUser.user.email, bookTitle, lang);
+        }
+      }
+    }
+
     reviewMsg = `Review ${newStatus}.`;
   }
 
@@ -82,6 +97,23 @@ if (Astro.request.method === "POST") {
         status: newStatus,
         reviewed_at: new Date().toISOString(),
       }).in("id", ids);
+
+      // Send notification emails for bulk approvals
+      if (!error && newStatus === "approved") {
+        for (const rid of ids) {
+          const { data: rev } = await sc.from("book_reviews").select("user_id, book_id").eq("id", rid).single();
+          if (rev) {
+            const { data: prof } = await sc.from("profiles").select("lang_pref").eq("id", rev.user_id).single();
+            const { data: authU } = await sc.auth.admin.getUserById(rev.user_id);
+            const uLang = (prof?.lang_pref || "en") as "en" | "es";
+            const bTitle = books.find(b => b.id === rev.book_id)?.title[uLang] || rev.book_id;
+            if (authU?.user?.email) {
+              emailUserReviewApproved(authU.user.email, bTitle, uLang);
+            }
+          }
+        }
+      }
+
       bulkMsg = error ? `Error: ${error.message}` : `${newStatus === "approved" ? "✓" : "✗"} ${ids.length} review(s) ${newStatus}.`;
     }
   }
@@ -167,8 +199,22 @@ if (Astro.request.method === "POST") {
                 claim_deadline: claimDeadline.toISOString(),
               });
               if (!error) {
-                const { data: profile } = await sc.from("profiles").select("email, display_name").eq("id", winnerId).single();
+                const { data: profile } = await sc.from("profiles").select("email, display_name, lang_pref").eq("id", winnerId).single();
                 drawn.push(profile?.display_name || profile?.email || winnerId);
+                // Send email + in-app notification to winner
+                const { data: authUser } = await sc.auth.admin.getUserById(winnerId);
+                if (authUser?.user?.email) {
+                  emailUserLotteryWin(authUser.user.email, claimDeadline.toISOString().slice(0, 10), profile?.lang_pref || "en");
+                }
+                // In-app notification (via DB function)
+                await sc.rpc("notify_user", {
+                  p_user_id: winnerId,
+                  p_type: "lottery_win",
+                  p_title_en: "You Won the Monthly Giveaway! 🏆",
+                  p_title_es: "¡Ganaste el Sorteo Mensual! 🏆",
+                  p_body_en: `Claim your free book before ${claimDeadline.toISOString().slice(0, 10)}!`,
+                  p_body_es: `¡Reclama tu libro gratis antes del ${claimDeadline.toISOString().slice(0, 10)}!`,
+                });
               }
             }
 

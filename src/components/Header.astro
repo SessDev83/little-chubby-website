@@ -18,8 +18,9 @@ const navItems = [
   { href: `/${lang}/books/`, label: text.navBooks },
   { href: `/${lang}/blog/`, label: text.navBlog },
   { href: `/${lang}/coloring-corner/`, label: text.navColoringCorner },
+  { href: `/${lang}/gallery/`, label: text.navGallery },
+  { href: `/${lang}/reviews/`, label: text.navReviews },
   { href: `/${lang}/contact/`, label: text.navContact },
-  { href: `/${lang}/about/`, label: text.navAbout },
 ];
 ---
 
@@ -33,9 +34,12 @@ const navItems = [
 
       <div class="header-actions">
         <a href={`/${lang}/login/`} class="header-login" id="auth-login">{text.navLogin}</a>
-        <a href={`/${lang}/coloring-corner/`} class="header-peanuts" id="auth-peanuts" style="display:none;" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
+        <a href={`/${lang}/peanuts/`} class="header-peanuts" id="auth-peanuts" style="display:none;" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
           🥜 <span id="peanuts-count">0</span>
         </a>
+        <button class="header-bell" id="auth-bell" style="display:none;" title={lang === "es" ? "Notificaciones" : "Notifications"} aria-label="Notifications">
+          🔔 <span class="bell-badge" id="bell-badge" style="display:none;">0</span>
+        </button>
         <span class="header-username" id="auth-username" style="display:none;"></span>
         <div class="lang-toggle" role="group" aria-label={text.languageToggleLabel}>
           <a
@@ -145,6 +149,67 @@ const navItems = [
     }
     if (settingsEl) settingsEl.style.display = loggedIn ? "" : "none";
     if (peanutsEl) peanutsEl.style.display = loggedIn ? "" : "none";
+
+    // Bell + notifications
+    var bellEl = document.getElementById("auth-bell");
+    var bellBadge = document.getElementById("bell-badge");
+    if (bellEl) bellEl.style.display = loggedIn ? "" : "none";
+
+    if (loggedIn && bellEl) {
+      fetch("/api/notifications/", { credentials: "same-origin" })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.unreadCount && d.unreadCount > 0) {
+            bellBadge.textContent = String(d.unreadCount);
+            bellBadge.style.display = "";
+          } else {
+            bellBadge.style.display = "none";
+          }
+        })
+        .catch(function() {});
+
+      // Toggle dropdown on click
+      bellEl.addEventListener("click", function(e) {
+        e.stopPropagation();
+        var existing = document.querySelector(".notif-dropdown");
+        if (existing) { existing.remove(); return; }
+        fetch("/api/notifications/", { credentials: "same-origin" })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            var dd = document.createElement("div");
+            dd.className = "notif-dropdown open";
+            if (!d.notifications || d.notifications.length === 0) {
+              dd.innerHTML = '<div class="notif-empty">🔔 ' + (document.documentElement.lang === "es" ? "No tienes notificaciones." : "No notifications.") + '</div>';
+            } else {
+              function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+              dd.innerHTML = d.notifications.map(function(n) {
+                var cls = n.read ? "notif-item" : "notif-item unread";
+                var title = document.documentElement.lang === "es" ? (n.title_es || n.title_en) : (n.title_en || n.title_es);
+                var body = document.documentElement.lang === "es" ? (n.body_es || n.body_en) : (n.body_en || n.body_es);
+                return '<div class="' + cls + '" data-notif-id="' + esc(n.id) + '"><div class="notif-title">' + esc(title) + '</div><div class="notif-body">' + esc(body) + '</div></div>';
+              }).join("");
+              // Mark all as read
+              fetch("/api/notifications/", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
+                body: JSON.stringify({ action: "mark_all_read" })
+              }).then(function() {
+                bellBadge.style.display = "none";
+              }).catch(function(){});
+            }
+            bellEl.parentElement.style.position = "relative";
+            bellEl.parentElement.appendChild(dd);
+            // Close on outside click
+            setTimeout(function() {
+              document.addEventListener("click", function closeDD() {
+                dd.remove();
+                document.removeEventListener("click", closeDD);
+              }, { once: true });
+            }, 10);
+          }).catch(function(){});
+      });
+    }
 
     // Fetch peanuts balance
     if (loggedIn && peanutsCount) {

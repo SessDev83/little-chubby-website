@@ -1,0 +1,672 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getLangFromParam, ui } from "../../data/i18n";
+import type { Lang } from "../../data/i18n";
+
+const lang = getLangFromParam(Astro.params.lang) as Lang;
+const text = ui[lang];
+const pathname = `/${lang}/peanuts/`;
+
+const reasonLabels: Record<string, string> = {
+  review: text.peanutReasonReview,
+  share: text.peanutReasonShare,
+  download: text.peanutReasonDownload,
+  admin: text.peanutReasonAdmin,
+  giveaway: text.peanutReasonGiveaway,
+  badge: text.peanutShopBadge,
+  boost: text.peanutShopBoost,
+  lottery_entry: text.peanutShopLottery,
+};
+
+const reasonIcons: Record<string, string> = {
+  review: "📝",
+  share: "🔗",
+  download: "🎨",
+  admin: "⚙️",
+  giveaway: "🎟️",
+  badge: "🖼️",
+  boost: "📌",
+  lottery_entry: "🎟️",
+};
+
+const badgeItems = [
+  { type: "frame_gold", label: text.badgeFrameGold, icon: "🖼️", cost: 15 },
+  { type: "frame_silver", label: text.badgeFrameSilver, icon: "🪞", cost: 15 },
+  { type: "top_reviewer", label: text.badgeTopReviewer, icon: "⭐", cost: 15 },
+  { type: "star_parent", label: text.badgeStarParent, icon: "💖", cost: 15 },
+];
+
+const boostItems = [
+  { type: "pin_7d", label: text.boostPin7d, icon: "📌", cost: 10 },
+  { type: "gold_border", label: text.boostGoldBorder, icon: "✨", cost: 10 },
+];
+---
+
+<BaseLayout
+  lang={lang}
+  title={text.peanutMetaTitle}
+  description={text.peanutHeading}
+  pathname={pathname}
+>
+  <section class="peanuts-page">
+    <!-- Balance Summary -->
+    <div class="balance-hero">
+      <h1>{text.peanutHeading}</h1>
+      <div class="balance-card">
+        <div class="balance-main">
+          <span class="balance-number" id="balance-number">—</span>
+          <span class="balance-label">{text.peanutBalance}</span>
+        </div>
+        <div class="balance-stats">
+          <div class="stat earned">
+            <span class="stat-value" id="stat-earned">0</span>
+            <span class="stat-label">{text.peanutTotalEarned}</span>
+          </div>
+          <div class="stat spent">
+            <span class="stat-value" id="stat-spent">0</span>
+            <span class="stat-label">{text.peanutTotalSpent}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login required message (hidden by default) -->
+    <div id="login-prompt" class="login-prompt" style="display:none">
+      <p>{text.lotteryNotLoggedIn}</p>
+      <a href={`/${lang}/login/`} class="btn btn-primary">{text.loginHeading}</a>
+    </div>
+
+    <!-- Main content (hidden until loaded) -->
+    <div id="peanuts-content" style="display:none">
+
+      <!-- Shop Section -->
+      <div class="shop-section">
+        <h2>🛍️ {text.peanutShopTitle}</h2>
+
+        <!-- Badges -->
+        <h3>{text.peanutShopBadge}</h3>
+        <div class="shop-grid">
+          {badgeItems.map(item => (
+            <div class="shop-card" data-shop="badge" data-type={item.type} data-cost={item.cost}>
+              <span class="shop-icon">{item.icon}</span>
+              <span class="shop-name">{item.label}</span>
+              <span class="shop-price">{item.cost} 🥜</span>
+              <button class="btn btn-sm btn-buy" data-action="buy-badge" data-badge={item.type}>
+                {text.peanutBuy}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <!-- Boosts -->
+        <h3>{text.peanutShopBoost}</h3>
+        <div class="shop-grid">
+          {boostItems.map(item => (
+            <div class="shop-card" data-shop="boost" data-type={item.type} data-cost={item.cost}>
+              <span class="shop-icon">{item.icon}</span>
+              <span class="shop-name">{item.label}</span>
+              <span class="shop-price">{item.cost} 🥜</span>
+              <select class="boost-review-select" data-boost={item.type} style="display:none; width:100%; margin:0.4rem 0; padding:0.3rem; border-radius:6px; border:1px solid var(--border);">
+                <option value="">{lang === "es" ? "— Elige una review —" : "— Pick a review —"}</option>
+              </select>
+              <button class="btn btn-sm btn-buy" data-action="buy-boost" data-boost={item.type}>
+                {text.peanutBuy}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <!-- Lottery Entries -->
+        <h3>{text.peanutShopLottery}</h3>
+        <div class="shop-card lottery-entry-card">
+          <span class="shop-icon">🎟️</span>
+          <span class="shop-name">{text.lotteryBuyEntries}</span>
+          <span class="shop-price">3 🥜 / {lang === "es" ? "entrada" : "entry"}</span>
+          <div class="lottery-qty">
+            <button class="qty-btn" id="qty-minus">−</button>
+            <span id="qty-value">1</span>
+            <button class="qty-btn" id="qty-plus">+</button>
+          </div>
+          <button class="btn btn-sm btn-buy" id="buy-lottery-btn">
+            {text.peanutBuy} (<span id="lottery-total-cost">3</span> 🥜)
+          </button>
+        </div>
+      </div>
+
+      <!-- Transaction History -->
+      <div class="history-section">
+        <h2>{text.peanutHistory}</h2>
+
+        <div class="history-filters">
+          <button class="filter-btn active" data-filter="all">{text.peanutFilterAll}</button>
+          <button class="filter-btn" data-filter="earned">{text.peanutFilterEarned}</button>
+          <button class="filter-btn" data-filter="spent">{text.peanutFilterSpent}</button>
+        </div>
+
+        <div id="tx-list" class="tx-list">
+          <p class="tx-empty">{text.peanutNoTransactions}</p>
+        </div>
+
+        <button id="tx-load-more" class="btn btn-outline" style="display:none">
+          {text.galleryLoadMore}
+        </button>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" style="display:none"></div>
+  </section>
+</BaseLayout>
+
+<script define:vars={{ lang, reasonLabels: JSON.stringify(reasonLabels), reasonIcons: JSON.stringify(reasonIcons) }}>
+(function() {
+  const labels = JSON.parse(reasonLabels);
+  const icons = JSON.parse(reasonIcons);
+  let currentFilter = "all";
+  let currentPage = 1;
+  let balance = 0;
+  let lotteryQty = 1;
+
+  async function init() {
+    // Check auth
+    const res = await fetch("/api/me/", { credentials: "same-origin" });
+    const data = await res.json();
+
+    if (!data.user) {
+      document.getElementById("login-prompt").style.display = "block";
+      return;
+    }
+
+    document.getElementById("peanuts-content").style.display = "block";
+    await loadHistory();
+    await loadBoostReviews();
+    setupShop();
+    setupFilters();
+    setupLotteryQty();
+  }
+
+  async function loadBoostReviews() {
+    try {
+      const res = await fetch("/api/my-reviews/", { credentials: "same-origin" });
+      const data = await res.json();
+      if (!data.reviews) return;
+      const approved = data.reviews.filter(r => r.status === "approved");
+      document.querySelectorAll(".boost-review-select").forEach(sel => {
+        sel.style.display = approved.length > 0 ? "block" : "none";
+        approved.forEach(r => {
+          const opt = document.createElement("option");
+          opt.value = r.id;
+          opt.textContent = (r.book_title || r.book_id) + " ★" + r.rating;
+          sel.appendChild(opt);
+        });
+      });
+    } catch { /* ignore - boost selectors stay hidden */ }
+  }
+
+  async function loadHistory() {
+    const res = await fetch(`/api/credit-history/?page=${currentPage}&filter=${currentFilter}`, {
+      credentials: "same-origin",
+    });
+    const data = await res.json();
+
+    if (data.error) return;
+
+    balance = data.balance;
+    document.getElementById("balance-number").textContent = balance;
+    document.getElementById("stat-earned").textContent = "+" + data.totalEarned;
+    document.getElementById("stat-spent").textContent = "-" + data.totalSpent;
+
+    // Update header badge via sessionStorage
+    sessionStorage.setItem("lcp-peanuts", String(balance));
+    const headerBadge = document.getElementById("peanuts-count");
+    if (headerBadge) headerBadge.textContent = balance;
+
+    renderTransactions(data.transactions, currentPage === 1);
+
+    const loadMore = document.getElementById("tx-load-more");
+    loadMore.style.display = data.hasMore ? "block" : "none";
+    loadMore.onclick = () => { currentPage++; loadHistory(); };
+  }
+
+  const emptyText = lang === "es" ? "Sin transacciones." : "No transactions.";
+
+  function renderTransactions(txs, replace) {
+    const list = document.getElementById("tx-list");
+    if (replace) list.innerHTML = "";
+
+    if (txs.length === 0 && replace) {
+      list.innerHTML = `<p class="tx-empty">${emptyText}</p>`;
+      return;
+    }
+
+    txs.forEach(tx => {
+      const el = document.createElement("div");
+      el.className = `tx-row ${tx.amount > 0 ? "tx-earned" : "tx-spent"}`;
+      const date = new Date(tx.created_at).toLocaleDateString(lang === "es" ? "es-ES" : "en-US", {
+        month: "short", day: "numeric", year: "numeric"
+      });
+      const icon = icons[tx.reason] || "🥜";
+      const label = labels[tx.reason] || tx.reason;
+      const sign = tx.amount > 0 ? "+" : "";
+      el.innerHTML = `
+        <span class="tx-icon">${icon}</span>
+        <span class="tx-label">${label}</span>
+        <span class="tx-date">${date}</span>
+        <span class="tx-amount">${sign}${tx.amount} 🥜</span>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  function setupFilters() {
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentFilter = btn.dataset.filter;
+        currentPage = 1;
+        loadHistory();
+      });
+    });
+  }
+
+  function setupLotteryQty() {
+    const qtyEl = document.getElementById("qty-value");
+    const costEl = document.getElementById("lottery-total-cost");
+
+    document.getElementById("qty-minus").addEventListener("click", () => {
+      if (lotteryQty > 1) {
+        lotteryQty--;
+        qtyEl.textContent = lotteryQty;
+        costEl.textContent = lotteryQty * 3;
+      }
+    });
+
+    document.getElementById("qty-plus").addEventListener("click", () => {
+      if (lotteryQty < 20) {
+        lotteryQty++;
+        qtyEl.textContent = lotteryQty;
+        costEl.textContent = lotteryQty * 3;
+      }
+    });
+
+    document.getElementById("buy-lottery-btn").addEventListener("click", async () => {
+      await purchaseAction("/api/buy-lottery-entry/", { quantity: lotteryQty });
+    });
+  }
+
+  function setupShop() {
+    // Badge buttons
+    document.querySelectorAll("[data-action='buy-badge']").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        await purchaseAction("/api/buy-badge/", { badge_type: btn.dataset.badge });
+      });
+    });
+
+    // Boost buttons — populate review selectors, then purchase on click
+    document.querySelectorAll("[data-action='buy-boost']").forEach(btn => {
+      const card = btn.closest(".shop-card");
+      const select = card.querySelector(".boost-review-select");
+      btn.addEventListener("click", async () => {
+        const reviewId = select.value;
+        if (!reviewId) {
+          showToast(lang === "es" ? "Selecciona una review." : "Select a review first.", "error");
+          return;
+        }
+        await purchaseAction("/api/boost-review/", {
+          review_id: reviewId,
+          boost_type: btn.dataset.boost,
+        });
+      });
+    });
+  }
+
+  async function purchaseAction(url, body) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+
+      if (data.error === "insufficient_credits") {
+        showToast(document.querySelector("[data-filter]")?.closest(".peanuts-page")
+          ? (lang === "es" ? "No tienes suficientes Peanuts." : "Not enough Peanuts.")
+          : "Not enough Peanuts.", "error");
+        return;
+      }
+      if (data.error === "already_owned") {
+        showToast(lang === "es" ? "Ya tienes este badge." : "You already own this badge.", "info");
+        return;
+      }
+      if (data.error === "boost_active") {
+        showToast(lang === "es" ? "Este boost ya esta activo." : "This boost is already active.", "info");
+        return;
+      }
+      if (data.error) {
+        showToast(data.error, "error");
+        return;
+      }
+
+      // Success
+      if (typeof data.balance === "number") {
+        balance = data.balance;
+        document.getElementById("balance-number").textContent = balance;
+        sessionStorage.setItem("lcp-peanuts", String(balance));
+        const hb = document.getElementById("peanuts-count");
+        if (hb) hb.textContent = balance;
+      }
+      showToast(lang === "es" ? "¡Compra realizada!" : "Purchase complete!", "success");
+      currentPage = 1;
+      loadHistory();
+    } catch {
+      showToast("Error", "error");
+    }
+  }
+
+  function showToast(msg, type) {
+    const toast = document.getElementById("toast");
+    toast.textContent = msg;
+    toast.className = `toast toast-${type}`;
+    toast.style.display = "block";
+    setTimeout(() => { toast.style.display = "none"; }, 3000);
+  }
+
+  init();
+})();
+</script>
+
+<style>
+  .peanuts-page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+
+  .balance-hero h1 {
+    text-align: center;
+    color: var(--heading, #3d2c1e);
+    margin-bottom: 1rem;
+  }
+
+  .balance-card {
+    background: linear-gradient(135deg, #fff8e7, #fff3d1);
+    border: 2px solid #e8c868;
+    border-radius: 16px;
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .balance-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .balance-number {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #8b6914;
+  }
+
+  .balance-label {
+    font-size: 0.9rem;
+    color: #6b4c3b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .balance-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  .stat.earned .stat-value { color: #2e7d32; }
+  .stat.spent .stat-value { color: #c62828; }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: #888;
+    text-transform: uppercase;
+  }
+
+  /* Login Prompt */
+  .login-prompt {
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+
+  .login-prompt .btn { margin-top: 1rem; }
+
+  /* Shop */
+  .shop-section {
+    margin-bottom: 2rem;
+  }
+
+  .shop-section h2 {
+    color: var(--heading, #3d2c1e);
+    margin-bottom: 0.5rem;
+  }
+
+  .shop-section h3 {
+    color: #6b4c3b;
+    font-size: 1rem;
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  .shop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .shop-card {
+    background: #fff;
+    border: 1px solid #e8e0d4;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    transition: box-shadow 0.2s;
+  }
+
+  .shop-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  .shop-icon { font-size: 1.8rem; }
+
+  .shop-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #3d2c1e;
+  }
+
+  .shop-price {
+    font-size: 0.8rem;
+    color: #8b6914;
+    font-weight: 700;
+  }
+
+  .btn-buy {
+    background: #e8c868;
+    color: #3d2c1e;
+    border: none;
+    border-radius: 8px;
+    padding: 0.4rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.2s;
+  }
+
+  .btn-buy:hover { background: #d4b24e; }
+
+  .lottery-entry-card {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .lottery-qty {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .qty-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .qty-btn:hover { background: #f5f0e8; }
+
+  #qty-value {
+    font-weight: 700;
+    min-width: 1.5rem;
+    text-align: center;
+  }
+
+  /* History */
+  .history-section {
+    margin-top: 2rem;
+  }
+
+  .history-section h2 {
+    color: var(--heading, #3d2c1e);
+    margin-bottom: 0.5rem;
+  }
+
+  .history-filters {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .filter-btn {
+    padding: 0.4rem 1rem;
+    border: 1px solid #e8e0d4;
+    border-radius: 20px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #6b4c3b;
+    transition: all 0.2s;
+  }
+
+  .filter-btn.active {
+    background: #e8c868;
+    border-color: #e8c868;
+    color: #3d2c1e;
+    font-weight: 600;
+  }
+
+  .tx-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .tx-row {
+    display: grid;
+    grid-template-columns: 2rem 1fr auto auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #f0ebe4;
+    font-size: 0.85rem;
+  }
+
+  .tx-icon { font-size: 1.1rem; text-align: center; }
+
+  .tx-label { color: #3d2c1e; font-weight: 500; }
+
+  .tx-date { color: #aaa; font-size: 0.75rem; }
+
+  .tx-amount { font-weight: 700; text-align: right; white-space: nowrap; }
+
+  .tx-earned .tx-amount { color: #2e7d32; }
+  .tx-spent .tx-amount { color: #c62828; }
+
+  .tx-empty {
+    text-align: center;
+    color: #aaa;
+    padding: 2rem;
+  }
+
+  .btn-outline {
+    display: block;
+    margin: 1rem auto 0;
+    padding: 0.5rem 1.5rem;
+    border: 1px solid #e8e0d4;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    color: #6b4c3b;
+    font-weight: 600;
+  }
+
+  .btn-outline:hover { background: #f5f0e8; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    z-index: 9999;
+    animation: slideUp 0.3s ease;
+  }
+
+  .toast-success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+  .toast-error { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+  .toast-info { background: #fff8e1; color: #8b6914; border: 1px solid #ffe082; }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateX(-50%) translateY(1rem); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  @media (max-width: 600px) {
+    .balance-number { font-size: 2.2rem; }
+    .shop-grid { grid-template-columns: repeat(2, 1fr); }
+    .tx-row { grid-template-columns: 2rem 1fr auto; }
+    .tx-date { display: none; }
+  }
+</style>
