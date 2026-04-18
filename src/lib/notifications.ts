@@ -235,21 +235,32 @@ export async function emailUserReviewApproved(
 export async function emailUserLotteryWin(
   userEmail: string,
   claimDeadline: string,
-  lang: string
+  lang: string,
+  prizeBookTitle?: string
 ): Promise<void> {
   const isEs = lang === "es";
+  const claimUrl = `https://littlechubbypress.com/${lang}/lottery/`;
   const subject = isEs
     ? "🏆 ¡Felicidades! ¡Ganaste el sorteo mensual!"
     : "🏆 Congratulations! You won the monthly giveaway!";
+  const rows: [string, string][] = [];
+  if (prizeBookTitle) {
+    rows.push([isEs ? "Premio" : "Prize", `📖 ${prizeBookTitle}`]);
+  }
+  rows.push(
+    [isEs ? "Plazo para reclamar" : "Claim deadline", claimDeadline],
+    [isEs ? "Qué hacer" : "What to do", isEs
+      ? "Inicia sesión, elige tu libro y envía tu nombre completo y dirección de envío"
+      : "Log in, choose your book and submit your full name and shipping address"],
+    [isEs ? "Reclama aquí" : "Claim here", `<a href="${claimUrl}" style="color:#6b4c3b;font-weight:700">${claimUrl}</a>`],
+  );
   const html = card(
     "🏆",
     isEs ? "¡Ganaste el Sorteo!" : "You Won the Giveaway!",
-    [
-      [isEs ? "Plazo para reclamar" : "Claim deadline", claimDeadline],
-    ],
+    rows,
     isEs
-      ? "Inicia sesión y reclama tu premio en littlechubbypress.com"
-      : "Log in and claim your prize at littlechubbypress.com"
+      ? "⚠️ Si no reclamas antes de la fecha límite, el premio se pierde. Necesitamos tu nombre completo y dirección para enviar el libro."
+      : "⚠️ If you don't claim before the deadline, the prize is forfeited. We need your full name and shipping address to send the book."
   );
   await sendToUser(userEmail, subject, html);
 }
@@ -291,6 +302,13 @@ export async function notifyAdminMonthlyDraw(report: MonthlyDrawReport): Promise
     ["Next Prize", report.nextPrizeBook],
     ["Next Draw Date", report.nextDrawDate],
   ];
+
+  if (report.hasRealWinners) {
+    rows.push(
+      ["─────", "─────"],
+      ["⚠️ ACTION", "Winners must claim within 14 days. Check /admin/lottery/ for unclaimed prizes. You'll get a notification when they submit shipping info."],
+    );
+  }
 
   const emoji = report.hasRealWinners ? "🏆" : "📊";
   const title = report.hasRealWinners

@@ -148,7 +148,8 @@ export const GET: APIRoute = async ({ request }) => {
             emailUserLotteryWin(
               authUser.user.email,
               claimDeadline.toISOString().slice(0, 10),
-              profile?.lang_pref || "en"
+              profile?.lang_pref || "en",
+              prizeBookPrev.title[profile?.lang_pref === "es" ? "es" : "en"]
             );
           }
 

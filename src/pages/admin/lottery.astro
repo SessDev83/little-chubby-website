@@ -224,7 +224,7 @@ if (Astro.request.method === "POST") {
                 // Send email + in-app notification to winner
                 const { data: authUser } = await sc.auth.admin.getUserById(winnerId);
                 if (authUser?.user?.email) {
-                  emailUserLotteryWin(authUser.user.email, claimDeadline.toISOString().slice(0, 10), profile?.lang_pref || "en");
+                  emailUserLotteryWin(authUser.user.email, claimDeadline.toISOString().slice(0, 10), profile?.lang_pref || "en", prizeBook.title[profile?.lang_pref === "es" ? "es" : "en"]);
                 }
                 // In-app notification (via DB function)
                 await sc.rpc("notify_user", {
