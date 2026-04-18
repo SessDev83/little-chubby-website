@@ -440,8 +440,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showPhoto() {
-    lbImg.src = lbPhotos[lbPhotoIdx];
-    renderDots();
+    lbImg.style.opacity = "0";
+    setTimeout(() => {
+      lbImg.src = lbPhotos[lbPhotoIdx];
+      lbImg.onload = () => { lbImg.style.opacity = "1"; };
+      renderDots();
+    }, 120);
   }
 
   function openLightbox(idx, photoIdx) {
@@ -681,7 +685,7 @@ document.addEventListener("DOMContentLoaded", () => {
   .gallery-img-wrap { overflow: hidden; }
   .gallery-img {
     width: 100%;
-    aspect-ratio: 4/3;
+    aspect-ratio: 3/4;
     object-fit: cover;
     display: block;
     cursor: pointer;
@@ -796,7 +800,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   .skeleton-img {
     width: 100%;
-    aspect-ratio: 4/3;
+    aspect-ratio: 3/4;
     background: linear-gradient(90deg, var(--line) 25%, var(--bg) 50%, var(--line) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.4s infinite;
@@ -859,15 +863,25 @@ document.addEventListener("DOMContentLoaded", () => {
   .lightbox-prev { left: 1rem; }
   .lightbox-next { right: 1rem; }
   .lightbox-content {
-    max-width: 56rem;
-    max-height: 90vh;
+    max-width: 40rem;
+    max-height: 92vh;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 0.6rem;
     padding: 1rem;
+    overflow: hidden;
   }
-  .lightbox-image { max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: var(--radius-sm); }
+  .lightbox-image {
+    max-width: 100%;
+    max-height: 65vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    flex-shrink: 1;
+    transition: opacity 0.15s ease;
+  }
   .lightbox-info { text-align: center; color: #fff; }
   .lightbox-book { font-size: 1.1rem; display: block; margin-bottom: 0.2rem; }
   .lightbox-stars { color: var(--accent-gold); font-size: 1rem; display: block; margin-bottom: 0.3rem; }
