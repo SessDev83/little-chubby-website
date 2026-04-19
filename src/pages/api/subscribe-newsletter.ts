@@ -36,9 +36,30 @@ export const POST: APIRoute = async ({ request }) => {
       confirmed: false,
     }).select("confirm_token").single();
 
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = (name || "").trim();
+    const lang = lang_pref || "en";
+
     if (error) {
-      // 23505 = unique violation (already subscribed) — still OK
+      // 23505 = unique violation (already subscribed)
       if (error.code === "23505") {
+        // If not yet confirmed, re-send confirmation in current language
+        const { data: existing } = await svc
+          .from("newsletter_subscribers")
+          .select("confirm_token, confirmed")
+          .eq("email", cleanEmail)
+          .single();
+
+        if (existing && !existing.confirmed) {
+          // Update lang_pref & reset reminder counter so they restart the drip
+          await svc
+            .from("newsletter_subscribers")
+            .update({ lang_pref: lang, reminder_count: 0, last_reminder_at: null })
+            .eq("email", cleanEmail);
+
+          sendConfirmationEmail(cleanEmail, cleanName, existing.confirm_token, lang);
+        }
+
         return new Response(JSON.stringify({ ok: true, existing: true }), {
           status: 200,
           headers,
@@ -49,10 +70,6 @@ export const POST: APIRoute = async ({ request }) => {
         headers,
       });
     }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanName = (name || "").trim();
-    const lang = lang_pref || "en";
 
     // Send confirmation email to the subscriber (in their language)
     sendConfirmationEmail(cleanEmail, cleanName, data.confirm_token, lang);
