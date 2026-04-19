@@ -526,8 +526,8 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       });
     }
 
-    // ── Resize helper: scale source to fit MAX_DIM, output to canvas blob ──
-    function resizeToCanvas(source, srcW, srcH) {
+    // ── Resize + draw to canvas → blob ──
+    function resizeAndBlob(source, srcW, srcH) {
       var w = srcW, h = srcH;
       if (w > MAX_DIM || h > MAX_DIM) {
         var ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
@@ -543,38 +543,41 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     }
 
     // ── Compress image ──
-    // Modern browsers (Chrome 81+, Safari 13.1+, Firefox 26+) auto-apply
-    // EXIF orientation when drawing to canvas — no manual rotation needed.
+    // Strategy: new Image() is the primary path because modern browsers
+    // (Chrome 81+, Safari 13.1+, Firefox) auto-apply EXIF orientation
+    // when an Image element is decoded — drawImage draws rotated pixels.
+    // createImageBitmap WITHOUT { imageOrientation } does NOT auto-rotate,
+    // so it's only used as a fallback for formats Image can't load (HEIC).
     async function compressImage(file) {
-      // PRIMARY: createImageBitmap — handles HEIC, large photos, memory-efficient
+      // PRIMARY: Image element — reliable EXIF auto-rotation
+      var loaded = await new Promise(function (resolve) {
+        var img = new Image();
+        var url = URL.createObjectURL(file);
+        img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+        img.src = url;
+      });
+
+      if (loaded) {
+        return resizeAndBlob(loaded, loaded.naturalWidth || loaded.width, loaded.naturalHeight || loaded.height);
+      }
+
+      // FALLBACK: createImageBitmap for formats Image can't handle (HEIC)
       if (typeof createImageBitmap === "function") {
         var bitmap = null;
         try {
           bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
         } catch (_) {
-          try { bitmap = await createImageBitmap(file); } catch (__) { /* fall through */ }
+          try { bitmap = await createImageBitmap(file); } catch (__) { /* give up */ }
         }
         if (bitmap) {
-          var blob = await resizeToCanvas(bitmap, bitmap.width, bitmap.height);
+          var blob = await resizeAndBlob(bitmap, bitmap.width, bitmap.height);
           bitmap.close();
           return blob;
         }
       }
 
-      // FALLBACK: Image element (also auto-rotates in modern browsers)
-      return new Promise(function (resolve, reject) {
-        var img = new Image();
-        var url = URL.createObjectURL(file);
-        img.onload = function () {
-          URL.revokeObjectURL(url);
-          try {
-            resizeToCanvas(img, img.naturalWidth || img.width, img.naturalHeight || img.height)
-              .then(resolve, reject);
-          } catch (err) { reject(err); }
-        };
-        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("Cannot load image")); };
-        img.src = url;
-      });
+      throw new Error("Cannot load image");
     }
 
     function setupDropzone(zoneId, inputId) {
