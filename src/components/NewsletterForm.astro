@@ -58,6 +58,9 @@ const text = ui[lang];
       var emailMsg = currentLang === "en"
         ? "Please enter a valid email."
         : "Ingresa un email valido.";
+      var thankYouMsg = currentLang === "en"
+        ? "Thanks for subscribing!"
+        : "¡Gracias por suscribirte!";
       var successMsg = currentLang === "en"
         ? "Check your inbox to confirm your subscription!"
         : "¡Revisa tu correo para confirmar tu suscripción!";
@@ -100,18 +103,34 @@ const text = ui[lang];
       }).then(function(res) {
         return res.json().then(function(data) {
           if (submitBtn) { submitBtn.classList.remove('is-loading'); submitBtn.disabled = false; }
+          var showThankYou = false;
           if (data.existing && data.confirmed) {
             newsletterStatus.textContent = alreadyConfirmedMsg;
             newsletterStatus.className = "status-msg status-info";
+            showThankYou = true;
           } else if (data.existing) {
             newsletterStatus.textContent = alreadyMsg;
             newsletterStatus.className = "status-msg status-success";
+            showThankYou = true;
           } else if (data.ok) {
             newsletterStatus.textContent = successMsg;
             newsletterStatus.className = "status-msg status-success";
             newsletterForm.reset();
+            showThankYou = true;
           } else {
             newsletterStatus.textContent = errorMsg;
+          }
+          if (showThankYou) {
+            // Show thank-you heading and hide form fields
+            var formGrid = newsletterForm.querySelector('.form-grid');
+            if (formGrid) {
+              var thankEl = document.createElement('div');
+              thankEl.className = 'newsletter-thankyou';
+              thankEl.innerHTML = '<p style="font-size:1.25rem;font-weight:700;color:#6b4c3b;margin:0 0 0.5rem;">' + thankYouMsg + '</p>';
+              formGrid.innerHTML = '';
+              formGrid.appendChild(thankEl);
+              formGrid.appendChild(newsletterStatus);
+            }
           }
         });
       }).catch(function() {

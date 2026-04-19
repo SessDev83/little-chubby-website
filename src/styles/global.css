@@ -188,13 +188,7 @@ main {
   height: 2.6rem;
 }
 
-.lang-toggle {
-  display: inline-flex;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
-  overflow: hidden;
-}
+
 
 .header-actions {
   display: flex;
@@ -385,6 +379,51 @@ main {
   background: rgba(217, 130, 95, 0.08);
 }
 
+.settings-login-hint {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--brand-blue);
+  opacity: 0.7;
+}
+
+.settings-login-hint:hover {
+  opacity: 1;
+}
+
+.settings-lang {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  border-top: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.settings-lang a {
+  flex: 1;
+  text-align: center;
+  text-decoration: none;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  font-size: 0.88rem;
+  line-height: 1;
+  color: var(--brand-blue);
+  padding: 0.55rem 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.settings-lang a:first-child {
+  border-right: 1px solid var(--line);
+}
+
+.settings-lang a[data-active="true"] {
+  background: var(--brand-blue);
+  color: #fff;
+}
+
+.settings-lang a:hover:not([data-active="true"]) {
+  background: rgba(31, 79, 134, 0.08);
+}
+
 /* ── Hamburger Button ───────────────────────── */
 .hamburger {
   display: none;
@@ -425,6 +464,8 @@ main {
   .hamburger {
     display: flex;
   }
+
+
 
   .brand-link span {
     font-size: 0.95rem;
@@ -482,6 +523,8 @@ main {
     padding: 0.65rem 0.8rem;
   }
 }
+
+
 
 @media (max-width: 22.5rem) {
   .header-username {
@@ -581,21 +624,7 @@ main {
   }
 }
 
-.lang-toggle a {
-  text-decoration: none;
-  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
-  font-weight: 700;
-  font-size: 0.9rem;
-  line-height: 1;
-  color: var(--brand-blue);
-  padding: 0.56rem 0.72rem;
-  transition: background-color 0.25s ease, color 0.25s ease;
-}
 
-.lang-toggle a[data-active="true"] {
-  background: var(--brand-blue);
-  color: #ffffff;
-}
 
 .header-nav {
   margin-top: 0.65rem;
@@ -1514,7 +1543,6 @@ main {
   .giveaway-banner,
   .btn,
   .hamburger,
-  .lang-toggle,
   .header-login {
     display: none !important;
   }
@@ -2004,9 +2032,21 @@ main {
 .lead-magnet-success {
   text-align: center;
   padding: 1rem 0;
-  color: var(--brand-green);
-  font-weight: 700;
   font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+}
+
+.lead-magnet-thankyou {
+  color: var(--brand-brown);
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.4rem;
+}
+
+.lead-magnet-check-inbox {
+  color: var(--brand-green);
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
 }
 
 @keyframes popup-fade-in {

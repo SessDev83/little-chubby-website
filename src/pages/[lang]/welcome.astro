@@ -1,0 +1,197 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Button from "../../components/Button.astro";
+import { languages, getLangFromParam, ui } from "../../data/i18n";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/welcome/`;
+---
+
+<BaseLayout lang={lang} title={text.welcomeMetaTitle} description={text.welcomeMetaDescription} pathname={pathname}>
+  <section class="page-section">
+    <div class="container">
+      <article class="welcome-card surface-card">
+        <!-- Confirmation banner -->
+        <div class="welcome-confirmed">
+          <h1>{text.welcomeConfirmed}</h1>
+          <p>{text.welcomeSubtitle}</p>
+        </div>
+
+        <!-- Free download -->
+        <div class="welcome-download">
+          <p class="welcome-download-label">{text.welcomeDownloadHeading}</p>
+          <a href="/downloads/mini-coloring-book.pdf" class="btn btn-green" download>
+            {text.welcomeDownloadCta}
+          </a>
+        </div>
+
+        <!-- Unlock heading -->
+        <h2 class="welcome-unlock-heading">{text.welcomeUnlockHeading}</h2>
+
+        <!-- Benefits grid -->
+        <ul class="welcome-benefits">
+          <li>
+            <span class="welcome-benefit-icon">🥜</span>
+            <span>{text.welcomeBenefitPeanuts}</span>
+          </li>
+          <li>
+            <span class="welcome-benefit-icon">🎁</span>
+            <span>{text.welcomeBenefitLottery}</span>
+          </li>
+          <li>
+            <span class="welcome-benefit-icon">📸</span>
+            <span>{text.welcomeBenefitGallery}</span>
+          </li>
+          <li>
+            <span class="welcome-benefit-icon">⭐</span>
+            <span>{text.welcomeBenefitReviews}</span>
+          </li>
+          <li>
+            <span class="welcome-benefit-icon">🎨</span>
+            <span>{text.welcomeBenefitColoring}</span>
+          </li>
+        </ul>
+
+        <!-- CTA -->
+        <div class="welcome-actions">
+          <Button href={`/${lang}/register/`} label={text.welcomeCtaRegister} variant="primary" />
+        </div>
+
+        <p class="welcome-secondary">
+          {text.welcomeHaveAccount}{" "}
+          <a href={`/${lang}/login/`}><strong>{text.welcomeSignIn}</strong></a>
+        </p>
+
+        <p class="welcome-skip">
+          <a href={`/${lang}/`}>{text.welcomeSkip}</a>
+        </p>
+      </article>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .welcome-card {
+    max-width: 36rem;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 3vw, 2.5rem);
+    text-align: center;
+  }
+
+  .welcome-confirmed {
+    margin-bottom: 1.5rem;
+  }
+
+  .welcome-confirmed h1 {
+    color: var(--brand-green, #5c9650);
+    font-size: 1.5rem;
+    margin: 0 0 0.3rem;
+  }
+
+  .welcome-confirmed p {
+    color: var(--text-muted, #7a6f63);
+    font-size: 1rem;
+    margin: 0;
+  }
+
+  .welcome-download {
+    background: rgba(92, 150, 80, 0.08);
+    border-radius: 10px;
+    padding: 1.2rem;
+    margin-bottom: 2rem;
+  }
+
+  .welcome-download-label {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.7rem;
+    color: var(--text-dark, #2f261f);
+  }
+
+  .btn-green {
+    display: inline-block;
+    background: var(--brand-green, #5c9650);
+    color: #fff;
+    font-weight: 600;
+    padding: 0.55rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.95rem;
+    transition: opacity 0.2s;
+  }
+
+  .btn-green:hover {
+    opacity: 0.88;
+  }
+
+  .welcome-unlock-heading {
+    font-size: 1.15rem;
+    margin: 0 0 1rem;
+    color: var(--text-dark, #2f261f);
+  }
+
+  .welcome-benefits {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.8rem;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .welcome-benefits li {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-size: 0.95rem;
+    color: var(--text-dark, #2f261f);
+    background: rgba(107, 76, 59, 0.04);
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+  }
+
+  .welcome-benefit-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+
+  .welcome-actions {
+    margin-bottom: 1rem;
+  }
+
+  .welcome-actions :global(.btn) {
+    width: 100%;
+    font-size: 1.05rem;
+    padding: 0.75rem 1.5rem;
+  }
+
+  .welcome-secondary {
+    font-size: 0.93rem;
+    margin: 0 0 0.8rem;
+    color: var(--text-muted, #7a6f63);
+  }
+
+  .welcome-secondary a {
+    color: var(--brand-brown, #6b4c3b);
+  }
+
+  .welcome-skip {
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  .welcome-skip a {
+    color: var(--text-muted, #7a6f63);
+    text-decoration: none;
+  }
+
+  .welcome-skip a:hover {
+    text-decoration: underline;
+  }
+</style>

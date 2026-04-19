@@ -33,7 +33,8 @@ const text = ui[lang];
     </div>
 
     <div id="lead-magnet-success" class="lead-magnet-success" style="display:none;">
-      <p>🎉 {text.leadMagnetSuccess}</p>
+      <p class="lead-magnet-thankyou">🎉 {lang === "es" ? "¡Gracias por suscribirte!" : "Thanks for subscribing!"}</p>
+      <p class="lead-magnet-check-inbox">{text.leadMagnetSuccess}</p>
     </div>
   </div>
 </div>
@@ -146,25 +147,44 @@ function initLeadMagnet() {
         lang_pref: lang,
       })
     }).then(function(res) {
-      // 201 = created, 409 = already exists — both are fine
-      localStorage.setItem("lcp-lead-magnet", "registered");
-      formSection.style.display = "none";
-      successSection.style.display = "";
+      return res.json().then(function(data) {
+        localStorage.setItem("lcp-lead-magnet", "registered");
 
-      // Trigger download of the PDF directly
-      var downloadLink = document.createElement("a");
-      downloadLink.href = "/downloads/mini-coloring-book.pdf";
-      downloadLink.download = "Little-Chubby-Press-Mini-Coloring-Book.pdf";
-      downloadLink.style.display = "none";
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
+        var currentLang = document.documentElement.lang === "en" ? "en" : "es";
+        var thankYouEl = successSection.querySelector(".lead-magnet-thankyou");
+        var checkInboxEl = successSection.querySelector(".lead-magnet-check-inbox");
 
-      // Close popup after 3 seconds
-      setTimeout(function() {
-        overlay.style.display = "none";
-        document.body.style.overflow = "";
-      }, 3000);
+        if (data.existing && data.confirmed) {
+          // Already confirmed subscriber
+          if (thankYouEl) thankYouEl.textContent = currentLang === "en" ? "You're already subscribed!" : "¡Ya estás suscrito/a!";
+          if (checkInboxEl) checkInboxEl.textContent = "";
+        } else if (data.existing) {
+          // Re-sent confirmation
+          if (thankYouEl) thankYouEl.textContent = currentLang === "en" ? "Thanks for subscribing!" : "¡Gracias por suscribirte!";
+          if (checkInboxEl) checkInboxEl.textContent = currentLang === "en"
+            ? "We re-sent the confirmation email — check your inbox!"
+            : "¡Reenviamos el email de confirmación — revisa tu correo!";
+        }
+        // else: new subscriber — uses default HTML text
+
+        formSection.style.display = "none";
+        successSection.style.display = "";
+
+        // Trigger download of the PDF directly
+        var downloadLink = document.createElement("a");
+        downloadLink.href = "/downloads/mini-coloring-book.pdf";
+        downloadLink.download = "Little-Chubby-Press-Mini-Coloring-Book.pdf";
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+
+        // Close popup after 4 seconds
+        setTimeout(function() {
+          overlay.style.display = "none";
+          document.body.style.overflow = "";
+        }, 4000);
+      });
     }).catch(function() {
       // On error, still give the download (generous approach)
       localStorage.setItem("lcp-lead-magnet", "registered");

@@ -55,6 +55,6 @@ export const GET: APIRoute = async ({ url }) => {
 
   return new Response(null, {
     status: 302,
-    headers: { Location: `${siteUrl}/${lang}/?msg=subscribed` },
+    headers: { Location: `${siteUrl}/${lang}/welcome/` },
   });
 };

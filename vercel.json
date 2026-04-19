@@ -1,4 +1,12 @@
 {
+  "redirects": [
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "littlechubbypress.com" }],
+      "destination": "https://www.littlechubbypress.com/:path",
+      "permanent": true
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/monthly-draw",
