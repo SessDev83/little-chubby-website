@@ -1065,9 +1065,6 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
   .star-btn[data-hovered="true"] .star-icon,
   .star-btn[data-selected="true"] .star-icon { color: var(--accent-gold); }
   .star-btn:hover { transform: scale(1.15); }
-  @media (max-width: 600px) {
-    .star-btn { font-size: 2.4rem; padding: 0.4rem; }
-  }
 
   .photo-status {
     display: block;
@@ -1168,4 +1165,62 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
   .btn-edit:hover { background: rgba(211,164,66,0.1); }
   .btn-delete { color: #8f1f18; border-color: rgba(220,50,50,0.3); }
   .btn-delete:hover { background: rgba(220,50,50,0.08); }
+
+  /* ── Mobile responsive ────────────────────── */
+  @media (max-width: 600px) {
+    /* Star picker */
+    .star-btn { font-size: 2.4rem; padding: 0.4rem; }
+
+    /* Form card padding */
+    .surface-card { padding: 1rem !important; }
+
+    /* Photo dropzone — more compact */
+    .photo-dropzone { padding: 1.2rem 0.8rem; }
+    .dropzone-icon { font-size: 2rem; }
+    .dropzone-text { font-size: 0.9rem; }
+
+    /* Photo previews — bigger on mobile for easier viewing */
+    .preview-thumb { width: 4rem; height: 4rem; }
+    .preview-thumb.cover-thumb { width: 4.5rem; height: 5.8rem; }
+
+    /* Review cards — stack vertically */
+    .review-row {
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0.8rem;
+    }
+    .review-thumbs {
+      width: 100%;
+      gap: 0.4rem;
+    }
+    .review-thumb { width: 3rem; height: 3rem; }
+    .review-thumb-extra { width: 2.4rem; height: 2.4rem; }
+    .review-info strong { font-size: 0.9rem; }
+    .review-text-preview {
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .review-actions-user {
+      flex-direction: row;
+      align-items: center;
+      width: 100%;
+      justify-content: space-between;
+    }
+    .review-edit-actions {
+      gap: 0.4rem;
+    }
+
+    /* Book dropdown — full width touch-friendly */
+    .book-option { padding: 0.8rem; font-size: 1rem; }
+    .book-search-input { font-size: 1rem; }
+
+    /* Textarea */
+    textarea { font-size: 1rem; }
+
+    /* Section heading */
+    .section-head h1 { font-size: 1.5rem; }
+    .section-head p { font-size: 0.9rem; }
+  }
 </style>
