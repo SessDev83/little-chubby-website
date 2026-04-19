@@ -567,26 +567,50 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
 
     // ── Compress image with EXIF auto-rotation ──
     async function compressImage(file) {
-      // PRIMARY: createImageBitmap — handles HEIC, large photos, memory-efficient
+      // Helper: apply EXIF orientation via canvas transforms
+      function applyOrientation(ctx, orientation, outW, outH) {
+        if (orientation <= 1) return;
+        switch (orientation) {
+          case 2: ctx.transform(-1, 0, 0, 1, outW, 0); break;
+          case 3: ctx.transform(-1, 0, 0, -1, outW, outH); break;
+          case 4: ctx.transform(1, 0, 0, -1, 0, outH); break;
+          case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+          case 6: ctx.transform(0, 1, -1, 0, outW, 0); break;
+          case 7: ctx.transform(0, -1, -1, 0, outW, outH); break;
+          case 8: ctx.transform(0, -1, 1, 0, 0, outH); break;
+        }
+      }
+
+      // Try createImageBitmap with auto-rotation first
       if (typeof createImageBitmap === "function") {
+        var autoRotated = false;
         var bitmap = null;
         try {
           bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+          autoRotated = true;
         } catch (_) {
           try { bitmap = await createImageBitmap(file); } catch (__) { /* fall through */ }
         }
         if (bitmap) {
-          var w = bitmap.width, h = bitmap.height;
-          if (w > MAX_DIM || h > MAX_DIM) {
-            var ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
-            w = Math.round(w * ratio);
-            h = Math.round(h * ratio);
+          // If auto-rotation wasn't supported, read EXIF and rotate manually
+          var orientation = autoRotated ? 1 : await readExifOrientation(file);
+          var bw = bitmap.width, bh = bitmap.height;
+          var swap = !autoRotated && orientation >= 5 && orientation <= 8;
+          var outW = swap ? bh : bw;
+          var outH = swap ? bw : bh;
+          if (outW > MAX_DIM || outH > MAX_DIM) {
+            var ratio = Math.min(MAX_DIM / outW, MAX_DIM / outH);
+            outW = Math.round(outW * ratio);
+            outH = Math.round(outH * ratio);
           }
           var canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
+          canvas.width = outW;
+          canvas.height = outH;
           var ctx = canvas.getContext("2d");
-          ctx.drawImage(bitmap, 0, 0, w, h);
+          if (!autoRotated) applyOrientation(ctx, orientation, outW, outH);
+          var dw = swap ? outH : outW;
+          var dh = swap ? outW : outH;
+          ctx.drawImage(bitmap, 0, 0, dw, dh);
           bitmap.close();
           return canvasToBlob(canvas);
         }
@@ -614,17 +638,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
             canvas.width = outW;
             canvas.height = outH;
             var ctx = canvas.getContext("2d");
-            if (orientation > 1) {
-              switch (orientation) {
-                case 2: ctx.transform(-1, 0, 0, 1, outW, 0); break;
-                case 3: ctx.transform(-1, 0, 0, -1, outW, outH); break;
-                case 4: ctx.transform(1, 0, 0, -1, 0, outH); break;
-                case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
-                case 6: ctx.transform(0, 1, -1, 0, outW, 0); break;
-                case 7: ctx.transform(0, -1, -1, 0, outW, outH); break;
-                case 8: ctx.transform(0, -1, 1, 0, 0, outH); break;
-              }
-            }
+            applyOrientation(ctx, orientation, outW, outH);
             var dw = swap ? outH : outW;
             var dh = swap ? outW : outH;
             ctx.drawImage(img, 0, 0, dw, dh);

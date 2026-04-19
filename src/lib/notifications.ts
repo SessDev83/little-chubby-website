@@ -37,9 +37,12 @@ function card(emoji: string, title: string, rows: [string, string][], footer?: s
 // ── Send helper ──────────────────────────────────────
 
 async function send(subject: string, html: string): Promise<void> {
-  if (!RESEND_API_KEY) return;
+  if (!RESEND_API_KEY) {
+    console.warn("[notifications] RESEND_API_KEY not set — skipping:", subject);
+    return;
+  }
   try {
-    await fetch("https://api.resend.com/emails", {
+    const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -47,8 +50,12 @@ async function send(subject: string, html: string): Promise<void> {
       },
       body: JSON.stringify({ from: FROM, to: [ANALYTICS_EMAIL], subject, html }),
     });
-  } catch {
-    // Non-blocking — never fail the main operation
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[notifications] Resend ${res.status}: ${body} — subject: ${subject}`);
+    }
+  } catch (err) {
+    console.error("[notifications] send failed:", err, "— subject:", subject);
   }
 }
 
