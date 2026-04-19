@@ -916,15 +916,42 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       if (modalResolve) { modalResolve(finalBlobs); modalResolve = null; }
     }
 
-    // ── Create a preview wrapper with thumb only (no rotation) ──
-    function createPreviewItem(blob, _onRotated, extraClass) {
+    // ── Create a preview wrapper with optional rotate button ──
+    function createPreviewItem(blob, onRotated, extraClass) {
       var wrap = document.createElement("div");
       wrap.className = "preview-item";
+      var currentBlob = blob;
 
       var thumb = document.createElement("img");
       thumb.className = "preview-thumb" + (extraClass ? " " + extraClass : "");
-      setPreviewSource(thumb, blob);
+      setPreviewSource(thumb, currentBlob);
       wrap.appendChild(thumb);
+
+      if (typeof onRotated === "function") {
+        var rotateBtn = document.createElement("button");
+        rotateBtn.type = "button";
+        rotateBtn.className = "rotate-btn";
+        rotateBtn.textContent = "↻";
+        rotateBtn.title = isEs ? "Rotar 90°" : "Rotate 90°";
+        rotateBtn.setAttribute("aria-label", isEs ? "Rotar foto 90 grados" : "Rotate photo 90 degrees");
+
+        rotateBtn.addEventListener("click", async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          rotateBtn.disabled = true;
+          rotateBtn.textContent = "⏳";
+          try {
+            var rotated = await rotateBlob90(currentBlob);
+            currentBlob = rotated;
+            setPreviewSource(thumb, rotated);
+            onRotated(rotated);
+          } catch (_) {}
+          rotateBtn.disabled = false;
+          rotateBtn.textContent = "↻";
+        });
+
+        wrap.appendChild(rotateBtn);
+      }
 
       return wrap;
     }
@@ -965,6 +992,8 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
         if (!file) return;
         coverOriginal = file;
         if (coverPreview) coverPreview.innerHTML = "";
+        var coverHint = document.getElementById("coverRotateHint");
+        if (coverHint) coverHint.style.display = "none";
 
         if (coverStatus) {
           coverStatus.style.display = "block";
@@ -984,11 +1013,21 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
           coverBlob = blob;
           if (coverPreview) {
             coverPreview.innerHTML = "";
-            var item = createPreviewItem(blob, null, "cover-thumb");
+            var item = createPreviewItem(
+              blob,
+              function (rotatedBlob) {
+                coverBlob = rotatedBlob;
+                if (coverStatus) {
+                  coverStatus.style.display = "block";
+                  coverStatus.textContent = "✅ " + (isEs ? "Portada lista" : "Cover ready") + " — " + Math.round(rotatedBlob.size / 1024) + " KB";
+                  coverStatus.className = "photo-status photo-ok";
+                }
+              },
+              "cover-thumb"
+            );
             coverPreview.appendChild(item);
           }
-          var coverHint = document.getElementById("coverRotateHint");
-          if (coverHint) coverHint.style.display = "none";
+          if (coverHint) coverHint.style.display = "block";
           if (coverStatus) {
             coverStatus.textContent = "✅ " + (isEs ? "Portada lista" : "Cover ready") + " — " + Math.round(blob.size / 1024) + " KB";
             coverStatus.className = "photo-status photo-ok";
@@ -1018,6 +1057,8 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
         interiorOriginals = [];
         var files = Array.from(e.target.files);
         if (!files.length) return;
+        var interiorsHint = document.getElementById("interiorsRotateHint");
+        if (interiorsHint) interiorsHint.style.display = "none";
 
         if (files.length > MAX_INTERIORS) {
           if (interiorsStatus) {
@@ -1063,7 +1104,10 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
             totalKb += Math.round(blob.size / 1024);
 
             if (interiorsPreview) {
-              var item = createPreviewItem(blob, null);
+              const blobIndex = interiorBlobs.length - 1;
+              var item = createPreviewItem(blob, function (rotatedBlob) {
+                interiorBlobs[blobIndex] = rotatedBlob;
+              });
               interiorsPreview.appendChild(item);
             }
           }
@@ -1072,8 +1116,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
             interiorsStatus.textContent = "✅ " + files.length + " " + (isEs ? "foto" : "photo") + (files.length > 1 ? "s" : "") + " — " + totalKb + " KB total";
             interiorsStatus.className = "photo-status photo-ok";
           }
-          var interiorsHint = document.getElementById("interiorsRotateHint");
-          if (interiorsHint) interiorsHint.style.display = "none";
+          if (interiorsHint) interiorsHint.style.display = "block";
         } catch (err) {
           interiorBlobs = [];
           if (interiorsStatus) {
