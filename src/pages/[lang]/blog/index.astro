@@ -28,7 +28,6 @@ const renderedJokes = await Promise.all(
 );
 
 const categories = [
-  { value: "all", label: text.blogFilterAll },
   { value: "article", label: text.blogFilterArticles },
   { value: "fun-fact", label: text.blogFilterFunFacts },
   { value: "joke", label: text.blogFilterJokes },
@@ -50,7 +49,7 @@ const categories = [
       <div class="blog-filters" role="group" aria-label={text.blogFilterLabel}>
         {categories.map((cat) => (
           <button
-            class:list={["blog-filter-btn", { active: cat.value === "all" }]}
+            class:list={["blog-filter-btn", { active: cat.value === "article" }]}
             data-blog-category={cat.value}
             type="button"
           >
@@ -59,16 +58,8 @@ const categories = [
         ))}
       </div>
 
-      <div class="blog-category-section" data-section="all">
-        <div class="grid-cards posts">
-          {sortedPosts.map((post) => (
-            <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />
-          ))}
-        </div>
-      </div>
-
-      {categories.filter((cat) => cat.value !== "all" && cat.value !== "joke").map((cat) => (
-        <div class="blog-category-section" data-section={cat.value} style="display:none;">
+      {categories.filter((cat) => cat.value !== "joke").map((cat) => (
+        <div class="blog-category-section" data-section={cat.value} style={cat.value !== "article" ? "display:none;" : ""}>
           <div class="grid-cards posts">
             {sortedPosts.filter((p) => (p.data.category || "article") === cat.value).length > 0
               ? sortedPosts.filter((p) => (p.data.category || "article") === cat.value).map((post) => (
@@ -85,7 +76,10 @@ const categories = [
       <div class="blog-category-section" data-section="joke" style="display:none;">
         <div class="jokes-inline-grid">
           {renderedJokes.length > 0
-            ? renderedJokes.map(({ joke, Content }) => (
+            ? renderedJokes.map(({ joke, Content }) => {
+                const jokeSlug = joke.id.replace(/^(es|en)\//, "");
+                const jokeHref = `/${lang}/blog/${jokeSlug}/`;
+                return (
                 <article class="joke-inline-card">
                   <div class="joke-inline-header">
                     <span class="category-badge" style="--badge-color: var(--accent-coral);">
@@ -96,8 +90,11 @@ const categories = [
                   <div class="joke-inline-content">
                     <Content />
                   </div>
+                  <a href={jokeHref} class="joke-inline-link">
+                    {lang === "es" ? "Compartir / ver más →" : "Share / see more →"}
+                  </a>
                 </article>
-              ))
+              );})
             : <p class="blog-empty-msg">
                 {lang === "es" ? "No hay chistes todavía." : "No jokes yet."}
               </p>

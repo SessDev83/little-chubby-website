@@ -1819,6 +1819,19 @@ main {
   margin: 0.75rem 0;
 }
 
+.joke-inline-link {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-coral);
+  text-decoration: none;
+}
+
+.joke-inline-link:hover {
+  text-decoration: underline;
+}
+
 /* ── Category Badge ─────────────────────────── */
 .category-badge {
   display: inline-block;
