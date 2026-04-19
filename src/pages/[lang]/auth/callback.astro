@@ -43,7 +43,7 @@ if (code) {
     const createdAt = new Date(user.created_at).getTime();
     const fiveMinAgo = Date.now() - 5 * 60 * 1000;
     if (createdAt > fiveMinAgo) {
-      notifyNewUser(user.email || "unknown", lang);
+      await notifyNewUser(user.email || "unknown", lang);
 
       // Auto-confirm newsletter subscriber if they registered with the same email
       if (user.email) {
@@ -56,7 +56,7 @@ if (code) {
           .maybeSingle();
 
         if (updated) {
-          notifySubscriberConfirmed(updated.email);
+          await notifySubscriberConfirmed(updated.email);
         }
       }
     }

@@ -200,7 +200,7 @@ const articleJsonLd = articleSchema ? JSON.stringify({
 
     <!-- Toast for ?msg= query params (confirm, unsubscribe, errors) -->
     <script is:inline>
-      (function(){
+      function _showMsgToast() {
         var params = new URLSearchParams(location.search);
         var msg = params.get("msg");
         if (!msg) return;
@@ -224,7 +224,9 @@ const articleJsonLd = articleSchema ? JSON.stringify({
         history.replaceState(null, "", clean);
         setTimeout(function(){ toast.style.opacity = "0"; toast.style.transition = "opacity .4s"; }, 4000);
         setTimeout(function(){ toast.remove(); }, 4500);
-      })();
+      }
+      _showMsgToast();
+      document.addEventListener("astro:after-swap", _showMsgToast);
     </script>
 
     <!-- Lightweight pageview tracker → Supabase (for daily email report) -->

@@ -49,8 +49,8 @@ export const GET: APIRoute = async ({ url }) => {
     });
   }
 
-  // Notify admin (non-blocking)
-  notifySubscriberConfirmed(subscriber.email || "unknown");
+  // Notify admin
+  await notifySubscriberConfirmed(subscriber.email || "unknown");
 
   return new Response(null, {
     status: 302,
