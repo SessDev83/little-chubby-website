@@ -123,21 +123,7 @@ function initLeadMagnet() {
       btn.textContent = "...";
     }
 
-    // Get Supabase config from meta tags
-    var sbUrl = document.querySelector("meta[name='x-sb-url']");
-    var sbKey = document.querySelector("meta[name='x-sb-key']");
-    var supabaseUrl = sbUrl ? sbUrl.getAttribute("content") : "";
-    var supabaseKey = sbKey ? sbKey.getAttribute("content") : "";
-
-    if (!supabaseUrl || !supabaseKey) {
-      // Fallback: just mark as registered and offer direct download
-      localStorage.setItem("lcp-lead-magnet", "registered");
-      formSection.style.display = "none";
-      successSection.style.display = "";
-      return;
-    }
-
-    // Insert subscriber via server-side API (sends admin notification)
+    // Insert subscriber via server-side API (sends confirmation email)
     fetch("/api/subscribe-newsletter/", {
       method: "POST",
       headers: {

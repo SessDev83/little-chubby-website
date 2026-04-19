@@ -64,6 +64,9 @@ const text = ui[lang];
       var alreadyMsg = currentLang === "en"
         ? "We re-sent the confirmation email — check your inbox!"
         : "¡Reenviamos el email de confirmación — revisa tu correo!";
+      var alreadyConfirmedMsg = currentLang === "en"
+        ? "You're already subscribed!"
+        : "¡Ya estás suscrito!";
       var errorMsg = currentLang === "en"
         ? "Something went wrong. Please try again."
         : "Algo salió mal. Intenta de nuevo.";
@@ -97,9 +100,12 @@ const text = ui[lang];
       }).then(function(res) {
         return res.json().then(function(data) {
           if (submitBtn) submitBtn.classList.remove('is-loading');
-          if (data.existing) {
-            newsletterStatus.textContent = alreadyMsg;
+          if (data.existing && data.confirmed) {
+            newsletterStatus.textContent = alreadyConfirmedMsg;
             newsletterStatus.className = "status-msg status-info";
+          } else if (data.existing) {
+            newsletterStatus.textContent = alreadyMsg;
+            newsletterStatus.className = "status-msg status-success";
           } else if (data.ok) {
             newsletterStatus.textContent = successMsg;
             newsletterStatus.className = "status-msg status-success";

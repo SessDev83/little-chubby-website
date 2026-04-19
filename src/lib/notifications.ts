@@ -76,8 +76,14 @@ async function sendToUser(to: string, subject: string, html: string): Promise<vo
 
 // ── Subscriber email template ────────────────────────
 
-function subscriberEmail(lang: string, bodyContent: string): string {
+function subscriberEmail(lang: string, bodyContent: string, confirmToken?: string): string {
   const isEs = lang === "es";
+  const unsubscribeUrl = confirmToken
+    ? `${SITE_URL}/api/unsubscribe/?token=${encodeURIComponent(confirmToken)}`
+    : "";
+  const unsubscribeLink = unsubscribeUrl
+    ? `<p style="margin:0.5rem 0 0;font-size:0.72rem;"><a href="${unsubscribeUrl}" style="color:#999;text-decoration:underline;">${isEs ? "Cancelar suscripción" : "Unsubscribe"}</a></p>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="${lang}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -93,6 +99,7 @@ function subscriberEmail(lang: string, bodyContent: string): string {
     </div>
     <div style="background:#fffaf2;padding:1rem 2rem;text-align:center;font-size:0.78rem;color:#4b4239;border-top:1px solid #e8e0d4;">
       <p style="margin:0;">Little Chubby Press &bull; <a href="${SITE_URL}" style="color:#1f4f86;">littlechubbypress.com</a></p>
+      ${unsubscribeLink}
     </div>
   </div>
 </body>
@@ -214,7 +221,7 @@ export async function sendConfirmationEmail(
       ${isEs ? "Si no te suscribiste, puedes ignorar este email." : "If you didn't subscribe, you can safely ignore this email."}
     </p>`;
 
-  await sendToUser(email, subject, subscriberEmail(lang, body));
+  await sendToUser(email, subject, subscriberEmail(lang, body, confirmToken));
 }
 
 /** Send reminder email for unconfirmed subscribers */
@@ -291,7 +298,7 @@ export async function sendReminderEmail(
       ${isEs ? "Si no te suscribiste, puedes ignorar este email." : "If you didn't subscribe, you can safely ignore this email."}
     </p>`;
 
-  await sendToUser(email, subject, subscriberEmail(lang, body));
+  await sendToUser(email, subject, subscriberEmail(lang, body, confirmToken));
 }
 
 /** New book review submitted */

@@ -16,11 +16,11 @@ export const GET: APIRoute = async ({ url }) => {
 
   const supabase = getServiceClient();
 
-  // token = subscriber id
+  // Look up subscriber by confirm_token (same token used in confirmation emails)
   const { data: subscriber, error } = await supabase
     .from("newsletter_subscribers")
     .select("id, lang_pref")
-    .eq("id", token)
+    .eq("confirm_token", token)
     .maybeSingle();
 
   if (error || !subscriber) {

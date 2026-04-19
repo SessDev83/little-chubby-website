@@ -26,24 +26,23 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    const svc = getServiceClient();
-
-    const { data, error } = await svc.from("newsletter_subscribers").insert({
-      email: email.trim().toLowerCase(),
-      name: (name || "").trim(),
-      source: source || "popup",
-      lang_pref: lang_pref || "en",
-      confirmed: false,
-    }).select("confirm_token").single();
-
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = (name || "").trim();
     const lang = lang_pref || "en";
+    const svc = getServiceClient();
+
+    const { data, error } = await svc.from("newsletter_subscribers").insert({
+      email: cleanEmail,
+      name: cleanName,
+      source: source || "popup",
+      lang_pref: lang,
+      confirmed: false,
+    }).select("confirm_token").single();
 
     if (error) {
       // 23505 = unique violation (already subscribed)
       if (error.code === "23505") {
-        // If not yet confirmed, re-send confirmation in current language
+        // Look up existing subscriber
         const { data: existing } = await svc
           .from("newsletter_subscribers")
           .select("confirm_token, confirmed")
@@ -51,16 +50,27 @@ export const POST: APIRoute = async ({ request }) => {
           .single();
 
         if (existing && !existing.confirmed) {
-          // Update lang_pref & reset reminder counter so they restart the drip
+          // Update lang_pref, reset drip, AND reset created_at so Day 20 cleanup
+          // counts from this re-subscribe moment, not the original signup
           await svc
             .from("newsletter_subscribers")
-            .update({ lang_pref: lang, reminder_count: 0, last_reminder_at: null })
+            .update({
+              lang_pref: lang,
+              reminder_count: 0,
+              last_reminder_at: null,
+              created_at: new Date().toISOString(),
+            })
             .eq("email", cleanEmail);
 
-          sendConfirmationEmail(cleanEmail, cleanName, existing.confirm_token, lang);
+          await sendConfirmationEmail(cleanEmail, cleanName, existing.confirm_token, lang);
+          return new Response(JSON.stringify({ ok: true, existing: true, confirmed: false }), {
+            status: 200,
+            headers,
+          });
         }
 
-        return new Response(JSON.stringify({ ok: true, existing: true }), {
+        // Already confirmed
+        return new Response(JSON.stringify({ ok: true, existing: true, confirmed: true }), {
           status: 200,
           headers,
         });
@@ -71,11 +81,18 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // Send confirmation email to the subscriber (in their language)
-    sendConfirmationEmail(cleanEmail, cleanName, data.confirm_token, lang);
+    if (!data) {
+      return new Response(JSON.stringify({ error: "Insert succeeded but no data returned" }), {
+        status: 500,
+        headers,
+      });
+    }
 
-    // Send admin notification (non-blocking)
-    notifyNewSubscriber(cleanEmail, cleanName, source || "popup", lang);
+    // Await confirmation email — must complete before serverless function exits
+    await sendConfirmationEmail(cleanEmail, cleanName, data.confirm_token, lang);
+
+    // Admin notification (awaited to prevent loss on Vercel)
+    await notifyNewSubscriber(cleanEmail, cleanName, source || "popup", lang);
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 201,

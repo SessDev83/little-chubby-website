@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Email Preview — Confirmation</title>
+<style>
+  body { margin: 0; padding: 2rem; background: #e8e0d4; font-family: system-ui, sans-serif; }
+  .preview-bar { max-width: 560px; margin: 0 auto 1rem; display: flex; gap: 1rem; align-items: center; }
+  .preview-bar button { padding: 0.5rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+  .preview-bar button.active { background: #d3a442; color: #fff; }
+  .preview-bar button:not(.active) { background: #fff; color: #6b4c3b; }
+  .preview-bar span { font-size: 0.85rem; color: #6b4c3b; }
+  .email-frame { max-width: 560px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+<div class="preview-bar">
+  <span>🔍 Preview:</span>
+  <button class="active" onclick="showLang('es')">Español</button>
+  <button onclick="showLang('en')">English</button>
+</div>
+
+<div class="email-frame" id="email-frame"></div>
+
+<script>
+const SITE = 'https://www.littlechubbypress.com';
+const LOGO = './public/images/brand/logo-lockup.png';
+
+const emails = {
+  es: `
+  <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);font-family:'Segoe UI',Arial,sans-serif;">
+
+    <!-- Header -->
+    <div style="background:#d3a442;padding:1.5rem 2rem;text-align:center;">
+      <a href="${SITE}" style="text-decoration:none;">
+        <img src="${LOGO}" alt="Little Chubby Press" width="180" style="display:block;margin:0 auto 0.5rem;" />
+      </a>
+    </div>
+
+    <div style="padding:2rem;">
+      <h2 style="color:#6b4c3b;margin:0 0 0.8rem;font-size:1.2rem;">¡Hola Andrea!</h2>
+
+      <p style="color:#4b4239;font-size:0.95rem;line-height:1.6;margin:0 0 1rem;">
+        Gracias por suscribirte a nuestro newsletter. Para completar tu registro, confirma tu email haciendo click en el botón:
+      </p>
+
+      <div style="text-align:center;margin:1.5rem 0;">
+        <a href="#" style="display:inline-block;background:#5c9650;color:#fff;font-weight:700;padding:0.75rem 2rem;border-radius:8px;text-decoration:none;font-size:1rem;">
+          ✅ Confirmar suscripción
+        </a>
+      </div>
+
+      <div style="background:#fffaf2;border-radius:8px;padding:1rem 1.2rem;margin:1.2rem 0;">
+        <p style="color:#6b4c3b;font-size:0.9rem;font-weight:600;margin:0 0 0.5rem;">¿Qué recibirás?</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:3px 0;color:#4b4239;font-size:0.85rem;line-height:1.5;">🎨</td>
+            <td style="padding:3px 0 3px 8px;color:#4b4239;font-size:0.85rem;line-height:1.5;">Tips de creatividad y colorear en familia</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;color:#4b4239;font-size:0.85rem;line-height:1.5;">📚</td>
+            <td style="padding:3px 0 3px 8px;color:#4b4239;font-size:0.85rem;line-height:1.5;">Novedades y nuevos libros</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;color:#4b4239;font-size:0.85rem;line-height:1.5;">🎁</td>
+            <td style="padding:3px 0 3px 8px;color:#4b4239;font-size:0.85rem;line-height:1.5;">Acceso al sorteo mensual y Peanuts 🥜</td>
+          </tr>
+        </table>
+        <p style="color:#999;font-size:0.8rem;margin:0.6rem 0 0;font-style:italic;">Solo emails útiles. Sin spam. Cancelar en cualquier momento.</p>
+      </div>
+
+      <p style="color:#aaa;font-size:0.78rem;line-height:1.5;margin:1.2rem 0 0;">
+        Si no te suscribiste, puedes ignorar este email.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#fffaf2;padding:1rem 2rem;text-align:center;font-size:0.78rem;color:#4b4239;border-top:1px solid #e8e0d4;">
+      <p style="margin:0;">
+        Little Chubby Press &bull; <a href="https://www.littlechubbypress.com" style="color:#1f4f86;">littlechubbypress.com</a>
+      </p>
+    </div>
+
+  </div>`,
+
+  en: `
+  <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);font-family:'Segoe UI',Arial,sans-serif;">
+
+    <!-- Header -->
+    <div style="background:#d3a442;padding:1.5rem 2rem;text-align:center;">
+      <a href="${SITE}" style="text-decoration:none;">
+        <img src="${LOGO}" alt="Little Chubby Press" width="180" style="display:block;margin:0 auto 0.5rem;" />
+      </a>
+    </div>
+
+    <div style="padding:2rem;">
+      <h2 style="color:#6b4c3b;margin:0 0 0.8rem;font-size:1.2rem;">Hi Andrea!</h2>
+
+      <p style="color:#4b4239;font-size:0.95rem;line-height:1.6;margin:0 0 1rem;">
+        Thanks for subscribing to our newsletter. To complete your registration, please confirm your email by clicking the button below:
+      </p>
+
+      <div style="text-align:center;margin:1.5rem 0;">
+        <a href="#" style="display:inline-block;background:#5c9650;color:#fff;font-weight:700;padding:0.75rem 2rem;border-radius:8px;text-decoration:none;font-size:1rem;">
+          ✅ Confirm subscription
+        </a>
+      </div>
+
+      <div style="background:#fffaf2;border-radius:8px;padding:1rem 1.2rem;margin:1.2rem 0;">
+        <p style="color:#6b4c3b;font-size:0.9rem;font-weight:600;margin:0 0 0.5rem;">What you'll get:</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:3px 0;color:#4b4239;font-size:0.85rem;line-height:1.5;">🎨</td>
+            <td style="padding:3px 0 3px 8px;color:#4b4239;font-size:0.85rem;line-height:1.5;">Creativity & family coloring tips</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;color:#4b4239;font-size:0.85rem;line-height:1.5;">📚</td>
+            <td style="padding:3px 0 3px 8px;color:#4b4239;font-size:0.85rem;line-height:1.5;">New books & updates</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 0;color:#4b4239;font-size:0.85rem;line-height:1.5;">🎁</td>
+            <td style="padding:3px 0 3px 8px;color:#4b4239;font-size:0.85rem;line-height:1.5;">Monthly giveaway access & Peanuts 🥜</td>
+          </tr>
+        </table>
+        <p style="color:#999;font-size:0.8rem;margin:0.6rem 0 0;font-style:italic;">Only useful emails. No spam. Unsubscribe anytime.</p>
+      </div>
+
+      <p style="color:#aaa;font-size:0.78rem;line-height:1.5;margin:1.2rem 0 0;">
+        If you didn't subscribe, you can safely ignore this email.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#fffaf2;padding:1rem 2rem;text-align:center;font-size:0.78rem;color:#4b4239;border-top:1px solid #e8e0d4;">
+      <p style="margin:0;">
+        Little Chubby Press &bull; <a href="https://www.littlechubbypress.com" style="color:#1f4f86;">littlechubbypress.com</a>
+      </p>
+    </div>
+
+  </div>`
+};
+
+function showLang(lang) {
+  document.getElementById('email-frame').innerHTML = emails[lang];
+  document.querySelectorAll('.preview-bar button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+showLang('es');
+</script>
+
+</body>
+</html>

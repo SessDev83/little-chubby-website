@@ -198,6 +198,35 @@ const articleJsonLd = articleSchema ? JSON.stringify({
       injectSpeedInsights();
     </script>
 
+    <!-- Toast for ?msg= query params (confirm, unsubscribe, errors) -->
+    <script is:inline>
+      (function(){
+        var params = new URLSearchParams(location.search);
+        var msg = params.get("msg");
+        if (!msg) return;
+        var isEs = document.documentElement.lang === "es";
+        var messages = {
+          "subscribed":        isEs ? "✅ ¡Suscripción confirmada! Bienvenido/a." : "✅ Subscription confirmed! Welcome aboard.",
+          "already-confirmed": isEs ? "Ya estás suscrito/a." : "You're already subscribed.",
+          "unsubscribed":      isEs ? "Te has dado de baja correctamente." : "You have been unsubscribed.",
+          "invalid-token":     isEs ? "El enlace no es válido o ya expiró." : "This link is invalid or has expired.",
+          "error":             isEs ? "Algo salió mal. Intenta de nuevo." : "Something went wrong. Please try again."
+        };
+        var text = messages[msg];
+        if (!text) return;
+        var toast = document.createElement("div");
+        toast.setAttribute("role", "alert");
+        toast.style.cssText = "position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:9999;background:#fff;color:#4b4239;padding:0.85rem 1.5rem;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.15);font-size:0.95rem;font-family:inherit;max-width:90vw;text-align:center;border:2px solid " + (msg === "error" || msg === "invalid-token" ? "#e74c3c" : "#5c9650") + ";animation:toastIn .3s ease";
+        toast.textContent = text;
+        document.body.appendChild(toast);
+        // Clean URL
+        var clean = location.pathname + location.hash;
+        history.replaceState(null, "", clean);
+        setTimeout(function(){ toast.style.opacity = "0"; toast.style.transition = "opacity .4s"; }, 4000);
+        setTimeout(function(){ toast.remove(); }, 4500);
+      })();
+    </script>
+
     <!-- Lightweight pageview tracker → Supabase (for daily email report) -->
     <script is:inline>
       (function(){
