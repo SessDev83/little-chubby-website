@@ -1103,6 +1103,14 @@ main {
   font-size: 0.95rem;
   color: #8f1f18;
 }
+.status-msg.status-success { color: #2e7d32; }
+.status-msg.status-info    { color: #1565c0; }
+
+/* ── Toast entrance animation ───────────────── */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-1rem); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
 
 /* ── Button submit spinner ──────────────────── */
 .btn-spinner {
