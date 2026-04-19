@@ -86,7 +86,7 @@ const text = ui[lang];
         return;
       }
 
-      if (submitBtn) submitBtn.classList.add('is-loading');
+      if (submitBtn) { submitBtn.classList.add('is-loading'); submitBtn.disabled = true; }
 
       fetch("/api/subscribe-newsletter/", {
         method: "POST",
@@ -99,7 +99,7 @@ const text = ui[lang];
         })
       }).then(function(res) {
         return res.json().then(function(data) {
-          if (submitBtn) submitBtn.classList.remove('is-loading');
+          if (submitBtn) { submitBtn.classList.remove('is-loading'); submitBtn.disabled = false; }
           if (data.existing && data.confirmed) {
             newsletterStatus.textContent = alreadyConfirmedMsg;
             newsletterStatus.className = "status-msg status-info";
@@ -115,7 +115,7 @@ const text = ui[lang];
           }
         });
       }).catch(function() {
-        if (submitBtn) submitBtn.classList.remove('is-loading');
+        if (submitBtn) { submitBtn.classList.remove('is-loading'); submitBtn.disabled = false; }
         newsletterStatus.textContent = errorMsg;
       });
     });

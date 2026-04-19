@@ -55,6 +55,7 @@ export const POST: APIRoute = async ({ request }) => {
           await svc
             .from("newsletter_subscribers")
             .update({
+              name: cleanName || undefined,
               lang_pref: lang,
               reminder_count: 0,
               last_reminder_at: null,

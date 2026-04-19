@@ -58,10 +58,10 @@ const FROM_USER = "Little Chubby Press <hello@littlechubbypress.com>";
 const SITE_URL = (import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com").replace(/\/+$/, "");
 const LOGO_URL = `${SITE_URL}/images/brand/logo-lockup.png`;
 
-async function sendToUser(to: string, subject: string, html: string): Promise<void> {
-  if (!RESEND_API_KEY) return;
+async function sendToUser(to: string, subject: string, html: string): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
   try {
-    await fetch("https://api.resend.com/emails", {
+    const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -69,8 +69,9 @@ async function sendToUser(to: string, subject: string, html: string): Promise<vo
       },
       body: JSON.stringify({ from: FROM_USER, to: [to], subject, html }),
     });
+    return res.ok;
   } catch {
-    // Non-blocking
+    return false;
   }
 }
 
@@ -197,7 +198,7 @@ export async function sendConfirmationEmail(
   name: string,
   confirmToken: string,
   lang: string
-): Promise<void> {
+): Promise<boolean> {
   const isEs = lang === "es";
   const confirmUrl = `${SITE_URL}/api/confirm-subscription/?token=${encodeURIComponent(confirmToken)}&lang=${encodeURIComponent(lang)}`;
   const greeting = name
@@ -221,7 +222,7 @@ export async function sendConfirmationEmail(
       ${isEs ? "Si no te suscribiste, puedes ignorar este email." : "If you didn't subscribe, you can safely ignore this email."}
     </p>`;
 
-  await sendToUser(email, subject, subscriberEmail(lang, body, confirmToken));
+  return sendToUser(email, subject, subscriberEmail(lang, body, confirmToken));
 }
 
 /** Send reminder email for unconfirmed subscribers */
@@ -231,7 +232,7 @@ export async function sendReminderEmail(
   confirmToken: string,
   lang: string,
   reminderNumber: number
-): Promise<void> {
+): Promise<boolean> {
   const isEs = lang === "es";
   const confirmUrl = `${SITE_URL}/api/confirm-subscription/?token=${encodeURIComponent(confirmToken)}&lang=${encodeURIComponent(lang)}`;
   const greeting = name
@@ -298,7 +299,7 @@ export async function sendReminderEmail(
       ${isEs ? "Si no te suscribiste, puedes ignorar este email." : "If you didn't subscribe, you can safely ignore this email."}
     </p>`;
 
-  await sendToUser(email, subject, subscriberEmail(lang, body, confirmToken));
+  return sendToUser(email, subject, subscriberEmail(lang, body, confirmToken));
 }
 
 /** New book review submitted */

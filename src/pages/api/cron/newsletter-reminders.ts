@@ -90,7 +90,7 @@ export const GET: APIRoute = async ({ request }) => {
         }
 
         // Send the reminder in the subscriber's language
-        await sendReminderEmail(
+        const sent_ok = await sendReminderEmail(
           sub.email,
           sub.name || "",
           sub.confirm_token,
@@ -98,13 +98,15 @@ export const GET: APIRoute = async ({ request }) => {
           nextReminder
         );
 
-        // Update reminder tracking
-        await svc
-          .from("newsletter_subscribers")
-          .update({ reminder_count: nextReminder, last_reminder_at: now.toISOString() })
-          .eq("id", sub.id);
+        // Only increment reminder_count if the email was actually delivered
+        if (sent_ok) {
+          await svc
+            .from("newsletter_subscribers")
+            .update({ reminder_count: nextReminder, last_reminder_at: now.toISOString() })
+            .eq("id", sub.id);
 
-        sent++;
+          sent++;
+        }
       }
     }
 
