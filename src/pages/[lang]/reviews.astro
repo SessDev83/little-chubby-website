@@ -646,8 +646,10 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     // 3. If NO  → read EXIF orientation, manually rotate on canvas
     // 4. Fallback: createImageBitmap for HEIC
     async function compressImage(file) {
+      console.log("[COMPRESS] start, size:", Math.round(file.size/1024)+"KB");
       // Wait for auto-rotate detection to finish
       await autoRotatePromise;
+      console.log("[COMPRESS] autoRotate done, browserAutoRotates="+browserAutoRotates);
 
       // Read EXIF orientation (only needed if browser doesn't auto-rotate)
       var orientation = 1;
@@ -789,11 +791,13 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
 
     // Opens the modal and returns a promise that resolves with the final blobs
     function openPhotoModal(items) {
+      console.log("[MODAL] openPhotoModal called, items:", items.length);
       buildModal();
       modalItems = items;
       modalIndex = 0;
       showModalPhoto(0);
       modalOverlay.classList.add("active");
+      console.log("[MODAL] overlay active, display:", getComputedStyle(modalOverlay).display);
       document.body.style.overflow = "hidden";
       return new Promise(function (resolve) { modalResolve = resolve; });
     }
@@ -880,14 +884,18 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
         coverOriginal = file;
         if (coverPreview) coverPreview.innerHTML = "";
 
+        console.log("[COVER] file selected:", file.name, Math.round(file.size/1024)+"KB", "mobile="+isMobile(), "width="+window.innerWidth);
+
         // ── MOBILE: modal first (instant preview), compress after ──
         if (isMobile()) {
+          console.log("[COVER] opening modal with raw file...");
           // Open modal immediately with the raw file (no compression yet)
           var confirmed = await openPhotoModal([{
             blob: file,
             label: isEs ? "Portada" : "Cover"
           }]);
           // confirmed[0] = the blob (may have been rotated, or still the raw file)
+          console.log("[COVER] modal confirmed, compressing...");
           var source = confirmed[0];
 
           if (coverStatus) {
@@ -930,6 +938,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
         }
 
         // ── DESKTOP: compress first, then show thumbnail + rotate button ──
+        console.log("[COVER] desktop path — compressing first...");
         if (coverStatus) {
           coverStatus.style.display = "block";
           coverStatus.textContent = "⏳ " + (isEs ? "Comprimiendo portada..." : "Compressing cover...");
