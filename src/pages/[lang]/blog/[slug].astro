@@ -42,12 +42,21 @@ const book = post.data.bookId
   ? books.find((b) => b.id === post.data.bookId) ?? null
   : null;
 
-// Related posts: same tags, same language, exclude current
+const category = post.data.category || "article";
+
+// Related posts: same category + same language, prefer shared tags, exclude current
 const allPosts = await getCollection("blog", (entry) => entry.data.lang === lang);
 const postTags = new Set(post.data.tags);
-const relatedPosts = allPosts
-  .filter((p) => p.data.postId !== post.data.postId && p.data.tags.some((t) => postTags.has(t)))
-  .sort((a, b) => b.data.date.localeCompare(a.data.date))
+const sameCategoryPosts = allPosts.filter(
+  (p) => p.data.postId !== post.data.postId && (p.data.category || "article") === category
+);
+const relatedPosts = sameCategoryPosts
+  .sort((a, b) => {
+    const aShared = a.data.tags.filter((t) => postTags.has(t)).length;
+    const bShared = b.data.tags.filter((t) => postTags.has(t)).length;
+    if (bShared !== aShared) return bShared - aShared;
+    return b.data.date.localeCompare(a.data.date);
+  })
   .slice(0, 3);
 
 // If not enough related by tags, show random book if no book CTA
@@ -59,7 +68,7 @@ const pathname = `/${lang}/blog/${slug}/`;
 const fullUrl = new URL(pathname, siteConfig.siteUrl).toString();
 const breadcrumbs = [
   { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
-  { name: "Blog", url: `/${lang}/blog/` },
+  { name: text.navBlog, url: `/${lang}/blog/` },
   { name: post.data.title, url: pathname }
 ];
 const articleSchema = {
@@ -75,7 +84,6 @@ const categoryLabels: Record<string, string> = {
   "joke": text.categoryJoke,
   "coloring-corner": text.categoryColoringCorner,
 };
-const category = post.data.category || "article";
 const categoryLabel = categoryLabels[category] || categoryLabels["article"];
 const categoryColors: Record<string, string> = {
   "article": "var(--brand-blue)",
@@ -84,6 +92,14 @@ const categoryColors: Record<string, string> = {
   "coloring-corner": "var(--accent-gold)",
 };
 const categoryColor = categoryColors[category] || categoryColors["article"];
+
+const relatedHeadings: Record<string, string> = {
+  "article": text.relatedArticles,
+  "fun-fact": text.relatedFunFacts,
+  "joke": text.relatedJokes,
+  "coloring-corner": text.relatedColoringCorner,
+};
+const relatedHeading = relatedHeadings[category] || text.relatedPosts;
 
 const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
 const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(post.data.title + " " + fullUrl)}`;
@@ -160,7 +176,7 @@ const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(
         {/* ── Related Posts ─────────────────────── */}
         {relatedPosts.length > 0 && (
           <div class="related-posts">
-            <h2>{text.relatedPosts}</h2>
+            <h2>{relatedHeading}</h2>
             <div class="grid-cards posts">
               {relatedPosts.map((rp) => <PostCard post={rp} lang={lang} readLabel={text.ctaReadPost} />)}
             </div>
