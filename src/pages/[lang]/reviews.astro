@@ -39,8 +39,9 @@ if (user) {
       if (reviewId) {
         const toDelete = myReviews.find(r => r.id === reviewId);
         if (toDelete) {
-          const photoPath = `${user.id}/${toDelete.book_id}.jpg`;
-          await sc.storage.from("book-photos").remove([photoPath]);
+          // Remove both possible extensions (.jpg and .webp)
+          const base = `${user.id}/${toDelete.book_id}`;
+          await sc.storage.from("book-photos").remove([`${base}.jpg`, `${base}.webp`]);
           await sc.from("book_reviews").delete().eq("id", reviewId).eq("user_id", user.id);
           const { data: refreshed } = await supabase
             .from("book_reviews")
@@ -90,13 +91,15 @@ if (user) {
 
         if (validPhotos.length > 0) {
           for (let i = 0; i < validPhotos.length; i++) {
+            const mime = validPhotos[i].type || "image/jpeg";
+            const ext = mime === "image/webp" ? ".webp" : ".jpg";
             const suffix = i === 0 ? "" : `_${i + 1}`;
-            const filePath = `${user.id}/${bookId}${suffix}.jpg`;
+            const filePath = `${user.id}/${bookId}${suffix}${ext}`;
             const arrayBuf = await validPhotos[i].arrayBuffer();
             const buffer = new Uint8Array(arrayBuf);
             const { error: uploadError } = await sc.storage
               .from("book-photos")
-              .upload(filePath, buffer, { contentType: "image/jpeg", upsert: true });
+              .upload(filePath, buffer, { contentType: mime, upsert: true });
             if (uploadError) {
               shareMsg = text.loginError;
               shareMsgType = "error";
@@ -492,35 +495,143 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
 
     // ── Drag & drop photo zones ──────────────────
     const MAX_DIM = 800;
-    const JPEG_QUALITY = 0.7;
+    const IMG_QUALITY = 0.75;
     const MAX_BYTES = 500 * 1024;
     const MAX_INTERIORS = 4;
     const isEs = document.documentElement.lang === "es";
 
-    function compressImage(file) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = () => {
-          URL.revokeObjectURL(url);
-          let w = img.width, h = img.height;
+    // Detect WebP support once (much lighter than JPEG)
+    var supportsWebP = false;
+    (function () {
+      var c = document.createElement("canvas"); c.width = 1; c.height = 1;
+      supportsWebP = c.toDataURL("image/webp").indexOf("data:image/webp") === 0;
+    })();
+    var outMime = supportsWebP ? "image/webp" : "image/jpeg";
+    var outExt  = supportsWebP ? ".webp" : ".jpg";
+
+    // ── Read EXIF orientation tag (1-8) from JPEG ──
+    function readExifOrientation(file) {
+      return new Promise(function (resolve) {
+        if (!file || file.type === "image/png" || file.type === "image/gif") { resolve(1); return; }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            var view = new DataView(e.target.result);
+            if (view.byteLength < 2 || view.getUint16(0, false) !== 0xFFD8) { resolve(1); return; }
+            var offset = 2;
+            while (offset + 4 < view.byteLength) {
+              var marker = view.getUint16(offset, false);
+              if (marker === 0xFFE1) {
+                var exifStart = offset + 4;
+                if (exifStart + 6 > view.byteLength || view.getUint32(exifStart, false) !== 0x45786966) { resolve(1); return; }
+                var tiffOff = exifStart + 6;
+                if (tiffOff + 8 > view.byteLength) { resolve(1); return; }
+                var little = view.getUint16(tiffOff, false) === 0x4949;
+                var ifdOff = tiffOff + view.getUint32(tiffOff + 4, little);
+                if (ifdOff + 2 > view.byteLength) { resolve(1); return; }
+                var entries = view.getUint16(ifdOff, little);
+                for (var i = 0; i < entries; i++) {
+                  var entryOff = ifdOff + 2 + i * 12;
+                  if (entryOff + 12 > view.byteLength) break;
+                  if (view.getUint16(entryOff, little) === 0x0112) { resolve(view.getUint16(entryOff + 8, little)); return; }
+                }
+                resolve(1); return;
+              }
+              if (offset + 2 >= view.byteLength) break;
+              offset += 2 + view.getUint16(offset + 2, false);
+            }
+            resolve(1);
+          } catch (_) { resolve(1); }
+        };
+        reader.onerror = function () { resolve(1); };
+        reader.readAsArrayBuffer(file.slice(0, 65536));
+      });
+    }
+
+    // ── Canvas → blob helper (tries WebP first, falls back to JPEG) ──
+    function canvasToBlob(canvas) {
+      return new Promise(function (resolve, reject) {
+        canvas.toBlob(
+          function (blob) {
+            if (blob && blob.size > 0) { resolve(blob); return; }
+            // WebP toBlob failed — retry as JPEG
+            canvas.toBlob(
+              function (jpgBlob) { jpgBlob ? resolve(jpgBlob) : reject(new Error("toBlob failed")); },
+              "image/jpeg", IMG_QUALITY
+            );
+          },
+          outMime, IMG_QUALITY
+        );
+      });
+    }
+
+    // ── Compress image with EXIF auto-rotation ──
+    async function compressImage(file) {
+      // PRIMARY: createImageBitmap — handles HEIC, large photos, memory-efficient
+      if (typeof createImageBitmap === "function") {
+        var bitmap = null;
+        try {
+          bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+        } catch (_) {
+          try { bitmap = await createImageBitmap(file); } catch (__) { /* fall through */ }
+        }
+        if (bitmap) {
+          var w = bitmap.width, h = bitmap.height;
           if (w > MAX_DIM || h > MAX_DIM) {
-            const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+            var ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
             w = Math.round(w * ratio);
             h = Math.round(h * ratio);
           }
-          const canvas = document.createElement("canvas");
+          var canvas = document.createElement("canvas");
           canvas.width = w;
           canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, w, h);
-          canvas.toBlob(
-            (blob) => blob ? resolve(blob) : reject(new Error("Compression failed")),
-            "image/jpeg",
-            JPEG_QUALITY
-          );
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(bitmap, 0, 0, w, h);
+          bitmap.close();
+          return canvasToBlob(canvas);
+        }
+      }
+
+      // FALLBACK: Image element + manual EXIF orientation
+      var orientation = await readExifOrientation(file);
+      return new Promise(function (resolve, reject) {
+        var img = new Image();
+        var url = URL.createObjectURL(file);
+        img.onload = function () {
+          URL.revokeObjectURL(url);
+          try {
+            var natW = img.naturalWidth || img.width;
+            var natH = img.naturalHeight || img.height;
+            var swap = orientation >= 5 && orientation <= 8;
+            var outW = swap ? natH : natW;
+            var outH = swap ? natW : natH;
+            if (outW > MAX_DIM || outH > MAX_DIM) {
+              var r = Math.min(MAX_DIM / outW, MAX_DIM / outH);
+              outW = Math.round(outW * r);
+              outH = Math.round(outH * r);
+            }
+            var canvas = document.createElement("canvas");
+            canvas.width = outW;
+            canvas.height = outH;
+            var ctx = canvas.getContext("2d");
+            if (orientation > 1) {
+              switch (orientation) {
+                case 2: ctx.transform(-1, 0, 0, 1, outW, 0); break;
+                case 3: ctx.transform(-1, 0, 0, -1, outW, outH); break;
+                case 4: ctx.transform(1, 0, 0, -1, 0, outH); break;
+                case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+                case 6: ctx.transform(0, 1, -1, 0, outW, 0); break;
+                case 7: ctx.transform(0, -1, -1, 0, outW, outH); break;
+                case 8: ctx.transform(0, -1, 1, 0, 0, outH); break;
+              }
+            }
+            var dw = swap ? outH : outW;
+            var dh = swap ? outW : outH;
+            ctx.drawImage(img, 0, 0, dw, dh);
+            canvasToBlob(canvas).then(resolve, reject);
+          } catch (err) { reject(err); }
         };
-        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Invalid image")); };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("Cannot load image")); };
         img.src = url;
       });
     }
@@ -715,13 +826,13 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
 
           // Cover photo (first photo → photo_url)
           var coverToSend = coverBlob
-            ? new File([coverBlob], "cover.jpg", { type: "image/jpeg" })
+            ? new File([coverBlob], "cover" + outExt, { type: coverBlob.type || outMime })
             : coverOriginal;
           if (coverToSend) fd.append("photos", coverToSend);
 
           // Interior photos (→ extra_photos)
           var interiorsToSend = interiorBlobs.length > 0
-            ? interiorBlobs.map(function (b, i) { return new File([b], "interior_" + (i + 1) + ".jpg", { type: "image/jpeg" }); })
+            ? interiorBlobs.map(function (b, i) { return new File([b], "interior_" + (i + 1) + outExt, { type: b.type || outMime }); })
             : interiorOriginals;
           for (var i = 0; i < interiorsToSend.length; i++) {
             fd.append("photos", interiorsToSend[i]);
