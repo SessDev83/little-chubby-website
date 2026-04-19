@@ -709,6 +709,106 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       });
     }
 
+    // ── Is mobile? (used to decide whether to open the review modal) ──
+    function isMobile() { return window.innerWidth <= 700; }
+
+    // ── Photo Review Modal ──
+    // On mobile: shows each photo fullscreen one-at-a-time with large
+    // rotate + next buttons so users can fix orientation before sending.
+    var modalOverlay = null;
+    var modalBlobs = [];   // array of { blob, onRotated, label }
+    var modalIndex = 0;
+    var modalResolve = null;
+
+    function buildModal() {
+      if (modalOverlay) return;
+      modalOverlay = document.createElement("div");
+      modalOverlay.className = "photo-modal-overlay";
+      modalOverlay.innerHTML =
+        '<div class="photo-modal">' +
+          '<p class="photo-modal-counter" id="modalCounter"></p>' +
+          '<p class="photo-modal-copy">' + (isEs
+            ? '¿Se ve derecha? Si no, toca rotar.'
+            : 'Does it look straight? If not, tap rotate.') + '</p>' +
+          '<div class="photo-modal-imgwrap"><img id="modalImg" class="photo-modal-img" /></div>' +
+          '<div class="photo-modal-actions">' +
+            '<button type="button" class="photo-modal-btn modal-rotate" id="modalRotateBtn">↻ ' +
+              (isEs ? 'Rotar' : 'Rotate') + '</button>' +
+            '<button type="button" class="photo-modal-btn modal-ok" id="modalOkBtn">✓ ' +
+              (isEs ? 'OK, siguiente' : 'OK, next') + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modalOverlay);
+
+      document.getElementById("modalRotateBtn").addEventListener("click", async function () {
+        var self = this;
+        var okBtn = document.getElementById("modalOkBtn");
+        self.disabled = true;
+        okBtn.disabled = true;
+        self.textContent = "⏳…";
+        try {
+          var entry = modalBlobs[modalIndex];
+          var rotated = await rotateBlob90(entry.blob);
+          entry.blob = rotated;
+          if (entry.onRotated) entry.onRotated(rotated);
+          var modalImg = document.getElementById("modalImg");
+          URL.revokeObjectURL(modalImg.src);
+          modalImg.src = URL.createObjectURL(rotated);
+          // Also update the small thumbnail in the form
+          if (entry.thumbEl) {
+            URL.revokeObjectURL(entry.thumbEl.src);
+            entry.thumbEl.src = URL.createObjectURL(rotated);
+          }
+        } catch (_) {}
+        self.disabled = false;
+        okBtn.disabled = false;
+        self.textContent = "↻ " + (isEs ? "Rotar" : "Rotate");
+      });
+
+      document.getElementById("modalOkBtn").addEventListener("click", function () {
+        modalIndex++;
+        if (modalIndex < modalBlobs.length) {
+          showModalPhoto(modalIndex);
+        } else {
+          closeModal();
+        }
+      });
+    }
+
+    function showModalPhoto(idx) {
+      var entry = modalBlobs[idx];
+      var modalImg = document.getElementById("modalImg");
+      URL.revokeObjectURL(modalImg.src);
+      modalImg.src = URL.createObjectURL(entry.blob);
+      document.getElementById("modalCounter").textContent =
+        (entry.label ? entry.label + " — " : "") +
+        (idx + 1) + " / " + modalBlobs.length;
+      var okBtn = document.getElementById("modalOkBtn");
+      okBtn.textContent = (idx === modalBlobs.length - 1)
+        ? "✓ " + (isEs ? "Confirmar todas" : "Confirm all")
+        : "✓ " + (isEs ? "OK, siguiente" : "OK, next");
+    }
+
+    function openPhotoModal(blobs) {
+      buildModal();
+      modalBlobs = blobs;
+      modalIndex = 0;
+      showModalPhoto(0);
+      modalOverlay.classList.add("active");
+      document.body.style.overflow = "hidden";
+      return new Promise(function (resolve) { modalResolve = resolve; });
+    }
+
+    function closeModal() {
+      if (modalOverlay) {
+        modalOverlay.classList.remove("active");
+        document.body.style.overflow = "";
+        var modalImg = document.getElementById("modalImg");
+        if (modalImg) URL.revokeObjectURL(modalImg.src);
+      }
+      if (modalResolve) { modalResolve(); modalResolve = null; }
+    }
+
     // ── Create a preview wrapper with thumb + rotate button ──
     function createPreviewItem(blob, onRotated, extraClass) {
       var wrap = document.createElement("div");
@@ -799,9 +899,22 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
             coverPreview.innerHTML = "";
             var item = createPreviewItem(blob, function (rotated) { coverBlob = rotated; }, "cover-thumb");
             coverPreview.appendChild(item);
+            var thumbImg = item.querySelector(".preview-thumb");
+
+            // On mobile, open the review modal
+            if (isMobile()) {
+              await openPhotoModal([{
+                blob: coverBlob,
+                label: isEs ? "Portada" : "Cover",
+                onRotated: function (r) { coverBlob = r; },
+                thumbEl: thumbImg
+              }]);
+              // Update coverBlob in case it was rotated in the modal
+              coverBlob = coverBlob;
+            }
           }
           var coverHint = document.getElementById("coverRotateHint");
-          if (coverHint) coverHint.style.display = "block";
+          if (coverHint) coverHint.style.display = isMobile() ? "none" : "block";
           if (coverStatus) {
             coverStatus.textContent = "✅ " + (isEs ? "Portada lista" : "Cover ready") + " — " + Math.round(blob.size / 1024) + " KB";
             coverStatus.className = "photo-status photo-ok";
@@ -889,7 +1002,24 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
             interiorsStatus.className = "photo-status photo-ok";
           }
           var interiorsHint = document.getElementById("interiorsRotateHint");
-          if (interiorsHint) interiorsHint.style.display = "block";
+          if (interiorsHint) interiorsHint.style.display = isMobile() ? "none" : "block";
+
+          // On mobile, open modal for all interior photos
+          if (isMobile() && interiorBlobs.length > 0) {
+            var modalEntries = [];
+            var thumbEls = interiorsPreview.querySelectorAll(".preview-thumb");
+            for (var m = 0; m < interiorBlobs.length; m++) {
+              modalEntries.push({
+                blob: interiorBlobs[m],
+                label: (isEs ? "Interior " : "Interior ") + (m + 1),
+                onRotated: (function(j) {
+                  return function (r) { interiorBlobs[j] = r; };
+                })(m),
+                thumbEl: thumbEls[m] || null
+              });
+            }
+            await openPhotoModal(modalEntries);
+          }
         } catch (err) {
           interiorBlobs = [];
           if (interiorsStatus) {
@@ -1201,6 +1331,89 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     font-size: 0.78rem;
     color: var(--ink-soft);
     font-style: italic;
+  }
+
+  /* ── Photo Review Modal (mobile fullscreen) ── */
+  .photo-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.85);
+    justify-content: center;
+    align-items: center;
+  }
+  .photo-modal-overlay.active {
+    display: flex;
+  }
+  .photo-modal {
+    background: var(--surface, #fff);
+    border-radius: 1rem;
+    width: 92vw;
+    max-width: 420px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.2rem 1rem;
+    gap: 0.8rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .photo-modal-counter {
+    margin: 0;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--brand-blue, #1f4f86);
+  }
+  .photo-modal-copy {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--ink-soft, #777);
+    text-align: center;
+  }
+  .photo-modal-imgwrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 40vh;
+    max-height: 55vh;
+    overflow: hidden;
+  }
+  .photo-modal-img {
+    max-width: 100%;
+    max-height: 55vh;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    border: 2px solid var(--line, #ddd);
+  }
+  .photo-modal-actions {
+    display: flex;
+    gap: 0.8rem;
+    width: 100%;
+  }
+  .photo-modal-btn {
+    flex: 1;
+    padding: 0.9rem 0.5rem;
+    border: none;
+    border-radius: 0.7rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .photo-modal-btn:active { transform: scale(0.96); }
+  .photo-modal-btn:disabled { opacity: 0.5; cursor: wait; }
+  .modal-rotate {
+    background: var(--surface, #fff);
+    color: var(--brand-blue, #1f4f86);
+    border: 2px solid var(--brand-blue, #1f4f86);
+  }
+  .modal-ok {
+    background: var(--brand-blue, #1f4f86);
+    color: #fff;
   }
 
   /* Star picker */
