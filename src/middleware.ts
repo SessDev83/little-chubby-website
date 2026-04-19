@@ -52,5 +52,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   context.locals.user = data.session.user;
-  return next();
+  const response = await next();
+
+  // Prevent browser caching of SSR pages (especially reviews with inline scripts)
+  const url = new URL(context.request.url);
+  if (url.pathname.includes("/reviews")) {
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    response.headers.set("Pragma", "no-cache");
+  }
+
+  return response;
 });
