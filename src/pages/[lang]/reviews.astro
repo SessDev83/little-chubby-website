@@ -591,6 +591,88 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       });
     }
 
+    // ── Blob helpers with CSP-safe data URL fallback ──
+    function blobToDataUrl(blob) {
+      return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function () { resolve(reader.result); };
+        reader.onerror = function () { reject(new Error("data url read failed")); };
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function loadImageFromBlob(blob) {
+      return new Promise(function (resolve) {
+        var img = new Image();
+
+        function loadWithDataUrl() {
+          blobToDataUrl(blob)
+            .then(function (dataUrl) {
+              img.onload = function () { resolve(img); };
+              img.onerror = function () { resolve(null); };
+              img.src = dataUrl;
+            })
+            .catch(function () { resolve(null); });
+        }
+
+        if (typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+          try {
+            var objectUrl = URL.createObjectURL(blob);
+            img.onload = function () {
+              URL.revokeObjectURL(objectUrl);
+              resolve(img);
+            };
+            img.onerror = function () {
+              URL.revokeObjectURL(objectUrl);
+              loadWithDataUrl();
+            };
+            img.src = objectUrl;
+            return;
+          } catch (_) {
+            // Fall through to data URL mode.
+          }
+        }
+
+        loadWithDataUrl();
+      });
+    }
+
+    function setPreviewSource(imgEl, blob) {
+      function setDataUrl() {
+        blobToDataUrl(blob)
+          .then(function (dataUrl) {
+            imgEl.onload = null;
+            imgEl.onerror = null;
+            imgEl.src = dataUrl;
+          })
+          .catch(function () {
+            imgEl.onload = null;
+            imgEl.onerror = null;
+          });
+      }
+
+      if (typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+        try {
+          var objectUrl = URL.createObjectURL(blob);
+          imgEl.onload = function () {
+            URL.revokeObjectURL(objectUrl);
+            imgEl.onload = null;
+            imgEl.onerror = null;
+          };
+          imgEl.onerror = function () {
+            URL.revokeObjectURL(objectUrl);
+            setDataUrl();
+          };
+          imgEl.src = objectUrl;
+          return;
+        } catch (_) {
+          // Fall through to data URL mode.
+        }
+      }
+
+      setDataUrl();
+    }
+
     // ── Canvas → blob helper (tries WebP first, falls back to JPEG) ──
     function canvasToBlob(canvas) {
       return new Promise(function (resolve, reject) {
@@ -704,13 +786,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
         orientation = await getExifOrientation(file);
       }
 
-      var loaded = await new Promise(function (resolve) {
-        var img = new Image();
-        var url = URL.createObjectURL(file);
-        img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
-        img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
-        img.src = url;
-      });
+      var loaded = await loadImageFromBlob(file);
 
       if (loaded) {
         var natW2 = loaded.naturalWidth || loaded.width;
@@ -723,24 +799,18 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     }
 
     // ── Rotate a blob/file 90° clockwise via canvas ──
-    function rotateBlob90(source) {
-      return new Promise(function (resolve, reject) {
-        var img = new Image();
-        var url = URL.createObjectURL(source);
-        img.onload = function () {
-          URL.revokeObjectURL(url);
-          var canvas = document.createElement("canvas");
-          canvas.width = img.naturalHeight;
-          canvas.height = img.naturalWidth;
-          var ctx = canvas.getContext("2d");
-          ctx.translate(canvas.width, 0);
-          ctx.rotate(Math.PI / 2);
-          ctx.drawImage(img, 0, 0);
-          canvasToBlob(canvas).then(resolve).catch(reject);
-        };
-        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("rotate load failed")); };
-        img.src = url;
-      });
+    async function rotateBlob90(source) {
+      var img = await loadImageFromBlob(source);
+      if (!img) throw new Error("rotate load failed");
+
+      var canvas = document.createElement("canvas");
+      canvas.width = img.naturalHeight;
+      canvas.height = img.naturalWidth;
+      var ctx = canvas.getContext("2d");
+      ctx.translate(canvas.width, 0);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, 0, 0);
+      return canvasToBlob(canvas);
     }
 
     // ── Is mobile? ──
@@ -785,8 +855,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
           var rotated = await rotateBlob90(entry.blob);
           entry.blob = rotated;
           var modalImg = document.getElementById("modalImg");
-          URL.revokeObjectURL(modalImg.src);
-          modalImg.src = URL.createObjectURL(rotated);
+          setPreviewSource(modalImg, rotated);
         } catch (_) {}
         self.disabled = false;
         okBtn.disabled = false;
@@ -806,8 +875,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     function showModalPhoto(idx) {
       var entry = modalItems[idx];
       var modalImg = document.getElementById("modalImg");
-      URL.revokeObjectURL(modalImg.src);
-      modalImg.src = URL.createObjectURL(entry.blob);
+      setPreviewSource(modalImg, entry.blob);
       document.getElementById("modalCounter").textContent =
         (entry.label ? entry.label + " — " : "") +
         (idx + 1) + " / " + modalItems.length;
@@ -839,7 +907,9 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
         modalOverlay.classList.remove("active");
         document.body.style.overflow = "";
         var modalImg = document.getElementById("modalImg");
-        if (modalImg) URL.revokeObjectURL(modalImg.src);
+        if (modalImg && modalImg.src && modalImg.src.indexOf("blob:") === 0) {
+          URL.revokeObjectURL(modalImg.src);
+        }
       }
       // Resolve with the final blobs (may have been rotated)
       var finalBlobs = modalItems.map(function (e) { return e.blob; });
@@ -852,8 +922,8 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       wrap.className = "preview-item";
 
       var thumb = document.createElement("img");
-      thumb.src = URL.createObjectURL(blob);
       thumb.className = "preview-thumb" + (extraClass ? " " + extraClass : "");
+      setPreviewSource(thumb, blob);
       wrap.appendChild(thumb);
 
       return wrap;
