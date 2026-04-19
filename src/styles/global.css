@@ -1766,6 +1766,59 @@ main {
   margin: 0;
 }
 
+/* ── Joke Inline Cards ──────────────────────── */
+.jokes-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.joke-inline-card {
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--accent-coral);
+  background: var(--surface);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.joke-inline-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.joke-inline-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.joke-inline-date {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.joke-inline-content {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.joke-inline-content h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+  color: var(--brand-brown);
+}
+
+.joke-inline-content p {
+  margin: 0.4rem 0;
+}
+
+.joke-inline-content hr {
+  border: none;
+  border-top: 1px dashed var(--line);
+  margin: 0.75rem 0;
+}
+
 /* ── Category Badge ─────────────────────────── */
 .category-badge {
   display: inline-block;

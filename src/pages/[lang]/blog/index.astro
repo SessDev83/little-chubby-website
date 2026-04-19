@@ -1,8 +1,8 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import PostCard from "../../../components/PostCard.astro";
-import { getCollection } from "astro:content";
-import { languages, getLangFromParam, ui } from "../../../data/i18n";
+import { getCollection, render } from "astro:content";
+import { languages, getLangFromParam, ui, formatDate } from "../../../data/i18n";
 
 export function getStaticPaths() {
   return languages.map((lang) => ({ params: { lang } }));
@@ -19,7 +19,16 @@ const breadcrumbs = [
 const allPosts = await getCollection("blog", (entry) => entry.data.lang === lang);
 const sortedPosts = allPosts.sort((a, b) => b.data.date.localeCompare(a.data.date));
 
+const jokes = sortedPosts.filter((p) => (p.data.category || "article") === "joke");
+const renderedJokes = await Promise.all(
+  jokes.map(async (joke) => {
+    const { Content } = await render(joke);
+    return { joke, Content };
+  })
+);
+
 const categories = [
+  { value: "all", label: text.blogFilterAll },
   { value: "article", label: text.blogFilterArticles },
   { value: "fun-fact", label: text.blogFilterFunFacts },
   { value: "joke", label: text.blogFilterJokes },
@@ -41,7 +50,7 @@ const categories = [
       <div class="blog-filters" role="group" aria-label={text.blogFilterLabel}>
         {categories.map((cat) => (
           <button
-            class:list={["blog-filter-btn", { active: cat.value === "article" }]}
+            class:list={["blog-filter-btn", { active: cat.value === "all" }]}
             data-blog-category={cat.value}
             type="button"
           >
@@ -50,8 +59,16 @@ const categories = [
         ))}
       </div>
 
-      {categories.map((cat) => (
-        <div class="blog-category-section" data-section={cat.value} style={cat.value !== "article" ? "display:none;" : ""}>
+      <div class="blog-category-section" data-section="all">
+        <div class="grid-cards posts">
+          {sortedPosts.map((post) => (
+            <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />
+          ))}
+        </div>
+      </div>
+
+      {categories.filter((cat) => cat.value !== "all" && cat.value !== "joke").map((cat) => (
+        <div class="blog-category-section" data-section={cat.value} style="display:none;">
           <div class="grid-cards posts">
             {sortedPosts.filter((p) => (p.data.category || "article") === cat.value).length > 0
               ? sortedPosts.filter((p) => (p.data.category || "article") === cat.value).map((post) => (
@@ -64,6 +81,29 @@ const categories = [
           </div>
         </div>
       ))}
+
+      <div class="blog-category-section" data-section="joke" style="display:none;">
+        <div class="jokes-inline-grid">
+          {renderedJokes.length > 0
+            ? renderedJokes.map(({ joke, Content }) => (
+                <article class="joke-inline-card">
+                  <div class="joke-inline-header">
+                    <span class="category-badge" style="--badge-color: var(--accent-coral);">
+                      {lang === "es" ? "Chiste" : "Joke"}
+                    </span>
+                    <span class="joke-inline-date">{formatDate(joke.data.date, lang)}</span>
+                  </div>
+                  <div class="joke-inline-content">
+                    <Content />
+                  </div>
+                </article>
+              ))
+            : <p class="blog-empty-msg">
+                {lang === "es" ? "No hay chistes todavía." : "No jokes yet."}
+              </p>
+          }
+        </div>
+      </div>
     </div>
   </section>
 </BaseLayout>
