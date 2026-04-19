@@ -218,6 +218,14 @@ export async function sendConfirmationEmail(
     </p>
     ${confirmButton(confirmUrl, lang)}
     ${benefitsBox(lang)}
+    <div style="background:#eaf6f0;border-radius:8px;padding:1rem 1.2rem;margin:1.2rem 0;text-align:center;">
+      <p style="margin:0 0 0.4rem;font-size:0.85rem;color:#2f261f;">
+        🎨 ${isEs ? "Tu mini libro de colorear gratis:" : "Your free mini coloring book:"}
+      </p>
+      <a href="${SITE_URL}/downloads/mini-coloring-book.pdf" style="display:inline-block;background:#5c9650;color:#fff;font-weight:600;padding:0.45rem 1.2rem;border-radius:6px;text-decoration:none;font-size:0.85rem;">
+        ${isEs ? "Descargar PDF →" : "Download PDF →"}
+      </a>
+    </div>
     <p style="color:#aaa;font-size:0.78rem;line-height:1.5;margin:1.2rem 0 0;">
       ${isEs ? "Si no te suscribiste, puedes ignorar este email." : "If you didn't subscribe, you can safely ignore this email."}
     </p>`;
