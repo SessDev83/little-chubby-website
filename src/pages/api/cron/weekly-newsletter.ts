@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
 import { getServiceClient } from "../../../lib/supabase";
-import { books } from "../../../data/books";
+import { books, getMonthlyPrizeBook } from "../../../data/books";
 
 export const prerender = false;
 
@@ -11,6 +11,10 @@ const SITE = (
   import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com"
 ).replace(/\/+$/, "");
 const LOGO = `${SITE}/images/brand/logo-lockup.png`;
+
+function coverUrl(coverSrc: string): string {
+  return coverSrc.startsWith("http") ? coverSrc : `${SITE}${coverSrc}`;
+}
 
 // ── Helpers ──────────────────────────────────────────
 
@@ -83,6 +87,20 @@ async function pickContent(): Promise<Record<string, ContentPick>> {
 
 // ── Email builder ────────────────────────────────────
 
+function daysLeftInMonth(): number {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  return lastDay - now.getDate();
+}
+
+function currentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+const MONTH_NAMES_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const MONTH_NAMES_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
 function buildEmail(
   lang: string,
   name: string,
@@ -98,75 +116,150 @@ function buildEmail(
       ? "¡Hola!"
       : "Hi there!";
 
-  const book = books[books.length - 1];
-  const bookTitle =
-    book?.title[lang as "es" | "en"] || book?.title.en || "";
-
   const subject = isEs
     ? "🌈 Tu resumen semanal — Little Chubby Press"
     : "🌈 Your weekly roundup — Little Chubby Press";
 
-  // ── Tip section ──
+  // ── Giveaway data ──
+  const month = currentMonth();
+  const prizeBook = getMonthlyPrizeBook(month);
+  const prizeTitle = prizeBook.title[lang as "es" | "en"] || prizeBook.title.en;
+  const prizeCover = coverUrl(prizeBook.coverSrc);
+  const daysLeft = daysLeftInMonth();
+  const monthIdx = new Date().getMonth();
+  const monthName = isEs ? MONTH_NAMES_ES[monthIdx] : MONTH_NAMES_EN[monthIdx];
+
+  // ── Divider ──
+  const divider = `<div style="border-top:1px solid #e8e0d4;margin:1.2rem 0;"></div>`;
+
+  // ── 1. Tip section ──
   const tipHtml = content.tip
-    ? `<div style="margin-bottom:1.2rem;">
-        <p style="margin:0 0 0.3rem;font-size:0.8rem;color:#5c9650;font-weight:700;text-transform:uppercase;">
-          💡 ${isEs ? "Tip de la Semana" : "Tip of the Week"}
-        </p>
-        <h2 style="margin:0 0 0.4rem;font-size:1.05rem;color:#2f261f;">
-          <a href="${SITE}/${lang}/blog/${content.tip.slug}/" style="color:#2f261f;text-decoration:none;">${content.tip.title}</a>
-        </h2>
-        <p style="margin:0;font-size:0.88rem;color:#4b4239;line-height:1.5;">${content.tip.summary}</p>
-        <a href="${SITE}/${lang}/blog/${content.tip.slug}/" style="display:inline-block;margin-top:0.5rem;font-size:0.84rem;color:#1f4f86;font-weight:600;text-decoration:none;">
-          ${isEs ? "Leer más →" : "Read more →"}
-        </a>
+    ? `<div style="margin-bottom:0.6rem;">
+        <table style="width:100%;border:0;border-spacing:0;"><tr>
+          <td style="width:28px;vertical-align:top;padding-top:2px;">
+            <span style="font-size:1.3rem;">💡</span>
+          </td>
+          <td>
+            <p style="margin:0 0 0.2rem;font-size:0.75rem;color:#5c9650;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
+              ${isEs ? "Tip de la Semana" : "Tip of the Week"}
+            </p>
+            <h2 style="margin:0 0 0.35rem;font-size:1.02rem;color:#2f261f;">
+              <a href="${SITE}/${lang}/blog/${content.tip.slug}/" style="color:#2f261f;text-decoration:none;">${content.tip.title}</a>
+            </h2>
+            <p style="margin:0;font-size:0.86rem;color:#4b4239;line-height:1.55;">${content.tip.summary}</p>
+            <a href="${SITE}/${lang}/blog/${content.tip.slug}/" style="display:inline-block;margin-top:0.5rem;font-size:0.84rem;color:#1f4f86;font-weight:600;text-decoration:none;">
+              ${isEs ? "Leer más →" : "Read more →"}
+            </a>
+          </td>
+        </tr></table>
       </div>`
     : "";
 
-  // ── Fun fact / joke ──
+  // ── 2. Fun fact / joke ──
   const funHtml = content.funBit
-    ? `<div style="margin-bottom:1.2rem;padding:1rem;background:#fffaf2;border-radius:8px;">
-        <p style="margin:0 0 0.3rem;font-size:0.8rem;color:#d9825f;font-weight:700;text-transform:uppercase;">
-          ${
-            content.funBit.isFunFact
-              ? `🧠 ${isEs ? "¿Sabías que...?" : "Did you know?"}`
-              : `😄 ${isEs ? "Para Reír" : "Just for Fun"}`
-          }
-        </p>
-        <p style="margin:0;font-size:0.92rem;color:#4b4239;line-height:1.5;font-style:italic;">${content.funBit.summary}</p>
-        <a href="${SITE}/${lang}/blog/${content.funBit.slug}/" style="display:inline-block;margin-top:0.4rem;font-size:0.82rem;color:#1f4f86;text-decoration:none;">
-          ${isEs ? "Leer completo →" : "Read full post →"}
-        </a>
+    ? `${divider}
+      <div style="padding:1rem 1.1rem;background:linear-gradient(135deg,#fffaf2 0%,#fff5e6 100%);border-radius:10px;border-left:4px solid ${content.funBit.isFunFact ? "#d9825f" : "#d3a442"};">
+        <table style="width:100%;border:0;border-spacing:0;"><tr>
+          <td style="width:28px;vertical-align:top;padding-top:2px;">
+            <span style="font-size:1.3rem;">${content.funBit.isFunFact ? "🧠" : "😄"}</span>
+          </td>
+          <td>
+            <p style="margin:0 0 0.3rem;font-size:0.75rem;color:${content.funBit.isFunFact ? "#d9825f" : "#d3a442"};font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
+              ${
+                content.funBit.isFunFact
+                  ? (isEs ? "¿Sabías que...?" : "Did you know?")
+                  : (isEs ? "Para Reír" : "Just for Fun")
+              }
+            </p>
+            <p style="margin:0;font-size:0.9rem;color:#4b4239;line-height:1.55;font-style:italic;">${content.funBit.summary}</p>
+            <a href="${SITE}/${lang}/blog/${content.funBit.slug}/" style="display:inline-block;margin-top:0.45rem;font-size:0.82rem;color:#1f4f86;text-decoration:none;font-weight:600;">
+              ${isEs ? "Leer completo →" : "Read full post →"}
+            </a>
+          </td>
+        </tr></table>
       </div>`
     : "";
 
-  // ── Coloring corner ──
-  const coloringHtml = `
-    <div style="text-align:center;padding:0.8rem 1rem;background:#eaf6f0;border-radius:8px;margin-bottom:1.2rem;">
-      <p style="margin:0 0 0.4rem;font-size:0.92rem;color:#2f261f;">
-        🎨 ${
-          isEs
-            ? "Nuevas imágenes gratis para colorear en familia"
-            : "New free coloring pages for the whole family"
-        }
+  // ── 3. Giveaway countdown ──
+  const urgencyColor = daysLeft <= 7 ? "#c0392b" : "#d3a442";
+  const urgencyText = daysLeft <= 7
+    ? (isEs ? "¡Últimos días!" : "Last days!")
+    : (isEs ? `Quedan ${daysLeft} días` : `${daysLeft} days left`);
+
+  const giveawayHtml = `${divider}
+    <div style="background:linear-gradient(135deg,#fdf6e3 0%,#fff9ed 100%);border-radius:12px;border:2px dashed #d3a442;padding:1.2rem;text-align:center;">
+      <p style="margin:0 0 0.1rem;font-size:0.72rem;color:#d3a442;font-weight:700;text-transform:uppercase;letter-spacing:1px;">
+        🎁 ${isEs ? `Sorteo de ${monthName}` : `${monthName} Giveaway`}
       </p>
-      <a href="${SITE}/${lang}/coloring-corner/" style="display:inline-block;background:#5c9650;color:#fff;font-weight:600;padding:0.45rem 1.2rem;border-radius:6px;text-decoration:none;font-size:0.85rem;">
-        ${isEs ? "Ver Rincón de Colorear" : "Visit the Coloring Corner"}
+      <table style="width:100%;border:0;border-spacing:0;margin:0.8rem 0;"><tr>
+        <td style="width:90px;vertical-align:top;padding-right:14px;text-align:center;">
+          <img src="${prizeCover}" alt="${prizeTitle}" width="75" style="border-radius:6px;display:block;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,0.12);" />
+        </td>
+        <td style="vertical-align:middle;text-align:left;">
+          <p style="margin:0 0 0.15rem;font-size:0.78rem;color:#6b4c3b;font-weight:600;">
+            ${isEs ? "Premio de este mes:" : "This month's prize:"}
+          </p>
+          <p style="margin:0 0 0.4rem;font-size:1rem;color:#2f261f;font-weight:700;">${prizeTitle}</p>
+          <div style="display:inline-block;background:${urgencyColor};color:#fff;font-weight:700;padding:0.3rem 0.8rem;border-radius:20px;font-size:0.78rem;">
+            ⏳ ${urgencyText}
+          </div>
+        </td>
+      </tr></table>
+      <a href="${SITE}/${lang}/lottery/" style="display:inline-block;background:#5c9650;color:#fff;font-weight:700;padding:0.55rem 1.8rem;border-radius:8px;text-decoration:none;font-size:0.9rem;margin-top:0.3rem;box-shadow:0 2px 6px rgba(92,150,80,0.3);">
+        ${isEs ? "Participar gratis →" : "Enter for free →"}
       </a>
+      <p style="margin:0.5rem 0 0;font-size:0.72rem;color:#999;">
+        ${isEs ? "Compra un libro, sube tu foto y entra al sorteo" : "Buy a book, upload your photo, and enter the draw"}
+      </p>
     </div>`;
 
-  // ── Book (soft mention) ──
-  const bookHtml = book
-    ? `<div style="margin-bottom:1.2rem;padding:0.8rem;background:#fffaf2;border-radius:8px;">
+  // ── 4. Coloring corner ──
+  const coloringHtml = `${divider}
+    <div style="text-align:center;padding:1rem 1.2rem;background:linear-gradient(135deg,#eaf6f0 0%,#e0f5e9 100%);border-radius:10px;">
+      <table style="width:100%;border:0;border-spacing:0;"><tr>
+        <td style="width:36px;vertical-align:middle;text-align:center;">
+          <span style="font-size:1.8rem;">🎨</span>
+        </td>
+        <td style="vertical-align:middle;text-align:left;padding-left:8px;">
+          <p style="margin:0 0 0.15rem;font-size:0.75rem;color:#5c9650;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
+            ${isEs ? "Rincón de Colorear" : "Coloring Corner"}
+          </p>
+          <p style="margin:0;font-size:0.88rem;color:#2f261f;">
+            ${isEs
+              ? "Nuevas imágenes gratis para colorear en familia"
+              : "New free coloring pages for the whole family"}
+          </p>
+        </td>
+        <td style="width:130px;vertical-align:middle;text-align:right;">
+          <a href="${SITE}/${lang}/coloring-corner/" style="display:inline-block;background:#5c9650;color:#fff;font-weight:600;padding:0.4rem 1rem;border-radius:6px;text-decoration:none;font-size:0.8rem;">
+            ${isEs ? "Ver más →" : "Explore →"}
+          </a>
+        </td>
+      </tr></table>
+    </div>`;
+
+  // ── 5. Book spotlight (soft mention — different book from giveaway) ──
+  // Pick a random-ish book that's NOT the prize book
+  const otherBooks = books.filter((b) => b.id !== prizeBook.id);
+  const spotlightBook = otherBooks.length
+    ? otherBooks[weekNumber() % otherBooks.length]
+    : null;
+  const spotlightTitle = spotlightBook?.title[lang as "es" | "en"] || spotlightBook?.title.en || "";
+  const spotlightCover = spotlightBook ? coverUrl(spotlightBook.coverSrc) : "";
+
+  const bookHtml = spotlightBook
+    ? `${divider}
+      <div style="padding:0.8rem 1rem;background:#fafafa;border-radius:10px;">
         <table style="width:100%;border:0;border-spacing:0;"><tr>
-          <td style="width:70px;vertical-align:top;padding-right:10px;">
-            <img src="${SITE}${book.coverSrc}" alt="${bookTitle}" width="60" style="border-radius:5px;display:block;" />
+          <td style="width:65px;vertical-align:top;padding-right:12px;">
+            <img src="${spotlightCover}" alt="${spotlightTitle}" width="55" style="border-radius:5px;display:block;box-shadow:0 1px 4px rgba(0,0,0,0.1);" />
           </td>
           <td style="vertical-align:middle;">
-            <p style="margin:0 0 0.2rem;font-size:0.8rem;color:#d3a442;font-weight:600;">
+            <p style="margin:0 0 0.15rem;font-size:0.72rem;color:#d3a442;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">
               📚 ${isEs ? "Te puede gustar" : "You might like"}
             </p>
-            <p style="margin:0 0 0.3rem;font-size:0.95rem;color:#2f261f;font-weight:600;">${bookTitle}</p>
-            <a href="${book.amazonUrl}" style="font-size:0.82rem;color:#1f4f86;text-decoration:none;">
+            <p style="margin:0 0 0.3rem;font-size:0.92rem;color:#2f261f;font-weight:600;">${spotlightTitle}</p>
+            <a href="${spotlightBook.amazonUrl}" style="font-size:0.82rem;color:#1f4f86;text-decoration:none;font-weight:600;">
               ${isEs ? "Ver en Amazon →" : "See on Amazon →"}
             </a>
           </td>
@@ -179,28 +272,38 @@ function buildEmail(
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="font-family:'Segoe UI',Arial,sans-serif;background:#f6f1e7;margin:0;padding:0;">
   <div style="max-width:520px;margin:2rem auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-    <div style="background:#d3a442;padding:1.5rem 2rem;text-align:center;">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#d3a442 0%,#c4913a 100%);padding:1.8rem 2rem;text-align:center;">
       <a href="${SITE}" style="text-decoration:none;">
-        <img src="${LOGO}" alt="Little Chubby Press" width="180" style="display:block;margin:0 auto;" />
+        <img src="${LOGO}" alt="Little Chubby Press" width="160" style="display:block;margin:0 auto;" />
       </a>
-    </div>
-    <div style="padding:1.8rem 2rem;">
-      <h2 style="color:#6b4c3b;margin:0 0 0.6rem;font-size:1.15rem;">${greeting}</h2>
-      <p style="color:#4b4239;font-size:0.9rem;line-height:1.6;margin:0 0 1.2rem;">
-        ${
-          isEs
-            ? "Aquí va un breve resumen de lo que preparamos esta semana para ti y tu familia. Sin prisas, disfruta cuando quieras. 🌿"
-            : "Here's a little roundup of what we prepared this week for you and your family. No rush — enjoy whenever you like. 🌿"
-        }
+      <p style="margin:0.6rem 0 0;font-size:0.78rem;color:rgba(255,255,255,0.85);font-weight:500;">
+        ${isEs ? "Tu resumen semanal ✨" : "Your weekly roundup ✨"}
       </p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:1.8rem 2rem;">
+      <h2 style="color:#6b4c3b;margin:0 0 0.4rem;font-size:1.15rem;">${greeting}</h2>
+      <p style="color:#4b4239;font-size:0.9rem;line-height:1.6;margin:0 0 1rem;">
+        ${isEs
+          ? "Aquí va un breve resumen de lo que preparamos esta semana para ti y tu familia. Sin prisas, disfruta cuando quieras. 🌿"
+          : "Here's a little roundup of what we prepared this week for you and your family. No rush — enjoy whenever you like. 🌿"}
+      </p>
+
       ${tipHtml}
       ${funHtml}
+      ${giveawayHtml}
       ${coloringHtml}
       ${bookHtml}
-      <p style="color:#999;font-size:0.82rem;line-height:1.5;margin:1rem 0 0;text-align:center;">
+
+      <p style="color:#999;font-size:0.82rem;line-height:1.5;margin:1.2rem 0 0;text-align:center;">
         ${isEs ? "Que tengas una bonita semana. 💛" : "Have a lovely week. 💛"}
       </p>
     </div>
+
+    <!-- Footer -->
     <div style="background:#fffaf2;padding:1rem 2rem;text-align:center;font-size:0.78rem;color:#4b4239;border-top:1px solid #e8e0d4;">
       <p style="margin:0;">Little Chubby Press &bull; <a href="${SITE}" style="color:#1f4f86;">littlechubbypress.com</a></p>
       <p style="margin:0.5rem 0 0;font-size:0.72rem;">
@@ -209,6 +312,7 @@ function buildEmail(
         </a>
       </p>
     </div>
+
   </div>
 </body>
 </html>`;
