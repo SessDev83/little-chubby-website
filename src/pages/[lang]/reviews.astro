@@ -509,45 +509,6 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     var outMime = supportsWebP ? "image/webp" : "image/jpeg";
     var outExt  = supportsWebP ? ".webp" : ".jpg";
 
-    // ── Read EXIF orientation tag (1-8) from JPEG ──
-    function readExifOrientation(file) {
-      return new Promise(function (resolve) {
-        if (!file || file.type === "image/png" || file.type === "image/gif") { resolve(1); return; }
-        var reader = new FileReader();
-        reader.onload = function (e) {
-          try {
-            var view = new DataView(e.target.result);
-            if (view.byteLength < 2 || view.getUint16(0, false) !== 0xFFD8) { resolve(1); return; }
-            var offset = 2;
-            while (offset + 4 < view.byteLength) {
-              var marker = view.getUint16(offset, false);
-              if (marker === 0xFFE1) {
-                var exifStart = offset + 4;
-                if (exifStart + 6 > view.byteLength || view.getUint32(exifStart, false) !== 0x45786966) { resolve(1); return; }
-                var tiffOff = exifStart + 6;
-                if (tiffOff + 8 > view.byteLength) { resolve(1); return; }
-                var little = view.getUint16(tiffOff, false) === 0x4949;
-                var ifdOff = tiffOff + view.getUint32(tiffOff + 4, little);
-                if (ifdOff + 2 > view.byteLength) { resolve(1); return; }
-                var entries = view.getUint16(ifdOff, little);
-                for (var i = 0; i < entries; i++) {
-                  var entryOff = ifdOff + 2 + i * 12;
-                  if (entryOff + 12 > view.byteLength) break;
-                  if (view.getUint16(entryOff, little) === 0x0112) { resolve(view.getUint16(entryOff + 8, little)); return; }
-                }
-                resolve(1); return;
-              }
-              if (offset + 2 >= view.byteLength) break;
-              offset += 2 + view.getUint16(offset + 2, false);
-            }
-            resolve(1);
-          } catch (_) { resolve(1); }
-        };
-        reader.onerror = function () { resolve(1); };
-        reader.readAsArrayBuffer(file.slice(0, 65536));
-      });
-    }
-
     // ── Canvas → blob helper (tries WebP first, falls back to JPEG) ──
     function canvasToBlob(canvas) {
       return new Promise(function (resolve, reject) {
@@ -565,84 +526,50 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       });
     }
 
-    // ── Compress image with EXIF auto-rotation ──
-    async function compressImage(file) {
-      // Helper: apply EXIF orientation via canvas transforms
-      function applyOrientation(ctx, orientation, outW, outH) {
-        if (orientation <= 1) return;
-        switch (orientation) {
-          case 2: ctx.transform(-1, 0, 0, 1, outW, 0); break;
-          case 3: ctx.transform(-1, 0, 0, -1, outW, outH); break;
-          case 4: ctx.transform(1, 0, 0, -1, 0, outH); break;
-          case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
-          case 6: ctx.transform(0, 1, -1, 0, outW, 0); break;
-          case 7: ctx.transform(0, -1, -1, 0, outW, outH); break;
-          case 8: ctx.transform(0, -1, 1, 0, 0, outH); break;
-        }
+    // ── Resize helper: scale source to fit MAX_DIM, output to canvas blob ──
+    function resizeToCanvas(source, srcW, srcH) {
+      var w = srcW, h = srcH;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        var ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
       }
+      var canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(source, 0, 0, w, h);
+      return canvasToBlob(canvas);
+    }
 
-      // Try createImageBitmap with auto-rotation first
+    // ── Compress image ──
+    // Modern browsers (Chrome 81+, Safari 13.1+, Firefox 26+) auto-apply
+    // EXIF orientation when drawing to canvas — no manual rotation needed.
+    async function compressImage(file) {
+      // PRIMARY: createImageBitmap — handles HEIC, large photos, memory-efficient
       if (typeof createImageBitmap === "function") {
-        var autoRotated = false;
         var bitmap = null;
         try {
           bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-          autoRotated = true;
         } catch (_) {
           try { bitmap = await createImageBitmap(file); } catch (__) { /* fall through */ }
         }
         if (bitmap) {
-          // If auto-rotation wasn't supported, read EXIF and rotate manually
-          var orientation = autoRotated ? 1 : await readExifOrientation(file);
-          var bw = bitmap.width, bh = bitmap.height;
-          var swap = !autoRotated && orientation >= 5 && orientation <= 8;
-          var outW = swap ? bh : bw;
-          var outH = swap ? bw : bh;
-          if (outW > MAX_DIM || outH > MAX_DIM) {
-            var ratio = Math.min(MAX_DIM / outW, MAX_DIM / outH);
-            outW = Math.round(outW * ratio);
-            outH = Math.round(outH * ratio);
-          }
-          var canvas = document.createElement("canvas");
-          canvas.width = outW;
-          canvas.height = outH;
-          var ctx = canvas.getContext("2d");
-          if (!autoRotated) applyOrientation(ctx, orientation, outW, outH);
-          var dw = swap ? outH : outW;
-          var dh = swap ? outW : outH;
-          ctx.drawImage(bitmap, 0, 0, dw, dh);
+          var blob = await resizeToCanvas(bitmap, bitmap.width, bitmap.height);
           bitmap.close();
-          return canvasToBlob(canvas);
+          return blob;
         }
       }
 
-      // FALLBACK: Image element + manual EXIF orientation
-      var orientation = await readExifOrientation(file);
+      // FALLBACK: Image element (also auto-rotates in modern browsers)
       return new Promise(function (resolve, reject) {
         var img = new Image();
         var url = URL.createObjectURL(file);
         img.onload = function () {
           URL.revokeObjectURL(url);
           try {
-            var natW = img.naturalWidth || img.width;
-            var natH = img.naturalHeight || img.height;
-            var swap = orientation >= 5 && orientation <= 8;
-            var outW = swap ? natH : natW;
-            var outH = swap ? natW : natH;
-            if (outW > MAX_DIM || outH > MAX_DIM) {
-              var r = Math.min(MAX_DIM / outW, MAX_DIM / outH);
-              outW = Math.round(outW * r);
-              outH = Math.round(outH * r);
-            }
-            var canvas = document.createElement("canvas");
-            canvas.width = outW;
-            canvas.height = outH;
-            var ctx = canvas.getContext("2d");
-            applyOrientation(ctx, orientation, outW, outH);
-            var dw = swap ? outH : outW;
-            var dh = swap ? outW : outH;
-            ctx.drawImage(img, 0, 0, dw, dh);
-            canvasToBlob(canvas).then(resolve, reject);
+            resizeToCanvas(img, img.naturalWidth || img.width, img.naturalHeight || img.height)
+              .then(resolve, reject);
           } catch (err) { reject(err); }
         };
         img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("Cannot load image")); };
@@ -1093,17 +1020,20 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
   .reviews-list { display: grid; gap: 0.8rem; }
   .review-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.8rem;
     align-items: flex-start;
-    padding: 0.6rem;
+    padding: 0.8rem;
     border-radius: var(--radius-sm);
     border: 1px solid var(--line);
+    overflow: hidden;
   }
   .review-thumbs {
     display: flex;
     flex-wrap: wrap;
     gap: 0.3rem;
     flex-shrink: 0;
+    max-width: 14rem;
   }
   .review-thumb {
     width: 3.5rem;
