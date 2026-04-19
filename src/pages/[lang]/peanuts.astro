@@ -310,8 +310,14 @@ const boostItems = [
   function setupLotteryQty() {
     const qtyEl = document.getElementById("qty-value");
     const costEl = document.getElementById("lottery-total-cost");
+    const minusBtn = document.getElementById("qty-minus");
+    const plusBtn = document.getElementById("qty-plus");
+    const buyBtn = document.getElementById("buy-lottery-btn");
 
-    document.getElementById("qty-minus").addEventListener("click", () => {
+    // Elements only exist when user is subscribed and draw is pending
+    if (!minusBtn || !plusBtn || !buyBtn) return;
+
+    minusBtn.addEventListener("click", () => {
       if (lotteryQty > 1) {
         lotteryQty--;
         qtyEl.textContent = lotteryQty;
@@ -319,7 +325,7 @@ const boostItems = [
       }
     });
 
-    document.getElementById("qty-plus").addEventListener("click", () => {
+    plusBtn.addEventListener("click", () => {
       if (lotteryQty < 20) {
         lotteryQty++;
         qtyEl.textContent = lotteryQty;
@@ -327,7 +333,7 @@ const boostItems = [
       }
     });
 
-    document.getElementById("buy-lottery-btn").addEventListener("click", async () => {
+    buyBtn.addEventListener("click", async () => {
       await purchaseAction("/api/buy-lottery-entry/", { quantity: lotteryQty });
     });
   }
