@@ -6,32 +6,14 @@ import { getServiceClient } from "./supabase";
 
 const RESEND_API_KEY = import.meta.env.RESEND_API_KEY;
 const ANALYTICS_EMAIL = import.meta.env.ANALYTICS_EMAIL || "ivan.c4u@gmail.com";
-const FROM = "Little Chubby Press <noreply@littlechubbypress.com>";
+const FROM = "Little Chubby Press <hello@littlechubbypress.com>";
 
-// ── HTML template ────────────────────────────────────
+// ── Plain-text-style HTML (avoids Gmail Promotions tab) ──
 
-function card(emoji: string, title: string, rows: [string, string][], footer?: string): string {
-  const rowsHtml = rows
-    .map(
-      ([label, value]) =>
-        `<tr><td style="padding:6px 0;color:#888;white-space:nowrap;vertical-align:top">${label}</td><td style="padding:6px 0 6px 12px;font-weight:600">${value}</td></tr>`
-    )
-    .join("");
-
-  const footerHtml = footer
-    ? `<p style="margin:16px 0 0;font-size:12px;color:#aaa">${footer}</p>`
-    : "";
-
-  return `
-  <div style="font-family:'Segoe UI',system-ui,sans-serif;max-width:460px;margin:0 auto;padding:24px;background:#f9f7f3;border-radius:12px;border:1px solid #e8e0d4">
-    <h2 style="color:#6b4c3b;margin:0 0 16px;font-size:18px">${emoji} ${title}</h2>
-    <table style="width:100%;border-collapse:collapse">${rowsHtml}</table>
-    ${footerHtml}
-    <hr style="border:none;border-top:1px solid #e8e0d4;margin:16px 0 8px" />
-    <p style="margin:0;font-size:11px;color:#bbb;text-align:center">
-      Little Chubby Press &middot; ${new Date().toISOString().replace("T", " ").slice(0, 16)} UTC
-    </p>
-  </div>`;
+function card(_emoji: string, title: string, rows: [string, string][], footer?: string): string {
+  const lines = rows.map(([label, value]) => `<b>${label}:</b> ${value}`).join("<br>");
+  const footerLine = footer ? `<br><span style="color:#999;font-size:12px">${footer}</span>` : "";
+  return `<p><b>${title}</b></p><p>${lines}</p>${footerLine}<br><span style="color:#aaa;font-size:11px">${new Date().toISOString().replace("T", " ").slice(0, 16)} UTC</span>`;
 }
 
 // ── Send helper ──────────────────────────────────────
