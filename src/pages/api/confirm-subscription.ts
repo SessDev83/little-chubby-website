@@ -6,7 +6,8 @@ export const prerender = false;
 
 export const GET: APIRoute = async ({ url }) => {
   const token = url.searchParams.get("token");
-  const lang = url.searchParams.get("lang") || "en";
+  const rawLang = url.searchParams.get("lang") || "en";
+  const lang = rawLang === "es" ? "es" : "en";
   const siteUrl = import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com";
 
   if (!token) {

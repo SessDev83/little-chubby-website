@@ -63,7 +63,13 @@ export const POST: APIRoute = async ({ request }) => {
             })
             .eq("email", cleanEmail);
 
-          await sendConfirmationEmail(cleanEmail, cleanName, existing.confirm_token, lang);
+          const emailSent = await sendConfirmationEmail(cleanEmail, cleanName, existing.confirm_token, lang);
+          if (!emailSent) {
+            return new Response(JSON.stringify({ error: "Failed to send confirmation email" }), {
+              status: 502,
+              headers,
+            });
+          }
           return new Response(JSON.stringify({ ok: true, existing: true, confirmed: false }), {
             status: 200,
             headers,
@@ -90,7 +96,13 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Await confirmation email — must complete before serverless function exits
-    await sendConfirmationEmail(cleanEmail, cleanName, data.confirm_token, lang);
+    const emailSent = await sendConfirmationEmail(cleanEmail, cleanName, data.confirm_token, lang);
+    if (!emailSent) {
+      return new Response(JSON.stringify({ error: "Failed to send confirmation email" }), {
+        status: 502,
+        headers,
+      });
+    }
 
     // Admin notification (awaited to prevent loss on Vercel)
     await notifyNewSubscriber(cleanEmail, cleanName, source || "popup", lang);

@@ -39,7 +39,14 @@ const text = ui[lang];
 </div>
 
 <script is:inline>
+var _lmTimer = null;
+var _lmAC = null;
+
 function initLeadMagnet() {
+  // Clean up previous init (View Transition re-runs)
+  if (_lmTimer) { clearTimeout(_lmTimer); _lmTimer = null; }
+  if (_lmAC) { _lmAC.abort(); _lmAC = null; }
+
   var overlay = document.getElementById("lead-magnet-overlay");
   var closeBtn = document.getElementById("lead-magnet-close");
   var dismissBtn = document.getElementById("lead-magnet-dismiss");
@@ -64,8 +71,11 @@ function initLeadMagnet() {
     } catch (e) { /* continue */ }
   }
 
+  _lmAC = typeof AbortController !== "undefined" ? new AbortController() : null;
+  var signal = _lmAC ? _lmAC.signal : undefined;
+
   // Show popup after 5 seconds
-  var timer = setTimeout(function() {
+  _lmTimer = setTimeout(function() {
     overlay.style.display = "";
     document.body.style.overflow = "hidden";
   }, 5000);
@@ -73,7 +83,7 @@ function initLeadMagnet() {
   function closePopup() {
     overlay.style.display = "none";
     document.body.style.overflow = "";
-    clearTimeout(timer);
+    if (_lmTimer) { clearTimeout(_lmTimer); _lmTimer = null; }
   }
 
   function dismiss() {
@@ -92,10 +102,10 @@ function initLeadMagnet() {
     if (e.target === overlay) dismiss();
   });
 
-  // Close on Escape key
+  // Close on Escape key (with signal to prevent listener leak across View Transitions)
   document.addEventListener("keydown", function(e) {
     if (e.key === "Escape" && overlay.style.display !== "none") dismiss();
-  });
+  }, signal ? { signal: signal } : undefined);
 
   form.addEventListener("submit", function(e) {
     e.preventDefault();
