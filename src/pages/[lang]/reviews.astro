@@ -931,7 +931,8 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
         var rotateBtn = document.createElement("button");
         rotateBtn.type = "button";
         rotateBtn.className = "rotate-btn";
-        rotateBtn.textContent = "↻";
+        var rotateIdleText = "↻ 90°";
+        rotateBtn.textContent = rotateIdleText;
         rotateBtn.title = isEs ? "Rotar 90°" : "Rotate 90°";
         rotateBtn.setAttribute("aria-label", isEs ? "Rotar foto 90 grados" : "Rotate photo 90 degrees");
 
@@ -947,7 +948,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
             onRotated(rotated);
           } catch (_) {}
           rotateBtn.disabled = false;
-          rotateBtn.textContent = "↻";
+          rotateBtn.textContent = rotateIdleText;
         });
 
         wrap.appendChild(rotateBtn);
@@ -1394,41 +1395,46 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     border-color: var(--brand-blue);
   }
 
-  /* ── Preview item with rotate button ── */
+  /* ── Preview item with top overlay rotate button ── */
   .preview-item {
     position: relative;
     display: inline-block;
   }
   .rotate-btn {
     position: absolute;
-    bottom: -4px;
-    right: -4px;
-    width: 1.6rem;
-    height: 1.6rem;
-    border-radius: 50%;
-    border: 1.5px solid var(--line);
-    background: var(--surface);
-    color: var(--brand-blue);
-    font-size: 1rem;
+    top: 0.3rem;
+    right: 0.3rem;
+    min-width: 2.8rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: linear-gradient(135deg, rgba(15, 30, 51, 0.72), rgba(31, 79, 134, 0.58));
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
     line-height: 1;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-    transition: background 0.15s, transform 0.15s;
-    padding: 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+    transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    padding: 0 0.45rem;
   }
   .rotate-btn:hover {
-    background: var(--brand-blue);
-    color: #fff;
-    transform: scale(1.1);
+    background: linear-gradient(135deg, rgba(15, 30, 51, 0.84), rgba(31, 79, 134, 0.72));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.28);
   }
   .rotate-btn:active {
-    transform: scale(0.95);
+    transform: translateY(0);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.22);
   }
   .rotate-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.7;
     cursor: wait;
   }
   .rotate-hint {
@@ -1665,11 +1671,12 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
 
     /* Rotate button — bigger touch target on mobile */
     .rotate-btn {
-      width: 2.4rem;
-      height: 2.4rem;
-      font-size: 1.4rem;
-      bottom: -6px;
-      right: -6px;
+      top: 0.38rem;
+      right: 0.38rem;
+      min-width: 3rem;
+      height: 1.7rem;
+      font-size: 0.76rem;
+      padding: 0 0.5rem;
     }
 
     /* Review cards — stack vertically */
