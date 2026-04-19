@@ -1338,8 +1338,20 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     .dropzone-text { font-size: 0.9rem; }
 
     /* Photo previews — bigger on mobile for easier viewing */
-    .preview-thumb { width: 4rem; height: 4rem; }
-    .preview-thumb.cover-thumb { width: 4.5rem; height: 5.8rem; }
+    .photo-preview {
+      gap: 0.75rem;
+    }
+    .preview-thumb { width: 6rem; height: 6rem; }
+    .preview-thumb.cover-thumb { width: 7rem; height: 9rem; }
+
+    /* Rotate button — bigger touch target on mobile */
+    .rotate-btn {
+      width: 2.4rem;
+      height: 2.4rem;
+      font-size: 1.4rem;
+      bottom: -6px;
+      right: -6px;
+    }
 
     /* Review cards — stack vertically */
     .review-row {
