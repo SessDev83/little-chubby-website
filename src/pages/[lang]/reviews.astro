@@ -509,6 +509,78 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     var outMime = supportsWebP ? "image/webp" : "image/jpeg";
     var outExt  = supportsWebP ? ".webp" : ".jpg";
 
+    // ── Detect if this browser auto-rotates EXIF in <img> ──
+    // Loads a tiny 2×1 JPEG with Orientation=6 (90° CW → should become 1×2).
+    // If the browser auto-rotates, naturalWidth=1, naturalHeight=2.
+    // If NOT, naturalWidth=2, naturalHeight=1 → we must rotate manually.
+    var browserAutoRotates = null; // null = not tested yet, true/false after
+    var autoRotatePromise = new Promise(function (resolve) {
+      var testImg = new Image();
+      // Minimal JPEG: 2×1 px, EXIF Orientation=6 (rotate 90° CW)
+      testImg.onload = function () {
+        browserAutoRotates = testImg.naturalWidth === 1 && testImg.naturalHeight === 2;
+        resolve();
+      };
+      testImg.onerror = function () {
+        browserAutoRotates = false; // assume no auto-rotate
+        resolve();
+      };
+      testImg.src = "data:image/jpeg;base64,"
+        + "/9j/4QBiRXhpZgAATU0AKgAAAAgAAgESAAMAAAABAAYAAAEh"
+        + "AAUAAAABAAAAJgAAAAAAAqACAAQAAAABAAAAAqADAAQAAAAB"
+        + "AAAAAQAAAAAAAAAAAAEAAAABAAAAHgAAAAD/2wBDAAgGBgcG"
+        + "BQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIs"
+        + "IxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgN"
+        + "DRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIy"
+        + "MjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAIDASIAAhEBAxEB"
+        + "/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QA"
+        + "tRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJx"
+        + "FDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3"
+        + "ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqD"
+        + "hIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLD"
+        + "xMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6"
+        + "/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QA"
+        + "tREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMi"
+        + "MoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYI4Q/RFhHYnUt"
+        + "FCcS8hclcoMwbOBkZz/9oADAMBAAIRAxEAPwC/RRRQB//Z";
+    });
+
+    // ── Read EXIF orientation from JPEG bytes ──
+    function getExifOrientation(file) {
+      return new Promise(function (resolve) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var view = new DataView(e.target.result);
+          if (view.getUint16(0) !== 0xFFD8) { resolve(1); return; } // not JPEG
+          var offset = 2;
+          while (offset < view.byteLength - 2) {
+            var marker = view.getUint16(offset);
+            if (marker === 0xFFE1) { // APP1 = EXIF
+              var exifOffset = offset + 4;
+              // Check "Exif\0\0"
+              if (view.getUint32(exifOffset) !== 0x45786966) { resolve(1); return; }
+              var tiffStart = exifOffset + 6;
+              var bigEndian = view.getUint16(tiffStart) === 0x4D4D;
+              var ifdOffset = view.getUint32(tiffStart + 4, !bigEndian);
+              var tags = view.getUint16(tiffStart + ifdOffset, !bigEndian);
+              for (var i = 0; i < tags; i++) {
+                var tagOffset = tiffStart + ifdOffset + 2 + i * 12;
+                if (view.getUint16(tagOffset, !bigEndian) === 0x0112) { // Orientation tag
+                  resolve(view.getUint16(tagOffset + 8, !bigEndian));
+                  return;
+                }
+              }
+              resolve(1); return;
+            }
+            offset += 2 + view.getUint16(offset + 2);
+          }
+          resolve(1);
+        };
+        reader.onerror = function () { resolve(1); };
+        reader.readAsArrayBuffer(file.slice(0, 65536)); // only first 64KB
+      });
+    }
+
     // ── Canvas → blob helper (tries WebP first, falls back to JPEG) ──
     function canvasToBlob(canvas) {
       return new Promise(function (resolve, reject) {
@@ -526,8 +598,8 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       });
     }
 
-    // ── Resize + draw to canvas → blob ──
-    function resizeAndBlob(source, srcW, srcH) {
+    // ── Resize + optional manual EXIF rotation + draw to canvas → blob ──
+    function resizeAndBlob(source, srcW, srcH, orientation) {
       var w = srcW, h = srcH;
       if (w > MAX_DIM || h > MAX_DIM) {
         var ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
@@ -535,21 +607,53 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
         h = Math.round(h * ratio);
       }
       var canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
       var ctx = canvas.getContext("2d");
-      ctx.drawImage(source, 0, 0, w, h);
+
+      // If browser does NOT auto-rotate and EXIF says rotate, do it manually
+      var needsManual = !browserAutoRotates && orientation && orientation > 1;
+      if (needsManual) {
+        // Orientations 5-8 swap width/height
+        if (orientation >= 5) {
+          canvas.width = h;
+          canvas.height = w;
+        } else {
+          canvas.width = w;
+          canvas.height = h;
+        }
+        switch (orientation) {
+          case 2: ctx.transform(-1, 0, 0, 1, w, 0); break;                 // flip H
+          case 3: ctx.transform(-1, 0, 0, -1, w, h); break;               // 180°
+          case 4: ctx.transform(1, 0, 0, -1, 0, h); break;                // flip V
+          case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;                 // transpose
+          case 6: ctx.transform(0, 1, -1, 0, h, 0); break;                // 90° CW
+          case 7: ctx.transform(0, -1, -1, 0, h, w); break;               // transverse
+          case 8: ctx.transform(0, -1, 1, 0, 0, w); break;                // 90° CCW
+        }
+        ctx.drawImage(source, 0, 0, w, h);
+      } else {
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(source, 0, 0, w, h);
+      }
       return canvasToBlob(canvas);
     }
 
     // ── Compress image ──
-    // Strategy: new Image() is the primary path because modern browsers
-    // (Chrome 81+, Safari 13.1+, Firefox) auto-apply EXIF orientation
-    // when an Image element is decoded — drawImage draws rotated pixels.
-    // createImageBitmap WITHOUT { imageOrientation } does NOT auto-rotate,
-    // so it's only used as a fallback for formats Image can't load (HEIC).
+    // 1. Detect if browser auto-rotates EXIF (tested once on page load)
+    // 2. If YES → just load with new Image(), drawImage gets correct pixels
+    // 3. If NO  → read EXIF orientation, manually rotate on canvas
+    // 4. Fallback: createImageBitmap for HEIC
     async function compressImage(file) {
-      // PRIMARY: Image element — reliable EXIF auto-rotation
+      // Wait for auto-rotate detection to finish
+      await autoRotatePromise;
+
+      // Read EXIF orientation (only needed if browser doesn't auto-rotate)
+      var orientation = 1;
+      if (!browserAutoRotates) {
+        orientation = await getExifOrientation(file);
+      }
+
+      // PRIMARY: Image element
       var loaded = await new Promise(function (resolve) {
         var img = new Image();
         var url = URL.createObjectURL(file);
@@ -559,7 +663,9 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       });
 
       if (loaded) {
-        return resizeAndBlob(loaded, loaded.naturalWidth || loaded.width, loaded.naturalHeight || loaded.height);
+        var natW = loaded.naturalWidth || loaded.width;
+        var natH = loaded.naturalHeight || loaded.height;
+        return resizeAndBlob(loaded, natW, natH, orientation);
       }
 
       // FALLBACK: createImageBitmap for formats Image can't handle (HEIC)
@@ -571,7 +677,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
           try { bitmap = await createImageBitmap(file); } catch (__) { /* give up */ }
         }
         if (bitmap) {
-          var blob = await resizeAndBlob(bitmap, bitmap.width, bitmap.height);
+          var blob = await resizeAndBlob(bitmap, bitmap.width, bitmap.height, 1);
           bitmap.close();
           return blob;
         }
