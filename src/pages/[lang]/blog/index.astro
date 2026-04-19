@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import PostCard from "../../../components/PostCard.astro";
+import Button from "../../../components/Button.astro";
 import { getCollection, render } from "astro:content";
 import { languages, getLangFromParam, ui, formatDate } from "../../../data/i18n";
 
@@ -90,9 +91,16 @@ const categories = [
                   <div class="joke-inline-content">
                     <Content />
                   </div>
-                  <a href={jokeHref} class="joke-inline-link">
-                    {lang === "es" ? "Compartir / ver más →" : "Share / see more →"}
-                  </a>
+                  <div class="joke-inline-actions">
+                    <div class="joke-share-row">
+                      <a href={`https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Flittlechubbypress.com${jokeHref}`} target="_blank" rel="noopener noreferrer" class="share-btn share-facebook" aria-label={lang === "es" ? "Compartir en Facebook" : "Share on Facebook"}>📘</a>
+                      <a href={`https://bsky.app/intent/compose?text=${encodeURIComponent(joke.data.title)}%20https%3A%2F%2Flittlechubbypress.com${jokeHref}`} target="_blank" rel="noopener noreferrer" class="share-btn share-copy-link" aria-label={lang === "es" ? "Compartir en Bluesky" : "Share on Bluesky"}>🦋</a>
+                      <button type="button" class="share-btn share-copy-link joke-copy-link" data-url={`https://littlechubbypress.com${jokeHref}`} aria-label={lang === "es" ? "Copiar enlace" : "Copy link"}>🔗</button>
+                    </div>
+                    <div class="card-actions">
+                      <Button href={jokeHref} label={lang === "es" ? "Ver más" : "See more"} variant="ghost" />
+                    </div>
+                  </div>
                 </article>
               );})
             : <p class="blog-empty-msg">
@@ -135,4 +143,19 @@ function initBlogFilters() {
 }
 initBlogFilters();
 document.addEventListener("astro:after-swap", initBlogFilters);
+
+function initJokeCopyLinks() {
+  document.querySelectorAll(".joke-copy-link").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var url = btn.getAttribute("data-url");
+      navigator.clipboard.writeText(url).then(function() {
+        var orig = btn.textContent;
+        btn.textContent = "✅";
+        setTimeout(function() { btn.textContent = orig; }, 1500);
+      });
+    });
+  });
+}
+initJokeCopyLinks();
+document.addEventListener("astro:after-swap", initJokeCopyLinks);
 </script>
