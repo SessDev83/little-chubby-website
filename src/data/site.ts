@@ -8,10 +8,7 @@ const cleanEnvValue = (value: string | undefined) => (value || "").trim();
 const publicSiteUrl = cleanEnvValue(import.meta.env.PUBLIC_SITE_URL).replace(/\/+$/, "");
 const resolvedSiteUrl = publicSiteUrl || "https://www.littlechubbypress.com";
 
-const buttondownUsername = cleanEnvValue(import.meta.env.PUBLIC_BUTTONDOWN_USERNAME);
-const resolvedNewsletterActionUrl = buttondownUsername
-  ? `https://buttondown.email/api/emails/embed-subscribe/${encodeURIComponent(buttondownUsername)}`
-  : "https://buttondown.email/api/emails/embed-subscribe/YOUR_BUTTONDOWN_USERNAME";
+
 
 const formspreeFormId = cleanEnvValue(import.meta.env.PUBLIC_FORMSPREE_FORM_ID);
 const resolvedContactActionUrl = formspreeFormId
@@ -47,12 +44,6 @@ export const siteConfig = {
     ogCover: "/images/brand/og-cover.png"
   },
   newsletter: {
-    providerName: "Buttondown",
-    actionUrl: resolvedNewsletterActionUrl,
-    providerGuide: {
-      es: "Reemplaza YOUR_BUTTONDOWN_USERNAME para activar envios reales.",
-      en: "Replace YOUR_BUTTONDOWN_USERNAME to enable real submissions."
-    },
     successRedirect: {
       es: "/es/thanks/?form=newsletter",
       en: "/en/thanks/?form=newsletter"

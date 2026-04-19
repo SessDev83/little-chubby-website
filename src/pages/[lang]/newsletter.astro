@@ -1,7 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import NewsletterForm from "../../components/NewsletterForm.astro";
-import { siteConfig } from "../../data/site";
 import { languages, getLangFromParam, ui } from "../../data/i18n";
 
 export function getStaticPaths() {
@@ -33,11 +32,7 @@ const breadcrumbs = [
             ? "Recibe lanzamientos, novedades editoriales y recursos para colorear en familia."
             : "Get launches, editorial updates, and family coloring resources."}
         </p>
-        <p>
-          {lang === "es"
-            ? `Proveedor sugerido: ${siteConfig.newsletter.providerName}.`
-            : `Suggested provider: ${siteConfig.newsletter.providerName}.`}
-        </p>
+
       </div>
 
       <NewsletterForm lang={lang} />

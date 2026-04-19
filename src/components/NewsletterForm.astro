@@ -1,5 +1,4 @@
 ---
-import { siteConfig } from "../data/site";
 import type { Lang } from "../data/i18n";
 import { ui } from "../data/i18n";
 
@@ -9,13 +8,9 @@ interface Props {
 
 const { lang } = Astro.props;
 const text = ui[lang];
-const isPlaceholder = siteConfig.newsletter.actionUrl.includes("YOUR_");
-const successUrl = new URL(siteConfig.newsletter.successRedirect[lang], siteConfig.siteUrl).toString();
 ---
 
-<form class="surface-card form-shell js-validate-newsletter" method="post" action={siteConfig.newsletter.actionUrl} novalidate>
-  <input type="hidden" name="_redirect" value={successUrl} />
-  <input type="hidden" name="redirect" value={successUrl} />
+<form class="surface-card form-shell js-validate-newsletter" novalidate>
   <div class="form-grid">
     <div class="form-group">
       <label for="newsletter-name">{text.formName}</label>
@@ -34,14 +29,6 @@ const successUrl = new URL(siteConfig.newsletter.successRedirect[lang], siteConf
 
     <p class="form-note">{text.newsletterDisclaimer}</p>
 
-    {
-      isPlaceholder && (
-        <p class="provider-warning">
-          {text.providerSetupLabel}: {siteConfig.newsletter.providerName}. {siteConfig.newsletter.providerGuide[lang]}
-        </p>
-      )
-    }
-
     <p class="status-msg" id="newsletter-status" aria-live="polite"></p>
 
     <button class="btn btn-primary btn-submit" type="submit">
@@ -52,50 +39,52 @@ const successUrl = new URL(siteConfig.newsletter.successRedirect[lang], siteConf
 </form>
 
 <script is:inline>
-  const newsletterForm = document.querySelector(".js-validate-newsletter");
-  const newsletterStatus = document.getElementById("newsletter-status");
+  var newsletterForm = document.querySelector(".js-validate-newsletter");
+  var newsletterStatus = document.getElementById("newsletter-status");
 
   if (newsletterForm && newsletterStatus) {
-    newsletterForm.addEventListener("submit", (event) => {
-      const emailInput = newsletterForm.querySelector('input[name="email"]');
-      const hpInput = newsletterForm.querySelector('input[name="company"]');
-      const submitBtn = newsletterForm.querySelector('.btn-submit');
-      const currentLang = document.documentElement.lang === "en" ? "en" : "es";
+    newsletterForm.addEventListener("submit", function(event) {
+      event.preventDefault();
 
-      const requiredMsg = currentLang === "en"
+      var emailInput = newsletterForm.querySelector('input[name="email"]');
+      var hpInput = newsletterForm.querySelector('input[name="company"]');
+      var nameInput = newsletterForm.querySelector('input[name="name"]');
+      var submitBtn = newsletterForm.querySelector('.btn-submit');
+      var currentLang = document.documentElement.lang === "en" ? "en" : "es";
+
+      var requiredMsg = currentLang === "en"
         ? "Please complete all required fields."
         : "Por favor completa los campos obligatorios.";
-
-      const emailMsg = currentLang === "en"
+      var emailMsg = currentLang === "en"
         ? "Please enter a valid email."
         : "Ingresa un email valido.";
+      var successMsg = currentLang === "en"
+        ? "Check your inbox to confirm your subscription!"
+        : "¡Revisa tu correo para confirmar tu suscripción!";
+      var alreadyMsg = currentLang === "en"
+        ? "You're already subscribed!"
+        : "¡Ya estás suscrito!";
+      var errorMsg = currentLang === "en"
+        ? "Something went wrong. Please try again."
+        : "Algo salió mal. Intenta de nuevo.";
 
       newsletterStatus.textContent = "";
+      newsletterStatus.className = "status-msg";
 
-      if (hpInput && hpInput.value.trim()) {
-        event.preventDefault();
-        newsletterStatus.textContent = requiredMsg;
-        return;
-      }
+      if (hpInput && hpInput.value.trim()) { return; }
 
       if (!emailInput || !emailInput.value.trim()) {
-        event.preventDefault();
         newsletterStatus.textContent = requiredMsg;
         return;
       }
 
-      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim());
-      if (!validEmail) {
-        event.preventDefault();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim())) {
         newsletterStatus.textContent = emailMsg;
         return;
       }
 
-      // Show loading state
       if (submitBtn) submitBtn.classList.add('is-loading');
 
-      // Also save to our DB + send admin notification (non-blocking, doesn't stop Buttondown submit)
-      const nameInput = newsletterForm.querySelector('input[name="name"]');
       fetch("/api/subscribe-newsletter/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -105,7 +94,24 @@ const successUrl = new URL(siteConfig.newsletter.successRedirect[lang], siteConf
           source: "newsletter-page",
           lang_pref: currentLang,
         })
-      }).catch(function() {});
+      }).then(function(res) {
+        return res.json().then(function(data) {
+          if (submitBtn) submitBtn.classList.remove('is-loading');
+          if (data.existing) {
+            newsletterStatus.textContent = alreadyMsg;
+            newsletterStatus.className = "status-msg status-info";
+          } else if (data.ok) {
+            newsletterStatus.textContent = successMsg;
+            newsletterStatus.className = "status-msg status-success";
+            newsletterForm.reset();
+          } else {
+            newsletterStatus.textContent = errorMsg;
+          }
+        });
+      }).catch(function() {
+        if (submitBtn) submitBtn.classList.remove('is-loading');
+        newsletterStatus.textContent = errorMsg;
+      });
     });
   }
 </script>

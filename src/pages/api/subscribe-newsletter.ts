@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { getServiceClient } from "../../lib/supabase";
-import { notifyNewSubscriber } from "../../lib/notifications";
+import { notifyNewSubscriber, sendConfirmationEmail } from "../../lib/notifications";
 
 export const prerender = false;
 
@@ -28,13 +28,13 @@ export const POST: APIRoute = async ({ request }) => {
 
     const svc = getServiceClient();
 
-    const { error } = await svc.from("newsletter_subscribers").insert({
+    const { data, error } = await svc.from("newsletter_subscribers").insert({
       email: email.trim().toLowerCase(),
       name: (name || "").trim(),
       source: source || "popup",
       lang_pref: lang_pref || "en",
       confirmed: false,
-    });
+    }).select("confirm_token").single();
 
     if (error) {
       // 23505 = unique violation (already subscribed) — still OK
@@ -50,8 +50,15 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = (name || "").trim();
+    const lang = lang_pref || "en";
+
+    // Send confirmation email to the subscriber (in their language)
+    sendConfirmationEmail(cleanEmail, cleanName, data.confirm_token, lang);
+
     // Send admin notification (non-blocking)
-    notifyNewSubscriber(email, name || "", source || "popup", lang_pref || "en");
+    notifyNewSubscriber(cleanEmail, cleanName, source || "popup", lang);
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 201,

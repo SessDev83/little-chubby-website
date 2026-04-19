@@ -4,6 +4,7 @@ export const prerender = false;
 import { getLangFromParam } from "../../../data/i18n";
 import type { Lang } from "../../../data/i18n";
 import { supabase } from "../../../lib/supabase";
+import { getServiceClient } from "../../../lib/supabase";
 import { notifyNewUser } from "../../../lib/notifications";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
@@ -43,6 +44,16 @@ if (code) {
     const fiveMinAgo = Date.now() - 5 * 60 * 1000;
     if (createdAt > fiveMinAgo) {
       notifyNewUser(user.email || "unknown", lang);
+
+      // Auto-confirm newsletter subscriber if they registered with the same email
+      if (user.email) {
+        const svc = getServiceClient();
+        svc.from("newsletter_subscribers")
+          .update({ confirmed: true })
+          .eq("email", user.email.toLowerCase())
+          .eq("confirmed", false)
+          .then(() => {});
+      }
     }
 
     return Astro.redirect(`/${lang}/profile/`);
