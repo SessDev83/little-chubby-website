@@ -245,10 +245,17 @@ const text = t[lang] || t.es;
   var input = document.getElementById("chubby-input");
   var quick = document.getElementById("chubby-quick");
   var closeBtn = document.getElementById("chubby-close");
+
+  // Bail out if DOM elements are missing (safety net)
+  if (!toggle || !chat || !messages || !form || !input || !quick || !closeBtn) return;
+
+  // Ensure clean initial state on re-init (View Transitions)
+  chat.setAttribute("aria-hidden", "true");
+  chat.classList.remove("chubby-chat--open");
+  toggle.classList.remove("chubby-toggle--open");
   var isOpen = false;
 
   function sanitizeUrl(url) {
-    // Only allow relative paths and https links — block javascript: etc.
     if (/^\/[a-z]/.test(url)) return url;
     if (/^https:\/\//i.test(url)) return url;
     return "#";
@@ -294,27 +301,32 @@ const text = t[lang] || t.es;
     return el;
   }
 
-  function toggleChat() {
-    isOpen = !isOpen;
-    chat.setAttribute("aria-hidden", String(!isOpen));
-    chat.classList.toggle("chubby-chat--open", isOpen);
-    toggle.classList.toggle("chubby-toggle--open", isOpen);
-    if (isOpen) {
-      input.focus();
-      // Add greeting if first time
-      if (messages.children.length === 0) {
-        addMessage(greetingText, "bot");
-      }
+  /* ── Explicit open / close (no ambiguous toggle) ────────── */
+  function openChat() {
+    if (isOpen) return;
+    isOpen = true;
+    chat.setAttribute("aria-hidden", "false");
+    chat.classList.add("chubby-chat--open");
+    toggle.classList.add("chubby-toggle--open");
+    input.focus();
+    if (messages.children.length === 0) {
+      addMessage(greetingText, "bot");
     }
+  }
+
+  function closeChat() {
+    if (!isOpen) return;
+    isOpen = false;
+    chat.setAttribute("aria-hidden", "true");
+    chat.classList.remove("chubby-chat--open");
+    toggle.classList.remove("chubby-toggle--open");
   }
 
   function handleSend(text) {
     if (!text.trim()) return;
-    // Rate-limit: ignore rapid-fire sends
     var now = Date.now();
     if (now - lastSendTime < RATE_LIMIT_MS) return;
     lastSendTime = now;
-    // Limit input length client-side
     var clean = text.trim().slice(0, 500);
     addMessage(clean, "user");
     quick.style.display = "none";
@@ -330,8 +342,15 @@ const text = t[lang] || t.es;
   }
 
   /* ── Events ─────────────────────────────────────────────────── */
-  toggle.addEventListener("click", toggleChat, { signal: ac.signal });
-  closeBtn.addEventListener("click", toggleChat, { signal: ac.signal });
+  toggle.addEventListener("click", function(e) {
+    e.stopPropagation();
+    if (isOpen) { closeChat(); } else { openChat(); }
+  }, { signal: ac.signal });
+
+  closeBtn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    closeChat();
+  }, { signal: ac.signal });
 
   form.addEventListener("submit", function(e) {
     e.preventDefault();
@@ -342,7 +361,6 @@ const text = t[lang] || t.es;
     var btn = e.target.closest(".chubby-quick-btn");
     if (!btn) return;
     var q = btn.getAttribute("data-q");
-    // Map quick question key to a user-friendly message
     var qMap = {
       books:    lang === "es" ? "¿Qué libros tienen?" : "What books do you have?",
       peanuts:  lang === "es" ? "¿Qué son los Peanuts?" : "What are Peanuts?",
@@ -352,16 +370,12 @@ const text = t[lang] || t.es;
     handleSend(qMap[q] || btn.textContent);
   }, { signal: ac.signal });
 
-  // Close on Escape
   document.addEventListener("keydown", function(e) {
-    if (e.key === "Escape" && isOpen) toggleChat();
+    if (e.key === "Escape" && isOpen) closeChat();
   }, { signal: ac.signal });
 
-  // Close chat on outside click (overlay-like behavior on mobile)
   document.addEventListener("click", function(e) {
-    if (isOpen && !chat.contains(e.target) && !toggle.contains(e.target)) {
-      toggleChat();
-    }
+    if (isOpen && !chat.contains(e.target)) closeChat();
   }, { signal: ac.signal });
 })();
 </script>
