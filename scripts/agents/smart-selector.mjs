@@ -57,7 +57,7 @@ async function fetchSmartContext() {
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [recentDecisions, contentPerf, trafficInsights, socialMetrics] = await Promise.all([
+  const [recentDecisions, contentPerf, trafficInsights, socialMetrics, topPages] = await Promise.all([
     // Latest agent decisions (recommendations from weekly intelligence)
     querySupabase("agent_decisions", `select=decision_type,recommended_action,reasoning,confidence_score,created_at&created_at=gte.${since7d}&order=created_at.desc&limit=20`),
 
@@ -69,9 +69,12 @@ async function fetchSmartContext() {
 
     // Latest social metrics (follower trends)
     querySupabase("social_metrics", `select=platform,metric_type,value,collected_at&metric_type=eq.profile_stats&order=collected_at.desc&limit=6`),
+
+    // Top visited pages last 7 days (what people actually look at)
+    querySupabase("pageviews", `select=path&created_at=gte.${since7d}&limit=500`),
   ]);
 
-  return { recentDecisions, contentPerf, trafficInsights, socialMetrics };
+  return { recentDecisions, contentPerf, trafficInsights, socialMetrics, topPages };
 }
 
 // ─── Build performance summary for AI prompt injection ─────────────────────
@@ -146,6 +149,22 @@ function buildPerformanceSummary(context) {
     lines.push("\nCURRENT FOLLOWERS:");
     for (const [plat, val] of Object.entries(latestByPlatform)) {
       lines.push(`  ${plat}: ${val.followers || val.fans || "?"}`);
+    }
+  }
+
+  // Top visited pages (what users actually look at on the website)
+  if (context.topPages && context.topPages.length > 0) {
+    const pageCounts = {};
+    for (const p of context.topPages) {
+      if (p.path) pageCounts[p.path] = (pageCounts[p.path] || 0) + 1;
+    }
+    const sorted = Object.entries(pageCounts).sort((a, b) => b[1] - a[1]);
+    if (sorted.length > 0) {
+      lines.push("\nTOP VISITED PAGES (last 7 days — what users look at most):");
+      for (const [page, views] of sorted.slice(0, 10)) {
+        lines.push(`  ${page}: ${views} views`);
+      }
+      lines.push("  → Use this to decide which features/pages to promote in posts!");
     }
   }
 

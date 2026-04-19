@@ -12,8 +12,8 @@
  *   calendar             Generate a full 7-day content calendar (preview only)
  *
  * Options:
- *   --platform <name>    bluesky | facebook | instagram | all  (default: bluesky)
- *   --type <type>        book-promo | blog-share | engagement | community | parenting-tip | behind-scenes | fun-fact (default: book-promo)
+ *   --platform <name>    bluesky | facebook | instagram | all  (default: all)
+ *   --type <type>        book-promo | blog-share | engagement | community | parenting-tip | behind-scenes | fun-fact | free-coloring | giveaway | share-earn (default: book-promo)
  *   --lang <lang>        en | es  (default: en)
  *   --book <id>          Use a specific book by ID (e.g. "magical-creatures")
  *   --dry-run            Show what would be posted without actually posting
@@ -45,6 +45,8 @@ const ROOT = resolve(__dirname, "../..");
 // ─── Post-state file for sequential rotation ───────────────────────────────
 
 const POST_STATE_PATH = resolve(__dirname, ".post-state.json");
+const POST_HISTORY_PATH = resolve(__dirname, ".post-history.json");
+const MAX_HISTORY = 60; // keep last 60 posts (~12 days at 5/day)
 
 function loadPostState() {
   if (!existsSync(POST_STATE_PATH)) return {};
@@ -57,6 +59,53 @@ function loadPostState() {
 
 function savePostState(state) {
   writeFileSync(POST_STATE_PATH, JSON.stringify(state, null, 2));
+}
+
+// ─── Post history for anti-repetition ──────────────────────────────────────
+
+function loadPostHistory() {
+  if (!existsSync(POST_HISTORY_PATH)) return [];
+  try {
+    return JSON.parse(readFileSync(POST_HISTORY_PATH, "utf-8"));
+  } catch {
+    return [];
+  }
+}
+
+function appendPostHistory(entry) {
+  const history = loadPostHistory();
+  history.push({
+    ts: new Date().toISOString(),
+    type: entry.type,
+    lang: entry.lang,
+    concept: entry.concept || "",
+    bookId: entry.bookId || null,
+    blogSlug: entry.blogSlug || null,
+  });
+  // Keep only the most recent entries
+  const trimmed = history.slice(-MAX_HISTORY);
+  writeFileSync(POST_HISTORY_PATH, JSON.stringify(trimmed, null, 2));
+}
+
+/**
+ * Build a concise summary of recent posts for the AI to avoid repetition.
+ * Returns the last 15 entries formatted as a string, or null if no history.
+ */
+function buildRecentHistorySummary() {
+  const history = loadPostHistory();
+  if (history.length === 0) return null;
+
+  const recent = history.slice(-15);
+  const lines = recent.map((h) => {
+    const ago = Math.round((Date.now() - new Date(h.ts).getTime()) / 3600000);
+    const parts = [`${ago}h ago`, h.type, h.lang.toUpperCase()];
+    if (h.bookId) parts.push(`book=${h.bookId}`);
+    if (h.blogSlug) parts.push(`blog=${h.blogSlug}`);
+    if (h.concept) parts.push(`"${h.concept}"`);
+    return `  - ${parts.join(" | ")}`;
+  });
+
+  return `RECENT POSTS (avoid repeating similar concepts/angles):\n${lines.join("\n")}`;
 }
 
 /**
@@ -135,7 +184,7 @@ function parseArgs() {
 
   const opts = {
     command,
-    platform: "bluesky",
+    platform: "all",
     type: "book-promo",
     lang: "en",
     book: null,
@@ -503,10 +552,13 @@ async function main() {
   }
 
   if (!opts.noAi && process.env.ANTHROPIC_API_KEY) {
+    // Build recent post history so AI avoids repetition
+    const recentHistory = buildRecentHistorySummary();
+
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         console.log(`🤖 Generating content with AI (Claude)...${attempt > 1 ? ` (attempt ${attempt}/${MAX_RETRIES})` : ""}\n`);
-        const aiPost = await generateAIPost(opts.type, opts.lang, data, smartContext);
+        const aiPost = await generateAIPost(opts.type, opts.lang, data, smartContext, recentHistory);
         if (aiPost) {
           post = aiPost;
           aiUsed = true;
@@ -585,6 +637,19 @@ async function main() {
     }
 
     console.log("\n✨ Done!\n");
+
+    // Record this post in history for anti-repetition
+    const anySuccess = results.some((r) => r.success);
+    if (anySuccess) {
+      appendPostHistory({
+        type: opts.type,
+        lang: opts.lang,
+        concept: post.concept || "",
+        bookId: data?.id || null,
+        blogSlug: data?.slug?.[opts.lang] || data?.slug?.en || null,
+      });
+      console.log("📝 Post recorded in history for anti-repetition tracking.\n");
+    }
 
     // Fail the process if any Meta platform post failed, so CI shows a red X
     const metaFailures = results.filter(

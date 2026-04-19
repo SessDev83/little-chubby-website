@@ -41,6 +41,9 @@ on:
           - behind-scenes
           - fun-fact
           - community
+          - free-coloring
+          - giveaway
+          - share-earn
       platform:
         description: "Platform"
         required: true
@@ -75,17 +78,21 @@ jobs:
         run: npm ci
 
       - name: Restore post state
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
-          path: scripts/social/.post-state.json
-          key: social-post-state
+          path: |
+            scripts/social/.post-state.json
+            scripts/social/.post-history.json
+          key: social-post-state-${{ github.run_id }}
+          restore-keys: social-post-state-
 
       - name: Determine scheduled post settings
         if: github.event_name == 'schedule'
         id: schedule
         run: |
-          # 7 content categories — rotate through them sequentially
-          TYPES=("book-promo" "parenting-tip" "blog-share" "behind-scenes" "fun-fact" "community" "engagement")
+          # 10 content types — community/traffic-first, book-promo only 1-in-10
+          # Slots 0+7 = free-coloring (~20%), the main traffic driver
+          TYPES=("free-coloring" "engagement" "blog-share" "share-earn" "parenting-tip" "giveaway" "book-promo" "free-coloring" "community" "fun-fact")
 
           # Day of week (1=Mon..7=Sun) and slot within the day (0-4)
           DAY=$(date -u +%u)
@@ -101,21 +108,26 @@ jobs:
             *)  SLOT=0 ;;
           esac
 
+          # Weekly offset so types rotate across lang slots each week
+          WEEK_NUM=$(date -u +%V)
+          OFFSET=$(( (WEEK_NUM % 10) * 3 ))
+
           # Calculate a unique index across the week: (day-1)*5 + slot = 0..34
           INDEX=$(( (DAY - 1) * 5 + SLOT ))
-          TYPE_INDEX=$(( INDEX % 7 ))
+          TYPE_INDEX=$(( (INDEX + OFFSET) % 10 ))
           TYPE="${TYPES[$TYPE_INDEX]}"
 
-          # Alternate language: even index = EN, odd index = ES
-          if [ $(( INDEX % 2 )) -eq 0 ]; then
-            LANG="en"
-          else
+          # Language ratio: ~80 % English, ~20 % Spanish
+          # ES only when INDEX mod 5 == 4  (every 5th post)
+          if [ $(( INDEX % 5 )) -eq 4 ]; then
             LANG="es"
+          else
+            LANG="en"
           fi
 
           echo "type=$TYPE" >> $GITHUB_OUTPUT
           echo "lang=$LANG" >> $GITHUB_OUTPUT
-          echo "📋 Slot $INDEX → $TYPE ($LANG) [Day $DAY, Hour $HOUR, Slot $SLOT]"
+          echo "📋 Slot $INDEX → $TYPE ($LANG) [Day $DAY, Hour $HOUR, Slot $SLOT, Week $WEEK_NUM, Offset $OFFSET]"
 
       - name: Post to social media
         env:
@@ -139,5 +151,7 @@ jobs:
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: scripts/social/.post-state.json
-          key: social-post-state
+          path: |
+            scripts/social/.post-state.json
+            scripts/social/.post-history.json
+          key: social-post-state-${{ github.run_id }}

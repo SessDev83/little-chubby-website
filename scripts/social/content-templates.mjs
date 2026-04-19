@@ -248,6 +248,77 @@ const communityTemplates = {
   ],
 };
 
+// ─── Free Coloring Corner templates ─────────────────────────────────────────
+
+const freeColoringTemplates = {
+  en: [
+    () => ({
+      text: `Free coloring pages for your kids! 🎨\n\nHundreds of pages in 9 categories — animals, space, dinosaurs, food, and more.\n\nDownload as many as you want. All free with a quick signup.`,
+      cta: `Browse the Coloring Corner: ${siteUrl("/en/coloring-corner")}`,
+    }),
+    () => ({
+      text: `Rainy day? Road trip? Need 30 minutes of calm? 🌧️\n\nOur free Coloring Corner has hundreds of printable pages ready to go.\n\nNo purchase needed — just sign up and download!`,
+      cta: `Get free pages: ${siteUrl("/en/coloring-corner")}`,
+    }),
+    () => ({
+      text: `Does your kid love dinosaurs? Space? Animals? 🦕🚀🐾\n\nWe have free coloring pages in all those categories and more.\n\nPrint them at home for instant screen-free fun!`,
+      cta: `Download free pages: ${siteUrl("/en/coloring-corner")}`,
+    }),
+  ],
+  es: [
+    () => ({
+      text: `¡Paginas para colorear gratis para tus peques! 🎨\n\nCientos de paginas en 9 categorias — animales, espacio, dinosaurios, comida y mas.\n\nDescarga todas las que quieras. ¡Gratis con registro rapido!`,
+      cta: `Visita el Rincon de Colorear: ${siteUrl("/es/coloring-corner")}`,
+    }),
+    () => ({
+      text: `¿Dia lluvioso? ¿Viaje largo? ¿Necesitas 30 minutos de calma? 🌧️\n\nNuestro Rincon de Colorear tiene cientos de paginas listas para imprimir.\n\n¡Sin comprar nada — solo registrate y descarga!`,
+      cta: `Paginas gratis: ${siteUrl("/es/coloring-corner")}`,
+    }),
+  ],
+};
+
+// ─── Giveaway templates ─────────────────────────────────────────────────────
+
+const giveawayTemplates = {
+  en: [
+    () => ({
+      text: `Win a FREE coloring book every month! 🎁\n\nHow to enter:\n1. Buy any of our books on Amazon\n2. Upload a photo review on our website\n3. Get 5 FREE lottery tickets!\n\nDrawing on the 1st of each month.`,
+      cta: `Enter the giveaway: ${siteUrl("/en/lottery")}`,
+    }),
+    () => ({
+      text: `Have you entered this month's giveaway yet? 🎉\n\nWe give away 1-3 FREE coloring books every month — shipped right to your door.\n\nJust share a photo review of any of our books to enter!`,
+      cta: `See details: ${siteUrl("/en/lottery")}`,
+    }),
+  ],
+  es: [
+    () => ({
+      text: `¡Gana un libro de colorear GRATIS cada mes! 🎁\n\nComo participar:\n1. Compra cualquiera de nuestros libros en Amazon\n2. Sube una resena con foto en nuestro sitio\n3. ¡Recibe 5 boletos GRATIS!\n\nSorteo el 1 de cada mes.`,
+      cta: `Participa: ${siteUrl("/es/lottery")}`,
+    }),
+  ],
+};
+
+// ─── Share & Earn (Peanuts) templates ───────────────────────────────────────
+
+const shareEarnTemplates = {
+  en: [
+    () => ({
+      text: `Did you know sharing earns you free coloring pages? 🥜\n\nWith our Peanuts loyalty system:\n- Share a gallery photo = +1 Peanut\n- Submit a book review = +5 Peanuts\n- 1 Peanut = 1 free coloring page download\n\nThe more you share, the more free stuff you unlock!`,
+      cta: `Learn about Peanuts: ${siteUrl("/en/peanuts")}`,
+    }),
+    () => ({
+      text: `Free coloring pages just for sharing with friends! 🎨🥜\n\nOur Peanuts system rewards you for being part of the community.\n\nShare, review, earn — it's that simple!`,
+      cta: `Start earning: ${siteUrl("/en/peanuts")}`,
+    }),
+  ],
+  es: [
+    () => ({
+      text: `¿Sabias que compartir te da paginas para colorear gratis? 🥜\n\nCon nuestro sistema de Peanuts:\n- Compartir una foto = +1 Peanut\n- Subir una resena = +5 Peanuts\n- 1 Peanut = 1 pagina gratis\n\n¡Mientras mas compartes, mas ganas!`,
+      cta: `Conoce los Peanuts: ${siteUrl("/es/peanuts")}`,
+    }),
+  ],
+};
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
@@ -284,6 +355,15 @@ export function generatePost(type, lang, data, utmOpts = {}) {
     case "fun-fact":
       // These AI-only types fall back to engagement templates
       templates = engagementTemplates[lang];
+      break;
+    case "free-coloring":
+      templates = freeColoringTemplates[lang];
+      break;
+    case "giveaway":
+      templates = giveawayTemplates[lang];
+      break;
+    case "share-earn":
+      templates = shareEarnTemplates[lang];
       break;
     default:
       throw new Error(`Unknown template type: ${type}`);

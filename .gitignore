@@ -28,6 +28,7 @@ pnpm-debug.log*
 
 # social engagement state files
 scripts/social/.post-state.json
+scripts/social/.post-history.json
 scripts/social/.engage-state.json
 
 # source image assets (too large for git)
