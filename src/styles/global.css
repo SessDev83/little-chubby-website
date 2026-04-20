@@ -831,17 +831,23 @@ main {
   border-radius: 50%;
   border: 2px solid var(--brand-brown);
   background: transparent;
-  padding: 0;
+  padding: 9px;
   cursor: pointer;
   transition: background 0.3s ease;
+  background-clip: content-box;
+  -webkit-background-clip: content-box;
 }
 
 .hero-carousel-dot.active {
   background: var(--brand-brown);
+  background-clip: content-box;
+  -webkit-background-clip: content-box;
 }
 
 .hero-carousel-dot:hover {
   background: var(--accent-gold);
+  background-clip: content-box;
+  -webkit-background-clip: content-box;
 }
 
 .btn {

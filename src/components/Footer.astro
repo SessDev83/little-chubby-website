@@ -25,13 +25,13 @@ const year = new Date().getFullYear();
 
     <nav class="footer-columns" aria-label="Footer">
       <div class="footer-col">
-        <h4 class="footer-col-title">{lang === "es" ? "Explorar" : "Explore"}</h4>
+        <h3 class="footer-col-title">{lang === "es" ? "Explorar" : "Explore"}</h3>
         <a href={`/${lang}/books/`}>{text.navBooks}</a>
         <a href={`/${lang}/blog/`}>{text.navBlog}</a>
         <a href={`/${lang}/about/`}>{text.navAbout}</a>
       </div>
       <div class="footer-col">
-        <h4 class="footer-col-title">{lang === "es" ? "Comunidad" : "Community"}</h4>
+        <h3 class="footer-col-title">{lang === "es" ? "Comunidad" : "Community"}</h3>
         <a href={`/${lang}/coloring-corner/`}>{text.navColoringCorner}</a>
         <a href={`/${lang}/lottery/`}>{lang === "es" ? "Sorteo" : "Giveaway"}</a>
         <a href={`/${lang}/gallery/`}>{text.navGallery}</a>
@@ -39,7 +39,7 @@ const year = new Date().getFullYear();
         <a href={`/${lang}/newsletter/`}>{text.navNewsletter}</a>
       </div>
       <div class="footer-col">
-        <h4 class="footer-col-title">{lang === "es" ? "Conectar" : "Connect"}</h4>
+        <h3 class="footer-col-title">{lang === "es" ? "Conectar" : "Connect"}</h3>
         <a href={`/${lang}/contact/`}>{text.navContact}</a>
         <a href={siteConfig.social.instagram} target="_blank" rel="noopener noreferrer" class="footer-social-link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
