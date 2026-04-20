@@ -533,6 +533,21 @@ export async function generateAIPost(type, lang, data, smartContext = null, rece
         text: parsed.instagram.text,
         hashtags: parsed.instagram.hashtags || "",
       },
+      pinterest: (() => {
+        // Pinterest: derive a search-optimized title (≤100c) + SEO description (≤500c).
+        // Source: Facebook text (longest, most keyword-rich) stripped of URLs.
+        const fbClean = parsed.facebook.text.replace(/https?:\/\/[^\s]+/g, "").trim();
+        const firstLine = (parsed.concept || fbClean.split("\n")[0] || "").replace(/[#@].*$/, "").trim();
+        const title = firstLine.slice(0, 100) || "Little Chubby Press";
+        const hashtags = (parsed.facebook.hashtags || parsed.instagram.hashtags || "")
+          .split(" ").filter(Boolean).slice(0, 5).join(" ");
+        const body = fbClean.slice(0, 480);
+        return {
+          title,
+          text: body,
+          hashtags,
+        };
+      })(),
     },
     imagePrompt: parsed.imagePrompt || null,
     aiGenerated: true,

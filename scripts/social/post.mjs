@@ -27,7 +27,7 @@
  *   node scripts/social/post.mjs post --platform all --type book-promo --dry-run
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generatePost, generateWeeklyCalendar, buildUtmUrl } from "./content-templates.mjs";
@@ -35,6 +35,8 @@ import { generateAIPost } from "./ai-generate.mjs";
 import { generateImage, downloadImage } from "./image-generate.mjs";
 import { postToBluesky } from "./platforms/bluesky.mjs";
 import { postToFacebook, postToInstagram, postToFacebookGroup } from "./platforms/meta.mjs";
+import { createPin, getBoardForType } from "./platforms/pinterest.mjs";
+import { generatePinImage, defaultShowcaseForType } from "./pin-image-generate.mjs";
 import { getSmartContext } from "../agents/smart-selector.mjs";
 
 const SITE_URL = "https://www.littlechubbypress.com";
@@ -258,12 +260,21 @@ function adaptToPlatforms(post, data, lang) {
     : "#KidsArt #ColoringTime #Parenting #MomLife #ArtForKids";
   const igHashtags = `${post.hashtags} ${extraIG}`;
 
+  // Pinterest: title ≤100c (keyword-dense), description ≤500c (SEO keywords).
+  // Strip URLs from description — the URL goes in the Pin's destination link.
+  const conceptLine = post.text.split("\n")[0].replace(/https?:\/\/[^\s]+/g, "").trim();
+  const pinTitle = (conceptLine || post.text.slice(0, 90)).slice(0, 100);
+  const pinDescBody = post.text.replace(/https?:\/\/[^\s]+/g, "").trim().slice(0, 480);
+  const pinHashtags = post.hashtags.split(" ").slice(0, 5).join(" "); // Pinterest weights first hashtags
+  // Note: hashtags are stored separately; buildFullText() concatenates them at send time.
+
   return {
     concept: post.text.split("\n")[0].slice(0, 80),
     platforms: {
       bluesky:   { text: bskyText, hashtags: bskyHashtags },
       facebook:  { text: fbText, hashtags: fbHashtags },
       instagram: { text: igText, hashtags: igHashtags },
+      pinterest: { text: pinDescBody, hashtags: pinHashtags, title: pinTitle },
     },
     imagePrompt: null,
     aiGenerated: false,
@@ -359,10 +370,10 @@ function buildFullText(platformContent) {
 
 // ─── Publish to platforms ───────────────────────────────────────────────────
 
-async function publishPost(post, platform, imageData, data, lang) {
+async function publishPost(post, platform, imageData, data, lang, postType) {
   const results = [];
   const platforms = platform === "all"
-    ? ["bluesky", "facebook", "instagram"]
+    ? ["bluesky", "facebook", "instagram", "pinterest"]
     : [platform];
 
   for (const p of platforms) {
@@ -458,6 +469,142 @@ async function publishPost(post, platform, imageData, data, lang) {
           break;
         }
 
+        case "pinterest": {
+          if (!process.env.PINTEREST_ACCESS_TOKEN) {
+            console.log(`  ⏭️  Pinterest: skipped (no credentials configured)`);
+            break;
+          }
+
+          // 1. Resolve target board by content type
+          let board;
+          try {
+            board = getBoardForType(postType);
+          } catch (err) {
+            console.log(`  ⚠️  Pinterest: ${err.message}`);
+            results.push({ platform: "pinterest", success: false, error: err.message });
+            break;
+          }
+
+          // 2. Resolve destination URL (always our own, with Pinterest UTM)
+          let destinationUrl;
+          if (data?.amazonUrl) {
+            destinationUrl = data.amazonUrl; // Amazon strips UTMs, leave as-is
+          } else {
+            const pageByType = {
+              "free-coloring": `/${lang}/coloring-corner/`,
+              "giveaway":      `/${lang}/lottery/`,
+              "share-earn":    `/${lang}/gallery/`,
+              "book-promo":    `/${lang}/books/`,
+              "parenting-tip": `/${lang}/blog/`,
+              "blog-share":    data?.slug ? `/${lang}/blog/${typeof data.slug === "object" ? data.slug[lang] || data.slug.en : data.slug}/` : `/${lang}/blog/`,
+              "blog-new":      data?.slug ? `/${lang}/blog/${typeof data.slug === "object" ? data.slug[lang] || data.slug.en : data.slug}/` : `/${lang}/blog/`,
+              "engagement":    `/${lang}/`,
+              "community":     `/${lang}/gallery/`,
+              "behind-scenes": `/${lang}/about/`,
+              "fun-fact":      `/${lang}/coloring-corner/`,
+            };
+            const path = pageByType[postType] || `/${lang}/`;
+            destinationUrl = buildUtmUrl(`${SITE_URL}${path}`, {
+              source: "pinterest",
+              campaign: postType,
+              content: `auto_${new Date().toISOString().slice(0, 10)}`,
+            });
+          }
+
+          // 3. Generate a branded 1000x1500 Pin image
+          const pinContent = post.platforms.pinterest || {};
+          const pinTitle = pinContent.title || post.concept || "Little Chubby Press";
+          const pinDescription = pinContent.text || "";
+
+          // Headline strategy per type (short, bold, Pinterest-optimized)
+          const headlinesByType = {
+            "free-coloring": lang === "es" ? "Colorear Gratis" : "10 Free Coloring Pages",
+            "giveaway":      lang === "es" ? "Gana un Libro Gratis" : "Win a Free Book",
+            "share-earn":    lang === "es" ? "Comparte y Gana" : "Share & Earn",
+            "book-promo":    data?.title?.[lang] || data?.title?.en || pinTitle,
+            "parenting-tip": lang === "es" ? "Consejo para Papás" : "Parenting Tip",
+            "blog-share":    pinTitle,
+            "blog-new":      pinTitle,
+            "engagement":    lang === "es" ? "Tiempo en Familia" : "Family Time Ideas",
+            "community":     lang === "es" ? "Únete a la Comunidad" : "Join the Community",
+            "behind-scenes": lang === "es" ? "Detrás del Libro" : "Behind the Book",
+            "fun-fact":      lang === "es" ? "Dato Divertido" : "Fun Fact for Kids",
+          };
+          const ctaByType = {
+            "free-coloring": lang === "es" ? "DESCARGAR GRATIS →" : "DOWNLOAD FREE →",
+            "giveaway":      lang === "es" ? "PARTICIPAR →" : "ENTER TO WIN →",
+            "share-earn":    lang === "es" ? "GANAR PUNTOS →" : "EARN POINTS →",
+            "book-promo":    lang === "es" ? "VER EN AMAZON →" : "SHOP ON AMAZON →",
+            "parenting-tip": lang === "es" ? "LEER MÁS →" : "READ MORE →",
+            "blog-share":    lang === "es" ? "LEER MÁS →" : "READ MORE →",
+            "blog-new":      lang === "es" ? "LEER MÁS →" : "READ MORE →",
+            "engagement":    lang === "es" ? "EXPLORAR →" : "EXPLORE →",
+            "community":     lang === "es" ? "ÚNETE →" : "JOIN US →",
+            "behind-scenes": lang === "es" ? "CONOCE MÁS →" : "LEARN MORE →",
+            "fun-fact":      lang === "es" ? "SABER MÁS →" : "LEARN MORE →",
+          };
+
+          const headline = (headlinesByType[postType] || pinTitle).slice(0, 40);
+          const subtitle = lang === "es"
+            ? "Para Niños · Sin Pantallas"
+            : "For Kids Ages 3–10 · Screen-Free Fun";
+          const eyebrow = lang === "es"
+            ? "LITTLE CHUBBY PRESS"
+            : "LITTLE CHUBBY PRESS";
+          const ctaText = ctaByType[postType] || (lang === "es" ? "DESCUBRIR →" : "LEARN MORE →");
+
+          // Hero image (book cover / blog image) vs triptych (default)
+          let pinImage;
+          try {
+            if (postType === "book-promo" && imageData?.buffer) {
+              // Save imageData.buffer temporarily so generatePinImage can read it
+              const tmpPath = resolve(ROOT, `scripts/social/.pin-hero-${Date.now()}.png`);
+              writeFileSync(tmpPath, imageData.buffer);
+              pinImage = await generatePinImage({
+                headline,
+                subtitle,
+                eyebrow,
+                ctaText,
+                heroImage: tmpPath,
+                variant: "hero",
+              });
+              try { unlinkSync(tmpPath); } catch {}
+            } else {
+              pinImage = await generatePinImage({
+                headline,
+                subtitle,
+                eyebrow,
+                ctaText,
+                showcaseImages: defaultShowcaseForType(postType),
+                variant: "triptych",
+              });
+            }
+          } catch (err) {
+            console.log(`  ⚠️  Pinterest: pin image generation failed: ${err.message}`);
+            results.push({ platform: "pinterest", success: false, error: `image: ${err.message}` });
+            break;
+          }
+
+          // 4. Publish
+          try {
+            const pin = await createPin({
+              boardId: board.id,
+              title: pinTitle.slice(0, 100),
+              description: pinDescription.slice(0, 500),
+              link: destinationUrl,
+              altText: post.concept || pinTitle,
+              imageBuffer: pinImage.buffer,
+              imageMime: pinImage.mimeType,
+            });
+            results.push({ platform: "pinterest", success: true, result: pin });
+            console.log(`  ✅ Pinterest: posted to "${board.name}" (${pin.url})`);
+          } catch (err) {
+            results.push({ platform: "pinterest", success: false, error: err.message });
+            console.error(`  ❌ pinterest: ${err.message}`);
+          }
+          break;
+        }
+
         default:
           console.log(`  ⚠️  Unknown platform: ${p}`);
       }
@@ -481,10 +628,14 @@ function displayPreview(post, aiUsed, type, lang) {
   }
 
   for (const [platform, content] of Object.entries(post.platforms)) {
-    const icon = { bluesky: "🦋", facebook: "📘", instagram: "📸" }[platform] || "📱";
+    const icon = { bluesky: "🦋", facebook: "📘", instagram: "📸", pinterest: "📌" }[platform] || "📱";
     const full = buildFullText(content);
     console.log(`${icon} ${platform.toUpperCase()} (${full.length} chars)`);
     console.log("─".repeat(50));
+    if (platform === "pinterest" && content.title) {
+      console.log(`📝 Title: ${content.title}`);
+      console.log("─".repeat(50));
+    }
     console.log(full);
     console.log("─".repeat(50));
     console.log();
@@ -607,7 +758,7 @@ async function main() {
     }
 
     console.log(`\n📤 Publishing to: ${opts.platform}...\n`);
-    const results = await publishPost(post, opts.platform, imageData, data, opts.lang);
+    const results = await publishPost(post, opts.platform, imageData, data, opts.lang, opts.type);
 
     // Cross-post to Facebook Groups if configured
     const groupIds = (process.env.FB_GROUP_IDS || "").split(",").map(g => g.trim()).filter(Boolean);

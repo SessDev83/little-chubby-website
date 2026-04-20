@@ -1,0 +1,58 @@
+{
+  "username": "littlechubbypress",
+  "updatedAt": "2026-04-20",
+  "_comment": "Manual mapping of social post types to Pinterest board IDs.",
+  "boards": {
+    "1121185338423830472": "Free Coloring Pages for Kids",
+    "1121185338423830475": "Screen-Free Activities for Kids",
+    "1121185338423830480": "Coloring Book Tips for Parents",
+    "1121185338423830481": "Kids Coloring Books by Little Chubby Press",
+    "1121185338423830483": "Creative Family Time Ideas"
+  },
+  "contentTypeMap": {
+    "free-coloring": {
+      "id": "1121185338423830472",
+      "name": "Free Coloring Pages for Kids"
+    },
+    "giveaway": {
+      "id": "1121185338423830472",
+      "name": "Free Coloring Pages for Kids"
+    },
+    "share-earn": {
+      "id": "1121185338423830472",
+      "name": "Free Coloring Pages for Kids"
+    },
+    "book-promo": {
+      "id": "1121185338423830481",
+      "name": "Kids Coloring Books by Little Chubby Press"
+    },
+    "parenting-tip": {
+      "id": "1121185338423830480",
+      "name": "Coloring Book Tips for Parents"
+    },
+    "blog-share": {
+      "id": "1121185338423830480",
+      "name": "Coloring Book Tips for Parents"
+    },
+    "blog-new": {
+      "id": "1121185338423830480",
+      "name": "Coloring Book Tips for Parents"
+    },
+    "engagement": {
+      "id": "1121185338423830483",
+      "name": "Creative Family Time Ideas"
+    },
+    "community": {
+      "id": "1121185338423830483",
+      "name": "Creative Family Time Ideas"
+    },
+    "behind-scenes": {
+      "id": "1121185338423830483",
+      "name": "Creative Family Time Ideas"
+    },
+    "fun-fact": {
+      "id": "1121185338423830475",
+      "name": "Screen-Free Activities for Kids"
+    }
+  }
+}

@@ -54,6 +54,7 @@ on:
           - bluesky
           - facebook
           - instagram
+          - pinterest
       lang:
         description: "Language"
         required: true
@@ -136,6 +137,11 @@ jobs:
           META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
           META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
           META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
+          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+          PINTEREST_REFRESH_TOKEN: ${{ secrets.PINTEREST_REFRESH_TOKEN }}
+          PINTEREST_APP_ID: ${{ secrets.PINTEREST_APP_ID }}
+          PINTEREST_APP_SECRET: ${{ secrets.PINTEREST_APP_SECRET }}
+          PINTEREST_SANDBOX: ${{ secrets.PINTEREST_SANDBOX }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NANO_BANANA_API_KEY: ${{ secrets.NANO_BANANA_API_KEY }}
           PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
