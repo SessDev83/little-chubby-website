@@ -59,7 +59,7 @@ const bookCardLabels = {
   <section class="page-section">
     <div class="container">
       <a href={`/${lang}/lottery/`} class="giveaway-banner">
-        <img src="/images/brand/giveaway-banner.webp" alt="" class="giveaway-banner-bg" aria-hidden="true" loading="lazy" width="1200" height="675" />
+        <img src="/images/brand/giveaway-banner.webp" alt="" class="giveaway-banner-bg" aria-hidden="true" loading="eager" fetchpriority="high" width="1200" height="675" />
         <div class="giveaway-banner-content">
           <span class="giveaway-badge">🎁 FREE</span>
           <h2 class="giveaway-title">{text.lotteryBannerTitle}</h2>

@@ -163,6 +163,7 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang={lang} href={canonical} />
     <link rel="alternate" hreflang={alternateLang} href={alternateHref} />
     <link rel="alternate" hreflang="x-default" href={new URL("/", siteConfig.siteUrl).toString()} />
 
