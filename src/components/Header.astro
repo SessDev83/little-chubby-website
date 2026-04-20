@@ -33,6 +33,9 @@ const navItems = [
 
       <div class="header-actions">
         <a href={`/${lang}/login/`} class="header-login" id="auth-login">{text.navLogin}</a>
+        <a href={`/${lang}/lottery/`} class="header-tickets" id="auth-tickets" style="display:none;" title={lang === "es" ? "Tus Tickets" : "Your Tickets"}>
+          🎟️ <span id="tickets-count">0</span>
+        </a>
         <a href={`/${lang}/peanuts/`} class="header-peanuts" id="auth-peanuts" style="display:none;" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
           🥜 <span id="peanuts-count">0</span>
         </a>
@@ -148,6 +151,8 @@ const navItems = [
     var settingsLoginHint = document.getElementById("settings-login-hint");
     var peanutsEl = document.getElementById("auth-peanuts");
     var peanutsCount = document.getElementById("peanuts-count");
+    var ticketsEl = document.getElementById("auth-tickets");
+    var ticketsCount = document.getElementById("tickets-count");
 
     if (loginEl) loginEl.style.display = loggedIn ? "none" : "";
     if (usernameEl) {
@@ -160,6 +165,7 @@ const navItems = [
     if (settingsAuthItems) settingsAuthItems.style.display = loggedIn ? "" : "none";
     if (settingsLoginHint) settingsLoginHint.style.display = loggedIn ? "none" : "";
     if (peanutsEl) peanutsEl.style.display = loggedIn ? "" : "none";
+    if (ticketsEl) ticketsEl.style.display = loggedIn ? "" : "none";
 
     // Bell + notifications
     var bellEl = document.getElementById("auth-bell");
@@ -222,16 +228,22 @@ const navItems = [
       });
     }
 
-    // Fetch peanuts balance
+    // Fetch peanuts + tickets balance
     if (loggedIn && peanutsCount) {
       var cached = sessionStorage.getItem("lcp-peanuts");
       if (cached !== null) peanutsCount.textContent = cached;
+      var cachedTickets = sessionStorage.getItem("lcp-tickets");
+      if (cachedTickets !== null && ticketsCount) ticketsCount.textContent = cachedTickets;
       fetch("/api/me/", { credentials: "same-origin" })
         .then(function(r) { return r.json(); })
         .then(function(d) {
           if (d.balance !== undefined) {
             peanutsCount.textContent = String(d.balance);
             sessionStorage.setItem("lcp-peanuts", String(d.balance));
+          }
+          if (d.tickets !== undefined && ticketsCount) {
+            ticketsCount.textContent = String(d.tickets);
+            sessionStorage.setItem("lcp-tickets", String(d.tickets));
           }
         })
         .catch(function() {});

@@ -153,6 +153,13 @@ if (Astro.request.method === "POST") {
       if (updateError) {
         reviewMsg = `Error: ${updateError.message}`;
       } else {
+        // Award 5 tickets for approved reviews
+        if (newStatus === "approved") {
+          const { data: rev } = await sc.from("book_reviews").select("user_id").eq("id", reviewId).single();
+          if (rev?.user_id) {
+            await sc.rpc("award_review_tickets", { p_user_id: rev.user_id, p_review_id: reviewId });
+          }
+        }
         await notifyUserReviewDecision(reviewId, newStatus, reviewerNote);
         await auditLog(action, "review", reviewId, { newStatus, reviewerNote: reviewerNote || null });
         reviewMsg = `Review ${newStatus}.`;
@@ -176,6 +183,12 @@ if (Astro.request.method === "POST") {
 
         if (!error) {
           for (const rid of ids) {
+            if (newStatus === "approved") {
+              const { data: rev } = await sc.from("book_reviews").select("user_id").eq("id", rid).single();
+              if (rev?.user_id) {
+                await sc.rpc("award_review_tickets", { p_user_id: rev.user_id, p_review_id: rid });
+              }
+            }
             await notifyUserReviewDecision(rid, newStatus, reviewerNote);
           }
         }
@@ -214,31 +227,19 @@ if (Astro.request.method === "POST") {
     if (existCheck && existCheck.length > 0) {
       drawError = "⚠️ Draw already completed for this month. Cannot draw again.";
     } else {
-      // Each user with ≥1 approved review gets 5 tickets per approved book
-      const { data: reviews } = await sc
-        .from("book_reviews")
-        .select("user_id")
-        .eq("status", "approved");
-
-      // Also include paid lottery entries
+      // Only count lottery_entries for this month (tickets were already deducted when entering)
       const { data: paidEntries } = await sc
         .from("lottery_entries")
         .select("user_id, entry_count")
         .eq("month", currentMonth);
 
-      if ((!reviews || reviews.length === 0) && (!paidEntries || paidEntries.length === 0)) {
-        drawError = "No approved reviews and no paid entries — nobody is eligible.";
+      if (!paidEntries || paidEntries.length === 0) {
+        drawError = "No entries for this month — nobody is eligible.";
       } else {
         const ticketMap = new Map<string, number>();
-        for (const r of reviews!) {
-          ticketMap.set(r.user_id, (ticketMap.get(r.user_id) || 0) + 5);
-        }
 
-        // Add purchased entries to ticket pool
-        if (paidEntries) {
-          for (const pe of paidEntries) {
-            ticketMap.set(pe.user_id, (ticketMap.get(pe.user_id) || 0) + pe.entry_count);
-          }
+        for (const pe of paidEntries) {
+          ticketMap.set(pe.user_id, (ticketMap.get(pe.user_id) || 0) + pe.entry_count);
         }
 
         const minReq = config?.min_purchases ?? 0;

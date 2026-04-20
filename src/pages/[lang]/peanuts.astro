@@ -10,28 +10,9 @@ const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
 const pathname = `/${lang}/peanuts/`;
 
-// Giveaway + newsletter state for lottery guard
+// Giveaway + newsletter state (kept for reason labels)
 const sc = getServiceClient();
-const currentMonth = new Date().toISOString().slice(0, 7);
 const user = Astro.locals.user;
-
-// Check if draw already done this month
-const { data: monthDraw } = await sc
-  .from("lottery_winners")
-  .select("id")
-  .eq("month", currentMonth)
-  .limit(1);
-const lotteryDrawDone = (monthDraw ?? []).length > 0;
-
-let userSubscribed = false;
-if (user?.email) {
-  const { data: sub } = await sc
-    .from("newsletter_subscribers")
-    .select("confirmed")
-    .eq("email", user.email.toLowerCase())
-    .maybeSingle();
-  userSubscribed = sub?.confirmed === true;
-}
 
 const reasonLabels: Record<string, string> = {
   review: text.peanutReasonReview,
@@ -42,6 +23,7 @@ const reasonLabels: Record<string, string> = {
   badge: text.peanutShopBadge,
   boost: text.peanutShopBoost,
   lottery_entry: text.peanutShopLottery,
+  ticket_purchase: lang === "es" ? "Compra de tickets" : "Ticket purchase",
 };
 
 const reasonIcons: Record<string, string> = {
@@ -53,6 +35,7 @@ const reasonIcons: Record<string, string> = {
   badge: "🖼️",
   boost: "📌",
   lottery_entry: "🎟️",
+  ticket_purchase: "🎟️",
 };
 
 const badgeItems = [
@@ -142,31 +125,24 @@ const boostItems = [
           ))}
         </div>
 
-        <!-- Lottery Entries -->
+        <!-- Giveaway Tickets -->
         <h3>{text.peanutShopLottery}</h3>
+        <p style="color:var(--ink-soft); font-size:0.88rem; margin:0 0 0.5rem;">{text.peanutShopLotteryDesc}</p>
         <div class="shop-card lottery-entry-card">
           <span class="shop-icon">🎟️</span>
-          <span class="shop-name">{text.lotteryBuyEntries}</span>
-          <span class="shop-price">3 🥜 / {lang === "es" ? "entrada" : "entry"}</span>
-          {lotteryDrawDone ? (
-            <p style="color:var(--ink-soft); font-size:0.88rem; margin:0.5rem 0 0;">{text.lotteryStatusDrawn}</p>
-          ) : !userSubscribed ? (
-            <div style="margin-top:0.5rem; text-align:center;">
-              <p style="color:var(--ink-soft); font-size:0.88rem; margin:0 0 0.4rem;">{text.lotterySubscribeBanner}</p>
-              <a href={`/${lang}/newsletter/`} class="btn btn-sm btn-secondary">{text.lotterySubscribeCta}</a>
-            </div>
-          ) : (
-            <Fragment>
-              <div class="lottery-qty">
-                <button class="qty-btn" id="qty-minus">−</button>
-                <span id="qty-value">1</span>
-                <button class="qty-btn" id="qty-plus">+</button>
-              </div>
-              <button class="btn btn-sm btn-buy" id="buy-lottery-btn">
-                {text.peanutBuy} (<span id="lottery-total-cost">3</span> 🥜)
-              </button>
-            </Fragment>
-          )}
+          <span class="shop-name">{lang === "es" ? "Comprar tickets" : "Buy tickets"}</span>
+          <span class="shop-price">3 🥜 / ticket</span>
+          <div class="lottery-qty">
+            <button class="qty-btn" id="qty-minus">−</button>
+            <span id="qty-value">1</span>
+            <button class="qty-btn" id="qty-plus">+</button>
+          </div>
+          <button class="btn btn-sm btn-buy" id="buy-lottery-btn">
+            {text.peanutBuy} (<span id="lottery-total-cost">3</span> 🥜)
+          </button>
+          <a href={`/${lang}/lottery/`} style="font-size:0.82rem; color:var(--brand-blue); margin-top:0.3rem;">
+            {lang === "es" ? "Ver sorteo actual →" : "View current giveaway →"}
+          </a>
         </div>
       </div>
 
@@ -334,7 +310,7 @@ const boostItems = [
     });
 
     buyBtn.addEventListener("click", async () => {
-      await purchaseAction("/api/buy-lottery-entry/", { quantity: lotteryQty });
+      await purchaseAction("/api/buy-tickets/", { quantity: lotteryQty });
     });
   }
 
@@ -400,6 +376,11 @@ const boostItems = [
         sessionStorage.setItem("lcp-peanuts", String(balance));
         const hb = document.getElementById("peanuts-count");
         if (hb) hb.textContent = balance;
+      }
+      if (typeof data.ticket_balance === "number") {
+        const ht = document.getElementById("tickets-count");
+        if (ht) ht.textContent = data.ticket_balance;
+        sessionStorage.setItem("lcp-tickets", String(data.ticket_balance));
       }
       showToast(lang === "es" ? "¡Compra realizada!" : "Purchase complete!", "success");
       currentPage = 1;

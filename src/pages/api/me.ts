@@ -26,16 +26,18 @@ export const GET: APIRoute = async ({ cookies }) => {
 
   const userId = data.session.user.id;
 
-  // Get credit balance
+  // Get credit balance + ticket balance
   const svc = getServiceClient();
-  const { data: balance } = await svc.rpc("get_user_credits", {
-    p_user_id: userId,
-  });
+  const [{ data: balance }, { data: tickets }] = await Promise.all([
+    svc.rpc("get_user_credits", { p_user_id: userId }),
+    svc.rpc("get_user_tickets", { p_user_id: userId }),
+  ]);
 
   return new Response(
     JSON.stringify({
       user: { id: userId },
       balance: typeof balance === "number" ? balance : 0,
+      tickets: typeof tickets === "number" ? tickets : 0,
     }),
     { status: 200, headers }
   );

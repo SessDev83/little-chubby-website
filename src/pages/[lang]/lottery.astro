@@ -22,6 +22,7 @@ let approvedCount = 0;
 let pendingClaim: any = null;
 let claimMsg = "";
 let purchasedEntries = 0;
+let ticketBalance = 0;
 let isSubscribed = false;
 let isPending = false;
 
@@ -91,6 +92,10 @@ if (user) {
     .eq("month", currentMonth);
   purchasedEntries = (paidData ?? []).reduce((sum, e) => sum + (e.entry_count || 0), 0);
 
+  // Ticket balance
+  const { data: tb } = await sc.rpc("get_user_tickets", { p_user_id: user.id });
+  ticketBalance = tb ?? 0;
+
   // Newsletter subscription status
   const userEmail = user.email?.toLowerCase();
   if (userEmail) {
@@ -159,10 +164,6 @@ if (user) {
     }
   }
 }
-
-// Compute tickets: approved reviews + purchased entries
-const reviewTickets = approvedCount * 5;
-const totalTickets = reviewTickets + purchasedEntries;
 
 // ── Public winners ───────────────────────────────────
 const { data: publicWinners } = await supabase
@@ -304,27 +305,45 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
             </div>
           )}
 
-          {/* ── Your Entries Card ── */}
+          {/* ── Your Tickets & Enter Giveaway Card ── */}
           <div class="surface-card entries-card">
             <div class="entries-total">
-              <span class="entries-number">{totalTickets}</span>
-              <span class="entries-label">{text.lotteryTickets}</span>
+              <span class="entries-number" id="giveaway-ticket-balance">{ticketBalance}</span>
+              <span class="entries-label">{lang === "es" ? "Tickets disponibles" : "Tickets available"}</span>
             </div>
-            {(reviewTickets > 0 || purchasedEntries > 0) && (
+
+            {purchasedEntries > 0 && (
               <p class="entries-breakdown">
-                {reviewTickets > 0 && <span>{reviewTickets} {text.lotteryFromReviews}</span>}
-                {reviewTickets > 0 && purchasedEntries > 0 && <span> · </span>}
-                {purchasedEntries > 0 && <span>{purchasedEntries} {text.lotteryPurchased}</span>}
+                ✅ {lang === "es"
+                  ? `Ya entraste con ${purchasedEntries} ticket${purchasedEntries > 1 ? "s" : ""} este mes`
+                  : `Already entered ${purchasedEntries} ticket${purchasedEntries > 1 ? "s" : ""} this month`}
               </p>
             )}
-            {myReviewCount === 0 && (
-              <p class="entries-hint">{text.lotteryFirstReview}</p>
+
+            {!drawDone && isSubscribed && (
+              <div class="enter-giveaway-form" style="margin-top:1rem;">
+                <p style="font-size:0.88rem; color:var(--ink-soft); margin:0 0 0.6rem;">
+                  {lang === "es" ? "¿Cuántos tickets quieres usar para este sorteo?" : "How many tickets do you want to use for this giveaway?"}
+                </p>
+                <div class="lottery-qty" style="justify-content:center;">
+                  <button class="qty-btn" id="giveaway-qty-minus">−</button>
+                  <span id="giveaway-qty-value">1</span>
+                  <button class="qty-btn" id="giveaway-qty-plus">+</button>
+                </div>
+                <button class="btn btn-primary btn-sm" id="enter-giveaway-btn" style="margin-top:0.6rem;">
+                  🎟️ {lang === "es" ? "Entrar al sorteo" : "Enter giveaway"}
+                </button>
+                <p class="msg" id="giveaway-msg" style="display:none; margin-top:0.5rem;"></p>
+              </div>
             )}
-            <div class="entries-actions">
+
+            {drawDone && (
+              <p style="color:var(--ink-soft); font-size:0.88rem; margin-top:0.6rem;">{text.lotteryStatusDrawn}</p>
+            )}
+
+            <div class="entries-actions" style="margin-top:1rem;">
+              <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-secondary">🥜 {lang === "es" ? "Comprar más tickets" : "Buy more tickets"}</a>
               <a href={`/${lang}/reviews/`} class="btn btn-secondary btn-sm">{text.reviewsHeading} →</a>
-              {isSubscribed && !drawDone && (
-                <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-primary">🥜 {text.lotteryBuyMoreLink}</a>
-              )}
             </div>
 
             {/* ── Newsletter Gate Banner ── */}
@@ -450,6 +469,54 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
     }
     tick();
     const timer = setInterval(tick, 1000);
+
+    // ── Enter giveaway qty selector & submit ─────
+    const gqMinus = document.getElementById("giveaway-qty-minus");
+    const gqPlus  = document.getElementById("giveaway-qty-plus");
+    const gqVal   = document.getElementById("giveaway-qty-value");
+    const gqBtn   = document.getElementById("enter-giveaway-btn");
+    const gqMsg   = document.getElementById("giveaway-msg");
+
+    if (gqMinus && gqPlus && gqVal && gqBtn) {
+      let gQty = 1;
+      gqMinus.addEventListener("click", () => { gQty = Math.max(1, gQty - 1); gqVal.textContent = gQty; });
+      gqPlus.addEventListener("click",  () => { gQty = Math.min(20, gQty + 1); gqVal.textContent = gQty; });
+
+      gqBtn.addEventListener("click", async () => {
+        gqBtn.disabled = true;
+        gqBtn.textContent = "...";
+        if (gqMsg) { gqMsg.style.display = "none"; gqMsg.className = "msg"; }
+        try {
+          const res = await fetch("/api/enter-giveaway/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ quantity: gQty, month: new Date().toISOString().slice(0, 7) }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Error");
+          // Update ticket balance on page and header
+          const balEl = document.getElementById("giveaway-ticket-balance");
+          if (balEl) balEl.textContent = data.ticket_balance;
+          const ht = document.getElementById("tickets-count");
+          if (ht) ht.textContent = data.ticket_balance;
+          sessionStorage.setItem("lcp-tickets", String(data.ticket_balance));
+          if (gqMsg) {
+            gqMsg.textContent = data.entries_added + " ticket" + (data.entries_added > 1 ? "s" : "") + " entered!";
+            gqMsg.classList.add("msg-success");
+            gqMsg.style.display = "block";
+          }
+        } catch (e) {
+          if (gqMsg) {
+            gqMsg.textContent = e.message;
+            gqMsg.classList.add("msg-error");
+            gqMsg.style.display = "block";
+          }
+        } finally {
+          gqBtn.disabled = false;
+          gqBtn.textContent = "🎟️ Enter giveaway";
+        }
+      });
+    }
   });
 </script>
 
