@@ -64,63 +64,10 @@ if (code) {
     return Astro.redirect(`/${lang}/profile/`);
   }
 
-  // Code exchange failed — redirect to login
-  return Astro.redirect(`/${lang}/login/`);
+  // Code exchange failed — redirect to login with error
+  return Astro.redirect(`/${lang}/login/?msg=error`);
 }
 
-// ── Legacy implicit flow fallback: tokens arrive in URL hash ──
-// Server cannot read hash, so a client-side script extracts them and
-// redirects with query params that the server can read.
-const accessToken = Astro.url.searchParams.get("access_token");
-const refreshToken = Astro.url.searchParams.get("refresh_token");
-
-if (accessToken && refreshToken) {
-  Astro.cookies.set("sb-access-token", accessToken, {
-    path: "/",
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
-  });
-  Astro.cookies.set("sb-refresh-token", refreshToken, {
-    path: "/",
-    httpOnly: true,
-    secure: true,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
-  });
-  Astro.cookies.set("sb-logged-in", "1", {
-    path: "/",
-    httpOnly: false,
-    secure: true,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
-  });
-
-  return Astro.redirect(`/${lang}/profile/`);
-}
-
-// No code or tokens — render client-side fallback that reads hash fragment
+// No code provided — redirect to login
+return Astro.redirect(`/${lang}/login/`);
 ---
-<html lang="en">
-<head><meta charset="utf-8"><title>Signing in…</title></head>
-<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#2f261f;background:#f6f1e7;">
-  <p id="msg" style="font-size:1.2rem;">Signing you in…</p>
-  <script define:vars={{ lang }}>
-    // Fallback: read tokens from URL hash fragment (legacy implicit flow)
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
-
-    if (accessToken && refreshToken) {
-      window.location.replace(
-        `/${lang}/auth/callback/?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}`
-      );
-    } else {
-      document.getElementById("msg").textContent = "Session expired. Redirecting to login…";
-      setTimeout(() => { window.location.replace(`/${lang}/login/`); }, 1500);
-    }
-  </script>
-</body>
-</html>

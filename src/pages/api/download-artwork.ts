@@ -31,12 +31,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const user_id = sessionData.session.user.id;
 
-    // 2. Parse request body (only need artwork_id and image_path)
+    // 2. Parse request body
     const body = await request.json();
-    const { artwork_id, image_path } = body;
+    const { artwork_id } = body;
 
-    if (!artwork_id || !image_path) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+    if (!artwork_id) {
+      return new Response(JSON.stringify({ error: "Missing artwork_id" }), {
         status: 400, headers,
       });
     }
@@ -56,60 +56,48 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    // 3. Look up artwork to get dynamic peanut_cost
-    const { data: artwork, error: artErr } = await svc
+    // 3. Look up artwork from DB (server-authoritative image_path + cost)
+    const { data: artwork } = await svc
       .from("free_artworks")
-      .select("id, title_en, peanut_cost")
+      .select("id, title_en, peanut_cost, image_path")
       .eq("id", artwork_id)
       .maybeSingle();
 
-    const cost = artwork?.peanut_cost ?? 1;
+    if (!artwork) {
+      return new Response(JSON.stringify({ error: "Artwork not found" }), {
+        status: 404, headers,
+      });
+    }
 
-    // 4. Check credit balance server-side
-    const { data: balanceData } = await svc.rpc("get_user_credits", {
+    const cost = artwork.peanut_cost ?? 1;
+
+    // 4. Atomic purchase: balance check + download record + credit deduction
+    const { data: result, error: rpcErr } = await svc.rpc("purchase_download", {
       p_user_id: user_id,
+      p_artwork_id: artwork_id,
+      p_cost: cost,
     });
 
-    const balance = typeof balanceData === "number" ? balanceData : 0;
+    if (rpcErr) {
+      return new Response(JSON.stringify({ error: rpcErr.message }), {
+        status: 500, headers,
+      });
+    }
 
-    if (balance < cost) {
+    const res = result as { success: boolean; error?: string; balance?: number; cost?: number };
+
+    if (!res.success) {
+      const statusMap: Record<string, number> = { insufficient_credits: 403 };
       return new Response(
-        JSON.stringify({ error: "no_credits", balance, cost }),
-        { status: 403, headers }
+        JSON.stringify({ error: res.error, balance: res.balance, cost: res.cost }),
+        { status: statusMap[res.error || ""] || 400, headers }
       );
     }
 
-    // 5. Record the download
-    const { error: dlErr } = await svc
-      .from("artwork_downloads")
-      .insert({ user_id, artwork_id });
-
-    if (dlErr) {
-      return new Response(JSON.stringify({ error: dlErr.message }), {
-        status: 500, headers,
-      });
-    }
-
-    // 6. Deduct credits (dynamic cost)
-    const { error: crErr } = await svc
-      .from("credit_transactions")
-      .insert({
-        user_id,
-        amount: -cost,
-        reason: "download",
-        ref_id: artwork_id,
-      });
-
-    if (crErr) {
-      return new Response(JSON.stringify({ error: crErr.message }), {
-        status: 500, headers,
-      });
-    }
-
-    // 7. Generate signed download URL (1 hour)
+    // 5. Generate signed download URL using server-authoritative image_path
     const { data: signedData, error: signErr } = await svc.storage
       .from("free-artworks")
-      .createSignedUrl(image_path, 3600);
+      .createSignedUrl(artwork.image_path, 3600);
 
     if (signErr || !signedData?.signedUrl) {
       return new Response(
@@ -118,15 +106,15 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    // 8. Notify admin (non-blocking)
+    // 6. Notify admin (non-blocking)
     const userEmail = sessionData.session.user.email || "unknown";
-    notifyDownload(userEmail, artwork?.title_en || artwork_id, balance - cost);
+    notifyDownload(userEmail, artwork.title_en || artwork_id, res.balance ?? 0);
 
     return new Response(
       JSON.stringify({
         ok: true,
         signedUrl: signedData.signedUrl,
-        balance: balance - cost,
+        balance: res.balance,
       }),
       { status: 200, headers }
     );

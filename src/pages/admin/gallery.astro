@@ -1,0 +1,421 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { validateOrigin } from "../../lib/csrf";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const sc = getServiceClient();
+
+let actionMsg = "";
+let actionErr = "";
+
+/** Audit log helper */
+async function auditLog(action: string, targetType: string, targetId: string | null, details: Record<string, unknown> = {}) {
+  try {
+    await sc.from("admin_audit_log").insert({
+      admin_id: user!.email || user!.id,
+      action,
+      target_type: targetType,
+      target_id: targetId,
+      details: details as any,
+    });
+  } catch { /* non-blocking */ }
+}
+
+// ── Handle POST actions ──────────────────────────────
+if (Astro.request.method === "POST") {
+  if (!validateOrigin(Astro.request, Astro.url)) {
+    actionErr = "⛔ Request blocked: invalid origin.";
+  } else {
+    const formData = await Astro.request.formData();
+    const action = formData.get("action")?.toString();
+
+    if (action === "toggle_active") {
+      const artworkId = formData.get("artwork_id")?.toString();
+      const currentActive = formData.get("current_active")?.toString() === "true";
+      if (artworkId) {
+        const { error } = await sc.from("free_artworks").update({ active: !currentActive }).eq("id", artworkId);
+        if (error) {
+          actionErr = `Failed to toggle: ${error.message}`;
+        } else {
+          await auditLog("toggle_artwork_active", "artwork", artworkId, { newValue: !currentActive });
+          actionMsg = `✓ Artwork ${!currentActive ? "activated" : "deactivated"}.`;
+        }
+      }
+    }
+
+    else if (action === "update_cost") {
+      const artworkId = formData.get("artwork_id")?.toString();
+      const newCost = parseInt(formData.get("peanut_cost")?.toString() || "0", 10);
+      if (artworkId && newCost >= 0 && newCost <= 99999) {
+        const { error } = await sc.from("free_artworks").update({ peanut_cost: newCost }).eq("id", artworkId);
+        if (error) {
+          actionErr = `Failed to update cost: ${error.message}`;
+        } else {
+          await auditLog("update_artwork_cost", "artwork", artworkId, { newCost });
+          actionMsg = `✓ Peanut cost updated to ${newCost}.`;
+        }
+      } else {
+        actionErr = "Cost must be between 0 and 99999.";
+      }
+    }
+
+    else if (action === "upload_artwork") {
+      const titleEn = (formData.get("title_en")?.toString() || "").slice(0, 200);
+      const titleEs = (formData.get("title_es")?.toString() || "").slice(0, 200);
+      let category = (formData.get("category")?.toString() || "").slice(0, 100);
+      if (category === "__new") {
+        category = (formData.get("new_category")?.toString() || "").trim().slice(0, 100);
+      }
+      const peanutCost = parseInt(formData.get("peanut_cost")?.toString() || "0", 10);
+      const isPremium = formData.get("is_premium") === "on";
+      const imageFile = formData.get("image") as File | null;
+
+      if (!titleEn || !titleEs || !category) {
+        actionErr = "Title (EN), Title (ES), and Category are required.";
+      } else if (!imageFile || imageFile.size === 0) {
+        actionErr = "An image file is required.";
+      } else if (imageFile.size > 10 * 1024 * 1024) {
+        actionErr = "Image must be under 10MB.";
+      } else {
+        const ext = imageFile.name.split(".").pop()?.toLowerCase() || "png";
+        const allowedExts = ["png", "jpg", "jpeg", "webp", "gif"];
+        if (!allowedExts.includes(ext)) {
+          actionErr = "Only PNG, JPG, WEBP, GIF images allowed.";
+        } else {
+          const slug = titleEn.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60);
+          const timestamp = Date.now();
+          const filePath = `gallery/${category}/${slug}-${timestamp}.${ext}`;
+          const thumbPath = filePath; // Use same path as thumbnail for now
+
+          const arrayBuffer = await imageFile.arrayBuffer();
+          const { error: uploadErr } = await sc.storage
+            .from("artworks")
+            .upload(filePath, arrayBuffer, {
+              contentType: imageFile.type,
+              upsert: false,
+            });
+
+          if (uploadErr) {
+            actionErr = `Upload failed: ${uploadErr.message}`;
+          } else {
+            const { error: insertErr } = await sc.from("free_artworks").insert({
+              title_en: titleEn,
+              title_es: titleEs,
+              category,
+              peanut_cost: peanutCost,
+              is_premium: isPremium,
+              image_path: filePath,
+              thumbnail_path: thumbPath,
+              active: true,
+            });
+
+            if (insertErr) {
+              actionErr = `DB insert failed: ${insertErr.message}`;
+            } else {
+              await auditLog("upload_artwork", "artwork", null, { titleEn, category, peanutCost });
+              actionMsg = `✓ Artwork "${titleEn}" uploaded successfully.`;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// ── Data queries ─────────────────────────────────────
+const { data: artworks } = await sc
+  .from("free_artworks")
+  .select("*")
+  .order("sort_order", { ascending: true });
+
+const { data: allDownloads } = await sc
+  .from("artwork_downloads")
+  .select("artwork_id, user_id")
+  .limit(50000);
+
+// Count downloads per artwork + unique users per artwork
+const dlMap: Record<string, number> = {};
+const uniqueUsersMap: Record<string, Set<string>> = {};
+for (const d of allDownloads ?? []) {
+  dlMap[d.artwork_id] = (dlMap[d.artwork_id] || 0) + 1;
+  if (!uniqueUsersMap[d.artwork_id]) uniqueUsersMap[d.artwork_id] = new Set();
+  uniqueUsersMap[d.artwork_id].add(d.user_id);
+}
+
+const items = artworks ?? [];
+const categories = [...new Set(items.map(a => a.category))].sort();
+
+// Revenue per artwork = downloads × peanut_cost
+const totalRevenue = items.reduce((s, a) => s + (dlMap[a.id] || 0) * (a.peanut_cost ?? 0), 0);
+const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
+---
+
+<AdminLayout title="Gallery" current="gallery">
+  <h1>🎨 Gallery Management</h1>
+
+  {actionMsg && <div class="alert alert-ok">{actionMsg}</div>}
+  {actionErr && <div class="alert alert-err">{actionErr}</div>}
+
+  {/* ── Summary Cards ── */}
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-value">{items.length}</div>
+      <div class="stat-label">Total Artworks</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{items.filter(a => a.active).length}</div>
+      <div class="stat-label">Active</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{items.filter(a => a.is_premium).length}</div>
+      <div class="stat-label">Premium</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{totalDownloads.toLocaleString()}</div>
+      <div class="stat-label">Total Downloads</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{totalRevenue.toLocaleString()}</div>
+      <div class="stat-label">Peanuts Collected</div>
+    </div>
+  </div>
+
+  {/* ── Upload Form ── */}
+  <details class="upload-section">
+    <summary><strong>➕ Upload New Artwork</strong></summary>
+    <form method="POST" enctype="multipart/form-data" class="upload-form">
+      <div class="form-row">
+        <label>Title (EN) <input type="text" name="title_en" required maxlength="200" /></label>
+        <label>Title (ES) <input type="text" name="title_es" required maxlength="200" /></label>
+      </div>
+      <div class="form-row">
+        <label>Category
+          <select name="category" id="catSelect" required>
+            <option value="">-- select --</option>
+            {categories.map(c => <option value={c}>{c}</option>)}
+            <option value="__new">+ New category…</option>
+          </select>
+        </label>
+        <label id="newCatLabel" style="display:none;">New Category <input type="text" name="new_category" maxlength="100" placeholder="e.g. Vehicles" /></label>
+        <label>Peanut Cost <input type="number" name="peanut_cost" value="0" min="0" max="99999" /></label>
+      </div>
+      <div class="form-row">
+        <label>Image File <input type="file" name="image" accept=".png,.jpg,.jpeg,.webp,.gif" required /></label>
+        <label class="checkbox-label"><input type="checkbox" name="is_premium" /> Premium artwork</label>
+      </div>
+      <input type="hidden" name="action" value="upload_artwork" />
+      <button type="submit" class="btn btn-primary">Upload</button>
+    </form>
+  </details>
+
+  {/* ── Artworks Table ── */}
+  <h2>All Artworks ({items.length})</h2>
+  <div class="table-scroll">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Category</th>
+          <th>Cost</th>
+          <th>Downloads</th>
+          <th>Unique Users</th>
+          <th>Revenue</th>
+          <th>Premium</th>
+          <th>Active</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.length === 0 && (
+          <tr><td colspan="9" style="text-align:center;color:var(--ink-soft);">No artworks in gallery yet.</td></tr>
+        )}
+        {items.map(a => {
+          const dl = dlMap[a.id] || 0;
+          const unique = uniqueUsersMap[a.id]?.size || 0;
+          const rev = dl * (a.peanut_cost ?? 0);
+          return (
+            <tr class={a.active ? "" : "inactive-row"}>
+              <td>
+                <strong>{a.title_en}</strong>
+                <br /><small class="text-soft">{a.title_es}</small>
+              </td>
+              <td>{a.category}</td>
+              <td>
+                <form method="POST" class="inline-form">
+                  <input type="hidden" name="action" value="update_cost" />
+                  <input type="hidden" name="artwork_id" value={a.id} />
+                  <input type="number" name="peanut_cost" value={a.peanut_cost ?? 0} min="0" max="99999" class="cost-input" />
+                  <button type="submit" class="btn-mini" title="Save cost">💾</button>
+                </form>
+              </td>
+              <td>{dl}</td>
+              <td>{unique}</td>
+              <td>{rev > 0 ? `🥜 ${rev}` : "—"}</td>
+              <td>{a.is_premium ? "⭐" : "—"}</td>
+              <td>
+                <form method="POST" class="inline-form">
+                  <input type="hidden" name="action" value="toggle_active" />
+                  <input type="hidden" name="artwork_id" value={a.id} />
+                  <input type="hidden" name="current_active" value={String(!!a.active)} />
+                  <button type="submit" class={`btn-mini ${a.active ? "btn-warn" : "btn-ok"}`}>
+                    {a.active ? "Deactivate" : "Activate"}
+                  </button>
+                </form>
+              </td>
+              <td>
+                <a href={`/admin/gallery/${a.id}/`} class="btn-mini">📊 Stats</a>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>
+
+<script is:inline>
+document.addEventListener("DOMContentLoaded", () => {
+  const catSelect = document.getElementById("catSelect");
+  const newCatLabel = document.getElementById("newCatLabel");
+  if (catSelect && newCatLabel) {
+    const newCatInput = newCatLabel.querySelector("input");
+    catSelect.addEventListener("change", () => {
+      const show = catSelect.value === "__new";
+      newCatLabel.style.display = show ? "" : "none";
+      if (newCatInput) {
+        if (show) newCatInput.setAttribute("required", "required");
+        else newCatInput.removeAttribute("required");
+      }
+    });
+  }
+});
+</script>
+
+<style>
+  h1 { margin: 0 0 1.5rem; font-size: 1.6rem; }
+  h2 { margin: 2rem 0 0.8rem; font-size: 1.15rem; }
+
+  .alert { padding: 0.7rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 0.9rem; }
+  .alert-ok { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .alert-err { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: var(--surface-strong, #f8f8f8);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    text-align: center;
+  }
+  .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--brand-blue); }
+  .stat-label { font-size: 0.82rem; color: var(--ink-soft); margin-top: 0.2rem; }
+
+  .upload-section {
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.8rem 1rem;
+    background: var(--surface-strong, #f8f8f8);
+  }
+  .upload-section summary { cursor: pointer; font-size: 0.95rem; }
+  .upload-form { margin-top: 1rem; }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 0.8rem;
+  }
+  .form-row label { display: flex; flex-direction: column; font-size: 0.85rem; font-weight: 600; }
+  .form-row input, .form-row select {
+    margin-top: 0.3rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+  }
+  .checkbox-label {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.2rem;
+  }
+  .checkbox-label input { margin: 0; }
+
+  .table-scroll { overflow-x: auto; }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: middle;
+  }
+  .admin-table th {
+    background: var(--surface-strong, #f4f4f4);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--ink-soft);
+  }
+  .admin-table a { color: var(--brand-blue); text-decoration: none; }
+  .admin-table a:hover { text-decoration: underline; }
+  .text-soft { color: var(--ink-soft); }
+
+  .inactive-row { opacity: 0.5; }
+
+  .inline-form { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .cost-input {
+    width: 70px;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-size: 0.85rem;
+  }
+
+  .btn-primary {
+    padding: 0.5rem 1.2rem;
+    background: var(--brand-blue);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+
+  .btn-mini {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.78rem;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--surface);
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--ink);
+    display: inline-block;
+  }
+  .btn-mini:hover { background: var(--surface-strong); }
+  .btn-warn { color: #b45309; border-color: #fbbf24; }
+  .btn-ok { color: #16a34a; border-color: #86efac; }
+
+  @media (max-width: 640px) {
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>

@@ -5,6 +5,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase, getServiceClient } from "../../lib/supabase";
+import { validateOrigin } from "../../lib/csrf";
 import { books } from "../../data/books";
 import { notifyNewReview, notifyReviewUpdated } from "../../lib/notifications";
 
@@ -17,7 +18,7 @@ const user = Astro.locals.user;
 const sc = getServiceClient();
 
 // ── User state ───────────────────────────────────────
-let myReviews: { id: string; book_id: string; photo_url: string; extra_photos?: string[]; rating: number; review_text: string; status: string; submitted_at: string; reviewer_note?: string }[] = [];
+let myReviews: { id: string; book_id: string; photo_url: string; extra_photos?: string[] | null; rating: number; review_text: string | null; status: string | null; submitted_at: string | null; reviewer_note?: string | null }[] = [];
 let shareMsg = "";
 let shareMsgType: "success" | "error" | "" = "";
 
@@ -31,6 +32,10 @@ if (user) {
 
   // ── Handle POST actions ──────────────────────────
   if (Astro.request.method === "POST") {
+    if (!validateOrigin(Astro.request, Astro.url)) {
+      shareMsg = "⛔ Request blocked.";
+      shareMsgType = "error";
+    } else {
     const formData = await Astro.request.formData();
     const action = formData.get("action")?.toString();
 
@@ -58,7 +63,7 @@ if (user) {
     if (action === "share_book") {
       const bookId = formData.get("book_id")?.toString() || "";
       const rating = parseInt(formData.get("rating")?.toString() || "0", 10);
-      const reviewText = formData.get("review_text")?.toString().trim() || "";
+      const reviewText = (formData.get("review_text")?.toString().trim() || "").slice(0, 2000);
       const photos = formData.getAll("photos") as File[];
       const editId = formData.get("edit_id")?.toString() || "";
 
@@ -186,6 +191,7 @@ if (user) {
         }
       }
     }
+    } // end CSRF else
   }
 }
 

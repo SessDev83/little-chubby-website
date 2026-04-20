@@ -1,0 +1,420 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { validateOrigin } from "../../lib/csrf";
+import { sendConfirmationEmail } from "../../lib/notifications";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const sc = getServiceClient();
+
+let actionMsg = "";
+let actionErr = "";
+
+/** Log every admin action for audit trail */
+async function auditLog(action: string, targetType: string, targetId: string | null, details: Record<string, unknown> = {}) {
+  try {
+    await sc.from("admin_audit_log").insert({
+      admin_id: user!.email || user!.id,
+      action,
+      target_type: targetType,
+      target_id: targetId,
+      details: details as any,
+    });
+  } catch { /* non-blocking */ }
+}
+
+// ── Handle POST actions ──────────────────────────────
+if (Astro.request.method === "POST") {
+  if (!validateOrigin(Astro.request, Astro.url)) {
+    actionErr = "⛔ Request blocked: invalid origin.";
+  } else {
+    const formData = await Astro.request.formData();
+    const action = formData.get("action")?.toString();
+
+    if (action === "resend_confirmation") {
+      const subId = formData.get("sub_id")?.toString();
+      if (!subId) {
+        actionErr = "Missing subscriber ID.";
+      } else {
+        const { data: sub } = await sc.from("newsletter_subscribers").select("*").eq("id", subId).single();
+        if (!sub) {
+          actionErr = "Subscriber not found.";
+        } else if (sub.confirmed) {
+          actionErr = "Already confirmed — no need to resend.";
+        } else {
+          const sent = await sendConfirmationEmail(sub.email, sub.name || "", sub.confirm_token!, (sub.lang_pref || "en") as "en" | "es");
+          if (sent) {
+            await sc.from("newsletter_subscribers").update({ last_reminder_at: new Date().toISOString() }).eq("id", subId);
+            await auditLog("resend_confirmation", "subscriber", subId, { email: sub.email });
+            actionMsg = `✓ Confirmation resent to ${sub.email}`;
+          } else {
+            actionErr = `Failed to send email to ${sub.email}`;
+          }
+        }
+      }
+    }
+
+    else if (action === "unsubscribe") {
+      const subId = formData.get("sub_id")?.toString();
+      if (!subId) {
+        actionErr = "Missing subscriber ID.";
+      } else {
+        const { data: sub } = await sc.from("newsletter_subscribers").select("email").eq("id", subId).single();
+        if (!sub) {
+          actionErr = "Subscriber not found.";
+        } else {
+          await sc.from("newsletter_subscribers").delete().eq("id", subId);
+          await auditLog("admin_unsubscribe", "subscriber", subId, { email: sub.email });
+          actionMsg = `✓ ${sub.email} removed.`;
+        }
+      }
+    }
+  }
+}
+
+// ── Query params ─────────────────────────────────────
+const PAGE_SIZE = 50;
+const page = Math.max(1, parseInt(Astro.url.searchParams.get("page") || "1", 10));
+const filter = Astro.url.searchParams.get("filter") || "all"; // all | confirmed | pending
+const search = (Astro.url.searchParams.get("q") || "").trim().slice(0, 100);
+const offset = (page - 1) * PAGE_SIZE;
+
+// ── Stats (parallel) ────────────────────────────────
+const [
+  { count: totalCount },
+  { count: confirmedCount },
+  { count: pendingCount },
+] = await Promise.all([
+  sc.from("newsletter_subscribers").select("*", { count: "exact", head: true }),
+  sc.from("newsletter_subscribers").select("*", { count: "exact", head: true }).eq("confirmed", true),
+  sc.from("newsletter_subscribers").select("*", { count: "exact", head: true }).eq("confirmed", false),
+]);
+
+const confirmRate = totalCount && totalCount > 0 ? Math.round(((confirmedCount ?? 0) / totalCount) * 100) : 0;
+
+// Growth this month
+const monthStart = new Date();
+monthStart.setDate(1);
+monthStart.setHours(0, 0, 0, 0);
+const { count: newThisMonth } = await sc
+  .from("newsletter_subscribers")
+  .select("*", { count: "exact", head: true })
+  .gte("created_at", monthStart.toISOString());
+
+// ── Subscriber list query ────────────────────────────
+let query = sc
+  .from("newsletter_subscribers")
+  .select("id, email, name, source, confirmed, lang_pref, reminder_count, last_reminder_at, created_at", { count: "exact" });
+
+if (filter === "confirmed") query = query.eq("confirmed", true);
+else if (filter === "pending") query = query.eq("confirmed", false);
+
+if (search) {
+  const safeLike = search.replace(/[%_\\]/g, (c: string) => `\\${c}`);
+  query = query.or(`email.ilike.%${safeLike}%,name.ilike.%${safeLike}%`);
+}
+
+const { data: subscribers, count: filteredCount } = await query
+  .order("created_at", { ascending: false })
+  .range(offset, offset + PAGE_SIZE - 1);
+
+const totalPages = Math.ceil((filteredCount ?? 0) / PAGE_SIZE);
+
+function pageUrl(p: number) {
+  const params = new URLSearchParams();
+  params.set("page", String(p));
+  if (filter !== "all") params.set("filter", filter);
+  if (search) params.set("q", search);
+  return `?${params.toString()}`;
+}
+
+function filterUrl(f: string) {
+  const params = new URLSearchParams();
+  if (f !== "all") params.set("filter", f);
+  if (search) params.set("q", search);
+  return `?${params.toString()}`;
+}
+---
+
+<AdminLayout title="Newsletter" current="newsletter">
+  <h1>📬 Newsletter</h1>
+
+  {actionMsg && <p class="msg-ok">{actionMsg}</p>}
+  {actionErr && <p class="msg-err">{actionErr}</p>}
+
+  {/* ── Stat Cards ── */}
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--brand-blue);">{totalCount ?? 0}</div>
+      <div class="stat-label">Total Subscribers</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--brand-green);">{confirmedCount ?? 0}</div>
+      <div class="stat-label">✓ Confirmed</div>
+    </div>
+    <div class="stat-card stat-alert">
+      <div class="stat-number" style="color:var(--brand-brown);">{pendingCount ?? 0}</div>
+      <div class="stat-label">⏳ Pending</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--brand-blue);">{confirmRate}%</div>
+      <div class="stat-label">Confirmation Rate</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--accent-gold);">+{newThisMonth ?? 0}</div>
+      <div class="stat-label">New This Month</div>
+    </div>
+  </div>
+
+  {/* ── Filters + Search ── */}
+  <div class="filter-bar">
+    <div class="filter-tabs">
+      <a href={filterUrl("all")} class={`filter-tab ${filter === "all" ? "active" : ""}`}>All ({totalCount ?? 0})</a>
+      <a href={filterUrl("confirmed")} class={`filter-tab ${filter === "confirmed" ? "active" : ""}`}>Confirmed ({confirmedCount ?? 0})</a>
+      <a href={filterUrl("pending")} class={`filter-tab ${filter === "pending" ? "active" : ""}`}>Pending ({pendingCount ?? 0})</a>
+    </div>
+    <div style="display:flex; gap:0.4rem; align-items:center;">
+      <form method="GET" style="display:flex; gap:0.4rem; align-items:center;">
+        {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
+        <input type="text" name="q" value={search} placeholder="Search email or name…" class="search-input" />
+        <button type="submit" class="btn btn-ghost" style="font-size:0.85rem;">🔍</button>
+        {search && <a href={filterUrl(filter)} class="btn btn-ghost" style="font-size:0.85rem;">✕</a>}
+      </form>
+      <button type="button" class="btn btn-secondary" id="exportCsvBtn" style="font-size:0.85rem;">📥 CSV</button>
+    </div>
+  </div>
+
+  {/* ── Subscriber Table ── */}
+  <div style="overflow-x:auto; margin-top:1rem;">
+    <table class="admin-table" id="subTable">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Source</th>
+          <th>Lang</th>
+          <th>Reminders</th>
+          <th>Subscribed</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {subscribers?.map((s) => (
+          <tr>
+            <td style="font-weight:600;">{s.email}</td>
+            <td>{s.name || "—"}</td>
+            <td>
+              {s.confirmed
+                ? <span class="badge badge-green">Confirmed</span>
+                : <span class="badge badge-yellow">Pending</span>}
+            </td>
+            <td style="font-size:0.82rem;">{s.source || "—"}</td>
+            <td>{s.lang_pref?.toUpperCase() || "—"}</td>
+            <td style="text-align:center;">{s.reminder_count ?? 0}</td>
+            <td style="white-space:nowrap; font-size:0.82rem;">{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</td>
+            <td class="action-cell">
+              {!s.confirmed && (
+                <form method="POST" style="display:inline;">
+                  <input type="hidden" name="action" value="resend_confirmation" />
+                  <input type="hidden" name="sub_id" value={s.id} />
+                  <button type="submit" class="btn btn-ghost action-btn" title="Resend confirmation email">📧</button>
+                </form>
+              )}
+              <form method="POST" style="display:inline;" onsubmit="return confirm('Remove this subscriber?')">
+                <input type="hidden" name="action" value="unsubscribe" />
+                <input type="hidden" name="sub_id" value={s.id} />
+                <button type="submit" class="btn btn-ghost action-btn" title="Remove subscriber" style="color:#8f1f18;">🗑</button>
+              </form>
+            </td>
+          </tr>
+        ))}
+        {(!subscribers || subscribers.length === 0) && (
+          <tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--ink-soft);">No subscribers found.</td></tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  {/* ── Pagination ── */}
+  {totalPages > 1 && (
+    <nav class="pagination">
+      {page > 1 && <a href={pageUrl(page - 1)} class="btn btn-ghost">← Prev</a>}
+      <span class="page-info">Page {page} of {totalPages}</span>
+      {page < totalPages && <a href={pageUrl(page + 1)} class="btn btn-ghost">Next →</a>}
+    </nav>
+  )}
+</AdminLayout>
+
+<script is:inline>
+document.addEventListener("DOMContentLoaded", () => {
+  const exportBtn = document.getElementById("exportCsvBtn");
+  const table = document.getElementById("subTable");
+  if (exportBtn && table) {
+    exportBtn.addEventListener("click", () => {
+      const rows = table.querySelectorAll("tr");
+      const csv = [];
+      rows.forEach(row => {
+        const cells = row.querySelectorAll("th, td");
+        const line = [];
+        cells.forEach((cell, i) => {
+          if (i === cells.length - 1) return; // skip Actions column
+          let val = cell.textContent.trim().replace(/"/g, '""').replace(/\n/g, ' ').replace(/\r/g, '');
+          line.push('"' + val + '"');
+        });
+        csv.push(line.join(","));
+      });
+      const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "newsletter-subscribers-" + new Date().toISOString().slice(0, 10) + ".csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+});
+</script>
+
+<style>
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .stat-card {
+    padding: 1.2rem;
+    text-align: center;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .stat-alert {
+    border-color: rgba(220,150,50,0.4);
+    background: rgba(220,150,50,0.06);
+  }
+  .stat-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-family: 'Baloo 2', sans-serif;
+  }
+  .stat-label {
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    margin-top: 0.2rem;
+  }
+  .filter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .filter-tabs {
+    display: flex;
+    gap: 0.3rem;
+  }
+  .filter-tab {
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--ink-soft);
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .filter-tab:hover {
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .filter-tab.active {
+    background: var(--brand-blue);
+    color: #fff;
+    border-color: var(--brand-blue);
+  }
+  .search-input {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    width: 14rem;
+  }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 0.55rem 0.7rem;
+    text-align: left;
+  }
+  .admin-table thead tr {
+    border-bottom: 2px solid var(--line);
+  }
+  .admin-table tbody tr {
+    border-bottom: 1px solid var(--line);
+  }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .badge-green {
+    background: rgba(92,150,80,0.14);
+    color: var(--brand-green);
+  }
+  .badge-yellow {
+    background: rgba(220,180,50,0.14);
+    color: #8a6d00;
+  }
+  .action-cell {
+    white-space: nowrap;
+  }
+  .action-btn {
+    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
+  }
+  .msg-ok {
+    padding: 0.8rem;
+    border-radius: 0.5rem;
+    background: rgba(92,150,80,0.14);
+    color: var(--brand-green);
+    border: 1px solid rgba(92,150,80,0.3);
+    margin: 1rem 0;
+  }
+  .msg-err {
+    padding: 0.8rem;
+    border-radius: 0.5rem;
+    background: rgba(220,50,50,0.08);
+    color: #8f1f18;
+    border: 1px solid rgba(220,50,50,0.25);
+    margin: 1rem 0;
+  }
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding: 1rem 0;
+  }
+  .page-info {
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+</style>

@@ -1,9 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../database.types";
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     flowType: "pkce",
     detectSessionInUrl: false,
@@ -12,9 +13,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+let _serviceClient: SupabaseClient<Database> | null = null;
+
 export function getServiceClient() {
-  const serviceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
-  return createClient(supabaseUrl, serviceKey);
+  if (!_serviceClient) {
+    const serviceKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+    _serviceClient = createClient<Database>(supabaseUrl, serviceKey);
+  }
+  return _serviceClient;
 }
 
 /** Hardcoded fallback — always grants access to these emails */

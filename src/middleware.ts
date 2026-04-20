@@ -1,5 +1,5 @@
 import { defineMiddleware } from "astro:middleware";
-import { supabase } from "./lib/supabase";
+import { supabase, getServiceClient } from "./lib/supabase";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   // Default: no user
@@ -52,10 +52,39 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   context.locals.user = data.session.user;
+
+  // ── Suspension check: block suspended users (pages AND APIs) ──
+  const url = new URL(context.request.url);
+  const isApiRoute = url.pathname.startsWith("/api/");
+  const isAuthRoute = url.pathname.includes("/login") || url.pathname.includes("/logout") || url.pathname.includes("/auth/");
+  const isCronRoute = url.pathname.startsWith("/api/cron/");
+  if (!isAuthRoute && !isCronRoute) {
+    try {
+      const sc = getServiceClient();
+      const { data: profile } = await sc
+        .from("profiles")
+        .select("suspended")
+        .eq("id", data.session.user.id)
+        .single();
+      if (profile?.suspended) {
+        context.cookies.delete("sb-access-token", { path: "/" });
+        context.cookies.delete("sb-refresh-token", { path: "/" });
+        context.cookies.delete("sb-logged-in", { path: "/" });
+        context.locals.user = null;
+        if (isApiRoute) {
+          return new Response(JSON.stringify({ error: "Account suspended" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return context.redirect("/es/login/");
+      }
+    } catch { /* non-blocking: allow through if check fails */ }
+  }
+
   const response = await next();
 
   // Prevent browser caching of SSR pages (especially reviews with inline scripts)
-  const url = new URL(context.request.url);
   if (url.pathname.includes("/reviews")) {
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
     response.headers.set("Pragma", "no-cache");

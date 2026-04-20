@@ -28,11 +28,12 @@ export const GET: APIRoute = async ({ request }) => {
 
   // ── Verify cron secret ─────────────────────────────
   const cronSecret = import.meta.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
-      return new Response("Unauthorized", { status: 401 });
-    }
+  if (!cronSecret) {
+    return new Response(JSON.stringify({ error: "CRON_SECRET not configured" }), { status: 500, headers });
+  }
+  const auth = request.headers.get("authorization");
+  if (auth !== `Bearer ${cronSecret}`) {
+    return new Response("Unauthorized", { status: 401 });
   }
 
   const svc = getServiceClient();

@@ -5,6 +5,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase } from "../../lib/supabase";
+import { validateOrigin } from "../../lib/csrf";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
@@ -20,6 +21,10 @@ let message = "";
 let messageType: "success" | "error" | "" = "";
 
 if (Astro.request.method === "POST") {
+  if (!validateOrigin(Astro.request, Astro.url)) {
+    message = "⛔ Request blocked.";
+    messageType = "error";
+  } else {
   const formData = await Astro.request.formData();
   const email = formData.get("email")?.toString().trim() || "";
   const password = formData.get("password")?.toString() || "";
@@ -41,13 +46,28 @@ if (Astro.request.method === "POST") {
     });
 
     if (error) {
-      message = error.message;
+      // Translate common Supabase auth errors
+      const errorMap: Record<string, Record<string, string>> = {
+        es: {
+          "User already registered": "Este correo ya está registrado. Intenta iniciar sesión.",
+          "Password should be at least 6 characters": "La contraseña debe tener al menos 6 caracteres.",
+          "Unable to validate email address: invalid format": "El formato del correo no es válido.",
+        },
+        en: {
+          "User already registered": "This email is already registered. Try logging in.",
+          "Password should be at least 6 characters": "Password must be at least 6 characters.",
+          "Unable to validate email address: invalid format": "Invalid email format.",
+        },
+      };
+      const translated = errorMap[lang]?.[error.message];
+      message = translated || (lang === "es" ? "Ocurrió un error. Intenta de nuevo." : "An error occurred. Please try again.");
       messageType = "error";
     } else {
       message = text.registerSuccess;
       messageType = "success";
     }
   }
+  } // end CSRF else
 }
 ---
 

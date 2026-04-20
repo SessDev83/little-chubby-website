@@ -1,0 +1,67 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+
+interface Props {
+  title: string;
+  current?: string;
+}
+
+const { title, current } = Astro.props;
+
+const navItems = [
+  { href: "/admin/", label: "📊 Dashboard", key: "dashboard" },
+  { href: "/admin/reviews/", label: "📝 Reviews", key: "reviews" },
+  { href: "/admin/lottery/", label: "🎲 Lottery", key: "lottery" },
+  { href: "/admin/users/", label: "👥 Users", key: "users" },
+  { href: "/admin/newsletter/", label: "📬 Newsletter", key: "newsletter" },
+  { href: "/admin/economy/", label: "🥜 Economy", key: "economy" },
+  { href: "/admin/gallery/", label: "🎨 Gallery", key: "gallery" },
+  { href: "/admin/audit/", label: "📋 Audit Log", key: "audit" },
+];
+---
+
+<BaseLayout lang="en" title={`${title} | Admin`} description="Admin panel" pathname={`/admin/`}>
+  <section class="page-section container">
+    <nav class="admin-nav">
+      {navItems.map((item) => (
+        <a
+          href={item.href}
+          class:list={["admin-nav-link", { active: current === item.key }]}
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+    <slot />
+  </section>
+</BaseLayout>
+
+<style>
+  .admin-nav {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+    padding: 0.6rem 0.8rem;
+    background: var(--surface-strong, #f8f8f8);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+  }
+  .admin-nav-link {
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }
+  .admin-nav-link:hover {
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .admin-nav-link.active {
+    background: var(--brand-blue);
+    color: #fff;
+  }
+</style>

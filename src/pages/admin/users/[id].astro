@@ -1,0 +1,515 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient, ADMIN_EMAILS } from "../../../lib/supabase";
+import { validateOrigin } from "../../../lib/csrf";
+import { sendToUser } from "../../../lib/notifications";
+import { books } from "../../../data/books";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const sc = getServiceClient();
+const userId = Astro.params.id;
+
+// Fetch user profile
+const { data: profile } = await sc
+  .from("profiles")
+  .select("*")
+  .eq("id", userId!)
+  .single();
+
+if (!profile) {
+  return Astro.redirect("/admin/users/");
+}
+
+// Get auth email
+const { data: authUser } = await sc.auth.admin.getUserById(userId!);
+const userEmail = authUser?.user?.email || profile.email;
+
+let actionMsg = "";
+let actionErr = "";
+
+/** Audit log helper */
+async function auditLog(action: string, targetType: string, targetId: string | null, details: Record<string, unknown> = {}) {
+  try {
+    await sc.from("admin_audit_log").insert({
+      admin_id: user!.email || user!.id,
+      action,
+      target_type: targetType,
+      target_id: targetId,
+      details: details as any,
+    });
+  } catch { /* non-blocking */ }
+}
+
+// ── Handle POST actions ──────────────────────────────
+if (Astro.request.method === "POST") {
+  if (!validateOrigin(Astro.request, Astro.url)) {
+    actionErr = "⛔ Request blocked: invalid origin.";
+  } else {
+    const formData = await Astro.request.formData();
+    const action = formData.get("action")?.toString();
+
+    if (action === "gift_peanuts") {
+      const amount = parseInt(formData.get("amount")?.toString() || "0", 10);
+      const note = (formData.get("note")?.toString() || "admin gift").slice(0, 200);
+      if (amount === 0 || amount < -10000 || amount > 10000) {
+        actionErr = "Amount must be between -10000 and 10000, non-zero.";
+      } else {
+        await sc.from("credit_transactions").insert({
+          user_id: userId!,
+          amount,
+          reason: "admin",
+          ref_id: note,
+        });
+        await auditLog("gift_peanuts", "user", userId!, { amount, note });
+        actionMsg = `✓ ${amount > 0 ? "+" : ""}${amount} peanuts applied.`;
+      }
+    }
+
+    else if (action === "gift_tickets") {
+      const amount = parseInt(formData.get("amount")?.toString() || "0", 10);
+      const note = (formData.get("note")?.toString() || "admin gift").slice(0, 200);
+      if (amount === 0 || amount < -10000 || amount > 10000) {
+        actionErr = "Amount must be between -10000 and 10000, non-zero.";
+      } else {
+        await sc.from("ticket_transactions").insert({
+          user_id: userId!,
+          amount,
+          reason: "admin",
+          ref_id: note,
+        });
+        await auditLog("gift_tickets", "user", userId!, { amount, note });
+        actionMsg = `✓ ${amount > 0 ? "+" : ""}${amount} tickets applied.`;
+      }
+    }
+
+    else if (action === "toggle_admin") {
+      const currentlyAdmin = profile.is_admin;
+      // Prevent removing yourself from admin
+      if (currentlyAdmin && userId === user.id) {
+        actionErr = "Cannot remove your own admin status.";
+      } else if (currentlyAdmin) {
+        // Prevent removing the last admin
+        const { count: adminCount } = await sc.from("profiles").select("*", { count: "exact", head: true }).eq("is_admin", true);
+        if ((adminCount ?? 0) <= 1) {
+          actionErr = "Cannot revoke — this is the only admin.";
+        } else {
+          await sc.from("profiles").update({ is_admin: false }).eq("id", userId!);
+          profile.is_admin = false;
+          await auditLog("toggle_admin", "user", userId!, { newValue: false });
+          actionMsg = "✓ Admin status revoked.";
+        }
+      } else {
+        await sc.from("profiles").update({ is_admin: true }).eq("id", userId!);
+        profile.is_admin = true;
+        await auditLog("toggle_admin", "user", userId!, { newValue: true });
+        actionMsg = "✓ Admin status granted.";
+      }
+    }
+
+    else if (action === "toggle_suspended") {
+      const currentlySuspended = profile.suspended;
+      await sc.from("profiles").update({ suspended: !currentlySuspended }).eq("id", userId!);
+      profile.suspended = !currentlySuspended;
+      await auditLog("toggle_suspended", "user", userId!, { newValue: !currentlySuspended });
+      actionMsg = `✓ User ${!currentlySuspended ? "suspended" : "reactivated"}.`;
+    }
+
+    else if (action === "send_email") {
+      const subject = (formData.get("subject")?.toString() || "").slice(0, 200);
+      const body = (formData.get("body")?.toString() || "").slice(0, 5000);
+      if (!subject || !body) {
+        actionErr = "Subject and body are required.";
+      } else {
+        const html = `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+          <img src="https://www.littlechubbypress.com/images/brand/logo-lockup.png" alt="Little Chubby Press" style="height:48px;margin-bottom:16px;" />
+          <h2 style="color:#2b6cb0;margin:0 0 12px;">${subject.replace(/</g, "&lt;")}</h2>
+          <div style="color:#333;line-height:1.6;">${body.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</div>
+          <hr style="border:none;border-top:1px solid #eee;margin:24px 0;" />
+          <p style="font-size:12px;color:#999;">This message was sent by an administrator of Little Chubby Press.</p>
+        </div>`;
+        const sent = await sendToUser(userEmail, subject, html);
+        if (sent) {
+          await auditLog("send_email", "user", userId!, { subject });
+          actionMsg = `✓ Email sent to ${userEmail}.`;
+        } else {
+          actionErr = "Failed to send email.";
+        }
+      }
+    }
+  }
+}
+
+// ── Data queries (parallel) ──────────────────────────
+const [
+  { data: reviews },
+  { data: credits },
+  { data: tickets },
+  { data: badges },
+  { data: lotteryEntries },
+  { data: downloads },
+  { data: newsletterSub },
+] = await Promise.all([
+  sc.from("book_reviews").select("id, book_id, rating, status, featured, submitted_at").eq("user_id", userId!).order("submitted_at", { ascending: false }).limit(20),
+  sc.from("credit_transactions").select("amount, reason, ref_id, created_at").eq("user_id", userId!).order("created_at", { ascending: false }).limit(30),
+  sc.from("ticket_transactions").select("amount, reason, ref_id, created_at").eq("user_id", userId!).order("created_at", { ascending: false }).limit(30),
+  sc.from("profile_badges").select("badge_type, active, purchased_at").eq("user_id", userId!),
+  sc.from("lottery_entries").select("month, entry_count, purchased_at").eq("user_id", userId!).order("month", { ascending: false }).limit(12),
+  sc.from("artwork_downloads").select("artwork_id, downloaded_at").eq("user_id", userId!).order("downloaded_at", { ascending: false }).limit(20),
+  sc.from("newsletter_subscribers").select("id, confirmed, created_at, source").eq("email", userEmail).maybeSingle(),
+]);
+
+const peanutBalance = (credits ?? []).reduce((sum, c) => sum + c.amount, 0);
+const ticketBalance = (tickets ?? []).reduce((sum, t) => sum + t.amount, 0);
+const bookMap = Object.fromEntries(books.map(b => [b.id, b.title.en]));
+const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
+---
+
+<AdminLayout title={profile.display_name || userEmail} current="users">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+    <h1>
+      {profile.display_name || "Unnamed User"}
+      {profile.is_admin && <span class="badge badge-blue">Admin</span>}
+      {profile.suspended && <span class="badge badge-red">Suspended</span>}
+    </h1>
+    <a href="/admin/users/" class="btn btn-ghost">← Back to Users</a>
+  </div>
+
+  {actionMsg && <p class="msg-ok">{actionMsg}</p>}
+  {actionErr && <p class="msg-err">{actionErr}</p>}
+
+  {/* ── Profile Overview ── */}
+  <div class="detail-grid">
+    <div class="surface-card detail-section">
+      <h2>👤 Profile</h2>
+      <dl class="detail-list">
+        <dt>Email</dt><dd>{userEmail}</dd>
+        <dt>Name</dt><dd>{profile.display_name || "—"}</dd>
+        <dt>Language</dt><dd>{profile.lang_pref?.toUpperCase() || "—"}</dd>
+        <dt>Country</dt><dd>{profile.country || "—"}</dd>
+        <dt>Phone</dt><dd>{profile.phone || "—"}</dd>
+        <dt>City</dt><dd>{profile.city || "—"}{profile.state ? `, ${profile.state}` : ""}{profile.zip_code ? ` ${profile.zip_code}` : ""}</dd>
+        <dt>Address</dt><dd>{profile.address_line1 || "—"}{profile.address_line2 ? `, ${profile.address_line2}` : ""}</dd>
+        <dt>Joined</dt><dd>{profile.created_at ? new Date(profile.created_at).toLocaleDateString() : "—"}</dd>
+        <dt>Newsletter</dt><dd>{newsletterSub ? (newsletterSub.confirmed ? <span class="badge badge-green">Confirmed</span> : <span class="badge badge-yellow">Pending</span>) : "Not subscribed"}</dd>
+      </dl>
+    </div>
+
+    <div class="surface-card detail-section">
+      <h2>⚡ Quick Stats</h2>
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <span class="mini-num" style="color:var(--brand-green);">{peanutBalance}</span>
+          <span class="mini-label">🥜 Peanuts</span>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-num" style="color:var(--brand-blue);">{ticketBalance}</span>
+          <span class="mini-label">🎟️ Tickets</span>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-num" style="color:var(--accent-gold);">{reviews?.length ?? 0}</span>
+          <span class="mini-label">📝 Reviews</span>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-num">{badges?.length ?? 0}</span>
+          <span class="mini-label">🏅 Badges</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* ── Admin Actions ── */}
+  <div class="surface-card detail-section" style="margin-top:1.5rem;">
+    <h2>🔧 Admin Actions</h2>
+    <div class="action-grid">
+      {/* Gift Peanuts */}
+      <form method="POST" class="action-form">
+        <input type="hidden" name="action" value="gift_peanuts" />
+        <label>🥜 Gift/Deduct Peanuts</label>
+        <div style="display:flex; gap:0.3rem;">
+          <input type="number" name="amount" placeholder="e.g. 50 or -10" required style="width:5rem;" />
+          <input type="text" name="note" placeholder="Reason" maxlength="200" style="flex:1;" />
+          <button type="submit" class="btn btn-ghost">Apply</button>
+        </div>
+      </form>
+
+      {/* Gift Tickets */}
+      <form method="POST" class="action-form">
+        <input type="hidden" name="action" value="gift_tickets" />
+        <label>🎟️ Gift/Deduct Tickets</label>
+        <div style="display:flex; gap:0.3rem;">
+          <input type="number" name="amount" placeholder="e.g. 5 or -3" required style="width:5rem;" />
+          <input type="text" name="note" placeholder="Reason" maxlength="200" style="flex:1;" />
+          <button type="submit" class="btn btn-ghost">Apply</button>
+        </div>
+      </form>
+
+      {/* Toggle Admin */}
+      <form method="POST" class="action-form" onsubmit={`return confirm('${profile.is_admin ? "Revoke admin from" : "Grant admin to"} this user?')`}>
+        <input type="hidden" name="action" value="toggle_admin" />
+        <label>🛡️ Admin Status</label>
+        <button type="submit" class="btn btn-secondary" style="font-size:0.85rem;">
+          {profile.is_admin ? "Revoke Admin" : "Grant Admin"}
+        </button>
+      </form>
+
+      {/* Toggle Suspended */}
+      <form method="POST" class="action-form" onsubmit={`return confirm('${profile.suspended ? "Reactivate" : "Suspend"} this user?')`}>
+        <input type="hidden" name="action" value="toggle_suspended" />
+        <label>🚫 Account Status</label>
+        <button type="submit" class={`btn ${profile.suspended ? "btn-primary" : "btn-secondary"}`} style="font-size:0.85rem;">
+          {profile.suspended ? "✓ Reactivate" : "✗ Suspend"}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {/* ── Send Email ── */}
+  <div class="surface-card detail-section" style="margin-top:1.5rem;">
+    <h2>📧 Send Email</h2>
+    <form method="POST">
+      <input type="hidden" name="action" value="send_email" />
+      <div class="form-group">
+        <label>Subject</label>
+        <input type="text" name="subject" required maxlength="200" placeholder="Message subject…" style="width:100%;" />
+      </div>
+      <div class="form-group">
+        <label>Body (plain text, newlines preserved)</label>
+        <textarea name="body" required maxlength="5000" rows="4" placeholder="Write your message…" style="width:100%; font-family:inherit;"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" style="font-size:0.85rem;">Send to {userEmail}</button>
+    </form>
+  </div>
+
+  {/* ── Reviews ── */}
+  <div class="surface-card detail-section" style="margin-top:1.5rem;">
+    <h2>📝 Reviews ({reviews?.length ?? 0})</h2>
+    {reviews && reviews.length > 0 ? (
+      <table class="admin-table">
+        <thead><tr><th>Book</th><th>Rating</th><th>Status</th><th>Featured</th><th>Date</th></tr></thead>
+        <tbody>
+          {reviews.map((r) => (
+            <tr>
+              <td>{bookMap[r.book_id] || r.book_id}</td>
+              <td style="color:var(--accent-gold);">{stars(r.rating)}</td>
+              <td>
+                <span class={`badge ${r.status === "approved" ? "badge-green" : r.status === "rejected" ? "badge-red" : "badge-yellow"}`}>
+                  {r.status}
+                </span>
+              </td>
+              <td>{r.featured ? "★" : ""}</td>
+              <td style="font-size:0.82rem;">{r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : <p style="color:var(--ink-soft);">No reviews.</p>}
+  </div>
+
+  {/* ── Credit Transactions ── */}
+  <div class="surface-card detail-section" style="margin-top:1.5rem;">
+    <h2>🥜 Peanut History (last 30)</h2>
+    {credits && credits.length > 0 ? (
+      <table class="admin-table">
+        <thead><tr><th>Amount</th><th>Reason</th><th>Ref</th><th>Date</th></tr></thead>
+        <tbody>
+          {credits.map((c) => (
+            <tr>
+              <td style={`font-weight:700; color:${c.amount >= 0 ? "var(--brand-green)" : "#8f1f18"};`}>
+                {c.amount >= 0 ? "+" : ""}{c.amount}
+              </td>
+              <td>{c.reason}</td>
+              <td style="font-size:0.8rem; max-width:10rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{c.ref_id || "—"}</td>
+              <td style="font-size:0.82rem; white-space:nowrap;">{c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : <p style="color:var(--ink-soft);">No peanut transactions.</p>}
+  </div>
+
+  {/* ── Ticket Transactions ── */}
+  <div class="surface-card detail-section" style="margin-top:1.5rem;">
+    <h2>🎟️ Ticket History (last 30)</h2>
+    {tickets && tickets.length > 0 ? (
+      <table class="admin-table">
+        <thead><tr><th>Amount</th><th>Reason</th><th>Ref</th><th>Date</th></tr></thead>
+        <tbody>
+          {tickets.map((t) => (
+            <tr>
+              <td style={`font-weight:700; color:${t.amount >= 0 ? "var(--brand-blue)" : "#8f1f18"};`}>
+                {t.amount >= 0 ? "+" : ""}{t.amount}
+              </td>
+              <td>{t.reason}</td>
+              <td style="font-size:0.8rem; max-width:10rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{t.ref_id || "—"}</td>
+              <td style="font-size:0.82rem; white-space:nowrap;">{t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : <p style="color:var(--ink-soft);">No ticket transactions.</p>}
+  </div>
+
+  {/* ── Badges ── */}
+  {badges && badges.length > 0 && (
+    <div class="surface-card detail-section" style="margin-top:1.5rem;">
+      <h2>🏅 Badges ({badges.length})</h2>
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+        {badges.map((b) => (
+          <span class="badge badge-blue" style="font-size:0.85rem; padding:0.3rem 0.6rem;">
+            {b.badge_type} {b.active ? "" : "(inactive)"}
+          </span>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {/* ── Lottery Entries ── */}
+  {lotteryEntries && lotteryEntries.length > 0 && (
+    <div class="surface-card detail-section" style="margin-top:1.5rem;">
+      <h2>🎲 Lottery Entries</h2>
+      <table class="admin-table">
+        <thead><tr><th>Month</th><th>Entries</th><th>Purchased</th></tr></thead>
+        <tbody>
+          {lotteryEntries.map((e) => (
+            <tr>
+              <td style="font-weight:600;">{e.month}</td>
+              <td style="text-align:center; font-weight:700; color:var(--brand-blue);">{e.entry_count}</td>
+              <td style="font-size:0.82rem;">{e.purchased_at ? new Date(e.purchased_at).toLocaleDateString() : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  {/* ── Downloads ── */}
+  {downloads && downloads.length > 0 && (
+    <div class="surface-card detail-section" style="margin-top:1.5rem;">
+      <h2>🎨 Artwork Downloads (last 20)</h2>
+      <table class="admin-table">
+        <thead><tr><th>Artwork ID</th><th>Downloaded</th></tr></thead>
+        <tbody>
+          {downloads.map((d) => (
+            <tr>
+              <td style="font-size:0.85rem;">{d.artwork_id}</td>
+              <td style="font-size:0.82rem;">{d.downloaded_at ? new Date(d.downloaded_at).toLocaleDateString() : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</AdminLayout>
+
+<style>
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .detail-section {
+    padding: 1.4rem;
+  }
+  .detail-section h2 {
+    margin-bottom: 0.8rem;
+    font-size: 1.1rem;
+  }
+  .detail-list {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 0.3rem 0.8rem;
+    font-size: 0.9rem;
+  }
+  .detail-list dt {
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .detail-list dd {
+    margin: 0;
+  }
+  .mini-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  .mini-stat {
+    text-align: center;
+  }
+  .mini-num {
+    display: block;
+    font-size: 1.6rem;
+    font-weight: 700;
+    font-family: 'Baloo 2', sans-serif;
+  }
+  .mini-label {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+  }
+  .action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem;
+  }
+  .action-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .action-form label {
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+  }
+  .admin-table thead tr {
+    border-bottom: 2px solid var(--line);
+  }
+  .admin-table tbody tr {
+    border-bottom: 1px solid var(--line);
+  }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .badge-green { background: rgba(92,150,80,0.14); color: var(--brand-green); }
+  .badge-red { background: rgba(220,50,50,0.10); color: #8f1f18; }
+  .badge-yellow { background: rgba(220,180,50,0.14); color: #8a6d00; }
+  .badge-blue { background: rgba(43,108,176,0.12); color: var(--brand-blue); }
+  .msg-ok {
+    padding: 0.8rem; border-radius: 0.5rem;
+    background: rgba(92,150,80,0.14); color: var(--brand-green);
+    border: 1px solid rgba(92,150,80,0.3); margin: 1rem 0;
+  }
+  .msg-err {
+    padding: 0.8rem; border-radius: 0.5rem;
+    background: rgba(220,50,50,0.08); color: #8f1f18;
+    border: 1px solid rgba(220,50,50,0.25); margin: 1rem 0;
+  }
+  .form-group {
+    margin-bottom: 0.8rem;
+  }
+  .form-group label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.3rem;
+  }
+</style>

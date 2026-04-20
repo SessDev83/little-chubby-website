@@ -75,7 +75,8 @@ const articleSchema = {
   headline: post.data.title,
   description: post.data.summary,
   datePublished: post.data.date,
-  url: pathname
+  url: pathname,
+  ogImage: post.data.image,
 };
 
 const categoryLabels: Record<string, string> = {

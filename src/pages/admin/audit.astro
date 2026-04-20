@@ -1,0 +1,361 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const sc = getServiceClient();
+const PAGE_SIZE = 50;
+
+// ── Filters from query string ────────────────────────
+const params = Astro.url.searchParams;
+const filterAction = params.get("action") || "";
+const filterAdmin = params.get("admin") || "";
+const filterTarget = params.get("target_type") || "";
+const filterSearch = params.get("q") || "";
+const filterFrom = params.get("from") || "";
+const filterTo = params.get("to") || "";
+const page = Math.max(1, parseInt(params.get("page") || "1", 10));
+
+// ── Build query ──────────────────────────────────────
+let query = sc
+  .from("admin_audit_log")
+  .select("*", { count: "exact" })
+  .order("created_at", { ascending: false });
+
+if (filterAction) {
+  query = query.eq("action", filterAction);
+}
+if (filterAdmin) {
+  query = query.ilike("admin_id", `%${filterAdmin}%`);
+}
+if (filterTarget) {
+  query = query.eq("target_type", filterTarget);
+}
+if (filterSearch) {
+  const safeSearch = filterSearch.replace(/[%_\\]/g, (c: string) => `\\${c}`);
+  query = query.or(`target_id.ilike.%${safeSearch}%,action.ilike.%${safeSearch}%`);
+}
+if (filterFrom) {
+  query = query.gte("created_at", `${filterFrom}T00:00:00`);
+}
+if (filterTo) {
+  query = query.lte("created_at", `${filterTo}T23:59:59`);
+}
+
+const offset = (page - 1) * PAGE_SIZE;
+query = query.range(offset, offset + PAGE_SIZE - 1);
+
+const { data: logs, count } = await query;
+
+const totalCount = count ?? 0;
+const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+// ── Get distinct action names and target types for filters ──
+const { data: allActions } = await sc
+  .from("admin_audit_log")
+  .select("action")
+  .order("action");
+
+const { data: allTargets } = await sc
+  .from("admin_audit_log")
+  .select("target_type")
+  .order("target_type");
+
+const actionNames = [...new Set((allActions ?? []).map(a => a.action))];
+const targetTypes = [...new Set((allTargets ?? []).map(t => t.target_type))];
+
+const fmt = (d: string | null) =>
+  d ? new Date(d).toLocaleDateString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—";
+
+// ── Preprocess log entries for template ──────────────
+const processedLogs = (logs ?? []).map(log => {
+  let detailStr = "—";
+  if (log.details) {
+    try {
+      detailStr = typeof log.details === "string"
+        ? log.details
+        : JSON.stringify(log.details, null, 0);
+      if (detailStr.length > 120) detailStr = detailStr.slice(0, 120) + "…";
+    } catch { detailStr = "—"; }
+  }
+  const targetLink = log.target_type === "user" && log.target_id
+    ? `/admin/users/${log.target_id}/`
+    : log.target_type === "artwork" && log.target_id
+    ? `/admin/gallery/${log.target_id}/`
+    : null;
+  const adminDisplay = log.admin_id.includes("@") ? log.admin_id : log.admin_id.slice(0, 8);
+  const targetDisplay = log.target_id ? log.target_id.slice(0, 8) + "…" : "—";
+  return { ...log, detailStr, targetLink, adminDisplay, targetDisplay };
+});
+
+/** Build URL with updated params */
+function buildUrl(overrides: Record<string, string | number>): string {
+  const p = new URLSearchParams();
+  const current: Record<string, string> = {
+    action: filterAction,
+    admin: filterAdmin,
+    target_type: filterTarget,
+    q: filterSearch,
+    from: filterFrom,
+    to: filterTo,
+    page: String(page),
+  };
+  for (const [k, v] of Object.entries({ ...current, ...overrides })) {
+    const val = String(v);
+    if (val) p.set(k, val);
+  }
+  return `/admin/audit/?${p.toString()}`;
+}
+
+// ── Preprocess pagination ────────────────────────────
+const pageLinks: Array<{ num: number; href: string; active: boolean; gap: boolean }> = [];
+if (totalPages > 1) {
+  const visible = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2);
+  for (let idx = 0; idx < visible.length; idx++) {
+    const p = visible[idx];
+    const prev = visible[idx - 1];
+    const gap = prev !== undefined && p - prev > 1;
+    pageLinks.push({ num: p, href: buildUrl({ page: p }), active: p === page, gap });
+  }
+}
+const prevHref = page > 1 ? buildUrl({ page: page - 1 }) : "";
+const nextHref = page < totalPages ? buildUrl({ page: page + 1 }) : "";
+---
+
+<AdminLayout title="Audit Log" current="audit">
+  <h1>📋 Audit Log</h1>
+  <p class="text-soft">{totalCount.toLocaleString()} entries total</p>
+
+  {/* ── Filters ── */}
+  <form method="GET" action="/admin/audit/" class="filter-form">
+    <div class="filter-row">
+      <label>
+        Action
+        <select name="action">
+          <option value="">All</option>
+          {actionNames.map(a => (
+            <option value={a} selected={a === filterAction}>{a}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Target Type
+        <select name="target_type">
+          <option value="">All</option>
+          {targetTypes.map(t => (
+            <option value={t} selected={t === filterTarget}>{t}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Admin
+        <input type="text" name="admin" value={filterAdmin} placeholder="email or id" />
+      </label>
+      <label>
+        Search
+        <input type="text" name="q" value={filterSearch} placeholder="target_id or action" />
+      </label>
+    </div>
+    <div class="filter-row">
+      <label>
+        From
+        <input type="date" name="from" value={filterFrom} />
+      </label>
+      <label>
+        To
+        <input type="date" name="to" value={filterTo} />
+      </label>
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="/admin/audit/" class="btn btn-secondary">Clear</a>
+      </div>
+    </div>
+  </form>
+
+  {/* ── Log Table ── */}
+  <div class="table-scroll">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Admin</th>
+          <th>Action</th>
+          <th>Target Type</th>
+          <th>Target ID</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {processedLogs.length === 0 && (
+          <tr><td colspan="6" style="text-align:center;color:var(--ink-soft);">No audit entries found.</td></tr>
+        )}
+        {processedLogs.map(log => (
+            <tr>
+              <td class="nowrap">{fmt(log.created_at)}</td>
+              <td>{log.adminDisplay}</td>
+              <td><code>{log.action}</code></td>
+              <td>{log.target_type}</td>
+              <td>
+                {log.targetLink
+                  ? <a href={log.targetLink}>{log.targetDisplay}</a>
+                  : <span>{log.targetDisplay}</span>
+                }
+              </td>
+              <td class="detail-cell" title={log.detailStr}>{log.detailStr}</td>
+            </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {/* ── Pagination ── */}
+  {totalPages > 1 && (
+    <nav class="pagination">
+      {prevHref && <a href={prevHref}>← Prev</a>}
+      {pageLinks.map(pl => (
+        <>
+          {pl.gap && <span class="page-gap">…</span>}
+          <a href={pl.href} class:list={["page-link", { active: pl.active }]}>{pl.num}</a>
+        </>
+      ))}
+      {nextHref && <a href={nextHref}>Next →</a>}
+    </nav>
+  )}
+</AdminLayout>
+
+<style>
+  h1 { margin: 0 0 0.3rem; font-size: 1.6rem; }
+  .text-soft { color: var(--ink-soft); font-size: 0.88rem; margin-bottom: 1.5rem; }
+
+  .filter-form {
+    background: var(--surface-strong, #f8f8f8);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-bottom: 0.6rem;
+    align-items: flex-end;
+  }
+  .filter-row label {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.82rem;
+    font-weight: 600;
+    flex: 1;
+    min-width: 140px;
+  }
+  .filter-row input,
+  .filter-row select {
+    margin-top: 0.2rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+  }
+  .filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+    padding-bottom: 1px;
+  }
+
+  .btn {
+    padding: 0.4rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-primary {
+    background: var(--brand-blue);
+    color: #fff;
+    border-color: var(--brand-blue);
+  }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .table-scroll { overflow-x: auto; }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+  }
+  .admin-table th {
+    background: var(--surface-strong, #f4f4f4);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--ink-soft);
+  }
+  .admin-table a { color: var(--brand-blue); text-decoration: none; }
+  .admin-table a:hover { text-decoration: underline; }
+  code {
+    font-size: 0.8rem;
+    background: var(--surface);
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+  }
+  .nowrap { white-space: nowrap; }
+  .detail-cell {
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+  }
+
+  .pagination {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .pagination a {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+  .pagination a:hover { background: var(--surface-strong); }
+  .pagination a.active {
+    background: var(--brand-blue);
+    color: #fff;
+    border-color: var(--brand-blue);
+  }
+  .page-gap { color: var(--ink-soft); padding: 0 0.3rem; }
+
+  @media (max-width: 640px) {
+    .filter-row { flex-direction: column; }
+    .filter-row label { min-width: 100%; }
+  }
+</style>

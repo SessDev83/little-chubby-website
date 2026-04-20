@@ -61,7 +61,7 @@ const FROM_USER = "Little Chubby Press <hello@littlechubbypress.com>";
 const SITE_URL = (import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com").replace(/\/+$/, "");
 const LOGO_URL = `${SITE_URL}/images/brand/logo-lockup.png`;
 
-async function sendToUser(to: string, subject: string, html: string): Promise<boolean> {
+export async function sendToUser(to: string, subject: string, html: string): Promise<boolean> {
   if (!RESEND_API_KEY) return false;
   try {
     const res = await fetch("https://api.resend.com/emails", {

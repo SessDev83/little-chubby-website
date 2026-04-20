@@ -20,7 +20,8 @@
 10. [Social Media Content Strategy](#10-social-media-content-strategy)
 11. [Chubby Character Sheet](#11-chubby-character-sheet)
 12. [Anti-Patterns](#12-anti-patterns)
-13. [Quick Reference Card](#13-quick-reference-card)
+13. [Economy Rules — Tickets vs Peanuts](#13-economy-rules--tickets-vs-peanuts)
+14. [Quick Reference Card](#14-quick-reference-card)
 
 ---
 
@@ -347,10 +348,73 @@ These are things the brand NEVER does, regardless of context:
 - Never uses hype language: "amazing!", "incredible!", "you NEED this!"
 - Never makes promises about educational outcomes ("your child WILL improve")
 - Never uses stock-photo-style descriptions of families (be specific and real)
+- Never pretends to "discover" features the brand built — no "I just found out", "Here's something cool I discovered", "TIL our website has..."
+- Never describes sharing as uploading images — sharing means sharing LINKS to reviews or coloring pages
+- Never implies users can upload standalone images of kids' coloring — the site only accepts structured book reviews (cover photo + interior photos)
 
 ---
 
-## 13. QUICK REFERENCE CARD
+## 13. ECONOMY RULES — TICKETS vs PEANUTS
+
+> **⚠️ CRITICAL: The brand has TWO separate currencies. NEVER confuse them in any content.**
+
+### 🎟️ Tickets (Lottery Currency)
+
+| How to earn | Amount |
+|-------------|--------|
+| Approved book review with photo | **+5 🎟️** |
+| Buy with Peanuts (newsletter subscribers only) | **3 🥜 → 1 🎟️** |
+
+- Tickets are ONLY used to enter the monthly giveaway
+- If a review is deleted or rejected, the 5 Tickets are revoked
+- More tickets = higher odds in the weighted random draw
+
+### 🥜 Peanuts (Loyalty / Shop Currency)
+
+| How to earn | Amount |
+|-------------|--------|
+| Share a gallery photo or coloring page on social media | **+1 🥜** (max 3/day) |
+
+- **Reviews do NOT earn Peanuts. Reviews earn Tickets.**
+- Spend Peanuts on: coloring page downloads (1 🥜), extra lottery tickets (3 🥜 = 1 🎟️), profile badges (15 🥜), gallery boosts (10 🥜)
+
+### ❌ Common Mistakes to AVOID
+
+| Wrong ❌ | Correct ✅ |
+|----------|-----------|
+| "Submit a review = +5 Peanuts" | "Submit a review = +5 Tickets 🎟️" |
+| "Earn Peanuts by reviewing books" | "Earn Tickets by reviewing books" |
+| "Reviews give you Peanuts and tickets" | "Reviews give you 5 Tickets for the giveaway" |
+| "5 Peanuts for a review" | "5 Tickets for a review" |
+
+### Quick Economy Summary for Content
+When writing about rewards, always use this pattern:
+- **Reviews** → "earn 5 free 🎟️ tickets for the monthly giveaway"
+- **Sharing** → "share a review link or coloring page link to earn 🥜 Peanuts for free downloads"
+- **Newsletter** → "use your Peanuts to buy extra giveaway tickets"
+
+### ⚠️ What "Sharing" ACTUALLY Means
+The site does NOT allow uploading standalone images. "Sharing" = clicking the share button on a gallery review or coloring corner page to share the **link/URL** with friends on WhatsApp, Facebook, Bluesky, or copying the link.
+
+| Wrong ❌ | Correct ✅ |
+|---------|----------|
+| "Share your little one's coloring creation" | "Share a gallery review link with friends" |
+| "Upload your kid's artwork" | "Submit a book review with photos" |
+| "Post your child's masterpiece" | "Share a coloring page link" |
+
+### ⚠️ Voice Perspective for Social Posts
+We post from the **brand's official page**. We **built** these features.
+
+| Wrong ❌ | Correct ✅ |
+|---------|----------|
+| "Here's something cool I discovered" | "Here's how our rewards work" |
+| "I just found out our site has..." | "Something we're proud of on our site" |
+| "Did you know this website lets you..." | "We built a system that lets you..." |
+| "TIL sharing earns Peanuts" | "Fun fact: sharing earns you Peanuts" |
+
+---
+
+## 14. QUICK REFERENCE CARD
 
 ```
 BRAND:        Little Chubby Press

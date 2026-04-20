@@ -32,6 +32,8 @@ try {
   const { data: gallery, error } = await supabase
     .from("gallery_feed")
     .select("id, book_id, photo_url, extra_photos, rating, review_text, featured, submitted_at, display_name")
+    .order("featured", { ascending: false })
+    .order("submitted_at", { ascending: false })
     .range(0, PAGE_SIZE - 1);
   if (error) throw error;
   items = gallery ?? [];

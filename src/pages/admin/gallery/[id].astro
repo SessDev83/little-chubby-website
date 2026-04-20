@@ -1,0 +1,187 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../../lib/supabase";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const sc = getServiceClient();
+const artworkId = Astro.params.id;
+
+const { data: artwork } = await sc
+  .from("free_artworks")
+  .select("*")
+  .eq("id", artworkId!)
+  .single();
+
+if (!artwork) {
+  return Astro.redirect("/admin/gallery/");
+}
+
+// Fetch all downloads for this artwork
+const { data: downloads } = await sc
+  .from("artwork_downloads")
+  .select("id, user_id, downloaded_at")
+  .eq("artwork_id", artworkId!)
+  .order("downloaded_at", { ascending: false });
+
+const allDl = downloads ?? [];
+const uniqueUsers = new Set(allDl.map(d => d.user_id));
+const revenue = allDl.length * (artwork.peanut_cost ?? 0);
+
+// Get user display names for recent downloads
+const recentDl = allDl.slice(0, 50);
+const userIds = [...new Set(recentDl.map(d => d.user_id))];
+let profileMap: Record<string, string> = {};
+if (userIds.length > 0) {
+  const { data: profiles } = await sc
+    .from("profiles")
+    .select("id, display_name, email")
+    .in("id", userIds);
+  for (const p of profiles ?? []) {
+    profileMap[p.id] = p.display_name || p.email || p.id.slice(0, 8);
+  }
+}
+
+// Downloads by day (last 30 days)
+const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+const dailyCounts: Record<string, number> = {};
+for (const d of allDl) {
+  if (!d.downloaded_at) continue;
+  const date = d.downloaded_at.split("T")[0];
+  if (new Date(date) >= thirtyDaysAgo) {
+    dailyCounts[date] = (dailyCounts[date] || 0) + 1;
+  }
+}
+
+const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+---
+
+<AdminLayout title={`Artwork: ${artwork.title_en}`} current="gallery">
+  <p><a href="/admin/gallery/">← Back to Gallery</a></p>
+  <h1>📊 {artwork.title_en}</h1>
+  <p class="text-soft">{artwork.title_es} · {artwork.category} · {artwork.active ? "Active" : "Inactive"} {artwork.is_premium ? " · ⭐ Premium" : ""}</p>
+
+  {/* ── Stats Cards ── */}
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-value">{allDl.length}</div>
+      <div class="stat-label">Total Downloads</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{uniqueUsers.size}</div>
+      <div class="stat-label">Unique Users</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">🥜 {artwork.peanut_cost ?? 0}</div>
+      <div class="stat-label">Peanut Cost</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">🥜 {revenue.toLocaleString()}</div>
+      <div class="stat-label">Revenue (Peanuts)</div>
+    </div>
+  </div>
+
+  {/* ── Daily Downloads (last 30 days) ── */}
+  {Object.keys(dailyCounts).length > 0 && (
+    <>
+      <h2>Downloads (Last 30 Days)</h2>
+      <div class="bar-chart">
+        {Object.entries(dailyCounts)
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([date, count]) => {
+            const maxCount = Math.max(...Object.values(dailyCounts));
+            const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+            return (
+              <div class="bar-row">
+                <span class="bar-label">{date.slice(5)}</span>
+                <div class="bar-track">
+                  <div class="bar-fill" style={`width:${pct}%`}></div>
+                </div>
+                <span class="bar-count">{count}</span>
+              </div>
+            );
+          })}
+      </div>
+    </>
+  )}
+
+  {/* ── Recent Downloads ── */}
+  <h2>Recent Downloads ({allDl.length} total)</h2>
+  <table class="admin-table">
+    <thead><tr><th>Date</th><th>User</th></tr></thead>
+    <tbody>
+      {recentDl.length === 0 && (
+        <tr><td colspan="2" style="text-align:center;color:var(--ink-soft);">No downloads yet.</td></tr>
+      )}
+      {recentDl.map(d => (
+        <tr>
+          <td>{fmt(d.downloaded_at)}</td>
+          <td><a href={`/admin/users/${d.user_id}/`}>{profileMap[d.user_id] || d.user_id.slice(0, 8)}</a></td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</AdminLayout>
+
+<style>
+  h1 { margin: 0 0 0.3rem; font-size: 1.6rem; }
+  h2 { margin: 2rem 0 0.8rem; font-size: 1.15rem; }
+  .text-soft { color: var(--ink-soft); font-size: 0.88rem; margin-bottom: 1.5rem; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: var(--surface-strong, #f8f8f8);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    text-align: center;
+  }
+  .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--brand-blue); }
+  .stat-label { font-size: 0.82rem; color: var(--ink-soft); margin-top: 0.2rem; }
+
+  .bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-width: 600px;
+  }
+  .bar-row { display: flex; align-items: center; gap: 0.5rem; }
+  .bar-label { font-size: 0.78rem; width: 42px; text-align: right; color: var(--ink-soft); }
+  .bar-track { flex: 1; height: 18px; background: var(--surface-strong, #eee); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--brand-blue); border-radius: 3px; transition: width 0.3s; }
+  .bar-count { font-size: 0.78rem; font-weight: 600; width: 30px; }
+
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+  }
+  .admin-table th {
+    background: var(--surface-strong, #f4f4f4);
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--ink-soft);
+  }
+  .admin-table a { color: var(--brand-blue); text-decoration: none; }
+  .admin-table a:hover { text-decoration: underline; }
+
+  a { color: var(--brand-blue); }
+</style>

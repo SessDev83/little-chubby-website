@@ -5,6 +5,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase } from "../../lib/supabase";
+import { validateOrigin } from "../../lib/csrf";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
@@ -21,6 +22,10 @@ let messageType: "success" | "error" | "" = "";
 let showMagicLink = false;
 
 if (Astro.request.method === "POST") {
+  if (!validateOrigin(Astro.request, Astro.url)) {
+    message = "⛔ Request blocked.";
+    messageType = "error";
+  } else {
   const formData = await Astro.request.formData();
   const action = formData.get("action")?.toString() || "";
   const email = formData.get("email")?.toString().trim() || "";
@@ -77,6 +82,7 @@ if (Astro.request.method === "POST") {
       return Astro.redirect(`/${lang}/profile/`);
     }
   }
+  } // end CSRF else
 }
 ---
 

@@ -8,6 +8,24 @@ export const POST: APIRoute = async ({ request }) => {
   const headers = { "Content-Type": "application/json" };
 
   try {
+    // ── IP-based rate limit: max 5 subscribes per hour ──
+    const clientIP = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const svc = getServiceClient();
+
+    const { count } = await svc
+      .from("newsletter_subscribers")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", new Date(Date.now() - 3600000).toISOString());
+
+    // Simple global throttle: if more than 30 new subs per hour, rate limit
+    // (per-IP tracking would require a separate table; this prevents bulk abuse)
+    if ((count ?? 0) > 30) {
+      return new Response(JSON.stringify({ error: "Too many requests" }), {
+        status: 429,
+        headers,
+      });
+    }
+
     const body = await request.json();
     const { email, name, source, lang_pref } = body;
 
@@ -29,7 +47,6 @@ export const POST: APIRoute = async ({ request }) => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = (name || "").trim();
     const lang = lang_pref || "en";
-    const svc = getServiceClient();
 
     const { data, error } = await svc.from("newsletter_subscribers").insert({
       email: cleanEmail,
@@ -63,7 +80,7 @@ export const POST: APIRoute = async ({ request }) => {
             })
             .eq("email", cleanEmail);
 
-          const emailSent = await sendConfirmationEmail(cleanEmail, cleanName, existing.confirm_token, lang);
+          const emailSent = await sendConfirmationEmail(cleanEmail, cleanName, existing.confirm_token!, lang);
           if (!emailSent) {
             return new Response(JSON.stringify({ error: "Failed to send confirmation email" }), {
               status: 502,
@@ -96,7 +113,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Await confirmation email — must complete before serverless function exits
-    const emailSent = await sendConfirmationEmail(cleanEmail, cleanName, data.confirm_token, lang);
+    const emailSent = await sendConfirmationEmail(cleanEmail, cleanName, data.confirm_token!, lang);
     if (!emailSent) {
       return new Response(JSON.stringify({ error: "Failed to send confirmation email" }), {
         status: 502,

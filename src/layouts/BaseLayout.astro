@@ -22,6 +22,7 @@ interface Props {
     description: string;
     datePublished: string;
     url: string;
+    ogImage?: string;
   };
   ogImage?: string;
 }
@@ -93,7 +94,9 @@ const articleJsonLd = articleSchema ? JSON.stringify({
       url: new URL(siteConfig.brandAssets.logoMark, siteConfig.siteUrl).toString()
     }
   },
-  image: new URL(siteConfig.brandAssets.ogCover, siteConfig.siteUrl).toString(),
+  image: articleSchema.ogImage
+    ? new URL(articleSchema.ogImage, siteConfig.siteUrl).toString()
+    : new URL(siteConfig.brandAssets.ogCover, siteConfig.siteUrl).toString(),
   mainEntityOfPage: {
     "@type": "WebPage",
     "@id": new URL(articleSchema.url, siteConfig.siteUrl).toString()
@@ -179,6 +182,7 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     <meta property="og:locale" content={lang === "es" ? "es_ES" : "en_US"} />
 
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@LtlChubbyPress" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />

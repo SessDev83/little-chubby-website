@@ -10,8 +10,8 @@ export const GET: APIRoute = async ({ url }) => {
   const lang = rawLang === "es" ? "es" : "en";
   const siteUrl = import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com";
 
-  if (!token) {
-    return new Response(null, { status: 302, headers: { Location: `${siteUrl}/${lang}/` } });
+  if (!token || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+    return new Response(null, { status: 302, headers: { Location: `${siteUrl}/${lang}/?msg=invalid-token` } });
   }
 
   const supabase = getServiceClient();
@@ -37,10 +37,10 @@ export const GET: APIRoute = async ({ url }) => {
     });
   }
 
-  // Confirm the subscriber
+  // Confirm the subscriber and rotate token (old link can't unsubscribe)
   const { error: updateErr } = await supabase
     .from("newsletter_subscribers")
-    .update({ confirmed: true })
+    .update({ confirmed: true, confirm_token: crypto.randomUUID() })
     .eq("id", subscriber.id);
 
   if (updateErr) {

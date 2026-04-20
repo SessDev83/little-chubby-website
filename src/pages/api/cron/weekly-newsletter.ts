@@ -332,11 +332,12 @@ export const GET: APIRoute = async ({ request }) => {
   // Auth: skip for preview (preview only returns HTML, never sends)
   if (!previewLang) {
     const cronSecret = import.meta.env.CRON_SECRET;
-    if (cronSecret) {
-      const auth = request.headers.get("authorization");
-      if (auth !== `Bearer ${cronSecret}`) {
-        return new Response("Unauthorized", { status: 401 });
-      }
+    if (!cronSecret) {
+      return new Response(JSON.stringify({ error: "CRON_SECRET not configured" }), { status: 500, headers });
+    }
+    const auth = request.headers.get("authorization");
+    if (auth !== `Bearer ${cronSecret}`) {
+      return new Response("Unauthorized", { status: 401 });
     }
   }
 

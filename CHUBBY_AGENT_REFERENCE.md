@@ -164,32 +164,45 @@ When users ask which book to get:
 
 ---
 
-## 5. PEANUTS ECONOMY 🥜
+## 5. REWARD ECONOMY: TICKETS 🎟️ + PEANUTS 🥜
 
-### What are Peanuts?
-Peanuts (🥜) are the loyalty currency of Little Chubby Press. Users earn them by participating in the community and can spend them in the Peanuts Shop.
+⚠️ **CRITICAL: The brand has TWO separate currencies. Never confuse them.**
 
-### How to Earn Peanuts
+### Tickets 🎟️ (Lottery Currency)
+Tickets are earned through book reviews and used to enter the monthly giveaway.
+
+| Action | Tickets Earned |
+|--------|---------------|
+| Approved book review | **+5 🎟️** |
+
+- Tickets are ONLY used to enter the monthly giveaway
+- Each approved review = 5 free lottery tickets
+- If a review is deleted or rejected after approval, the 5 Tickets are automatically revoked
+- Newsletter subscribers can also buy extra tickets with Peanuts (3 🥜 = 1 🎟️)
+
+### Peanuts 🥜 (Loyalty Currency)
+Peanuts are earned by sharing content and used in the Peanuts Shop.
 
 | Action | Peanuts Earned |
 |--------|---------------|
-| Submit an approved book review | **+5 🥜** |
 | Share a link (gallery or coloring page) | **+1 🥜** (max 3/day) |
+
+**⚠️ Reviews do NOT earn Peanuts. Reviews earn Tickets.**
 
 ### How to Spend Peanuts
 
 | Item | Cost | Description |
 |------|------|-------------|
+| **Extra Lottery Tickets** | 3 🥜 each | Buy additional giveaway tickets (max 20 per purchase, newsletter subscribers only) |
 | **Profile Badges** | 15 🥜 | Gold Frame, Silver Frame, Top Reviewer, Super Parent |
 | **Gallery Boost** | 10 🥜 | Pin review for 7 days OR Gold border for 7 days |
-| **Extra Lottery Entries** | 3 🥜 each | Buy additional giveaway tickets (max 20 per purchase) |
 | **Coloring Page Download** | 1 🥜 | Download a free coloring page from the Coloring Corner |
 | **Premium Coloring Pages** | Variable | Special premium artwork downloads |
 
 ### Important Rules
 - Peanuts balance is shown in the header (🥜 number) when logged in
+- Ticket balance is shown separately (🎟️ number) when logged in
 - Full transaction history available on the Peanuts page
-- If a review is deleted or rejected after approval, the 5 Peanuts are automatically revoked
 - Share rewards are capped at 3 per day to prevent spam
 - Duplicate shares of the same content don't earn additional Peanuts
 
@@ -242,12 +255,12 @@ The Gallery page shows approved book reviews with photos from real customers. It
 4. **Photo requirements:** JPG, PNG, WebP, or HEIC format; max 500KB each; max 5 photos total
 5. Photos are automatically compressed client-side before upload
 6. Review goes into "pending" status for admin moderation
-7. Once approved → +5 Peanuts earned, notification sent, review appears in gallery
+7. Once approved → +5 🎟️ Tickets earned, notification sent, review appears in gallery
 
 ### Review Status
 - **Pending** — Submitted, waiting for review
-- **Approved** — Visible in gallery, Peanuts earned
-- **Rejected** — Not shown, Peanuts not earned (or revoked if previously approved)
+- **Approved** — Visible in gallery, 5 Tickets earned
+- **Rejected** — Not shown, Tickets not earned (or revoked if previously approved)
 
 ### Gallery Features
 - Filter by book, rating, featured status
@@ -260,7 +273,7 @@ The Gallery page shows approved book reviews with photos from real customers. It
 ### Important Rules
 - One review per book per user
 - Users can update or delete their own reviews
-- Deleting an approved review revokes the 5 Peanuts
+- Deleting an approved review revokes the 5 Tickets
 
 ---
 
@@ -422,16 +435,16 @@ Two methods:
 ### Peanuts
 
 **Q: What are Peanuts?**
-> Peanuts 🥜 are our fun loyalty currency! You earn them by submitting book reviews (+5 per approved review) and sharing links (+1 each, max 3/day). Then spend them in our Peanuts Shop on badges, gallery boosts, extra lottery tickets, and coloring page downloads!
+> Peanuts 🥜 are our loyalty currency! You earn them by sharing links (+1 each, max 3/day). Spend them on badges, gallery boosts, extra lottery tickets, and coloring page downloads! Note: book reviews earn 🎟️ Tickets (not Peanuts) — 5 Tickets per approved review for the monthly giveaway.
 
 **Q: How do I earn Peanuts?**
-> Two ways: 1) Submit a book review with photos — when approved, you get +5 🥜. 2) Share gallery reviews or coloring pages — each share earns +1 🥜 (max 3 per day).
+> Share gallery reviews or coloring pages — each share earns +1 🥜 (max 3 per day). That is how you earn Peanuts! Note: book reviews earn 🎟️ Tickets instead (5 per approved review) which go toward the monthly giveaway.
 
 **Q: What can I buy with Peanuts?**
 > Profile badges (15 🥜), gallery boosts to highlight your review (10 🥜 for 7 days), extra lottery tickets (3 🥜 each), and coloring page downloads (1 🥜 each). Check the Peanuts Shop for all options!
 
 **Q: I don't have enough Peanuts!**
-> No worries! You can earn more by submitting reviews of books you've bought (5 🥜 each) or by sharing content on social media (1 🥜 per share, up to 3/day). Every little bit adds up!
+> No worries! You can earn more by sharing content on social media (1 🥜 per share, up to 3/day). Every little bit adds up! Remember, book reviews earn 🎟️ Tickets for the giveaway, not Peanuts.
 
 ### Giveaway / Lottery
 
@@ -465,7 +478,7 @@ Two methods:
 > Usually within 24-48 hours! You'll receive a notification and an email when your review is approved.
 
 **Q: Can I edit or delete my review?**
-> Yes! You can update or delete your reviews. Note: if you delete an approved review, the 5 Peanuts you earned will be revoked.
+> Yes! You can update or delete your reviews. Note: if you delete an approved review, the 5 Tickets you earned will be revoked.
 
 ### Coloring Corner
 
@@ -528,9 +541,9 @@ EN: Hmm, that's a great question I can't answer right now. I'd recommend reachin
 
 ### Encouraging Review Submission
 ```
-ES: ¡Nos encantaría ver las creaciones de tus peques! 🎨 Solo sube una foto de la portada y al menos una del interior en nuestra Galería. ¡Además ganarás 5 Peanuts 🥜 y 5 boletos para el sorteo mensual!
+ES: ¡Nos encantaría ver las creaciones de tus peques! 🎨 Solo sube una foto de la portada y al menos una del interior en nuestra Galería. ¡Además ganarás 5 🎟️ boletos para el sorteo mensual!
 
-EN: We'd love to see your little ones' creations! 🎨 Just upload a cover photo and at least one interior photo in our Gallery. Plus, you'll earn 5 Peanuts 🥜 and 5 tickets for the monthly giveaway!
+EN: We'd love to see your little ones' creations! 🎨 Just upload a cover photo and at least one interior photo in our Gallery. Plus, you'll earn 5 🎟️ tickets for the monthly giveaway!
 ```
 
 ### Promoting Newsletter

@@ -12,6 +12,7 @@ export default defineConfig({
 	output: 'static',
 	adapter: vercel(),
 	trailingSlash: 'always',
+	prefetch: true,
 	integrations: [sitemap({
 		filter: (page) => !page.includes('/admin/') && !page.includes('/api/')
 	})]

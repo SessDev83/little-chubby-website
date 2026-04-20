@@ -41,8 +41,8 @@ if (user?.email) {
     .select("confirmed, created_at")
     .eq("email", user.email.toLowerCase())
     .maybeSingle();
-  if (sub?.confirmed) {
-    const subDate = new Date(sub.created_at);
+  if (sub?.confirmed && sub.created_at) {
+    const subDate = new Date(sub.created_at as string);
     const fifteenDaysAgo = new Date();
     fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
     canSeeTickets = subDate <= fifteenDaysAgo;
@@ -76,8 +76,9 @@ const allWinners = [...(dbWinners ?? []), ...samplesForMissing];
 // Group by month, sort desc
 const grouped = new Map<string, typeof allWinners>();
 for (const w of allWinners) {
-  if (!grouped.has(w.month)) grouped.set(w.month, []);
-  grouped.get(w.month)!.push(w);
+  const m = (w.month ?? "unknown") as string;
+  if (!grouped.has(m)) grouped.set(m, []);
+  grouped.get(m)!.push(w);
 }
 // Sort each month group by tickets desc for ranking
 for (const [, arr] of grouped) {

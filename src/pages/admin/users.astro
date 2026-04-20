@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 
-import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
 
 const user = Astro.locals.user;
@@ -9,44 +9,164 @@ if (!user || !(await isAdmin(user))) {
   return Astro.redirect("/es/login/");
 }
 
-const serviceClient = getServiceClient();
+const sc = getServiceClient();
 
-const { data: profiles } = await serviceClient
+// ── Pagination & search params ──
+const PAGE_SIZE = 50;
+const page = Math.max(1, parseInt(Astro.url.searchParams.get("page") || "1", 10));
+const search = (Astro.url.searchParams.get("q") || "").trim().slice(0, 100);
+const offset = (page - 1) * PAGE_SIZE;
+
+// Escape special PostgreSQL pattern characters
+const safeLike = search.replace(/[%_\\]/g, (c) => `\\${c}`);
+
+let query = sc
   .from("profiles")
-  .select("id, email, display_name, lang_pref, is_admin, created_at")
-  .order("created_at", { ascending: false });
+  .select("id, email, display_name, lang_pref, suspended, is_admin, created_at", { count: "exact" });
+
+if (search) {
+  query = query.or(`email.ilike.%${safeLike}%,display_name.ilike.%${safeLike}%`);
+}
+
+const { data: profiles, count: totalCount } = await query
+  .order("created_at", { ascending: false })
+  .range(offset, offset + PAGE_SIZE - 1);
+
+// Fetch peanut balances for this page of users
+const userIds = (profiles ?? []).map(p => p.id);
+const balanceMap: Record<string, number> = {};
+if (userIds.length > 0) {
+  const { data: balances } = await sc
+    .from("credit_transactions")
+    .select("user_id, amount")
+    .in("user_id", userIds);
+  for (const b of balances ?? []) {
+    balanceMap[b.user_id] = (balanceMap[b.user_id] || 0) + b.amount;
+  }
+}
+
+const totalPages = Math.ceil((totalCount ?? 0) / PAGE_SIZE);
+const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString() : "—";
+
+function pageUrl(p: number) {
+  const params = new URLSearchParams();
+  params.set("page", String(p));
+  if (search) params.set("q", search);
+  return `?${params.toString()}`;
+}
 ---
 
-<BaseLayout lang="en" title="Users | Admin" description="User management" pathname="/admin/users/">
-  <section class="page-section container">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-      <h1>Users ({profiles?.length ?? 0})</h1>
-      <a href="/admin/" class="btn btn-secondary">← Back to Dashboard</a>
-    </div>
+<AdminLayout title="Users" current="users">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+    <h1>Users ({totalCount ?? 0})</h1>
+    <form method="GET" style="display:flex; gap:0.4rem; align-items:center;">
+      <input
+        type="text"
+        name="q"
+        value={search}
+        placeholder="Search by email or name…"
+        style="padding:0.4rem 0.6rem; border:1px solid var(--line); border-radius:var(--radius-sm); font-size:0.88rem; width:16rem;"
+      />
+      <button type="submit" class="btn btn-ghost" style="font-size:0.85rem;">🔍</button>
+      {search && <a href="/admin/users/" class="btn btn-ghost" style="font-size:0.85rem;">✕ Clear</a>}
+    </form>
+  </div>
 
-    <div style="margin-top:1.5rem; overflow-x:auto;">
-      <table style="width:100%; border-collapse:collapse; font-size:0.95rem;">
-        <thead>
-          <tr style="border-bottom:2px solid var(--line); text-align:left;">
-            <th style="padding:0.6rem 0.8rem; font-family:'Baloo 2',sans-serif;">Email</th>
-            <th style="padding:0.6rem 0.8rem; font-family:'Baloo 2',sans-serif;">Name</th>
-            <th style="padding:0.6rem 0.8rem; font-family:'Baloo 2',sans-serif;">Lang</th>
-            <th style="padding:0.6rem 0.8rem; font-family:'Baloo 2',sans-serif;">Admin</th>
-            <th style="padding:0.6rem 0.8rem; font-family:'Baloo 2',sans-serif;">Joined</th>
+  <div style="margin-top:1.5rem; overflow-x:auto;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Name</th>
+          <th>Lang</th>
+          <th>🥜</th>
+          <th>Status</th>
+          <th>Admin</th>
+          <th>Joined</th>
+        </tr>
+      </thead>
+      <tbody>
+        {profiles?.map((p) => (
+          <tr class={`clickable-row ${p.suspended ? "row-suspended" : ""}`} onclick={`window.location='/admin/users/${p.id}/'`}>
+            <td>{p.email}</td>
+            <td>{p.display_name || "—"}</td>
+            <td>{p.lang_pref}</td>
+            <td style="text-align:center; font-weight:600;">{balanceMap[p.id] ?? 0}</td>
+            <td>{p.suspended ? <span class="badge badge-red">Suspended</span> : <span class="badge badge-green">Active</span>}</td>
+            <td>{p.is_admin ? "✓" : ""}</td>
+            <td style="white-space:nowrap;">{fmtDate(p.created_at)}</td>
           </tr>
-        </thead>
-        <tbody>
-          {profiles?.map((p) => (
-            <tr style="border-bottom:1px solid var(--line);">
-              <td style="padding:0.6rem 0.8rem;">{p.email}</td>
-              <td style="padding:0.6rem 0.8rem;">{p.display_name || "—"}</td>
-              <td style="padding:0.6rem 0.8rem;">{p.lang_pref}</td>
-              <td style="padding:0.6rem 0.8rem;">{p.is_admin ? "✓" : ""}</td>
-              <td style="padding:0.6rem 0.8rem;">{new Date(p.created_at).toLocaleDateString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </section>
-</BaseLayout>
+        ))}
+        {(!profiles || profiles.length === 0) && (
+          <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--ink-soft);">No users found.</td></tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  {totalPages > 1 && (
+    <nav class="pagination">
+      {page > 1 && <a href={pageUrl(page - 1)} class="btn btn-ghost">← Prev</a>}
+      <span class="page-info">Page {page} of {totalPages}</span>
+      {page < totalPages && <a href={pageUrl(page + 1)} class="btn btn-ghost">Next →</a>}
+    </nav>
+  )}
+</AdminLayout>
+
+<style>
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+  }
+  .admin-table thead tr {
+    border-bottom: 2px solid var(--line);
+  }
+  .admin-table tbody tr {
+    border-bottom: 1px solid var(--line);
+  }
+  .row-suspended {
+    background: rgba(220,50,50,0.04);
+  }
+  .clickable-row {
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .clickable-row:hover {
+    background: rgba(43,108,176,0.06);
+  }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .badge-green {
+    background: rgba(92,150,80,0.14);
+    color: var(--brand-green);
+  }
+  .badge-red {
+    background: rgba(220,50,50,0.10);
+    color: #8f1f18;
+  }
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding: 1rem 0;
+  }
+  .page-info {
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+</style>

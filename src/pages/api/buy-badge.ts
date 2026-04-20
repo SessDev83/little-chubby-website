@@ -55,67 +55,37 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    // Check balance
-    const { data: balanceData } = await svc.rpc("get_user_credits", {
+    // ── Atomic purchase: check ownership + balance + insert badge + deduct ──
+    const { data: result, error: rpcErr } = await svc.rpc("purchase_badge", {
       p_user_id: user_id,
+      p_badge_type: badge_type,
+      p_cost: BADGE_COST,
     });
-    const balance = typeof balanceData === "number" ? balanceData : 0;
 
-    if (balance < BADGE_COST) {
-      return new Response(
-        JSON.stringify({ error: "insufficient_credits", balance, cost: BADGE_COST }),
-        { status: 403, headers }
-      );
-    }
-
-    // Check if user already owns this active badge
-    const { data: existing } = await svc
-      .from("profile_badges")
-      .select("id")
-      .eq("user_id", user_id)
-      .eq("badge_type", badge_type)
-      .eq("active", true)
-      .maybeSingle();
-
-    if (existing) {
-      return new Response(
-        JSON.stringify({ error: "already_owned", badge_type }),
-        { status: 409, headers }
-      );
-    }
-
-    // Insert badge
-    const { data: badge, error: badgeErr } = await svc
-      .from("profile_badges")
-      .insert({ user_id, badge_type })
-      .select("id")
-      .single();
-
-    if (badgeErr) {
-      return new Response(JSON.stringify({ error: badgeErr.message }), {
+    if (rpcErr) {
+      return new Response(JSON.stringify({ error: rpcErr.message }), {
         status: 500, headers,
       });
     }
 
-    // Deduct credits
-    const { error: crErr } = await svc.from("credit_transactions").insert({
-      user_id,
-      amount: -BADGE_COST,
-      reason: "badge",
-      ref_id: badge.id,
-    });
+    const res = result as { success: boolean; error?: string; balance?: number; cost?: number; badge_id?: string };
 
-    if (crErr) {
-      return new Response(JSON.stringify({ error: crErr.message }), {
-        status: 500, headers,
-      });
+    if (!res.success) {
+      const statusMap: Record<string, number> = {
+        insufficient_credits: 403,
+        already_owned: 409,
+      };
+      return new Response(
+        JSON.stringify({ error: res.error, balance: res.balance, cost: res.cost }),
+        { status: statusMap[res.error || ""] || 400, headers }
+      );
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        badge_id: badge.id,
-        balance: balance - BADGE_COST,
+        badge_id: res.badge_id,
+        balance: res.balance,
       }),
       { status: 200, headers }
     );

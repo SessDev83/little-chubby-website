@@ -76,77 +76,40 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       );
     }
 
-    // Check for existing active boost of same type
-    const { data: existingBoost } = await svc
-      .from("gallery_boosts")
-      .select("id, expires_at")
-      .eq("review_id", review_id)
-      .eq("boost_type", boost_type)
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
-
-    if (existingBoost) {
-      return new Response(
-        JSON.stringify({ error: "boost_active", expires_at: existingBoost.expires_at }),
-        { status: 409, headers }
-      );
-    }
-
-    // Check balance
-    const { data: balanceData } = await svc.rpc("get_user_credits", {
+    // ── Atomic purchase: check active boost + balance + insert + deduct ──
+    const { data: result, error: rpcErr } = await svc.rpc("purchase_boost", {
       p_user_id: user_id,
+      p_review_id: review_id,
+      p_boost_type: boost_type,
+      p_cost: BOOST_COST,
+      p_duration_days: BOOST_DURATION_DAYS,
     });
-    const balance = typeof balanceData === "number" ? balanceData : 0;
 
-    if (balance < BOOST_COST) {
+    if (rpcErr) {
+      return new Response(JSON.stringify({ error: rpcErr.message }), {
+        status: 500, headers,
+      });
+    }
+
+    const res = result as { success: boolean; error?: string; balance?: number; cost?: number; boost_id?: string; expires_at?: string };
+
+    if (!res.success) {
+      const statusMap: Record<string, number> = {
+        insufficient_credits: 403,
+        boost_active: 409,
+      };
       return new Response(
-        JSON.stringify({ error: "insufficient_credits", balance, cost: BOOST_COST }),
-        { status: 403, headers }
+        JSON.stringify({ error: res.error, balance: res.balance, cost: res.cost }),
+        { status: statusMap[res.error || ""] || 400, headers }
       );
-    }
-
-    // Calculate expiry
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + BOOST_DURATION_DAYS);
-
-    // Insert boost
-    const { data: boost, error: boostErr } = await svc
-      .from("gallery_boosts")
-      .insert({
-        review_id,
-        user_id,
-        boost_type,
-        expires_at: expiresAt.toISOString(),
-      })
-      .select("id")
-      .single();
-
-    if (boostErr) {
-      return new Response(JSON.stringify({ error: boostErr.message }), {
-        status: 500, headers,
-      });
-    }
-
-    // Deduct credits
-    const { error: crErr } = await svc.from("credit_transactions").insert({
-      user_id,
-      amount: -BOOST_COST,
-      reason: "boost",
-      ref_id: boost.id,
-    });
-
-    if (crErr) {
-      return new Response(JSON.stringify({ error: crErr.message }), {
-        status: 500, headers,
-      });
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        boost_id: boost.id,
-        expires_at: expiresAt.toISOString(),
-        balance: balance - BOOST_COST,
+        boost_id: res.boost_id,
+        expires_at: res.expires_at,
+        balance: res.balance,
       }),
       { status: 200, headers }
     );

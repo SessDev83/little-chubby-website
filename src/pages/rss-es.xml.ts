@@ -15,6 +15,7 @@ export async function GET() {
       pubDate: new Date(`${post.data.date}T00:00:00`),
       description: post.data.summary,
       link: `/es/blog/${post.id.replace(/^es\//, "")}/`,
+      categories: post.data.tags || [],
     })),
     customData: `<language>es</language>`,
   });

@@ -5,6 +5,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase } from "../../lib/supabase";
+import { validateOrigin } from "../../lib/csrf";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
@@ -18,7 +19,7 @@ if (!user) {
 // Fetch profile
 interface Profile {
   display_name: string | null;
-  lang_pref: string;
+  lang_pref: string | null;
   avatar_url: string | null;
   phone: string | null;
   address_line1: string | null;
@@ -43,20 +44,24 @@ const { data: profileData } = await supabase
 profile = profileData;
 
 if (Astro.request.method === "POST") {
+  if (!validateOrigin(Astro.request, Astro.url)) {
+    saveMessage = "⛔ Request blocked.";
+    saveMessageType = "error";
+  } else {
   const formData = await Astro.request.formData();
   const action = formData.get("action")?.toString() || "save-profile";
 
   if (action === "save-profile") {
     const updates = {
-      display_name: formData.get("display_name")?.toString().trim() || null,
+      display_name: formData.get("display_name")?.toString().trim().slice(0, 100) || null,
       lang_pref: formData.get("lang_pref")?.toString().trim() || "es",
-      phone: formData.get("phone")?.toString().trim() || null,
-      address_line1: formData.get("address_line1")?.toString().trim() || null,
-      address_line2: formData.get("address_line2")?.toString().trim() || null,
-      city: formData.get("city")?.toString().trim() || null,
-      state: formData.get("state")?.toString().trim() || null,
-      zip_code: formData.get("zip_code")?.toString().trim() || null,
-      country: formData.get("country")?.toString().trim() || null,
+      phone: formData.get("phone")?.toString().trim().slice(0, 30) || null,
+      address_line1: formData.get("address_line1")?.toString().trim().slice(0, 200) || null,
+      address_line2: formData.get("address_line2")?.toString().trim().slice(0, 200) || null,
+      city: formData.get("city")?.toString().trim().slice(0, 100) || null,
+      state: formData.get("state")?.toString().trim().slice(0, 100) || null,
+      zip_code: formData.get("zip_code")?.toString().trim().slice(0, 20) || null,
+      country: formData.get("country")?.toString().trim().slice(0, 100) || null,
     };
 
     const { error } = await supabase
@@ -105,6 +110,7 @@ if (Astro.request.method === "POST") {
       }
     }
   }
+  } // end CSRF else
 }
 
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;

@@ -6,10 +6,11 @@ import crypto from "node:crypto";
 
 export const prerender = false;
 
-/** Cryptographically secure random index */
+/** Cryptographically secure random index (rejection sampling to avoid modulo bias) */
 function secureRandomIndex(max: number): number {
   const arr = new Uint32Array(1);
-  crypto.getRandomValues(arr);
+  const limit = Math.floor(0x100000000 / max) * max;
+  do { crypto.getRandomValues(arr); } while (arr[0] >= limit);
   return arr[0] % max;
 }
 
@@ -18,11 +19,12 @@ export const GET: APIRoute = async ({ request }) => {
 
   // ── Verify cron secret ─────────────────────────────
   const cronSecret = import.meta.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = request.headers.get("authorization");
-    if (auth !== `Bearer ${cronSecret}`) {
-      return new Response("Unauthorized", { status: 401 });
-    }
+  if (!cronSecret) {
+    return new Response(JSON.stringify({ error: "CRON_SECRET not configured" }), { status: 500, headers });
+  }
+  const auth = request.headers.get("authorization");
+  if (auth !== `Bearer ${cronSecret}`) {
+    return new Response("Unauthorized", { status: 401 });
   }
 
   const svc = getServiceClient();

@@ -303,17 +303,17 @@ const giveawayTemplates = {
 const shareEarnTemplates = {
   en: [
     () => ({
-      text: `Did you know sharing earns you free coloring pages? 🥜\n\nWith our Peanuts loyalty system:\n- Share a gallery photo = +1 Peanut\n- Submit a book review = +5 Peanuts\n- 1 Peanut = 1 free coloring page download\n\nThe more you share, the more free stuff you unlock!`,
+      text: `Here's how our free rewards work \u{1F95C}\n\nWe built two ways to earn on our site:\n- Share a gallery review or coloring page link = +1 Peanut\n- 1 Peanut = 1 free coloring page download\n- Submit a book review = +5 \u{1F39F}\u{FE0F} Tickets for the monthly giveaway\n\nThe more you spread the word, the more free stuff you unlock!`,
       cta: `Learn about Peanuts: ${siteUrl("/en/peanuts")}`,
     }),
     () => ({
-      text: `Free coloring pages just for sharing with friends! 🎨🥜\n\nOur Peanuts system rewards you for being part of the community.\n\nShare, review, earn — it's that simple!`,
+      text: `Free coloring pages just for spreading the word! \u{1F3A8}\u{1F95C}\n\nOur Peanuts system rewards you for sharing review links and coloring pages with friends.\n\nShare a link, earn a Peanut, download free pages \u{2014} it's that simple!`,
       cta: `Start earning: ${siteUrl("/en/peanuts")}`,
     }),
   ],
   es: [
     () => ({
-      text: `¿Sabias que compartir te da paginas para colorear gratis? 🥜\n\nCon nuestro sistema de Peanuts:\n- Compartir una foto = +1 Peanut\n- Subir una resena = +5 Peanuts\n- 1 Peanut = 1 pagina gratis\n\n¡Mientras mas compartes, mas ganas!`,
+      text: `Asi funcionan nuestras recompensas gratis \u{1F95C}\n\nCreamos dos formas de ganar en nuestro sitio:\n- Comparte el link de una rese\u00F1a o pagina para colorear = +1 Peanut\n- 1 Peanut = 1 pagina gratis\n- Sube una rese\u00F1a de libro = +5 \u{1F39F}\u{FE0F} boletos para el sorteo\n\n\u00A1Mientras mas compartes, mas ganas!`,
       cta: `Conoce los Peanuts: ${siteUrl("/es/peanuts")}`,
     }),
   ],

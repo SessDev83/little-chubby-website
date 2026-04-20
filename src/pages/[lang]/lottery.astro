@@ -5,6 +5,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase, getServiceClient } from "../../lib/supabase";
+import { validateOrigin } from "../../lib/csrf";
 import { books, getMonthlyPrizeBook } from "../../data/books";
 import { notifyLotteryClaim } from "../../lib/notifications";
 
@@ -134,6 +135,9 @@ if (user) {
 
   // ── Handle POST actions ──────────────────────────
   if (Astro.request.method === "POST") {
+    if (!validateOrigin(Astro.request, Astro.url)) {
+      claimMsg = "⛔ Request blocked.";
+    } else {
     const formData = await Astro.request.formData();
     const action = formData.get("action")?.toString();
 
@@ -151,9 +155,9 @@ if (user) {
         claimMsg = text.claimExpired;
         pendingClaim = null;
       } else {
-        const bookChosen = formData.get("book_chosen")?.toString() || "";
-        const shippingName = formData.get("shipping_name")?.toString().trim() || "";
-        const shippingAddress = formData.get("shipping_address")?.toString().trim() || "";
+        const bookChosen = formData.get("book_chosen")?.toString().slice(0, 100) || "";
+        const shippingName = (formData.get("shipping_name")?.toString().trim() || "").slice(0, 200);
+        const shippingAddress = (formData.get("shipping_address")?.toString().trim() || "").slice(0, 500);
 
         if (bookChosen && shippingName && shippingAddress) {
           await sc
@@ -172,6 +176,7 @@ if (user) {
         }
       }
     }
+    } // end CSRF else
   }
 }
 

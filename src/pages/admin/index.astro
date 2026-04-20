@@ -1,7 +1,7 @@
 ---
 export const prerender = false;
 
-import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
 
 const user = Astro.locals.user;
@@ -9,68 +9,158 @@ if (!user || !(await isAdmin(user))) {
   return Astro.redirect("/es/login/");
 }
 
-const serviceClient = getServiceClient();
-
-// Stats
-const { count: usersCount } = await serviceClient
-  .from("profiles")
-  .select("*", { count: "exact", head: true });
-
+const sc = getServiceClient();
 const currentMonth = new Date().toISOString().slice(0, 7);
 
-const { count: pendingReviews } = await serviceClient
-  .from("book_reviews")
-  .select("*", { count: "exact", head: true })
-  .eq("status", "pending");
+// ── Stats (parallel queries) ──
+const [
+  { count: usersCount },
+  { count: pendingReviews },
+  { count: approvedReviews },
+  { count: winnersCount },
+  { count: subscriberCount },
+  { data: creditRows },
+  { data: monthEntries },
+  { data: recentAudit },
+] = await Promise.all([
+  sc.from("profiles").select("*", { count: "exact", head: true }),
+  sc.from("book_reviews").select("*", { count: "exact", head: true }).eq("status", "pending"),
+  sc.from("book_reviews").select("*", { count: "exact", head: true }).eq("status", "approved"),
+  sc.from("lottery_winners").select("*", { count: "exact", head: true }),
+  sc.from("newsletter_subscribers").select("*", { count: "exact", head: true }).eq("confirmed", true),
+  sc.from("credit_transactions").select("amount").limit(10000),
+  sc.from("lottery_entries").select("entry_count").eq("month", currentMonth),
+  sc.from("admin_audit_log").select("action, target_type, target_id, created_at, admin_id").order("created_at", { ascending: false }).limit(10),
+]);
 
-const { count: approvedReviews } = await serviceClient
-  .from("book_reviews")
-  .select("*", { count: "exact", head: true })
-  .eq("status", "approved");
-
-const { count: winnersCount } = await serviceClient
-  .from("lottery_winners")
-  .select("*", { count: "exact", head: true });
+const peanutsInCirculation = (creditRows ?? []).reduce((sum, c) => sum + (c.amount ?? 0), 0);
+const monthlyTickets = (monthEntries ?? []).reduce((sum, e) => sum + (e.entry_count ?? 0), 0);
 ---
 
-<BaseLayout lang="en" title="Admin Dashboard | Little Chubby Press" description="Admin dashboard" pathname="/admin/">
-  <section class="page-section container">
-    <h1>Admin Dashboard</h1>
-    <p>Welcome, {user.email}</p>
+<AdminLayout title="Dashboard" current="dashboard">
+  <h1>Dashboard</h1>
+  <p style="margin-top:0.3rem; color:var(--ink-soft);">Welcome, {user.email} · {currentMonth}</p>
 
-    <div class="admin-stats" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(12rem,1fr)); gap:1rem; margin-top:2rem;">
-      <div class="surface-card" style="padding:1.4rem; text-align:center;">
-        <div style="font-size:2rem; font-weight:700; color:var(--brand-blue); font-family:'Baloo 2',sans-serif;">
-          {usersCount ?? 0}
-        </div>
-        <div style="color:var(--ink-soft);">Registered Users</div>
-      </div>
+  {/* ── Stat Cards ── */}
+  <div class="stat-grid">
+    <a href="/admin/users/" class="stat-card">
+      <div class="stat-number" style="color:var(--brand-blue);">{usersCount ?? 0}</div>
+      <div class="stat-label">Registered Users</div>
+    </a>
 
-      <div class="surface-card" style="padding:1.4rem; text-align:center;">
-        <div style="font-size:2rem; font-weight:700; color:var(--brand-green); font-family:'Baloo 2',sans-serif;">
-          {approvedReviews ?? 0}
-        </div>
-        <div style="color:var(--ink-soft);">Approved Reviews</div>
-      </div>
+    <a href="/admin/reviews/" class="stat-card">
+      <div class="stat-number" style="color:var(--brand-green);">{approvedReviews ?? 0}</div>
+      <div class="stat-label">Approved Reviews</div>
+    </a>
 
-      <div class="surface-card" style="padding:1.4rem; text-align:center;">
-        <div style="font-size:2rem; font-weight:700; color:var(--brand-brown); font-family:'Baloo 2',sans-serif;">
-          {pendingReviews ?? 0}
-        </div>
-        <div style="color:var(--ink-soft);">Pending Reviews</div>
-      </div>
+    <a href="/admin/reviews/" class="stat-card stat-alert">
+      <div class="stat-number" style="color:var(--brand-brown);">{pendingReviews ?? 0}</div>
+      <div class="stat-label">⚠️ Pending Reviews</div>
+    </a>
 
-      <div class="surface-card" style="padding:1.4rem; text-align:center;">
-        <div style="font-size:2rem; font-weight:700; color:var(--accent-gold); font-family:'Baloo 2',sans-serif;">
-          {winnersCount ?? 0}
-        </div>
-        <div style="color:var(--ink-soft);">Total Winners</div>
-      </div>
+    <a href="/admin/lottery/" class="stat-card">
+      <div class="stat-number" style="color:var(--accent-gold);">{winnersCount ?? 0}</div>
+      <div class="stat-label">Total Winners</div>
+    </a>
+
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--brand-blue);">{subscriberCount ?? 0}</div>
+      <div class="stat-label">📧 Newsletter Subs</div>
     </div>
 
-    <nav style="display:flex; gap:1rem; margin-top:2rem; flex-wrap:wrap;">
-      <a href="/admin/users/" class="btn btn-primary">Manage Users</a>
-      <a href="/admin/lottery/" class="btn btn-primary">Lottery Draw</a>
-    </nav>
-  </section>
-</BaseLayout>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--brand-green);">{peanutsInCirculation.toLocaleString()}</div>
+      <div class="stat-label">🥜 Peanuts in Circulation</div>
+    </div>
+
+    <a href="/admin/lottery/" class="stat-card">
+      <div class="stat-number" style="color:var(--brand-blue);">{monthlyTickets}</div>
+      <div class="stat-label">🎟️ Tickets This Month</div>
+    </a>
+  </div>
+
+  {/* ── Recent Audit Log ── */}
+  {recentAudit && recentAudit.length > 0 && (
+    <div class="surface-card" style="padding:1.4rem; margin-top:2rem;">
+      <h2 style="margin-bottom:0.8rem;">📋 Recent Activity</h2>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Action</th>
+              <th>Type</th>
+              <th>Target</th>
+              <th>Admin</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentAudit.map((log: any) => (
+              <tr>
+                <td style="white-space:nowrap; font-size:0.82rem; color:var(--ink-soft);">{new Date(log.created_at).toLocaleString()}</td>
+                <td><code style="font-size:0.82rem;">{log.action}</code></td>
+                <td>{log.target_type}</td>
+                <td style="max-width:10rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{log.target_id || "—"}</td>
+                <td style="font-size:0.82rem;">{log.admin_id}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
+</AdminLayout>
+
+<style>
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .stat-card {
+    display: block;
+    padding: 1.4rem;
+    text-align: center;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  a.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .stat-alert {
+    border-color: rgba(220,150,50,0.4);
+    background: rgba(220,150,50,0.06);
+  }
+  .stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: 'Baloo 2', sans-serif;
+  }
+  .stat-label {
+    color: var(--ink-soft);
+    font-size: 0.88rem;
+    margin-top: 0.2rem;
+  }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+  }
+  .admin-table thead tr {
+    border-bottom: 2px solid var(--line);
+  }
+  .admin-table tbody tr {
+    border-bottom: 1px solid var(--line);
+  }
+</style>

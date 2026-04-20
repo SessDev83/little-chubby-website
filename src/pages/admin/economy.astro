@@ -1,0 +1,250 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const sc = getServiceClient();
+
+// ── Data queries (parallel) ──────────────────────────
+const [
+  { data: allProfiles },
+  { data: recentCredits },
+  { data: artworkRevenue },
+  { data: boostPurchases },
+  { data: allCredits },
+] = await Promise.all([
+  sc.from("profiles").select("id, display_name, email").limit(200),
+  sc.from("credit_transactions")
+    .select("id, user_id, amount, reason, ref_id, created_at")
+    .order("created_at", { ascending: false })
+    .limit(100),
+  sc.from("artwork_downloads").select("artwork_id, user_id, downloaded_at").limit(1000),
+  sc.from("gallery_boosts").select("id, user_id, boost_type, purchased_at").limit(500),
+  sc.from("credit_transactions").select("user_id, amount").limit(10000),
+]);
+
+// ── Computed stats ────────────────────────────────────
+const profiles = allProfiles ?? [];
+const credits = recentCredits ?? [];
+
+// Compute per-user peanut balances from credit_transactions
+const peanutMap: Record<string, number> = {};
+for (const c of allCredits ?? []) {
+  peanutMap[c.user_id] = (peanutMap[c.user_id] || 0) + c.amount;
+}
+
+const totalPeanuts = Object.values(peanutMap).reduce((s, v) => s + v, 0);
+const totalUsers = profiles.length;
+const usersWithPeanuts = Object.values(peanutMap).filter(v => v > 0).length;
+
+// Top earners (by current balance)
+const topEarners = profiles
+  .map(p => ({ ...p, peanuts: peanutMap[p.id] ?? 0 }))
+  .sort((a, b) => b.peanuts - a.peanuts)
+  .slice(0, 15);
+
+// Credits given by reason
+const reasonCounts: Record<string, { count: number; total: number }> = {};
+for (const c of credits) {
+  const r = c.reason || "unknown";
+  if (!reasonCounts[r]) reasonCounts[r] = { count: 0, total: 0 };
+  reasonCounts[r].count++;
+  reasonCounts[r].total += c.amount;
+}
+
+// Recent large transactions (|amount| >= 50)
+const largeTransactions = credits.filter(c => Math.abs(c.amount) >= 50).slice(0, 30);
+
+// Top spenders = users with most negative transactions total
+const spendByUser: Record<string, number> = {};
+for (const c of credits) {
+  if (c.amount < 0) {
+    spendByUser[c.user_id] = (spendByUser[c.user_id] || 0) + Math.abs(c.amount);
+  }
+}
+// Profile lookup
+const profileMap: Record<string, string> = {};
+for (const p of profiles) {
+  profileMap[p.id] = p.display_name || p.email || p.id.slice(0, 8);
+}
+
+const topSpenders = Object.entries(spendByUser)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 15)
+  .map(([uid, spent]) => {
+    return { uid, spent, name: profileMap[uid] || uid.slice(0, 8) };
+  });
+
+const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+---
+
+<AdminLayout title="Economy" current="economy">
+  <h1>🥜 Economy Overview</h1>
+
+  {/* ── Summary Cards ── */}
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-value">{totalPeanuts.toLocaleString()}</div>
+      <div class="stat-label">Peanuts in Circulation</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{usersWithPeanuts}</div>
+      <div class="stat-label">Users with Peanuts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{totalUsers > 0 ? Math.round(totalPeanuts / totalUsers) : 0}</div>
+      <div class="stat-label">Avg Peanuts/User</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{(artworkRevenue ?? []).length}</div>
+      <div class="stat-label">Total Downloads</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{(boostPurchases ?? []).length}</div>
+      <div class="stat-label">Boost Purchases</div>
+    </div>
+  </div>
+
+  {/* ── Credit Breakdown by Reason ── */}
+  <h2>Credit Flow by Reason</h2>
+  <table class="admin-table">
+    <thead><tr><th>Reason</th><th>Count</th><th>Net Amount</th></tr></thead>
+    <tbody>
+      {Object.entries(reasonCounts)
+        .sort((a, b) => b[1].count - a[1].count)
+        .map(([reason, { count, total }]) => (
+          <tr>
+            <td><code>{reason}</code></td>
+            <td>{count}</td>
+            <td class={total >= 0 ? "text-green" : "text-red"}>
+              {total >= 0 ? "+" : ""}{total}
+            </td>
+          </tr>
+        ))}
+    </tbody>
+  </table>
+
+  <div class="two-col">
+    {/* ── Top Earners ── */}
+    <div>
+      <h2>🏆 Top Earners (Balance)</h2>
+      <table class="admin-table">
+        <thead><tr><th>#</th><th>User</th><th>Balance</th></tr></thead>
+        <tbody>
+          {topEarners.map((p, i) => (
+            <tr>
+              <td>{i + 1}</td>
+              <td><a href={`/admin/users/${p.id}/`}>{p.display_name || p.email || p.id.slice(0, 8)}</a></td>
+              <td>{(p.peanuts ?? 0).toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {/* ── Top Spenders ── */}
+    <div>
+      <h2>💸 Top Spenders</h2>
+      <table class="admin-table">
+        <thead><tr><th>#</th><th>User</th><th>Spent</th></tr></thead>
+        <tbody>
+          {topSpenders.length === 0 && (
+            <tr><td colspan="3" style="text-align:center;color:var(--ink-soft);">No spending recorded yet.</td></tr>
+          )}
+          {topSpenders.map((s, i) => (
+            <tr>
+              <td>{i + 1}</td>
+              <td><a href={`/admin/users/${s.uid}/`}>{s.name}</a></td>
+              <td>{s.spent.toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {/* ── Recent Large Transactions ── */}
+  <h2>📋 Recent Large Transactions (≥50)</h2>
+  <table class="admin-table">
+    <thead>
+      <tr><th>Date</th><th>User</th><th>Amount</th><th>Reason</th><th>Note</th></tr>
+    </thead>
+    <tbody>
+      {largeTransactions.length === 0 && (
+        <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">No large transactions yet.</td></tr>
+      )}
+      {largeTransactions.map(c => (
+        <tr>
+          <td>{fmt(c.created_at)}</td>
+          <td><a href={`/admin/users/${c.user_id}/`}>{profileMap[c.user_id] || c.user_id.slice(0, 8)}</a></td>
+          <td class={c.amount >= 0 ? "text-green" : "text-red"}>
+            {c.amount >= 0 ? "+" : ""}{c.amount}
+          </td>
+          <td><code>{c.reason}</code></td>
+          <td>{c.ref_id || "—"}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</AdminLayout>
+
+<style>
+  h1 { margin: 0 0 1.5rem; font-size: 1.6rem; }
+  h2 { margin: 2rem 0 0.8rem; font-size: 1.15rem; }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: var(--surface-strong, #f8f8f8);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    text-align: center;
+  }
+  .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--brand-blue); }
+  .stat-label { font-size: 0.82rem; color: var(--ink-soft); margin-top: 0.2rem; }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+  @media (max-width: 768px) {
+    .two-col { grid-template-columns: 1fr; }
+  }
+
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+  }
+  .admin-table th {
+    background: var(--surface-strong, #f4f4f4);
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--ink-soft);
+  }
+  .admin-table a { color: var(--brand-blue); text-decoration: none; }
+  .admin-table a:hover { text-decoration: underline; }
+  code { font-size: 0.82rem; background: var(--surface); padding: 0.1rem 0.3rem; border-radius: 3px; }
+  .text-green { color: #16a34a; font-weight: 600; }
+  .text-red { color: #dc2626; font-weight: 600; }
+</style>
