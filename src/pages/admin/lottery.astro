@@ -430,10 +430,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
           <p style="font-size:0.85rem; margin:0 0 0.4rem; color:var(--brand-blue);">📖 Auto-rotation: <strong>{prizeBook.title.en}</strong></p>
           <input type="text" name="prize_description" value={config?.prize_description ?? ""} placeholder="e.g. Free shipping included!" style="width:100%;" />
         </div>
-        <div class="form-group">
-          <label>Participant Boost <span style="font-size:0.8rem; color:var(--ink-soft);">(fake extra shown publicly)</span></label>
-          <input type="number" name="participant_boost" value={config?.participant_boost ?? 0} min="0" max="500" />
-        </div>
+        <input type="hidden" name="participant_boost" value={config?.participant_boost ?? 0} />
         <button type="submit" class="btn btn-secondary">Save Config</button>
       </form>
     </div>

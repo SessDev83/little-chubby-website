@@ -196,7 +196,7 @@ const availableBooks = bookOptions.filter(b => !reviewedBookIds.has(b.id));
 const bookMap = Object.fromEntries(bookOptions.map(b => [b.id, b.title]));
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 
-// Approved reviews earn 5 peanuts each
+// Approved reviews earn 5 tickets each
 const approvedCount = myReviews.filter(r => r.status === "approved").length;
 ---
 

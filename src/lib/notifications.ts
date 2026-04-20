@@ -406,7 +406,7 @@ export async function emailUserReviewApproved(
     : `🎉 Your review of "${bookTitle}" was approved!`;
   const rows: [string, string | { raw: string }][] = [
     [isEs ? "Libro" : "Book", bookTitle],
-    [isEs ? "Peanuts ganados" : "Peanuts earned", "5 🥜"],
+    [isEs ? "Tickets ganados" : "Tickets earned", "5 🎟️"],
   ];
   if (reviewerNote?.trim()) {
     rows.push([isEs ? "Mensaje del equipo" : "Team message", reviewerNote.trim()]);
@@ -416,8 +416,8 @@ export async function emailUserReviewApproved(
     isEs ? "¡Review Aprobada!" : "Review Approved!",
     rows,
     isEs
-      ? "¡Puedes gastar tus Peanuts en la Tienda! Visita littlechubbypress.com"
-      : "Spend your Peanuts in the Shop! Visit littlechubbypress.com"
+      ? "¡Usa tus Tickets en el Sorteo mensual! Visita littlechubbypress.com"
+      : "Use your Tickets in the monthly Giveaway! Visit littlechubbypress.com"
   );
   await sendToUser(userEmail, subject, html);
 }
