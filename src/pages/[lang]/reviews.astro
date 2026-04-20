@@ -418,14 +418,6 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
 
 <script is:inline>
   document.addEventListener("astro:page-load", () => {
-    // ── VERSION BADGE (temporary — remove after debugging) ──
-    var _v = "v7-stable-compress-0419";
-    console.log("[REVIEWS] version: " + _v);
-    var _vb = document.createElement("div");
-    _vb.textContent = _v;
-    _vb.style.cssText = "position:fixed;bottom:4px;right:4px;background:#000;color:#0f0;font:bold 11px monospace;padding:2px 6px;border-radius:4px;z-index:99999;opacity:0.8;pointer-events:none;";
-    document.body.appendChild(_vb);
-
     // ── Searchable book selector ─────────────────
     const searchInput = document.getElementById("bookSearch");
     const hiddenInput = document.getElementById("book_id");

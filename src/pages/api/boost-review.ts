@@ -43,6 +43,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const svc = getServiceClient();
 
+    // ── Rate limit: max 5 boosts per hour ──
+    const { data: underLimit } = await svc.rpc("check_rate_limit", {
+      p_user_id: user_id,
+      p_action: "boost",
+      p_max_per_hour: 5,
+    });
+    if (underLimit === false) {
+      return new Response(
+        JSON.stringify({ error: "rate_limited" }),
+        { status: 429, headers }
+      );
+    }
+
     // Verify the review belongs to this user and is approved
     const { data: review } = await svc
       .from("book_reviews")

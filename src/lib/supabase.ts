@@ -17,7 +17,26 @@ export function getServiceClient() {
   return createClient(supabaseUrl, serviceKey);
 }
 
+/** Hardcoded fallback — always grants access to these emails */
 export const ADMIN_EMAILS = [
   "ivan.c4u@gmail.com",
   "hello@littlechubbypress.com",
 ];
+
+/** Check admin access: DB is_admin flag OR hardcoded email list */
+export async function isAdmin(user: { id: string; email?: string }): Promise<boolean> {
+  // Fast path: hardcoded list
+  if (user.email && ADMIN_EMAILS.includes(user.email)) return true;
+  // DB check: profiles.is_admin
+  try {
+    const sc = getServiceClient();
+    const { data } = await sc
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+    return data?.is_admin === true;
+  } catch {
+    return false;
+  }
+}

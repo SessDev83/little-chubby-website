@@ -42,6 +42,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const svc = getServiceClient();
 
+    // ── Rate limit: max 5 badge purchases per hour ──
+    const { data: underLimit } = await svc.rpc("check_rate_limit", {
+      p_user_id: user_id,
+      p_action: "badge",
+      p_max_per_hour: 5,
+    });
+    if (underLimit === false) {
+      return new Response(
+        JSON.stringify({ error: "rate_limited" }),
+        { status: 429, headers }
+      );
+    }
+
     // Check balance
     const { data: balanceData } = await svc.rpc("get_user_credits", {
       p_user_id: user_id,

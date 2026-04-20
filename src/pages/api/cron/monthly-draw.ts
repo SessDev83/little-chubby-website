@@ -2,8 +2,16 @@ import type { APIRoute } from "astro";
 import { getServiceClient } from "../../../lib/supabase";
 import { getMonthlyPrizeBook } from "../../../data/books";
 import { emailUserLotteryWin, notifyAdminMonthlyDraw, notifyAdminCronError, notifyAdminExpiredClaims } from "../../../lib/notifications";
+import crypto from "node:crypto";
 
 export const prerender = false;
+
+/** Cryptographically secure random index */
+function secureRandomIndex(max: number): number {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return arr[0] % max;
+}
 
 export const GET: APIRoute = async ({ request }) => {
   const headers = { "Content-Type": "application/json" };
@@ -118,7 +126,7 @@ export const GET: APIRoute = async ({ request }) => {
       const winnerIds = new Set<string>();
       let attempts = 0;
       while (winnerIds.size < numToDraw && attempts < weightedPool.length * 10) {
-        const idx = Math.floor(Math.random() * weightedPool.length);
+        const idx = secureRandomIndex(weightedPool.length);
         winnerIds.add(weightedPool[idx]);
         attempts++;
       }

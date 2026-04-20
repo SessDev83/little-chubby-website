@@ -2,10 +2,10 @@
 export const prerender = false;
 
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { ADMIN_EMAILS, getServiceClient } from "../../lib/supabase";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
 
 const user = Astro.locals.user;
-if (!user || !ADMIN_EMAILS.includes(user.email ?? "")) {
+if (!user || !(await isAdmin(user))) {
   return Astro.redirect("/es/login/");
 }
 

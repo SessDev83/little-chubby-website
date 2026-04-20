@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { supabase, getServiceClient } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 export const prerender = false;
 
@@ -19,8 +19,8 @@ export const GET: APIRoute = async ({ cookies }) => {
     return new Response(JSON.stringify({ reviews: [] }), { status: 401, headers });
   }
 
-  const sc = getServiceClient();
-  const { data: reviews } = await sc
+  // Use the authenticated user's session (RLS enforced) — no service client needed
+  const { data: reviews } = await supabase
     .from("book_reviews")
     .select("id, book_id, rating, status")
     .eq("user_id", user.id)

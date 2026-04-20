@@ -8,10 +8,24 @@ const RESEND_API_KEY = import.meta.env.RESEND_API_KEY;
 const ANALYTICS_EMAIL = import.meta.env.ANALYTICS_EMAIL || "ivan.c4u@gmail.com";
 const FROM = "Little Chubby Press <hello@littlechubbypress.com>";
 
+// ── HTML escape helper (prevents XSS in emails) ─────
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ── Plain-text-style HTML (avoids Gmail Promotions tab) ──
 
-function card(_emoji: string, title: string, rows: [string, string][], footer?: string): string {
-  const lines = rows.map(([label, value]) => `<b>${label}:</b> ${value}`).join("<br>");
+function card(_emoji: string, title: string, rows: [string, string | { raw: string }][], footer?: string): string {
+  const lines = rows.map(([label, value]) => {
+    const safeVal = typeof value === "object" && "raw" in value ? value.raw : escapeHtml(String(value));
+    return `<b>${escapeHtml(label)}:</b> ${safeVal}`;
+  }).join("<br>");
   const footerLine = footer ? `<br><span style="color:#999;font-size:12px">${footer}</span>` : "";
   return `<p><b>${title}</b></p><p>${lines}</p>${footerLine}<br><span style="color:#aaa;font-size:11px">${new Date().toISOString().replace("T", " ").slice(0, 16)} UTC</span>`;
 }
@@ -308,6 +322,7 @@ export async function notifyNewReview(
 ): Promise<void> {
   const totalReviews = await countRows("book_reviews");
   const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+  const moderationUrl = `${SITE_URL}/admin/lottery/`;
   await send(
     `📖 New Review (${stars}): ${bookTitle}`,
     card("📖", "New Book Review", [
@@ -316,6 +331,7 @@ export async function notifyNewReview(
       ["Rating", stars],
       ["Review", reviewText.slice(0, 200) || "—"],
       ["Total Reviews", String(totalReviews)],
+      ["Moderate", { raw: `<a href="${moderationUrl}" style="color:#1f4f86;font-weight:700">Open moderation queue</a>` }],
     ])
   );
 }
@@ -363,12 +379,14 @@ export async function notifyReviewUpdated(
   rating: number
 ): Promise<void> {
   const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+  const moderationUrl = `${SITE_URL}/admin/lottery/`;
   await send(
     `✏️ Review Updated (${stars}): ${bookTitle}`,
     card("✏️", "Review Updated", [
       ["User", userEmail],
       ["Book", bookTitle],
       ["New Rating", stars],
+      ["Moderate", { raw: `<a href="${moderationUrl}" style="color:#1f4f86;font-weight:700">Open moderation queue</a>` }],
     ])
   );
 }
@@ -379,22 +397,52 @@ export async function notifyReviewUpdated(
 export async function emailUserReviewApproved(
   userEmail: string,
   bookTitle: string,
-  lang: string
+  lang: string,
+  reviewerNote?: string
 ): Promise<void> {
   const isEs = lang === "es";
   const subject = isEs
     ? `🎉 ¡Tu review de "${bookTitle}" fue aprobada!`
     : `🎉 Your review of "${bookTitle}" was approved!`;
+  const rows: [string, string | { raw: string }][] = [
+    [isEs ? "Libro" : "Book", bookTitle],
+    [isEs ? "Peanuts ganados" : "Peanuts earned", "5 🥜"],
+  ];
+  if (reviewerNote?.trim()) {
+    rows.push([isEs ? "Mensaje del equipo" : "Team message", reviewerNote.trim()]);
+  }
   const html = card(
     "🎉",
     isEs ? "¡Review Aprobada!" : "Review Approved!",
-    [
-      [isEs ? "Libro" : "Book", bookTitle],
-      [isEs ? "Peanuts ganados" : "Peanuts earned", "5 🥜"],
-    ],
+    rows,
     isEs
       ? "¡Puedes gastar tus Peanuts en la Tienda! Visita littlechubbypress.com"
       : "Spend your Peanuts in the Shop! Visit littlechubbypress.com"
+  );
+  await sendToUser(userEmail, subject, html);
+}
+
+/** Notify user their review was rejected and include reviewer note */
+export async function emailUserReviewRejected(
+  userEmail: string,
+  bookTitle: string,
+  lang: string,
+  reviewerNote: string
+): Promise<void> {
+  const isEs = lang === "es";
+  const subject = isEs
+    ? `⚠️ Tu review de "${bookTitle}" necesita cambios`
+    : `⚠️ Your review of "${bookTitle}" needs changes`;
+  const html = card(
+    "⚠️",
+    isEs ? "Tu review fue rechazada" : "Your review was rejected",
+    [
+      [isEs ? "Libro" : "Book", bookTitle],
+      [isEs ? "Mensaje del revisor" : "Reviewer message", reviewerNote],
+    ],
+    isEs
+      ? "Puedes editar tu review, subir nuevas fotos y volver a enviarla desde tu panel."
+      : "You can edit your review, upload new photos, and resubmit it from your account."
   );
   await sendToUser(userEmail, subject, html);
 }
@@ -411,7 +459,7 @@ export async function emailUserLotteryWin(
   const subject = isEs
     ? "🏆 ¡Felicidades! ¡Ganaste el sorteo mensual!"
     : "🏆 Congratulations! You won the monthly giveaway!";
-  const rows: [string, string][] = [];
+  const rows: [string, string | { raw: string }][] = [];
   if (prizeBookTitle) {
     rows.push([isEs ? "Premio" : "Prize", `📖 ${prizeBookTitle}`]);
   }
@@ -420,7 +468,7 @@ export async function emailUserLotteryWin(
     [isEs ? "Qué hacer" : "What to do", isEs
       ? "Inicia sesión, elige tu libro y envía tu nombre completo y dirección de envío"
       : "Log in, choose your book and submit your full name and shipping address"],
-    [isEs ? "Reclama aquí" : "Claim here", `<a href="${claimUrl}" style="color:#6b4c3b;font-weight:700">${claimUrl}</a>`],
+    [isEs ? "Reclama aquí" : "Claim here", { raw: `<a href="${claimUrl}" style="color:#6b4c3b;font-weight:700">${escapeHtml(claimUrl)}</a>` }],
   );
   const html = card(
     "🏆",
@@ -456,7 +504,7 @@ export async function notifyAdminMonthlyDraw(report: MonthlyDrawReport): Promise
     ? report.winners.map(w => `${w.name} (${w.email})`).join(", ")
     : "None — no participants this month";
 
-  const rows: [string, string][] = [
+  const rows: [string, string | { raw: string }][] = [
     ["Month", report.month],
     ["Prize Book", report.prizeBook],
     ["Eligible Users", String(report.eligibleUsers)],
@@ -504,12 +552,12 @@ export async function notifyAdminCronError(job: string, errorMsg: string): Promi
 export async function notifyAdminExpiredClaims(
   claims: { email: string; month: string; deadline: string }[]
 ): Promise<void> {
-  const list = claims.map(c => `${c.email} (${c.month}, expired ${c.deadline})`).join("<br/>");
+  const list = claims.map(c => `${escapeHtml(c.email)} (${escapeHtml(c.month)}, expired ${escapeHtml(c.deadline)})`).join("<br/>");
   await send(
     `⏰ ${claims.length} Unclaimed Prize(s) Expired`,
     card("⏰", "Unclaimed Prizes Expired", [
       ["Count", String(claims.length)],
-      ["Details", list],
+      ["Details", { raw: list }],
     ], "These winners did not submit shipping info in time. Consider re-drawing or carrying the prize forward.")
   );
 }

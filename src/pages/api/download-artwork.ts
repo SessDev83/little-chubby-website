@@ -43,6 +43,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const svc = getServiceClient();
 
+    // ── Rate limit: max 20 downloads per hour ──
+    const { data: underLimit } = await svc.rpc("check_rate_limit", {
+      p_user_id: user_id,
+      p_action: "download",
+      p_max_per_hour: 20,
+    });
+    if (underLimit === false) {
+      return new Response(
+        JSON.stringify({ error: "rate_limited" }),
+        { status: 429, headers }
+      );
+    }
+
     // 3. Look up artwork to get dynamic peanut_cost
     const { data: artwork, error: artErr } = await svc
       .from("free_artworks")
