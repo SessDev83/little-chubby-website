@@ -31,6 +31,9 @@ const { lang, title, description, pathname, alternatePath, breadcrumbs, articleS
 // Show lead magnet popup on public-facing pages only
 const hidePopupPaths = ["/admin", "/login", "/register", "/thanks", "/auth", "/logout", "/forgot-password"];
 const showLeadMagnet = !hidePopupPaths.some((p) => pathname.includes(p));
+// Block search engines from admin / auth pages
+const noIndexPaths = ["/admin", "/login", "/register", "/auth", "/logout", "/forgot-password"];
+const shouldNoIndex = noIndexPaths.some((p) => pathname.startsWith(p));
 const canonical = new URL(pathname, siteConfig.siteUrl).toString();
 const ogImage = customOgImage
   ? new URL(customOgImage, siteConfig.siteUrl).toString()
@@ -128,7 +131,10 @@ const articleJsonLd = articleSchema ? JSON.stringify({
         window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
       })();
     </script>
-    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    {shouldNoIndex
+      ? <meta name="robots" content="noindex, nofollow" />
+      : <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    }
 
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -145,9 +151,14 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&family=Lora:wght@400&display=swap"
-      rel="stylesheet"
+      onload="this.rel='stylesheet'"
     />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&family=Lora:wght@400&display=swap" rel="stylesheet" />
+    </noscript>
 
     <title>{title}</title>
     <meta name="description" content={description} />

@@ -50,12 +50,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const svc = getServiceClient();
 
-    // Check how many share credits were already granted today (max 3)
-    const { data: sharesToday } = await svc.rpc("get_shares_today", {
-      p_user_id: user_id,
-    });
-    const todayCount = typeof sharesToday === "number" ? sharesToday : 0;
-
     // Insert the share record (unique constraint prevents duplicates per day/platform/url)
     const { error } = await svc.from("social_shares").insert({
       user_id,
@@ -74,6 +68,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         status: 500, headers,
       });
     }
+
+    // Read count AFTER the insert to eliminate race window
+    const { data: sharesToday } = await svc.rpc("get_shares_today", {
+      p_user_id: user_id,
+    });
+    const todayCount = typeof sharesToday === "number" ? sharesToday : 0;
 
     // Grant +1 credit if under daily cap (3/day)
     let credited = false;

@@ -726,9 +726,9 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     // PRIMARY: createImageBitmap with resizeWidth/Height (non-blocking, runs off main thread)
     // FALLBACK: new Image() + canvas drawImage (blocks main thread — old browsers only)
     async function compressImage(file) {
-      console.log("[COMPRESS] start, size:", Math.round(file.size/1024)+"KB");
+      // debug removed
       await autoRotatePromise;
-      console.log("[COMPRESS] autoRotate done, browserAutoRotates="+browserAutoRotates);
+      // debug removed
 
       // ── PRIMARY: createImageBitmap with resize (non-blocking) ──
       if (typeof createImageBitmap === "function") {
@@ -761,10 +761,10 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
           canvas.height = bmp.height;
           canvas.getContext("2d").drawImage(bmp, 0, 0);
           bmp.close();
-          console.log("[COMPRESS] createImageBitmap path done", w+"x"+h);
+          // debug removed
           return canvasToBlob(canvas);
         } catch (bmpErr) {
-          console.log("[COMPRESS] createImageBitmap resize failed, falling back:", bmpErr.message);
+          // debug removed
           // Fall through to Image() path
         }
       }
@@ -783,7 +783,7 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
       if (loaded) {
         var natW2 = loaded.naturalWidth || loaded.width;
         var natH2 = loaded.naturalHeight || loaded.height;
-        console.log("[COMPRESS] Image() fallback path", natW2+"x"+natH2);
+        // debug removed
         return resizeAndBlob(loaded, natW2, natH2, orientation);
       }
 
@@ -883,13 +883,13 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
 
     // Opens the modal and returns a promise that resolves with the final blobs
     function openPhotoModal(items) {
-      console.log("[MODAL] openPhotoModal called, items:", items.length);
+      // debug removed
       buildModal();
       modalItems = items;
       modalIndex = 0;
       showModalPhoto(0);
       modalOverlay.classList.add("active");
-      console.log("[MODAL] overlay active, display:", getComputedStyle(modalOverlay).display);
+      // debug removed
       document.body.style.overflow = "hidden";
       return new Promise(function (resolve) { modalResolve = resolve; });
     }

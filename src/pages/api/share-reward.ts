@@ -48,19 +48,8 @@ export const POST: APIRoute = async ({ cookies, request }) => {
     return new Response(JSON.stringify({ credited: false, limit: true }), { status: 200 });
   }
 
-  // Check: don't double-credit the same review share
-  const { count: already } = await sc
-    .from("credit_transactions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("reason", "share")
-    .eq("ref_id", reviewId);
-
-  if ((already ?? 0) > 0) {
-    return new Response(JSON.stringify({ credited: false, duplicate: true }), { status: 200 });
-  }
-
-  // Credit the peanut
+  // Atomic insert — unique constraint (user_id, reason, ref_id) prevents duplicates
+  // If the row already exists the insert fails with 23505, no race window.
   const { error: insertErr } = await sc.from("credit_transactions").insert({
     user_id: user.id,
     amount: REWARD,
@@ -69,6 +58,10 @@ export const POST: APIRoute = async ({ cookies, request }) => {
   });
 
   if (insertErr) {
+    // Unique-violation = already credited for this review
+    if (insertErr.code === "23505") {
+      return new Response(JSON.stringify({ credited: false, duplicate: true }), { status: 200 });
+    }
     return new Response(JSON.stringify({ credited: false, error: "Insert failed" }), { status: 500 });
   }
 
