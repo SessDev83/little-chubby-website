@@ -242,6 +242,11 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
                 <p class="prize-book-title">{prizeBook.title[lang]}</p>
                 {prizeDescription && <p class="prize-desc">{prizeDescription}</p>}
                 <a href={prizeBook.amazonUrl} target="_blank" rel="noopener noreferrer" class="amazon-link">{text.lotteryViewOnAmazon}</a>
+                {user && purchasedEntries > 0 && (
+                  <p class="giveaway-entries-badge" id="giveaway-entries-badge" data-count={purchasedEntries}>
+                    🎟️ {purchasedEntries} ticket{purchasedEntries > 1 ? "s" : ""} {lang === "es" ? "en este sorteo" : "in this giveaway"}
+                  </p>
+                )}
               </div>
             </div>
           </Fragment>
@@ -500,6 +505,25 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
           const ht = document.getElementById("tickets-count");
           if (ht) ht.textContent = data.ticket_balance;
           sessionStorage.setItem("lcp-tickets", String(data.ticket_balance));
+          // Update entries badge in giveaway banner
+          const badge = document.getElementById("giveaway-entries-badge");
+          if (badge) {
+            const prev = parseInt(badge.dataset.count || "0", 10);
+            const newTotal = prev + data.entries_added;
+            badge.dataset.count = newTotal;
+            badge.textContent = "🎟️ " + newTotal + " ticket" + (newTotal > 1 ? "s" : "") + (document.documentElement.lang === "es" ? " en este sorteo" : " in this giveaway");
+          } else {
+            // Badge didn't exist yet (first entry) — create it
+            const prizeInfo = document.querySelector(".prize-info");
+            if (prizeInfo) {
+              const newBadge = document.createElement("p");
+              newBadge.className = "giveaway-entries-badge";
+              newBadge.id = "giveaway-entries-badge";
+              newBadge.dataset.count = data.entries_added;
+              newBadge.textContent = "🎟️ " + data.entries_added + " ticket" + (data.entries_added > 1 ? "s" : "") + (document.documentElement.lang === "es" ? " en este sorteo" : " in this giveaway");
+              prizeInfo.appendChild(newBadge);
+            }
+          }
           if (gqMsg) {
             gqMsg.textContent = data.entries_added + " ticket" + (data.entries_added > 1 ? "s" : "") + " entered!";
             gqMsg.classList.add("msg-success");
@@ -626,6 +650,24 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
     .steps-chevron {
       display: block;
     }
+  }
+
+  /* ── Giveaway Entries Badge ── */
+  .giveaway-entries-badge {
+    display: inline-block;
+    margin: 0.5rem 0 0;
+    padding: 0.25rem 0.75rem;
+    background: #fef3e2;
+    border: 1px solid #e8c868;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #8b6914;
+    animation: badgePop 0.3s ease;
+  }
+  @keyframes badgePop {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
   }
 
   /* ── Claim Card ── */
