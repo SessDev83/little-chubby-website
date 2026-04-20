@@ -19,7 +19,7 @@ const t = {
     greeting: "¡Hola! Soy Chubby 🐘, tu elefante favorito de Little Chubby Press. ¿En qué te puedo ayudar? Puedo contarte sobre nuestros libros, los Peanuts 🥜, el sorteo mensual, las láminas para colorear, y todo sobre nuestra web. ¡Pregúntame!",
     placeholder: "Escribe tu mensaje...",
     send: "Enviar",
-    title: "Chubby 🐘",
+    title: "Chubby",
     subtitle: "Tu asistente de Little Chubby Press",
     close: "Cerrar chat",
     open: "Hablar con Chubby",
@@ -34,7 +34,7 @@ const t = {
     greeting: "Hi there! I'm Chubby 🐘, your friendly elephant from Little Chubby Press. How can I help? I can tell you about our books, Peanuts 🥜, the monthly giveaway, coloring pages, and everything about our website!",
     placeholder: "Type your message...",
     send: "Send",
-    title: "Chubby 🐘",
+    title: "Chubby",
     subtitle: "Your Little Chubby Press assistant",
     close: "Close chat",
     open: "Chat with Chubby",
@@ -494,7 +494,7 @@ const text = t[lang] || t.es;
     bottom: 5.5rem;
     right: 1.25rem;
     width: min(400px, calc(100vw - 2rem));
-    max-height: min(600px, calc(100dvh - 7rem));
+    max-height: min(520px, calc(100dvh - 6.5rem - 1.25rem));
     border-radius: 1.2rem;
     background: var(--surface, #fffdf8);
     border: 1px solid var(--line, #e2d4bd);
@@ -823,7 +823,7 @@ const text = t[lang] || t.es;
   @media (min-width: 481px) and (max-width: 768px) {
     .chubby-chat {
       width: min(380px, calc(100vw - 2rem));
-      max-height: min(550px, calc(100dvh - 7rem));
+      max-height: min(500px, calc(100dvh - 6.5rem - 1.25rem));
     }
   }
 
@@ -831,7 +831,7 @@ const text = t[lang] || t.es;
   @media (min-width: 1200px) {
     .chubby-chat {
       width: 420px;
-      max-height: 650px;
+      max-height: min(600px, calc(100dvh - 6.5rem - 1.25rem));
     }
     .chubby-toggle {
       width: 68px;
