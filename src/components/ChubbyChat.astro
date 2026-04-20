@@ -50,15 +50,23 @@ const t = {
 const text = t[lang] || t.es;
 ---
 
-<!-- Chat toggle button (floating) -->
+<!-- Chat toggle button (floating) — uses brand mascot -->
 <button
   id="chubby-toggle"
   class="chubby-toggle"
   aria-label={text.open}
   title={text.open}
 >
-  <span class="chubby-toggle-icon" aria-hidden="true">🐘</span>
+  <img
+    src="/images/brand/logo-mark.webp"
+    alt=""
+    class="chubby-toggle-mascot"
+    width="44"
+    height="44"
+    aria-hidden="true"
+  />
   <span class="chubby-toggle-close" aria-hidden="true">&times;</span>
+  <span class="chubby-toggle-pulse" aria-hidden="true"></span>
 </button>
 
 <!-- Chat window -->
@@ -66,7 +74,17 @@ const text = t[lang] || t.es;
   <!-- Header -->
   <div class="chubby-header">
     <div class="chubby-header-info">
-      <span class="chubby-avatar" aria-hidden="true">🐘</span>
+      <div class="chubby-avatar-wrap">
+        <img
+          src="/images/brand/logo-mark.webp"
+          alt=""
+          class="chubby-avatar-img"
+          width="36"
+          height="36"
+          aria-hidden="true"
+        />
+        <span class="chubby-avatar-online" aria-hidden="true"></span>
+      </div>
       <div>
         <div class="chubby-header-name">{text.title}</div>
         <div class="chubby-header-sub">{text.subtitle}</div>
@@ -381,43 +399,93 @@ const text = t[lang] || t.es;
 </script>
 
 <style>
-  /* ── Toggle Button ────────────────────────────────────────── */
+  /* ── Toggle Button — Brand Mascot ─────────────────────────── */
   .chubby-toggle {
     position: fixed;
     bottom: 1.25rem;
     right: 1.25rem;
-    width: 60px;
-    height: 60px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    border: none;
-    background: var(--brand-blue, #1f4f86);
-    color: #fff;
-    font-size: 1.7rem;
+    border: 3px solid var(--brand-brown, #754624);
+    background: var(--surface, #fffdf8);
     cursor: pointer;
-    box-shadow: 0 4px 20px rgba(31, 79, 134, 0.35);
+    box-shadow: 0 4px 20px rgba(117, 70, 36, 0.3);
     z-index: 10001;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    overflow: visible;
+    padding: 0;
   }
   .chubby-toggle:hover {
-    transform: scale(1.08);
-    box-shadow: 0 6px 28px rgba(31, 79, 134, 0.45);
+    transform: scale(1.1);
+    box-shadow: 0 6px 28px rgba(117, 70, 36, 0.45);
+    border-color: var(--brand-blue, #1f4f86);
   }
+
+  /* Idle breathing animation */
+  .chubby-toggle:not(.chubby-toggle--open) {
+    animation: chubbyBreathe 3s ease-in-out infinite;
+  }
+  @keyframes chubbyBreathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+  .chubby-toggle:not(.chubby-toggle--open):hover {
+    animation: none;
+    transform: scale(1.1);
+  }
+
+  /* Mascot image in toggle */
+  .chubby-toggle-mascot {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .chubby-toggle--open .chubby-toggle-mascot {
+    opacity: 0;
+    transform: scale(0.5) rotate(90deg);
+    position: absolute;
+  }
+
+  /* Close X */
   .chubby-toggle-close {
     display: none;
-    font-size: 2rem;
+    font-size: 1.8rem;
     line-height: 1;
-  }
-  .chubby-toggle--open .chubby-toggle-icon {
-    display: none;
+    color: #fff;
   }
   .chubby-toggle--open .chubby-toggle-close {
     display: block;
   }
   .chubby-toggle--open {
     background: var(--accent-coral, #d9825f);
+    border-color: var(--accent-coral, #d9825f);
+    animation: none;
+  }
+
+  /* Attention pulse ring */
+  .chubby-toggle-pulse {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 2px solid var(--brand-brown, #754624);
+    opacity: 0;
+    animation: chubbyPulseRing 3s ease-out infinite 4s;
+    pointer-events: none;
+  }
+  .chubby-toggle--open .chubby-toggle-pulse {
+    animation: none;
+    opacity: 0;
+  }
+  @keyframes chubbyPulseRing {
+    0% { transform: scale(1); opacity: 0.6; }
+    70% { transform: scale(1.35); opacity: 0; }
+    100% { transform: scale(1.35); opacity: 0; }
   }
 
   /* ── Chat Window ──────────────────────────────────────────── */
@@ -436,9 +504,9 @@ const text = t[lang] || t.es;
     flex-direction: column;
     overflow: hidden;
     opacity: 0;
-    transform: translateY(20px) scale(0.95);
+    transform: translateY(20px) scale(0.92);
     pointer-events: none;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: opacity 0.35s cubic-bezier(.4,0,.2,1), transform 0.35s cubic-bezier(.4,0,.2,1);
   }
   .chubby-chat--open {
     opacity: 1;
@@ -458,7 +526,7 @@ const text = t[lang] || t.es;
     align-items: center;
     justify-content: space-between;
     padding: 0.85rem 1rem;
-    background: var(--brand-blue, #1f4f86);
+    background: linear-gradient(135deg, var(--brand-blue, #1f4f86), #2a6db5);
     color: #fff;
     flex-shrink: 0;
   }
@@ -467,17 +535,36 @@ const text = t[lang] || t.es;
     align-items: center;
     gap: 0.65rem;
   }
-  .chubby-avatar {
-    font-size: 1.6rem;
-    width: 2.2rem;
-    height: 2.2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255,255,255,0.15);
-    border-radius: 50%;
+
+  /* Avatar with online dot */
+  .chubby-avatar-wrap {
+    position: relative;
     flex-shrink: 0;
   }
+  .chubby-avatar-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.4);
+    background: #fff;
+  }
+  .chubby-avatar-online {
+    position: absolute;
+    bottom: 0;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    background: #4ade80;
+    border: 2px solid var(--brand-blue, #1f4f86);
+    border-radius: 50%;
+    animation: chubbyOnlinePulse 2s ease-in-out infinite;
+  }
+  @keyframes chubbyOnlinePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
   .chubby-header-name {
     font-family: "Baloo 2", sans-serif;
     font-weight: 700;
@@ -528,7 +615,7 @@ const text = t[lang] || t.es;
     font-size: 0.88rem;
     line-height: 1.5;
     word-wrap: break-word;
-    animation: chubbyFadeIn 0.3s ease;
+    animation: chubbySlideIn 0.35s cubic-bezier(.4,0,.2,1);
   }
   .chubby-bubble--bot {
     background: var(--bg-soft, #fffaf2);
@@ -546,6 +633,7 @@ const text = t[lang] || t.es;
     font-family: "Baloo 2", sans-serif;
     font-weight: 700;
     font-size: 0.85rem;
+    animation: chubbySlideInRight 0.35s cubic-bezier(.4,0,.2,1);
   }
   .chubby-bubble :global(a.chubby-link) {
     color: var(--brand-blue, #1f4f86);
@@ -556,9 +644,13 @@ const text = t[lang] || t.es;
     color: var(--brand-brown, #754624);
   }
 
-  @keyframes chubbyFadeIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
+  @keyframes chubbySlideIn {
+    from { opacity: 0; transform: translateX(-12px) translateY(4px); }
+    to { opacity: 1; transform: translateX(0) translateY(0); }
+  }
+  @keyframes chubbySlideInRight {
+    from { opacity: 0; transform: translateX(12px) translateY(4px); }
+    to { opacity: 1; transform: translateX(0) translateY(0); }
   }
 
   /* ── Typing indicator ─────────────────────────────────────── */
@@ -570,7 +662,7 @@ const text = t[lang] || t.es;
   .chubby-dot {
     width: 8px;
     height: 8px;
-    background: var(--ink-soft, #4b4239);
+    background: var(--brand-brown, #754624);
     border-radius: 50%;
     opacity: 0.4;
     animation: chubbyBounce 1.4s ease-in-out infinite;
@@ -690,14 +782,30 @@ const text = t[lang] || t.es;
     .chubby-toggle {
       bottom: 1rem;
       right: 1rem;
-      width: 54px;
-      height: 54px;
-      font-size: 1.5rem;
+      width: 56px;
+      height: 56px;
+    }
+    .chubby-toggle-mascot {
+      width: 38px;
+      height: 38px;
     }
     .chubby-toggle--open {
       bottom: auto;
       top: 0.6rem;
       right: 0.6rem;
+      z-index: 10002;
+      width: 40px;
+      height: 40px;
+    }
+    .chubby-toggle-pulse { display: none; }
+    .chubby-quick-btn {
+      font-size: 0.7rem;
+      padding: 0.3rem 0.6rem;
+    }
+    .chubby-messages {
+      padding: 0.75rem;
+    }
+  }
       z-index: 10002;
       width: 40px;
       height: 40px;
@@ -726,9 +834,12 @@ const text = t[lang] || t.es;
       max-height: 650px;
     }
     .chubby-toggle {
-      width: 64px;
-      height: 64px;
-      font-size: 1.8rem;
+      width: 68px;
+      height: 68px;
+    }
+    .chubby-toggle-mascot {
+      width: 48px;
+      height: 48px;
     }
   }
 
@@ -736,6 +847,10 @@ const text = t[lang] || t.es;
   @media (prefers-color-scheme: dark) {
     .chubby-toggle {
       box-shadow: 0 4px 20px rgba(91, 155, 213, 0.3);
+      border-color: rgba(255,255,255,0.2);
+    }
+    .chubby-toggle-pulse {
+      border-color: rgba(255,255,255,0.3);
     }
     .chubby-chat {
       box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
@@ -746,22 +861,22 @@ const text = t[lang] || t.es;
     .chubby-bubble--bot :global(a.chubby-link) {
       color: var(--brand-blue, #5b9bd5);
     }
+    .chubby-avatar-online {
+      border-color: #1a3a5c;
+    }
   }
 
   /* ── Reduced motion ───────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
-    .chubby-chat {
-      transition: none;
-    }
-    .chubby-bubble {
-      animation: none;
-    }
+    .chubby-toggle,
+    .chubby-toggle-mascot,
+    .chubby-toggle-pulse,
+    .chubby-avatar-online,
+    .chubby-bubble,
+    .chubby-chat,
     .chubby-dot {
-      animation: none;
-      opacity: 0.6;
-    }
-    .chubby-toggle {
-      transition: none;
+      animation: none !important;
+      transition-duration: 0.01ms !important;
     }
   }
 
