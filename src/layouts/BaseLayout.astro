@@ -35,6 +35,7 @@ const showLeadMagnet = !hidePopupPaths.some((p) => pathname.includes(p));
 // Block search engines from admin / auth pages
 const noIndexPaths = ["/admin", "/login", "/register", "/auth", "/logout", "/forgot-password"];
 const shouldNoIndex = noIndexPaths.some((p) => pathname.startsWith(p));
+const shouldExposePinterestVerification = !pathname.startsWith("/admin");
 const canonical = new URL(pathname, siteConfig.siteUrl).toString();
 const ogImage = customOgImage
   ? new URL(customOgImage, siteConfig.siteUrl).toString()
@@ -165,6 +166,7 @@ const articleJsonLd = articleSchema ? JSON.stringify({
 
     <title>{title}</title>
     <meta name="description" content={description} />
+    {shouldExposePinterestVerification && <meta name="p:domain_verify" content="bc8eff299b41603bc3d11c3cae8f371c" />}
     <link rel="canonical" href={canonical} />
     <link rel="alternate" hreflang={lang} href={canonical} />
     <link rel="alternate" hreflang={alternateLang} href={alternateHref} />
