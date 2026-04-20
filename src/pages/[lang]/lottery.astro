@@ -30,7 +30,7 @@ let isPending = false;
 const currentMonth = new Date().toISOString().slice(0, 7);
 let { data: giveawayConfig } = await sc
   .from("lottery_config")
-  .select("draw_date, prize_description")
+  .select("draw_date, prize_description, participant_boost")
   .eq("month", currentMonth)
   .maybeSingle();
 
@@ -44,7 +44,7 @@ if (!giveawayConfig) {
   });
   const { data: fresh } = await sc
     .from("lottery_config")
-    .select("draw_date, prize_description")
+    .select("draw_date, prize_description, participant_boost")
     .eq("month", currentMonth)
     .single();
   giveawayConfig = fresh;
@@ -62,6 +62,16 @@ const drawDate = new Date(rawDrawDate + "T00:00:00").toLocaleDateString(
 );
 const prizeDescription = giveawayConfig?.prize_description ?? "";
 const prizeBook = getMonthlyPrizeBook(currentMonth);
+
+// Count unique participants for this month + optional boost
+const { data: participantData } = await sc
+  .from("lottery_entries")
+  .select("user_id")
+  .eq("month", currentMonth);
+const realParticipants = new Set((participantData ?? []).map((p: any) => p.user_id)).size;
+const participantBoost = (giveawayConfig as any)?.participant_boost ?? 0;
+const displayedParticipants = realParticipants + participantBoost;
+
 // Human-friendly month name for the giveaway (e.g. "April" / "abril")
 const giveawayMonthName = new Date(now.getFullYear(), now.getMonth(), 1)
   .toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { month: "long" });
@@ -234,6 +244,14 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
               <span class="cd-sep">:</span>
               <div class="cd-unit"><span class="cd-num" id="cdSec">--</span><span class="cd-label">{text.lotteryCountdownSec}</span></div>
             </div>
+
+            {displayedParticipants > 0 && (
+              <p class="participant-count" id="participant-count" data-count={realParticipants} data-boost={participantBoost}>
+                👥 {displayedParticipants} {lang === "es"
+                  ? `participante${displayedParticipants > 1 ? "s" : ""} en este sorteo`
+                  : `participant${displayedParticipants > 1 ? "s" : ""} in this giveaway`}
+              </p>
+            )}
 
             <div class="prize-showcase">
               <img src={prizeBook.coverSrc} alt={prizeBook.title[lang]} class="prize-cover" loading="lazy" width="96" height="128" />
@@ -492,6 +510,7 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
         gqBtn.textContent = "...";
         if (gqMsg) { gqMsg.style.display = "none"; gqMsg.className = "msg"; }
         try {
+          const badgeExisted = !!document.getElementById("giveaway-entries-badge");
           const res = await fetch("/api/enter-giveaway/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -522,6 +541,31 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
               newBadge.dataset.count = data.entries_added;
               newBadge.textContent = "🎟️ " + data.entries_added + " ticket" + (data.entries_added > 1 ? "s" : "") + (document.documentElement.lang === "es" ? " en este sorteo" : " in this giveaway");
               prizeInfo.appendChild(newBadge);
+            }
+          }
+          // Update participant count in banner (first entry by this user)
+          const pcEl = document.getElementById("participant-count");
+          if (pcEl && !badgeExisted) {
+            // User's first entry — increment displayed count
+            const boost = parseInt(pcEl.dataset.boost || "0", 10);
+            const prev = parseInt(pcEl.dataset.count || "0", 10);
+            const newReal = prev + 1;
+            pcEl.dataset.count = String(newReal);
+            const total = newReal + boost;
+            const lang = document.documentElement.lang;
+            pcEl.textContent = "👥 " + total + (lang === "es" ? ` participante${total > 1 ? "s" : ""} en este sorteo` : ` participant${total > 1 ? "s" : ""} in this giveaway`);
+          } else if (!pcEl) {
+            // No participant count element yet — create it
+            const countdown = document.querySelector(".draw-countdown");
+            if (countdown) {
+              const p = document.createElement("p");
+              p.className = "participant-count";
+              p.id = "participant-count";
+              p.dataset.count = "1";
+              p.dataset.boost = "0";
+              const lang = document.documentElement.lang;
+              p.textContent = "👥 1 " + (lang === "es" ? "participante en este sorteo" : "participant in this giveaway");
+              countdown.after(p);
             }
           }
           if (gqMsg) {
@@ -653,6 +697,17 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
   }
 
   /* ── Giveaway Entries Badge ── */
+  .participant-count {
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--brand-brown);
+    margin: 0.4rem auto 0.8rem;
+    padding: 0.3rem 0.8rem;
+    background: rgba(139, 105, 20, 0.06);
+    border-radius: var(--radius-sm);
+    display: inline-block;
+  }
   .giveaway-entries-badge {
     display: inline-block;
     margin: 0.5rem 0 0;

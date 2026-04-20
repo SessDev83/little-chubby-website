@@ -119,6 +119,7 @@ if (Astro.request.method === "POST") {
     const isActive = formData.get("is_active") === "on";
     const drawDate = formData.get("draw_date")?.toString() || null;
     const prizeDescription = formData.get("prize_description")?.toString() || "";
+    const participantBoost = parseInt(formData.get("participant_boost")?.toString() || "0", 10);
 
     await sc.from("lottery_config").update({
       max_winners: maxWinners,
@@ -127,9 +128,10 @@ if (Astro.request.method === "POST") {
       is_active: true,
       draw_date: drawDate || null,
       prize_description: prizeDescription,
+      participant_boost: participantBoost,
     }).eq("month", currentMonth);
 
-    config = { ...config!, max_winners: maxWinners, winner_pct: winnerPct, min_purchases: minPurchases, is_active: true, draw_date: drawDate, prize_description: prizeDescription };
+    config = { ...config!, max_winners: maxWinners, winner_pct: winnerPct, min_purchases: minPurchases, is_active: true, draw_date: drawDate, prize_description: prizeDescription, participant_boost: participantBoost };
     configMsg = "Config saved.";
     await auditLog("save_config", "config", currentMonth, { maxWinners, winnerPct, minPurchases });
   }
@@ -353,6 +355,30 @@ const { data: paidEntryUsers } = await sc
   .eq("month", currentMonth)
   .order("purchased_at", { ascending: false });
 
+// Aggregate entries per user for leaderboard
+type LeaderboardEntry = { name: string; email: string; country: string; tickets: number; rank: number };
+const leaderboard: LeaderboardEntry[] = [];
+if (paidEntryUsers && paidEntryUsers.length > 0) {
+  const userMap = new Map<string, { name: string; email: string; country: string; tickets: number }>();
+  for (const pe of paidEntryUsers as any[]) {
+    const uid = pe.user_id;
+    const existing = userMap.get(uid);
+    if (existing) {
+      existing.tickets += pe.entry_count || 0;
+    } else {
+      userMap.set(uid, {
+        name: pe.profiles?.display_name || "\u2014",
+        email: pe.profiles?.email || "\u2014",
+        country: pe.profiles?.country || "\u2014",
+        tickets: pe.entry_count || 0,
+      });
+    }
+  }
+  const sorted = [...userMap.values()].sort((a, b) => b.tickets - a.tickets);
+  sorted.forEach((u, i) => leaderboard.push({ ...u, rank: i + 1 }));
+}
+const participantCount = leaderboard.length;
+
 const { data: winners } = await sc
   .from("lottery_winners")
   .select("month, book_chosen, claimed, shipping_name, shipping_address, claim_deadline, notified, profiles!inner(email, display_name)")
@@ -404,6 +430,10 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
           <p style="font-size:0.85rem; margin:0 0 0.4rem; color:var(--brand-blue);">📖 Auto-rotation: <strong>{prizeBook.title.en}</strong></p>
           <input type="text" name="prize_description" value={config?.prize_description ?? ""} placeholder="e.g. Free shipping included!" style="width:100%;" />
         </div>
+        <div class="form-group">
+          <label>Participant Boost <span style="font-size:0.8rem; color:var(--ink-soft);">(fake extra shown publicly)</span></label>
+          <input type="number" name="participant_boost" value={config?.participant_boost ?? 0} min="0" max="500" />
+        </div>
         <button type="submit" class="btn btn-secondary">Save Config</button>
       </form>
     </div>
@@ -426,37 +456,44 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       )}
     </div>
 
-    {/* ── Paid Entry Users ── */}
-    {paidEntryUsers && paidEntryUsers.length > 0 && (
+    {/* ── Leaderboard ── */}
+    {leaderboard.length > 0 && (
       <div class="surface-card" style="padding:1.6rem; margin-top:1.5rem;">
-        <h2>🎟️ Paid Entries — {currentMonth}</h2>
+        <h2>🏆 Leaderboard — {currentMonth} <span style="font-size:0.85rem; font-weight:400; color:var(--ink-soft);">({participantCount} participant{participantCount !== 1 ? "s" : ""})</span></h2>
         <div style="overflow-x:auto; margin-top:0.8rem;">
           <table class="admin-table">
             <thead>
               <tr>
+                <th style="width:3rem;">Rank</th>
                 <th>User</th>
                 <th>Email</th>
                 <th>Tickets</th>
                 <th>Country</th>
-                <th>Purchased</th>
               </tr>
             </thead>
             <tbody>
-              {paidEntryUsers.map((pe: any) => (
-                <tr>
-                  <td style="font-weight:600;">{(pe.profiles as any)?.display_name || "—"}</td>
-                  <td>{(pe.profiles as any)?.email || "—"}</td>
-                  <td style="text-align:center; font-weight:700; color:var(--brand-blue);">{pe.entry_count}</td>
-                  <td>{(pe.profiles as any)?.country || "—"}</td>
-                  <td>{new Date(pe.purchased_at).toLocaleDateString()}</td>
-                </tr>
-              ))}
+              {leaderboard.map((u) => {
+                const medal = u.rank === 1 ? "🥇" : u.rank === 2 ? "🥈" : u.rank === 3 ? "🥉" : String(u.rank);
+                const bg = u.rank === 1 ? "rgba(255,215,0,0.10)" : u.rank === 2 ? "rgba(192,192,192,0.10)" : u.rank === 3 ? "rgba(205,127,50,0.08)" : "";
+                const rowStyle = bg ? "background:" + bg + ";" : "";
+                return (
+                  <tr style={rowStyle}>
+                    <td style="text-align:center; font-size:1.2rem;">{medal}</td>
+                    <td style="font-weight:600;">{u.name}</td>
+                    <td>{u.email}</td>
+                    <td style="text-align:center; font-weight:700; color:var(--brand-blue); font-size:1.1rem;">{u.tickets}</td>
+                    <td>{u.country}</td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr style="border-top:2px solid var(--line); font-weight:700;">
-                <td colspan="2">Total</td>
-                <td style="text-align:center;">{paidEntryUsers.reduce((s: number, pe: any) => s + (pe.entry_count || 0), 0)}</td>
-                <td colspan="2"></td>
+                <td></td>
+                <td>Total</td>
+                <td></td>
+                <td style="text-align:center;">{leaderboard.reduce((s, u) => s + u.tickets, 0)}</td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
