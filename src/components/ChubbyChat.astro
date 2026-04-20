@@ -16,7 +16,7 @@ const { lang } = Astro.props;
 
 const t = {
   es: {
-    greeting: "¡Hola! Soy Chubby 🐘, tu elefante favorito de Little Chubby Press. ¿En qué te puedo ayudar? Puedo contarte sobre nuestros libros, los Peanuts 🥜, el sorteo mensual, las láminas para colorear, y todo sobre nuestra web. ¡Pregúntame!",
+    greeting: "¡Hola! Soy Chubby, tu elefante favorito de Little Chubby Press. ¿En qué te puedo ayudar? Puedo contarte sobre nuestros libros, los Peanuts 🥜, el sorteo mensual, las láminas para colorear, y todo sobre nuestra web. ¡Pregúntame!",
     placeholder: "Escribe tu mensaje...",
     send: "Enviar",
     title: "Chubby",
@@ -31,7 +31,7 @@ const t = {
     quickQ4: "🎨 Láminas gratis",
   },
   en: {
-    greeting: "Hi there! I'm Chubby 🐘, your friendly elephant from Little Chubby Press. How can I help? I can tell you about our books, Peanuts 🥜, the monthly giveaway, coloring pages, and everything about our website!",
+    greeting: "Hi there! I'm Chubby, your friendly elephant from Little Chubby Press. How can I help? I can tell you about our books, Peanuts 🥜, the monthly giveaway, coloring pages, and everything about our website!",
     placeholder: "Type your message...",
     send: "Send",
     title: "Chubby",
@@ -194,20 +194,36 @@ const text = t[lang] || t.es;
       en: `You can see **past winners** of our giveaways! 🏆\n\nEach month we pick up to 3 winners. Names are shown with last initial only for privacy.\n\nNewsletter subscribers of 15+ days can see ticket details.\n\n👉 [See winners](/${lang}/winners/)`
     },
     greeting_reply: {
-      es: `¡Hola! 🐘 ¡Qué gusto saludarte! Soy Chubby, tu asistente de Little Chubby Press.\n\n¿En qué te puedo ayudar hoy? Puedo contarte sobre nuestros libros, los Peanuts 🥜, el sorteo mensual, o las láminas para colorear. 🎨`,
-      en: `Hello! 🐘 Great to hear from you! I'm Chubby, your Little Chubby Press assistant.\n\nWhat can I help you with today? I can tell you about our books, Peanuts 🥜, the monthly giveaway, or coloring pages. 🎨`
+      es: `¡Hola! ¡Qué gusto saludarte! Soy Chubby, tu asistente de Little Chubby Press.\n\n¿En qué te puedo ayudar hoy? Puedo contarte sobre nuestros libros, los Peanuts 🥜, el sorteo mensual, o las láminas para colorear. 🎨`,
+      en: `Hello! Great to hear from you! I'm Chubby, your Little Chubby Press assistant.\n\nWhat can I help you with today? I can tell you about our books, Peanuts 🥜, the monthly giveaway, or coloring pages. 🎨`
     },
     thanks_reply: {
-      es: `¡De nada! 🐘 Me alegra poder ayudarte. Si tienes más preguntas sobre Little Chubby Press, ¡aquí estoy! 💛`,
-      en: `You're welcome! 🐘 Happy to help! If you have more questions about Little Chubby Press, I'm right here! 💛`
+      es: `¡De nada! Me alegra poder ayudarte. Si tienes más preguntas sobre Little Chubby Press, ¡aquí estoy! 💛`,
+      en: `You're welcome! Happy to help! If you have more questions about Little Chubby Press, I'm right here! 💛`
+    },
+    recommend_age: {
+      es: function(age) {
+        if (age <= 2) return `Para bebés de **${age} año(s)**, nuestros libros empiezan a partir de los 3 años. ¡Pero puedes ir preparando sus crayones! 🖍️\n\nTe recomiendo volver cuando tenga 3 añitos — **Easy Animals** será perfecto para empezar. 📚\n\n👉 [Ver todos los libros](/${lang}/books/)`;
+        if (age <= 5) return `¡Para **${age} años** tenemos opciones perfectas! 🎨\n\n🦁 **Easy Animals** (3-8) — Diseños simples, 110 páginas, ideal para empezar\n🦖 **Alphabet Coloring Book** — Aprende letras coloreando\n😊 **Coloring Emotions** — Aprende sobre sentimientos\n🧸 **The Cozy Kids' Club** — Actividades acogedoras\n🍕 **Pizza & Sweet Treats** — ¡Comida divertida!\n\n¿Es niño o niña? Así te doy una recomendación más personalizada. 😊\n\n👉 [Ver todos los libros](/${lang}/books/)`;
+        if (age <= 8) return `¡**${age} años** es la edad perfecta para nuestros libros! 🎨\n\n**Los más populares:**\n⭐ **Awesome Girls** (4-8) — Aventuras para niñas, 5.0 estrellas\n⭐ **Awesome Airplanes** (4-8) — Aviones increíbles, 5.0 estrellas\n🦄 **Magical Creatures** (4-8) — Unicornios, sirenas, dragones\n🚀 **Blast Off!** (4-8) — Espacio y cohetes\n🏗️ **Mighty Machines** (3-8) — Vehículos y construcción\n👗 **Dresses and Dolls** (4-8) — Moda y muñecas\n🦁 **Easy Animals** (3-8) — 110 páginas de animalitos\n\n¿Es niño o niña? Te puedo dar una recomendación más específica. 😊\n\n👉 [Ver todos los libros](/${lang}/books/)`;
+        if (age <= 11) return `Para **${age} años**, estos libros siguen siendo geniales: 🎨\n\n⭐ **Awesome Girls / Awesome Boys** — Aventuras con más detalle\n🦄 **Magical Creatures** — Unicornios y dragones\n🚀 **Blast Off!** — Espacio y ciencia\n👠 **Style Time Machine** (4-18+) — Moda a través del tiempo\n\nY si le gusta la moda, **Chic Styles** (12+) tiene diseños más elaborados. 📚\n\n👉 [Ver todos los libros](/${lang}/books/)`;
+        return `Para **${age}+ años**, te recomiendo: 🎨\n\n👗 **Chic Styles** (12-18+) — Moda sofisticada, 90 páginas\n⏳ **Style Time Machine** (4-18+) — Moda a través de las épocas\n\nDiseños más detallados y elegantes, perfectos para relajarse. ¡También son geniales para colorear en familia! 📚\n\n👉 [Ver todos los libros](/${lang}/books/)`;
+      },
+      en: function(age) {
+        if (age <= 2) return `For babies aged **${age}**, our books start at age 3. But you can start getting those crayons ready! 🖍️\n\nI recommend coming back when they're 3 — **Easy Animals** will be perfect to start! 📚\n\n👉 [See all books](/${lang}/books/)`;
+        if (age <= 5) return `For age **${age}** we have perfect options! 🎨\n\n🦁 **Easy Animals** (3-8) — Simple designs, 110 pages, great for beginners\n🦖 **Alphabet Coloring Book** — Learn letters through coloring\n😊 **Coloring Emotions** — Learn about feelings\n🧸 **The Cozy Kids' Club** — Cozy activities\n🍕 **Pizza & Sweet Treats** — Fun food!\n\nIs it for a boy or girl? I can give a more personalized recommendation! 😊\n\n👉 [See all books](/${lang}/books/)`;
+        if (age <= 8) return `Age **${age}** is perfect for our books! 🎨\n\n**Most popular:**\n⭐ **Awesome Girls** (4-8) — Adventures for girls, 5.0 stars\n⭐ **Awesome Airplanes** (4-8) — Amazing planes, 5.0 stars\n🦄 **Magical Creatures** (4-8) — Unicorns, mermaids, dragons\n🚀 **Blast Off!** (4-8) — Space and rockets\n🏗️ **Mighty Machines** (3-8) — Vehicles & construction\n👗 **Dresses and Dolls** (4-8) — Fashion & dolls\n🦁 **Easy Animals** (3-8) — 110 pages of cute animals\n\nIs it for a boy or girl? I can give a more specific recommendation! 😊\n\n👉 [See all books](/${lang}/books/)`;
+        if (age <= 11) return `For age **${age}**, these books are still great: 🎨\n\n⭐ **Awesome Girls / Awesome Boys** — Adventures with more detail\n🦄 **Magical Creatures** — Unicorns and dragons\n🚀 **Blast Off!** — Space and science\n👠 **Style Time Machine** (4-18+) — Fashion through the ages\n\nAnd if they like fashion, **Chic Styles** (12+) has more elaborate designs! 📚\n\n👉 [See all books](/${lang}/books/)`;
+        return `For ages **${age}+**, I recommend: 🎨\n\n👗 **Chic Styles** (12-18+) — Sophisticated fashion, 90 pages\n⏳ **Style Time Machine** (4-18+) — Fashion through the ages\n\nMore detailed, elegant designs — perfect for relaxation. Also great for family coloring time! 📚\n\n👉 [See all books](/${lang}/books/)`;
+      }
     },
     off_topic: {
-      es: `¡Soy Chubby y solo sé de Little Chubby Press! 🐘 No puedo ayudar con temas externos, pero soy experto en todo lo de nuestra web.\n\nPregúntame sobre:\n• 📚 Nuestros **libros** de colorear\n• 🥜 Los **Peanuts**\n• 🎁 El **sorteo mensual**\n• 🎨 **Láminas gratis**\n• ⭐ **Reseñas** y galería\n• 👤 Tu **cuenta**\n• ✉️ **Newsletter**\n\n¿Algo de nuestra web? ¡Con gusto te ayudo! 😊`,
-      en: `I'm Chubby and I only know about Little Chubby Press! 🐘 I can't help with outside topics, but I'm an expert on everything on our website.\n\nAsk me about:\n• 📚 Our coloring **books**\n• 🥜 **Peanuts** system\n• 🎁 Monthly **giveaway**\n• 🎨 Free **coloring pages**\n• ⭐ **Reviews** & gallery\n• 👤 Your **account**\n• ✉️ **Newsletter**\n\nAnything about our website? Happy to help! 😊`
+      es: `¡Soy Chubby y solo sé de Little Chubby Press! No puedo ayudar con temas externos, pero soy experto en todo lo de nuestra web.\n\nPregúntame sobre:\n• 📚 Nuestros **libros** de colorear\n• 🥜 Los **Peanuts**\n• 🎁 El **sorteo mensual**\n• 🎨 **Láminas gratis**\n• ⭐ **Reseñas** y galería\n• 👤 Tu **cuenta**\n• ✉️ **Newsletter**\n\n¿Algo de nuestra web? ¡Con gusto te ayudo! 😊`,
+      en: `I'm Chubby and I only know about Little Chubby Press! I can't help with outside topics, but I'm an expert on everything on our website.\n\nAsk me about:\n• 📚 Our coloring **books**\n• 🥜 **Peanuts** system\n• 🎁 Monthly **giveaway**\n• 🎨 Free **coloring pages**\n• ⭐ **Reviews** & gallery\n• 👤 Your **account**\n• ✉️ **Newsletter**\n\nAnything about our website? Happy to help! 😊`
     },
     fallback: {
-      es: `Hmm, no estoy seguro de entender tu pregunta. 🐘 Pero puedo ayudarte con todo lo de Little Chubby Press:\n\n• 📚 Nuestros **libros** de colorear\n• 🥜 El sistema de **Peanuts**\n• 🎁 El **sorteo mensual**\n• 🎨 El **Rincón de Colorear** (láminas gratis)\n• ⭐ Cómo **enviar reseñas**\n• 👤 Tu **cuenta** (login, perfil, contraseña)\n• ✉️ El **newsletter**\n• 📞 Cómo **contactarnos**\n\n¿O prefieres hablar con nuestro equipo? Escríbenos a hello@littlechubbypress.com 💌`,
-      en: `Hmm, I'm not sure I understand your question. 🐘 But I can help with everything about Little Chubby Press:\n\n• 📚 Our coloring **books**\n• 🥜 The **Peanuts** system\n• 🎁 The monthly **giveaway**\n• 🎨 The **Coloring Corner** (free pages)\n• ⭐ How to **submit reviews**\n• 👤 Your **account** (login, profile, password)\n• ✉️ The **newsletter**\n• 📞 How to **contact us**\n\nOr would you prefer to talk to our team? Email us at hello@littlechubbypress.com 💌`
+      es: `Hmm, no estoy seguro de entender tu pregunta. Pero puedo ayudarte con todo lo de Little Chubby Press:\n\n• 📚 Nuestros **libros** de colorear\n• 🥜 El sistema de **Peanuts**\n• 🎁 El **sorteo mensual**\n• 🎨 El **Rincón de Colorear** (láminas gratis)\n• ⭐ Cómo **enviar reseñas**\n• 👤 Tu **cuenta** (login, perfil, contraseña)\n• ✉️ El **newsletter**\n• 📞 Cómo **contactarnos**\n\n¿O prefieres hablar con nuestro equipo? Escríbenos a hello@littlechubbypress.com 💌`,
+      en: `Hmm, I'm not sure I understand your question. But I can help with everything about Little Chubby Press:\n\n• 📚 Our coloring **books**\n• 🥜 The **Peanuts** system\n• 🎁 The monthly **giveaway**\n• 🎨 The **Coloring Corner** (free pages)\n• ⭐ How to **submit reviews**\n• 👤 Your **account** (login, profile, password)\n• ✉️ The **newsletter**\n• 📞 How to **contact us**\n\nOr would you prefer to talk to our team? Email us at hello@littlechubbypress.com 💌`
     }
   };
 
@@ -235,6 +251,23 @@ const text = t[lang] || t.es;
     { key: "winners",      re: /ganadores?|winners?|resultados?|results?|quién ganó|who won/i },
   ];
 
+  /* ── Age extraction helper ────────────────────────────────── */
+  var ageRegex = /(?:^|\b)(\d{1,2})\s*(?:years?\s*old|años?|a[ñn]os?|year|yr|a[ñn]o)?(?:\s*old)?\s*$/i;
+  var ageContextRegex = /(?:tiene|has|is|tiene|cumple|cumplió|turned|turning|son|daughter|hijo|hija|kid|niño|niña|child|para)\s+(?:un[ao]?\s+(?:de\s+)?)?(\d{1,2})\b/i;
+  var bareAgeRegex = /^\s*(\d{1,2})\s*$/;
+
+  function extractAge(msg) {
+    var m = msg.match(ageContextRegex) || msg.match(ageRegex) || msg.match(bareAgeRegex);
+    if (m) {
+      var n = parseInt(m[1], 10);
+      if (n >= 1 && n <= 99) return n;
+    }
+    return null;
+  }
+
+  /* ── Conversational context ─────────────────────────────────── */
+  var lastBotIntent = null;
+
   function getIntent(msg) {
     var normalized = msg.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     // Check off-topic FIRST — reject before matching website intents
@@ -242,11 +275,36 @@ const text = t[lang] || t.es;
     for (var i = 0; i < patterns.length; i++) {
       if (patterns[i].re.test(normalized) || patterns[i].re.test(msg)) return patterns[i].key;
     }
+    // Context-aware: if previous response was about books and user gives an age
+    var age = extractAge(msg);
+    if (age !== null) return "age_reply";
     return "fallback";
   }
 
   function getResponse(userMsg) {
     var intent = getIntent(userMsg);
+
+    // Handle age-based responses
+    if (intent === "age_reply") {
+      var age = extractAge(userMsg);
+      if (age !== null) {
+        var ageFn = KB.recommend_age[lang] || KB.recommend_age.es;
+        lastBotIntent = "recommend_age";
+        return ageFn(age);
+      }
+    }
+
+    // Handle follow-up age after books/recommendations
+    if (intent === "fallback" && (lastBotIntent === "books" || lastBotIntent === "recommend_age")) {
+      var age2 = extractAge(userMsg);
+      if (age2 !== null) {
+        var ageFn2 = KB.recommend_age[lang] || KB.recommend_age.es;
+        lastBotIntent = "recommend_age";
+        return ageFn2(age2);
+      }
+    }
+
+    lastBotIntent = intent;
     var entry = KB[intent];
     return entry ? (entry[lang] || entry.es) : (KB.fallback[lang] || KB.fallback.es);
   }
