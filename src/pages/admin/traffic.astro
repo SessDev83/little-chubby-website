@@ -237,8 +237,8 @@ function fmtTime(iso: string) {
   {/* ─── Line chart ─── */}
   <div class="surface-card" style="padding:1.4rem; margin-top:1.5rem;">
     <h2 style="margin-top:0; margin-bottom:0.6rem;">Trend · pageviews & unique visitors</h2>
-    <div style="overflow-x:auto;">
-      <svg viewBox={`0 0 ${W} ${H}`} style="width:100%; max-width:100%; height:auto; min-width:600px;" aria-label="Pageviews line chart">
+    <div id="chart-wrap" style="overflow-x:auto; position:relative;" data-series={JSON.stringify(series)} data-chart={JSON.stringify({ W, H, PAD, plotW, plotH, stepX, maxPv })}>
+      <svg id="trend-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style="width:100%; max-width:100%; height:auto; min-width:600px; display:block;" aria-label="Pageviews line chart">
         {/* Gridlines */}
         {[0.25, 0.5, 0.75, 1].map((f) => (
           <line x1={PAD} x2={W - PAD} y1={H - PAD - f * plotH} y2={H - PAD - f * plotH} stroke="currentColor" stroke-opacity="0.1" stroke-dasharray="2 3" />
@@ -265,14 +265,22 @@ function fmtTime(iso: string) {
         <polyline points={pointsPv} fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
         {/* UV line */}
         <polyline points={pointsUv} fill="none" stroke="#10b981" stroke-width="2" stroke-dasharray="4 3" stroke-linejoin="round" stroke-linecap="round" />
-        {/* Dots with tooltips */}
+        {/* Static dots (fallback / always visible) */}
         {series.map((s, i) => (
-          <g>
-            <title>{s.date}: {s.pv} pageviews · {s.uv} visitors</title>
-            <circle cx={PAD + i * stepX} cy={H - PAD - (s.pv / maxPv) * plotH} r="3" fill="#2563eb" />
-          </g>
+          <circle cx={PAD + i * stepX} cy={H - PAD - (s.pv / maxPv) * plotH} r="3" fill="#2563eb" />
         ))}
+        {/* Hover guide (hidden until mousemove) */}
+        <line id="hover-guide" x1="0" y1={PAD} x2="0" y2={H - PAD} stroke="#2563eb" stroke-opacity="0.35" stroke-dasharray="3 3" style="display:none;" />
+        <circle id="hover-dot-pv" r="5" fill="#2563eb" stroke="#fff" stroke-width="2" style="display:none;"></circle>
+        <circle id="hover-dot-uv" r="5" fill="#10b981" stroke="#fff" stroke-width="2" style="display:none;"></circle>
+        {/* Transparent capture overlay for pointer events */}
+        <rect id="hover-capture" x={PAD} y={PAD} width={plotW} height={plotH} fill="transparent" style="cursor:crosshair;" />
       </svg>
+      <div id="chart-tooltip" style="position:absolute; pointer-events:none; display:none; background:rgba(23,23,23,0.94); color:#fff; padding:0.5rem 0.7rem; border-radius:8px; font-size:0.78rem; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,0.25); white-space:nowrap; z-index:5; transform:translate(-50%, -100%);">
+        <div id="tt-date" style="font-weight:600; margin-bottom:3px;"></div>
+        <div><span style="display:inline-block; width:8px; height:8px; background:#2563eb; border-radius:50%; margin-right:5px;"></span><span id="tt-pv"></span> pageviews</div>
+        <div><span style="display:inline-block; width:8px; height:8px; background:#10b981; border-radius:50%; margin-right:5px;"></span><span id="tt-uv"></span> unique visitors</div>
+      </div>
     </div>
     <div style="display:flex; gap:1.2rem; font-size:0.82rem; color:var(--ink-soft); margin-top:0.4rem;">
       <span><span style="display:inline-block; width:14px; height:3px; background:#2563eb; vertical-align:middle;"></span> Pageviews</span>
@@ -449,6 +457,73 @@ function fmtTime(iso: string) {
 </AdminLayout>
 
 <script>
+  // ── Interactive tooltip on line chart ──
+  (() => {
+    const wrap = document.getElementById("chart-wrap");
+    const svg = document.getElementById("trend-chart") as SVGSVGElement | null;
+    const capture = document.getElementById("hover-capture");
+    const guide = document.getElementById("hover-guide");
+    const dotPv = document.getElementById("hover-dot-pv");
+    const dotUv = document.getElementById("hover-dot-uv");
+    const tip = document.getElementById("chart-tooltip");
+    const ttDate = document.getElementById("tt-date");
+    const ttPv = document.getElementById("tt-pv");
+    const ttUv = document.getElementById("tt-uv");
+    if (!wrap || !svg || !capture || !guide || !dotPv || !dotUv || !tip || !ttDate || !ttPv || !ttUv) return;
+
+    let series: { date: string; pv: number; uv: number }[] = [];
+    let cfg: { W: number; H: number; PAD: number; plotW: number; plotH: number; stepX: number; maxPv: number } | null = null;
+    try {
+      series = JSON.parse(wrap.getAttribute("data-series") || "[]");
+      cfg = JSON.parse(wrap.getAttribute("data-chart") || "null");
+    } catch {}
+    if (!cfg || series.length === 0) return;
+
+    const show = (display: string) => {
+      guide.style.display = display;
+      dotPv.style.display = display;
+      dotUv.style.display = display;
+      tip.style.display = display;
+    };
+
+    const onMove = (ev: PointerEvent) => {
+      const rect = svg.getBoundingClientRect();
+      // Map client X back to SVG viewBox coordinates
+      const scaleX = cfg!.W / rect.width;
+      const svgX = (ev.clientX - rect.left) * scaleX;
+      // Find closest point
+      const rel = svgX - cfg!.PAD;
+      let idx = Math.round(rel / cfg!.stepX);
+      if (idx < 0) idx = 0;
+      if (idx > series.length - 1) idx = series.length - 1;
+      const s = series[idx];
+      const cx = cfg!.PAD + idx * cfg!.stepX;
+      const cyPv = cfg!.H - cfg!.PAD - (s.pv / cfg!.maxPv) * cfg!.plotH;
+      const cyUv = cfg!.H - cfg!.PAD - (s.uv / cfg!.maxPv) * cfg!.plotH;
+      guide.setAttribute("x1", String(cx));
+      guide.setAttribute("x2", String(cx));
+      dotPv.setAttribute("cx", String(cx));
+      dotPv.setAttribute("cy", String(cyPv));
+      dotUv.setAttribute("cx", String(cx));
+      dotUv.setAttribute("cy", String(cyUv));
+      show("");
+      ttDate.textContent = s.date;
+      ttPv.textContent = s.pv.toLocaleString();
+      ttUv.textContent = s.uv.toLocaleString();
+      // Position tooltip relative to wrapper
+      const wrapRect = wrap.getBoundingClientRect();
+      const pxPerUnit = rect.width / cfg!.W;
+      const tipX = rect.left - wrapRect.left + cx * pxPerUnit;
+      const tipY = rect.top - wrapRect.top + cyPv * pxPerUnit - 8;
+      tip.style.left = `${tipX}px`;
+      tip.style.top = `${tipY}px`;
+    };
+
+    capture.addEventListener("pointermove", onMove as EventListener);
+    capture.addEventListener("pointerenter", onMove as EventListener);
+    capture.addEventListener("pointerleave", () => show("none"));
+  })();
+
   // Lightweight auto-refresh — only when admin checks the box & tab is visible.
   const cb = document.getElementById("auto-refresh") as HTMLInputElement | null;
   const savedState = localStorage.getItem("admin-traffic-auto") === "1";
