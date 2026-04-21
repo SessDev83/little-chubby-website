@@ -50,17 +50,16 @@ let statReviews = 0;
 let statGallery = 0;
 let statTickets = 0;
 try {
-  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-  const [dl, rv, gl, lt] = await Promise.all([
+  const [dl, rv, gl, tt] = await Promise.all([
     supabase.from("artwork_downloads").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("book_reviews").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "approved"),
     supabase.from("gallery_feed").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase.from("lottery_entries").select("entry_count").eq("user_id", user.id).eq("month", currentMonth),
+    supabase.from("ticket_transactions").select("amount").eq("user_id", user.id),
   ]);
   statDownloads = dl.count ?? 0;
   statReviews = rv.count ?? 0;
   statGallery = gl.count ?? 0;
-  statTickets = (lt.data ?? []).reduce((s, r: any) => s + (r.entry_count || 0), 0);
+  statTickets = (tt.data ?? []).reduce((s, r: any) => s + (r.amount || 0), 0);
 } catch {
   // Silently degrade — if any table is missing, stats just show 0
 }
