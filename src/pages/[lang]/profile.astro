@@ -29,6 +29,7 @@ interface Profile {
   state: string | null;
   zip_code: string | null;
   country: string | null;
+  show_in_leaderboards?: boolean | null;
   created_at?: string | null;
 }
 
@@ -40,7 +41,7 @@ let securityMessageType: "success" | "error" = "success";
 
 const { data: profileData } = await supabase
   .from("profiles")
-  .select("display_name, lang_pref, avatar_url, phone, address_line1, address_line2, city, state, zip_code, country, created_at")
+  .select("display_name, lang_pref, avatar_url, phone, address_line1, address_line2, city, state, zip_code, country, show_in_leaderboards, created_at")
   .eq("id", user.id)
   .single();
 profile = profileData as (Profile & { created_at?: string | null }) | null;
@@ -152,6 +153,7 @@ if (Astro.request.method === "POST") {
       state: formData.get("state")?.toString().trim().slice(0, 100) || null,
       zip_code: formData.get("zip_code")?.toString().trim().slice(0, 20) || null,
       country: formData.get("country")?.toString().trim().slice(0, 100) || null,
+      show_in_leaderboards: formData.get("show_in_leaderboards") === "on",
     };
 
     const { error } = await supabase
@@ -502,6 +504,22 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
               <option value="es" selected={profile?.lang_pref === "es"}>Español</option>
               <option value="en" selected={profile?.lang_pref === "en"}>English</option>
             </select>
+          </div>
+
+          <div class="form-group" style="margin-top:0.75rem;">
+            <label style="display:flex; align-items:flex-start; gap:0.55rem; cursor:pointer;">
+              <input
+                type="checkbox"
+                id="show_in_leaderboards"
+                name="show_in_leaderboards"
+                checked={profile?.show_in_leaderboards === true}
+                style="margin-top:0.2rem;"
+              />
+              <span>
+                <strong>{text.profileShowInLeaderboards}</strong><br />
+                <span style="font-size:0.85rem; color:var(--muted);">{text.profileShowInLeaderboardsHint}</span>
+              </span>
+            </label>
           </div>
 
           <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">

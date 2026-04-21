@@ -49,6 +49,38 @@ const boostItems = [
   { type: "pin_7d", label: text.boostPin7d, icon: "📌", cost: 10 },
   { type: "gold_border", label: text.boostGoldBorder, icon: "✨", cost: 10 },
 ];
+
+// ── Monthly leaderboard (top 5, opted-in only, public data) ───
+interface LeaderboardRow {
+  rank: number;
+  user_id: string;
+  display_name: string | null;
+  peanuts_earned: number;
+}
+let leaderboard: LeaderboardRow[] = [];
+try {
+  const { data: lbData } = await sc
+    .from("monthly_leaderboard")
+    .select("rank, user_id, display_name, peanuts_earned")
+    .order("rank", { ascending: true })
+    .limit(5);
+  leaderboard = (lbData || []) as LeaderboardRow[];
+} catch {
+  leaderboard = [];
+}
+
+// Is the current user already opted in? (used to hide the CTA)
+let userOptedIntoLeaderboard = false;
+if (user) {
+  const { data: meProfile } = await sc
+    .from("profiles")
+    .select("show_in_leaderboards")
+    .eq("id", user.id)
+    .maybeSingle();
+  userOptedIntoLeaderboard = meProfile?.show_in_leaderboards === true;
+}
+
+const rankMedals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 ---
 
 <BaseLayout
@@ -179,6 +211,32 @@ const boostItems = [
             ))}
           </div>
         </div>
+      </div>
+
+      <!-- Monthly Leaderboard (opt-in) -->
+      <div class="leaderboard-section">
+        <h2>{text.peanutLeaderboardTitle}</h2>
+        <p class="leaderboard-desc">{text.peanutLeaderboardDesc}</p>
+
+        {leaderboard.length === 0 ? (
+          <p class="leaderboard-empty">{text.peanutLeaderboardEmpty}</p>
+        ) : (
+          <ol class="leaderboard-list" aria-label={text.peanutLeaderboardTitle}>
+            {leaderboard.map(row => (
+              <li class={`leaderboard-row rank-${row.rank}`}>
+                <span class="lb-rank">{rankMedals[row.rank] || `#${row.rank}`}</span>
+                <span class="lb-name">{row.display_name || text.peanutLeaderboardAnonymous}</span>
+                <span class="lb-peanuts">{row.peanuts_earned} 🥜</span>
+              </li>
+            ))}
+          </ol>
+        )}
+
+        {user && !userOptedIntoLeaderboard && (
+          <p class="leaderboard-cta">
+            <a href={`/${lang}/profile/#show_in_leaderboards`}>{text.peanutLeaderboardYouCta}</a>
+          </p>
+        )}
       </div>
 
       <!-- Transaction History -->
@@ -853,6 +911,66 @@ const boostItems = [
     color: var(--heading, #3d2c1e);
     margin-bottom: 0.5rem;
   }
+
+  /* Leaderboard */
+  .leaderboard-section {
+    margin-top: 2rem;
+    padding: 1rem 1.1rem 1.1rem;
+    background: linear-gradient(180deg, rgba(253, 224, 71, 0.12), rgba(253, 224, 71, 0));
+    border: 1px solid rgba(217, 119, 6, 0.25);
+    border-radius: 12px;
+  }
+  .leaderboard-section h2 {
+    margin: 0 0 0.3rem;
+    color: var(--heading, #3d2c1e);
+  }
+  .leaderboard-desc {
+    margin: 0 0 0.9rem;
+    color: var(--muted, #6b5d4c);
+    font-size: 0.92rem;
+  }
+  .leaderboard-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .leaderboard-row {
+    display: grid;
+    grid-template-columns: 2.4rem 1fr auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0.7rem;
+    background: var(--surface, #fff);
+    border-radius: 8px;
+    border: 1px solid var(--border, #e8dcc8);
+  }
+  .leaderboard-row.rank-1 { background: linear-gradient(90deg, #fff7d6, #fff); }
+  .leaderboard-row.rank-2 { background: linear-gradient(90deg, #f3f4f6, #fff); }
+  .leaderboard-row.rank-3 { background: linear-gradient(90deg, #fde7cc, #fff); }
+  .lb-rank { font-size: 1.25rem; text-align: center; }
+  .lb-name { font-weight: 600; color: var(--heading, #3d2c1e); }
+  .lb-peanuts { font-weight: 700; color: var(--brand-blue, #2563eb); }
+  .leaderboard-empty {
+    margin: 0;
+    padding: 0.75rem;
+    text-align: center;
+    color: var(--muted, #6b5d4c);
+    font-style: italic;
+  }
+  .leaderboard-cta {
+    margin: 0.85rem 0 0;
+    font-size: 0.9rem;
+    text-align: right;
+  }
+  .leaderboard-cta a {
+    color: var(--brand-blue, #2563eb);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .leaderboard-cta a:hover { text-decoration: underline; }
 
   .history-filters {
     display: flex;
