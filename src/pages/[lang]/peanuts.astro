@@ -119,6 +119,22 @@ const boostItems = [
             ))}
           </div>
 
+          <h4 class="subshop-title">🌟 {text.peanutShopHighlight}</h4>
+          <p class="subshop-desc">{text.peanutShopHighlightDesc}</p>
+          <div class="shop-grid">
+            <div class="shop-card highlight-card" data-shop="highlight" data-cost="8">
+              <span class="shop-icon">🌟</span>
+              <span class="shop-name">{text.highlightBuy}</span>
+              <span class="shop-price">8 🥜 · 7d</span>
+              <select class="highlight-review-select" style="display:none; width:100%; margin:0.4rem 0; padding:0.3rem; border-radius:6px; border:1px solid var(--border);">
+                <option value="">{lang === "es" ? "— Elige una review —" : "— Pick a review —"}</option>
+              </select>
+              <button class="btn btn-sm btn-buy" data-action="buy-highlight">
+                {text.peanutBuy}
+              </button>
+            </div>
+          </div>
+
           <h4 class="subshop-title">{text.peanutShopLottery}</h4>
           <p class="subshop-desc">{text.peanutShopLotteryDesc}</p>
           <div class="shop-card lottery-entry-card">
@@ -254,6 +270,15 @@ const boostItems = [
       if (!data.reviews) return;
       const approved = data.reviews.filter(r => r.status === "approved");
       document.querySelectorAll(".boost-review-select").forEach(sel => {
+        sel.style.display = approved.length > 0 ? "block" : "none";
+        approved.forEach(r => {
+          const opt = document.createElement("option");
+          opt.value = r.id;
+          opt.textContent = (r.book_title || r.book_id) + " ★" + r.rating;
+          sel.appendChild(opt);
+        });
+      });
+      document.querySelectorAll(".highlight-review-select").forEach(sel => {
         sel.style.display = approved.length > 0 ? "block" : "none";
         approved.forEach(r => {
           const opt = document.createElement("option");
@@ -492,6 +517,20 @@ const boostItems = [
         });
       });
     });
+
+    // Gallery highlight button
+    document.querySelectorAll("[data-action='buy-highlight']").forEach(btn => {
+      const card = btn.closest(".shop-card");
+      const select = card.querySelector(".highlight-review-select");
+      btn.addEventListener("click", async () => {
+        const reviewId = select.value;
+        if (!reviewId) {
+          showToast(lang === "es" ? "Selecciona una review." : "Select a review first.", "error");
+          return;
+        }
+        await purchaseAction("/api/buy-highlight/", { review_id: reviewId });
+      });
+    });
   }
 
   async function purchaseAction(url, body) {
@@ -516,6 +555,14 @@ const boostItems = [
       }
       if (data.error === "boost_active") {
         showToast(lang === "es" ? "Este boost ya esta activo." : "This boost is already active.", "info");
+        return;
+      }
+      if (data.error === "highlight_active_on_other") {
+        showToast(text.highlightErrorActiveOther || "You already have another highlighted review.", "info");
+        return;
+      }
+      if (data.error === "not_review_owner") {
+        showToast(text.highlightErrorNotOwner || "You can only highlight your own reviews.", "error");
         return;
       }
       if (data.error) {

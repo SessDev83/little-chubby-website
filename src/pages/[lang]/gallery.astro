@@ -33,7 +33,7 @@ try {
 
   const { data: gallery, error } = await supabase
     .from("gallery_feed")
-    .select("id, user_id, book_id, photo_url, extra_photos, rating, review_text, featured, submitted_at, display_name, is_pinned, has_gold_border")
+    .select("id, user_id, book_id, photo_url, extra_photos, rating, review_text, featured, submitted_at, display_name, is_pinned, has_gold_border, is_highlighted")
     .order("is_pinned", { ascending: false })
     .order("featured", { ascending: false })
     .order("submitted_at", { ascending: false })
@@ -160,7 +160,8 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
               "gallery-card" +
               (item.featured ? " featured" : "") +
               (item.is_pinned ? " is-pinned" : "") +
-              (item.has_gold_border ? " has-gold-border" : "");
+              (item.has_gold_border ? " has-gold-border" : "") +
+              (item.is_highlighted ? " is-highlighted" : "");
             return (
             <article
               class={cardClass}
@@ -176,6 +177,7 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
               data-id={item.id}
             >
               {item.is_pinned && <span class="pinned-ribbon" title={text.galleryPinned}>📌 {text.galleryPinned}</span>}
+              {item.is_highlighted && <span class="highlight-ribbon" title={lang === "es" ? "Destacada" : "Spotlight"}>🌟 {lang === "es" ? "Destacada" : "Spotlight"}</span>}
               {item.featured && <span class="featured-badge">{text.galleryFeatured}</span>}
               <div class="gallery-img-wrap">
                 <img src={item.photo_url} alt={bookMap[item.book_id] || item.book_id} class="gallery-img" loading="lazy" width="320" height="240" />
@@ -265,7 +267,7 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
   </div>
 </BaseLayout>
 
-<script is:inline define:vars={{ lang, siteUrl, PAGE_SIZE, bookMapJson: JSON.stringify(bookMap), sampleItemsJson: JSON.stringify(realCount < SAMPLE_THRESHOLD && !fetchError ? getSampleItems(lang) : []), bookOptionsJson: JSON.stringify(bookOptions), textsJson: JSON.stringify({loadMore: text.galleryLoadMore, showing: text.galleryShowing, of: text.galleryOf, featured: text.galleryFeatured, share: text.galleryShareReview, copyLink: text.galleryCopyLink, linkCopied: text.galleryLinkCopied, filterAll: text.galleryFilterAll, pinned: text.galleryPinned}) }}>
+<script is:inline define:vars={{ lang, siteUrl, PAGE_SIZE, bookMapJson: JSON.stringify(bookMap), sampleItemsJson: JSON.stringify(realCount < SAMPLE_THRESHOLD && !fetchError ? getSampleItems(lang) : []), bookOptionsJson: JSON.stringify(bookOptions), textsJson: JSON.stringify({loadMore: text.galleryLoadMore, showing: text.galleryShowing, of: text.galleryOf, featured: text.galleryFeatured, share: text.galleryShareReview, copyLink: text.galleryCopyLink, linkCopied: text.galleryLinkCopied, filterAll: text.galleryFilterAll, pinned: text.galleryPinned, spotlight: lang === "es" ? "Destacada" : "Spotlight"}) }}>
 (function() {
   // Abort any previous gallery listeners to avoid duplicates on View Transitions
   if (window.__galleryAC) window.__galleryAC.abort();
@@ -294,7 +296,8 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
     art.className = "gallery-card"
       + (item.featured ? " featured" : "")
       + (item.is_pinned ? " is-pinned" : "")
-      + (item.has_gold_border ? " has-gold-border" : "");
+      + (item.has_gold_border ? " has-gold-border" : "")
+      + (item.is_highlighted ? " is-highlighted" : "");
     art.id = "review-" + item.id;
     art.dataset.book = item.book_id;
     art.dataset.rating = item.rating;
@@ -317,8 +320,9 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
     }
 
     const pinnedHtml = item.is_pinned ? '<span class="pinned-ribbon">📌 ' + (txt.pinned || 'Pinned') + '</span>' : '';
+    const highlightHtml = item.is_highlighted ? '<span class="highlight-ribbon">🌟 ' + (txt.spotlight || 'Spotlight') + '</span>' : '';
 
-    art.innerHTML = pinnedHtml +
+    art.innerHTML = pinnedHtml + highlightHtml +
       (item.featured ? '<span class="featured-badge">' + txt.featured + '</span>' : '') +
       '<div class="gallery-img-wrap"><img src="' + item.photo_url + '" alt="' + bookTitle + '" class="gallery-img" loading="lazy" width="320" height="240" /></div>' +
       thumbsHtml +
@@ -339,7 +343,7 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
       skeleton.style.display = "grid";
       try {
         const params = new URLSearchParams();
-        params.set("select", "id,book_id,photo_url,extra_photos,rating,review_text,featured,submitted_at,display_name,is_pinned,has_gold_border");
+        params.set("select", "id,user_id,book_id,photo_url,extra_photos,rating,review_text,featured,submitted_at,display_name,is_pinned,has_gold_border,is_highlighted");
         params.set("order", "is_pinned.desc,featured.desc,submitted_at.desc");
         const from = offset;
         const to = offset + PAGE_SIZE - 1;
@@ -433,7 +437,7 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
     skeleton.style.display = "grid";
     grid.innerHTML = "";
     const params = new URLSearchParams();
-    params.set("select", "id,book_id,photo_url,extra_photos,rating,review_text,featured,submitted_at,display_name,is_pinned,has_gold_border");
+    params.set("select", "id,user_id,book_id,photo_url,extra_photos,rating,review_text,featured,submitted_at,display_name,is_pinned,has_gold_border,is_highlighted");
     if (activeFilters.book) params.set("book_id", "eq." + activeFilters.book);
     if (activeFilters.rating) params.set("rating", "eq." + activeFilters.rating);
     if (activeFilters.featured) params.set("featured", "eq.true");
@@ -797,6 +801,38 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
     border-radius: 999px;
     z-index: 2;
     box-shadow: 0 2px 6px rgba(21,101,192,0.35);
+  }
+  /* Phase C.4: Highlight — sparkle glow for spotlighted reviews */
+  .highlight-ribbon {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: #fff;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(249,115,22,0.4);
+  }
+  .gallery-card.is-pinned .highlight-ribbon {
+    left: auto;
+    right: 0.5rem;
+    top: 2.1rem;
+  }
+  .gallery-card.is-highlighted {
+    box-shadow: 0 0 0 2px rgba(249,115,22,0.25), 0 6px 20px rgba(249,115,22,0.25);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .gallery-card.is-highlighted {
+      animation: highlightPulse 3.2s ease-in-out infinite;
+    }
+    @keyframes highlightPulse {
+      0%, 100% { box-shadow: 0 0 0 2px rgba(249,115,22,0.2), 0 6px 20px rgba(249,115,22,0.2); }
+      50%      { box-shadow: 0 0 0 3px rgba(249,115,22,0.4), 0 8px 28px rgba(249,115,22,0.35); }
+    }
   }
   /* Phase A: Gold Review border (2px animated, reduced-motion safe) */
   .gallery-card.has-gold-border {
