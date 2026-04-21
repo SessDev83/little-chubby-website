@@ -23,6 +23,8 @@ const PAGE_SIZE = 12;
 let items: any[] = [];
 let totalCount = 0;
 let fetchError = false;
+// Map author user_id -> active badge_type[] (max 3) for the initial SSR page
+const badgesByUser: Record<string, string[]> = {};
 try {
   const { count } = await supabase
     .from("gallery_feed")
@@ -31,15 +33,45 @@ try {
 
   const { data: gallery, error } = await supabase
     .from("gallery_feed")
-    .select("id, book_id, photo_url, extra_photos, rating, review_text, featured, submitted_at, display_name")
+    .select("id, user_id, book_id, photo_url, extra_photos, rating, review_text, featured, submitted_at, display_name, is_pinned, has_gold_border")
+    .order("is_pinned", { ascending: false })
     .order("featured", { ascending: false })
     .order("submitted_at", { ascending: false })
     .range(0, PAGE_SIZE - 1);
   if (error) throw error;
   items = gallery ?? [];
+
+  // Batch-fetch badges for all unique authors in one query (avoids N+1)
+  const authorIds = Array.from(new Set(items.map((i: any) => i.user_id).filter(Boolean)));
+  if (authorIds.length > 0) {
+    const { data: badgeRows } = await supabase
+      .from("profile_badges")
+      .select("user_id, badge_type")
+      .in("user_id", authorIds)
+      .eq("active", true);
+    (badgeRows ?? []).forEach((b: any) => {
+      if (!b?.user_id || !b?.badge_type) return;
+      const arr = badgesByUser[b.user_id] || (badgesByUser[b.user_id] = []);
+      if (arr.length < 3) arr.push(b.badge_type);
+    });
+  }
 } catch {
   fetchError = true;
 }
+
+// Badge emoji lookup (cosmetic only, keep in sync with shop catalog)
+const badgeEmoji: Record<string, string> = {
+  frame_gold: "🖼️",
+  frame_silver: "🪞",
+  top_reviewer: "⭐",
+  star_parent: "💖",
+};
+const badgeLabel: Record<string, string> = {
+  frame_gold: text.badgeFrameGold,
+  frame_silver: text.badgeFrameSilver,
+  top_reviewer: text.badgeTopReviewer,
+  star_parent: text.badgeStarParent,
+};
 
 // Merge sample reviews when gallery is empty or has few real reviews
 const realCount = items.length;
@@ -123,9 +155,15 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
           {items.map((item: any) => {
             const extras: string[] = item.extra_photos || [];
             const allPhotos = [item.photo_url, ...extras];
+            const authorBadges: string[] = (item.user_id && badgesByUser[item.user_id]) || [];
+            const cardClass =
+              "gallery-card" +
+              (item.featured ? " featured" : "") +
+              (item.is_pinned ? " is-pinned" : "") +
+              (item.has_gold_border ? " has-gold-border" : "");
             return (
             <article
-              class={`gallery-card${item.featured ? " featured" : ""}`}
+              class={cardClass}
               id={`review-${item.id}`}
               data-book={item.book_id}
               data-rating={item.rating}
@@ -137,6 +175,7 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
               data-author={item.display_name}
               data-id={item.id}
             >
+              {item.is_pinned && <span class="pinned-ribbon" title={text.galleryPinned}>📌 {text.galleryPinned}</span>}
               {item.featured && <span class="featured-badge">{text.galleryFeatured}</span>}
               <div class="gallery-img-wrap">
                 <img src={item.photo_url} alt={bookMap[item.book_id] || item.book_id} class="gallery-img" loading="lazy" width="320" height="240" />
@@ -158,7 +197,16 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
                 <span class="gallery-stars">{stars(item.rating)}</span>
                 {item.review_text && <p class="gallery-text">{item.review_text}</p>}
                 <div class="gallery-footer">
-                  <span class="gallery-author">— {item.display_name}</span>
+                  <span class="gallery-author">
+                    <span class="gallery-author-name">— {item.display_name}</span>
+                    {authorBadges.length > 0 && (
+                      <span class="gallery-author-badges" aria-label="badges">
+                        {authorBadges.map((b: string) => (
+                          <span class="author-badge" title={badgeLabel[b] || b}>{badgeEmoji[b] || "🎖️"}</span>
+                        ))}
+                      </span>
+                    )}
+                  </span>
                   <button type="button" class="share-btn" title={text.galleryShareReview} data-id={item.id} data-book={bookMap[item.book_id] || item.book_id}>
                     ↗
                   </button>
@@ -217,7 +265,7 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
   </div>
 </BaseLayout>
 
-<script is:inline define:vars={{ lang, siteUrl, PAGE_SIZE, bookMapJson: JSON.stringify(bookMap), sampleItemsJson: JSON.stringify(realCount < SAMPLE_THRESHOLD && !fetchError ? getSampleItems(lang) : []), bookOptionsJson: JSON.stringify(bookOptions), textsJson: JSON.stringify({loadMore: text.galleryLoadMore, showing: text.galleryShowing, of: text.galleryOf, featured: text.galleryFeatured, share: text.galleryShareReview, copyLink: text.galleryCopyLink, linkCopied: text.galleryLinkCopied, filterAll: text.galleryFilterAll}) }}>
+<script is:inline define:vars={{ lang, siteUrl, PAGE_SIZE, bookMapJson: JSON.stringify(bookMap), sampleItemsJson: JSON.stringify(realCount < SAMPLE_THRESHOLD && !fetchError ? getSampleItems(lang) : []), bookOptionsJson: JSON.stringify(bookOptions), textsJson: JSON.stringify({loadMore: text.galleryLoadMore, showing: text.galleryShowing, of: text.galleryOf, featured: text.galleryFeatured, share: text.galleryShareReview, copyLink: text.galleryCopyLink, linkCopied: text.galleryLinkCopied, filterAll: text.galleryFilterAll, pinned: text.galleryPinned}) }}>
 (function() {
   // Abort any previous gallery listeners to avoid duplicates on View Transitions
   if (window.__galleryAC) window.__galleryAC.abort();
@@ -243,7 +291,10 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
     const art = document.createElement("article");
     const extras = item.extra_photos || [];
     const allPhotos = [item.photo_url, ...extras];
-    art.className = "gallery-card" + (item.featured ? " featured" : "");
+    art.className = "gallery-card"
+      + (item.featured ? " featured" : "")
+      + (item.is_pinned ? " is-pinned" : "")
+      + (item.has_gold_border ? " has-gold-border" : "");
     art.id = "review-" + item.id;
     art.dataset.book = item.book_id;
     art.dataset.rating = item.rating;
@@ -265,14 +316,17 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
       thumbsHtml = '<div class="gallery-thumbs">' + thumbItems + moreHtml + '</div>';
     }
 
-    art.innerHTML = (item.featured ? '<span class="featured-badge">' + txt.featured + '</span>' : '') +
+    const pinnedHtml = item.is_pinned ? '<span class="pinned-ribbon">📌 ' + (txt.pinned || 'Pinned') + '</span>' : '';
+
+    art.innerHTML = pinnedHtml +
+      (item.featured ? '<span class="featured-badge">' + txt.featured + '</span>' : '') +
       '<div class="gallery-img-wrap"><img src="' + item.photo_url + '" alt="' + bookTitle + '" class="gallery-img" loading="lazy" width="320" height="240" /></div>' +
       thumbsHtml +
       '<div class="gallery-body">' +
         '<strong class="gallery-book">' + bookTitle + '</strong>' +
         '<span class="gallery-stars">' + starsStr(item.rating) + '</span>' +
         (item.review_text ? '<p class="gallery-text">' + item.review_text + '</p>' : '') +
-        '<div class="gallery-footer"><span class="gallery-author">— ' + item.display_name + '</span>' +
+        '<div class="gallery-footer"><span class="gallery-author"><span class="gallery-author-name">— ' + item.display_name + '</span></span>' +
         '<button type="button" class="share-btn" title="' + txt.share + '" data-id="' + item.id + '" data-book="' + bookTitle + '">↗</button></div></div>';
     return art;
   }
@@ -285,7 +339,8 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
       skeleton.style.display = "grid";
       try {
         const params = new URLSearchParams();
-        params.set("select", "id,book_id,photo_url,extra_photos,rating,review_text,featured,submitted_at,display_name");
+        params.set("select", "id,book_id,photo_url,extra_photos,rating,review_text,featured,submitted_at,display_name,is_pinned,has_gold_border");
+        params.set("order", "is_pinned.desc,featured.desc,submitted_at.desc");
         const from = offset;
         const to = offset + PAGE_SIZE - 1;
 
@@ -378,11 +433,11 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
     skeleton.style.display = "grid";
     grid.innerHTML = "";
     const params = new URLSearchParams();
-    params.set("select", "id,book_id,photo_url,extra_photos,rating,review_text,featured,submitted_at,display_name");
+    params.set("select", "id,book_id,photo_url,extra_photos,rating,review_text,featured,submitted_at,display_name,is_pinned,has_gold_border");
     if (activeFilters.book) params.set("book_id", "eq." + activeFilters.book);
     if (activeFilters.rating) params.set("rating", "eq." + activeFilters.rating);
     if (activeFilters.featured) params.set("featured", "eq.true");
-    params.set("order", "featured.desc,submitted_at.desc");
+    params.set("order", "is_pinned.desc,featured.desc,submitted_at.desc");
     try {
       const data = await supabaseRest("gallery_feed", params, 0, PAGE_SIZE - 1);
       // Merge matching samples first, then real data
@@ -717,6 +772,66 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
     padding: 0.15rem 0.5rem;
     border-radius: 999px;
     z-index: 2;
+  }
+  /* Phase A: Pinned review ribbon (top-left to avoid collision with featured-badge) */
+  .pinned-ribbon {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    background: linear-gradient(135deg, #1e88e5, #1565c0);
+    color: #fff;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    z-index: 2;
+    box-shadow: 0 2px 6px rgba(21,101,192,0.35);
+  }
+  /* Phase A: Gold Review border (2px animated, reduced-motion safe) */
+  .gallery-card.has-gold-border {
+    border: 2px solid transparent;
+    background:
+      linear-gradient(#fff, #fff) padding-box,
+      linear-gradient(135deg, #d4af37, #f5d87a, #d4af37) border-box;
+    box-shadow: 0 0 0 1px rgba(212,175,55,0.15), 0 4px 14px rgba(212,175,55,0.2);
+  }
+  @media (prefers-reduced-motion: no-preference) and (min-width: 768px) {
+    .gallery-card.has-gold-border {
+      animation: goldShimmer 4s ease-in-out infinite;
+    }
+    @keyframes goldShimmer {
+      0%, 100% { box-shadow: 0 0 0 1px rgba(212,175,55,0.15), 0 4px 14px rgba(212,175,55,0.2); }
+      50%      { box-shadow: 0 0 0 2px rgba(212,175,55,0.35), 0 6px 22px rgba(212,175,55,0.4); }
+    }
+  }
+  /* Phase A: Author badges strip */
+  .gallery-author {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .gallery-author-name {
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+  }
+  .gallery-author-badges {
+    display: inline-flex;
+    gap: 0.2rem;
+  }
+  .author-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background: #fff7e0;
+    border: 1px solid rgba(212,175,55,0.35);
+    font-size: 0.78rem;
+    line-height: 1;
+    cursor: help;
   }
   .gallery-img-wrap { overflow: hidden; }
   .gallery-img {

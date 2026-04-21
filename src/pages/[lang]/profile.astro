@@ -67,6 +67,36 @@ try {
   // Silently degrade — if any table is missing, stats just show 0
 }
 
+// ── Phase A: profile badges (read-only, fail-safe) ─────────────────
+let userBadges: string[] = [];
+let hasFrameGold = false;
+let hasFrameSilver = false;
+try {
+  const { data: badgeRows } = await supabase
+    .from("profile_badges")
+    .select("badge_type")
+    .eq("user_id", user.id)
+    .eq("active", true);
+  userBadges = (badgeRows ?? []).map((r: any) => r.badge_type).filter(Boolean);
+  hasFrameGold = userBadges.includes("frame_gold");
+  hasFrameSilver = userBadges.includes("frame_silver") && !hasFrameGold;
+} catch {
+  // No badges table yet or query failed — render no badges
+}
+const badgeEmoji: Record<string, string> = {
+  frame_gold: "🖼️",
+  frame_silver: "🪞",
+  top_reviewer: "⭐",
+  star_parent: "💖",
+};
+const badgeLabelMap: Record<string, string> = {
+  frame_gold: text.badgeFrameGold,
+  frame_silver: text.badgeFrameSilver,
+  top_reviewer: text.badgeTopReviewer,
+  star_parent: text.badgeStarParent,
+};
+const avatarFrameClass = hasFrameGold ? "frame-gold" : hasFrameSilver ? "frame-silver" : "";
+
 function formatJoinDate(iso?: string | null): string {
   if (!iso) return "";
   try {
@@ -157,14 +187,16 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
       {/* ── Hero identity card ── */}
       <div class="profile-hero surface-card">
         <div class="hero-avatar">
-          <img
-            id="avatar-preview"
-            src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.display_name || user.email || "U")}&background=4a90d9&color=fff&size=128`}
-            alt={text.profileAvatar}
-            width="112"
-            height="112"
-            class="avatar-img"
-          />
+          <div class={`avatar-wrap ${avatarFrameClass}`}>
+            <img
+              id="avatar-preview"
+              src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.display_name || user.email || "U")}&background=4a90d9&color=fff&size=128`}
+              alt={text.profileAvatar}
+              width="112"
+              height="112"
+              class="avatar-img"
+            />
+          </div>
           <div class="avatar-actions">
             <label class="btn btn-secondary btn-sm" for="avatar-input" style="cursor:pointer;">
               {text.profileAvatarChange}
@@ -185,6 +217,19 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         </div>
         <div class="hero-info">
           <h1 class="hero-name">{profile?.display_name || user.email}</h1>
+          {userBadges.length > 0 && (
+            <div class="profile-badge-strip" aria-label={text.profileBadgesTitle}>
+              {userBadges.slice(0, 3).map((b: string) => (
+                <span class="profile-badge-chip" title={badgeLabelMap[b] || b}>
+                  <span class="profile-badge-emoji" aria-hidden="true">{badgeEmoji[b] || "🎖️"}</span>
+                  <span class="profile-badge-label">{badgeLabelMap[b] || b}</span>
+                </span>
+              ))}
+              {userBadges.length > 3 && (
+                <span class="profile-badge-more">{text.badgesMore.replace("{n}", String(userBadges.length - 3))}</span>
+              )}
+            </div>
+          )}
           <p class="hero-email">{user.email}</p>
           {memberSince && (
             <p class="hero-meta">🗓️ {text.profileMemberSince} {memberSince}</p>
@@ -737,6 +782,75 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     border-radius: 50%;
     object-fit: cover;
     border: 3px solid var(--brand-blue);
+  }
+
+  /* Phase A: Avatar frame (gold / silver cosmetic ring) */
+  .avatar-wrap {
+    display: inline-block;
+    border-radius: 50%;
+    padding: 0;
+    position: relative;
+  }
+  .avatar-wrap.frame-gold,
+  .avatar-wrap.frame-silver {
+    padding: 4px;
+    background: linear-gradient(135deg, #d4af37, #f5d87a, #d4af37);
+  }
+  .avatar-wrap.frame-silver {
+    background: linear-gradient(135deg, #b0b0b0, #e8e8e8, #b0b0b0);
+  }
+  .avatar-wrap.frame-gold .avatar-img,
+  .avatar-wrap.frame-silver .avatar-img {
+    border: 3px solid #fff;
+  }
+  @media (prefers-reduced-motion: no-preference) and (min-width: 640px) {
+    .avatar-wrap.frame-gold   { animation: frameShimmerGold 5s ease-in-out infinite; }
+    .avatar-wrap.frame-silver { animation: frameShimmerSilver 5s ease-in-out infinite; }
+    @keyframes frameShimmerGold {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.0); }
+      50%      { box-shadow: 0 0 14px 2px rgba(212,175,55,0.45); }
+    }
+    @keyframes frameShimmerSilver {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(180,180,180,0.0); }
+      50%      { box-shadow: 0 0 12px 2px rgba(180,180,180,0.45); }
+    }
+  }
+
+  /* Phase A: Profile badges strip (hero) */
+  .profile-badge-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.1rem 0 0.2rem;
+  }
+  .profile-badge-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    background: #fff7e0;
+    border: 1px solid rgba(212,175,55,0.4);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .profile-badge-emoji { font-size: 0.95rem; line-height: 1; }
+  .profile-badge-label { white-space: nowrap; }
+  .profile-badge-more {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    background: var(--brand-blue-soft, #e6f0fb);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--brand-blue);
+  }
+  @media (max-width: 420px) {
+    .profile-badge-label { display: none; }
+    .profile-badge-chip { padding: 0.3rem 0.45rem; }
   }
 
   .avatar-actions {
