@@ -50,6 +50,26 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 
     // ── CSV export (all transactions in selected range, no pagination) ──
     if (wantsCsv) {
+      const lang = (url.searchParams.get("lang") || "en").toLowerCase() === "es" ? "es" : "en";
+      const reasonLabels: Record<string, { es: string; en: string }> = {
+        review:          { es: "Resena aprobada",          en: "Approved review" },
+        share:           { es: "Compartido",               en: "Shared link" },
+        download:        { es: "Descarga de ilustracion",  en: "Artwork download" },
+        admin:           { es: "Ajuste administrativo",    en: "Admin adjustment" },
+        giveaway:        { es: "Entrada sorteo",           en: "Giveaway entry" },
+        badge:           { es: "Compra de insignia",       en: "Badge purchase" },
+        boost:           { es: "Boost de resena",          en: "Review boost" },
+        lottery_entry:   { es: "Boleto del sorteo",        en: "Lottery ticket" },
+        ticket_purchase: { es: "Compra de boleto",         en: "Ticket purchase" },
+      };
+      const typeLabel = {
+        earned: lang === "es" ? "Ganado" : "Earned",
+        spent:  lang === "es" ? "Gastado" : "Spent",
+      };
+      const headers = lang === "es"
+        ? ["Fecha", "Hora", "Tipo", "Motivo", "Cacahuetes", "Referencia"]
+        : ["Date", "Time", "Type", "Reason", "Peanuts", "Reference"];
+
       let csvQuery = svc
         .from("credit_transactions")
         .select("amount, reason, ref_id, created_at")
@@ -57,17 +77,64 @@ export const GET: APIRoute = async ({ url, cookies }) => {
         .order("created_at", { ascending: false });
       if (rangeStart) csvQuery = csvQuery.gte("created_at", rangeStart);
       const { data: csvRows } = await csvQuery;
-      const lines = ["date,amount,reason,ref_id"];
+
+      // Proper CSV escaping (wrap in quotes if contains comma/quote/newline; double inner quotes)
+      const esc = (v: string) => {
+        const s = String(v ?? "");
+        return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const fmtDate = (iso: string) => {
+        const d = new Date(iso);
+        // YYYY-MM-DD (sortable, locale-neutral)
+        const y = d.getUTCFullYear();
+        const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(d.getUTCDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+      const fmtTime = (iso: string) => {
+        const d = new Date(iso);
+        const h = String(d.getUTCHours()).padStart(2, "0");
+        const mi = String(d.getUTCMinutes()).padStart(2, "0");
+        return `${h}:${mi}`;
+      };
+
+      const lines: string[] = [];
+      // Excel/Calc hint: use comma as separator regardless of locale
+      lines.push("sep=,");
+      lines.push(headers.map(esc).join(","));
+      let net = 0;
+      let earned = 0;
+      let spent = 0;
       (csvRows || []).forEach((r: any) => {
-        const row = [
-          new Date(r.created_at).toISOString(),
-          String(r.amount),
-          String(r.reason || "").replace(/,/g, ";"),
-          String(r.ref_id || ""),
-        ];
-        lines.push(row.join(","));
+        const amt = Number(r.amount || 0);
+        net += amt;
+        if (amt > 0) earned += amt; else spent += amt;
+        const reasonKey = String(r.reason || "");
+        const reasonPretty = reasonLabels[reasonKey]?.[lang] || reasonKey;
+        const sign = amt > 0 ? "+" : "";
+        lines.push([
+          fmtDate(r.created_at),
+          fmtTime(r.created_at),
+          amt >= 0 ? typeLabel.earned : typeLabel.spent,
+          reasonPretty,
+          `${sign}${amt}`,
+          r.ref_id || "",
+        ].map(esc).join(","));
       });
-      return new Response(lines.join("\n"), {
+
+      // Blank row then totals for easy reading
+      lines.push("");
+      const totalsLabel = lang === "es" ? "TOTALES" : "TOTALS";
+      const earnedLbl = lang === "es" ? "Ganado"  : "Earned";
+      const spentLbl  = lang === "es" ? "Gastado" : "Spent";
+      const netLbl    = lang === "es" ? "Neto"    : "Net";
+      lines.push([esc(totalsLabel), "", "", esc(earnedLbl), `+${earned}`, ""].join(","));
+      lines.push(["", "", "", esc(spentLbl),  `${spent}`, ""].map(esc).join(","));
+      lines.push(["", "", "", esc(netLbl),    `${net >= 0 ? "+" : ""}${net}`, ""].join(","));
+
+      // UTF-8 BOM so Excel detects encoding (accents render correctly)
+      const body = "\uFEFF" + lines.join("\r\n");
+      return new Response(body, {
         status: 200,
         headers: {
           "Content-Type": "text/csv; charset=utf-8",

@@ -307,7 +307,7 @@ const boostItems = [
 
     // Update CSV link
     const csv = document.getElementById("tx-export-csv");
-    if (csv) csv.setAttribute("href", `/api/credit-history/?format=csv&range=${currentRange}`);
+    if (csv) csv.setAttribute("href", `/api/credit-history/?format=csv&range=${currentRange}&lang=${lang}`);
   }
 
   function renderSummary(summary, rangeNet) {
@@ -434,7 +434,7 @@ const boostItems = [
 
   function setupCsvExport() {
     const csv = document.getElementById("tx-export-csv");
-    if (csv) csv.setAttribute("href", `/api/credit-history/?format=csv&range=${currentRange}`);
+    if (csv) csv.setAttribute("href", `/api/credit-history/?format=csv&range=${currentRange}&lang=${lang}`);
   }
 
   function setupLotteryQty() {
