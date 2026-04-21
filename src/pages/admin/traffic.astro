@@ -276,7 +276,7 @@ function fmtTime(iso: string) {
         {/* Transparent capture overlay for pointer events */}
         <rect id="hover-capture" x={PAD} y={PAD} width={plotW} height={plotH} fill="transparent" style="cursor:crosshair;" />
       </svg>
-      <div id="chart-tooltip" style="position:absolute; pointer-events:none; display:none; background:rgba(23,23,23,0.94); color:#fff; padding:0.5rem 0.7rem; border-radius:8px; font-size:0.78rem; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,0.25); white-space:nowrap; z-index:5; transform:translate(-50%, -100%);">
+      <div id="chart-tooltip" style="position:absolute; pointer-events:none; display:none; background:rgba(23,23,23,0.94); color:#fff; padding:0.5rem 0.7rem; border-radius:8px; font-size:0.78rem; line-height:1.35; box-shadow:0 4px 14px rgba(0,0,0,0.25); white-space:nowrap; z-index:5;">
         <div id="tt-date" style="font-weight:600; margin-bottom:3px;"></div>
         <div><span style="display:inline-block; width:8px; height:8px; background:#2563eb; border-radius:50%; margin-right:5px;"></span><span id="tt-pv"></span> pageviews</div>
         <div><span style="display:inline-block; width:8px; height:8px; background:#10b981; border-radius:50%; margin-right:5px;"></span><span id="tt-uv"></span> unique visitors</div>
@@ -510,13 +510,30 @@ function fmtTime(iso: string) {
       ttDate.textContent = s.date;
       ttPv.textContent = s.pv.toLocaleString();
       ttUv.textContent = s.uv.toLocaleString();
-      // Position tooltip relative to wrapper
+      // Position tooltip relative to wrapper, auto-flip if near top
       const wrapRect = wrap.getBoundingClientRect();
       const pxPerUnit = rect.width / cfg!.W;
-      const tipX = rect.left - wrapRect.left + cx * pxPerUnit;
-      const tipY = rect.top - wrapRect.top + cyPv * pxPerUnit - 8;
-      tip.style.left = `${tipX}px`;
-      tip.style.top = `${tipY}px`;
+      const anchorX = rect.left - wrapRect.left + cx * pxPerUnit;
+      const anchorY = rect.top - wrapRect.top + Math.min(cyPv, cyUv) * pxPerUnit;
+      // Reset so we can measure
+      tip.style.left = "0px";
+      tip.style.top = "0px";
+      const tipW = tip.offsetWidth;
+      const tipH = tip.offsetHeight;
+      const gap = 10;
+      // Horizontal: center on anchor, clamp inside wrapper
+      let left = anchorX - tipW / 2;
+      const maxLeft = wrapRect.width - tipW - 4;
+      if (left < 4) left = 4;
+      if (left > maxLeft) left = maxLeft;
+      // Vertical: above point if it fits, otherwise below the lower dot
+      let top = anchorY - tipH - gap;
+      if (top < 4) {
+        const lowerY = rect.top - wrapRect.top + Math.max(cyPv, cyUv) * pxPerUnit;
+        top = lowerY + gap;
+      }
+      tip.style.left = `${left}px`;
+      tip.style.top = `${top}px`;
     };
 
     capture.addEventListener("pointermove", onMove as EventListener);
