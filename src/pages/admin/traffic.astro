@@ -406,7 +406,7 @@ function fmtTime(iso: string) {
           <table class="admin-table" style="width:100%;">
             <thead>
               <tr>
-                <th>When</th>
+                <th>When <span id="tz-label" style="font-weight:normal; font-size:0.7rem; color:var(--ink-soft);">(UTC)</span></th>
                 <th>Source</th>
                 <th>Country</th>
                 <th>Path</th>
@@ -415,7 +415,7 @@ function fmtTime(iso: string) {
             <tbody id="live-feed">
               {liveFeed.map((v) => (
                 <tr>
-                  <td style="font-size:0.78rem; white-space:nowrap; color:var(--ink-soft);">{fmtTime(v.when)}</td>
+                  <td class="local-time" data-iso={v.when} style="font-size:0.78rem; white-space:nowrap; color:var(--ink-soft);">{fmtTime(v.when)}</td>
                   <td style="font-size:0.82rem;">{v.source}</td>
                   <td style="font-size:0.82rem;">{v.country}</td>
                   <td style="font-family:monospace; font-size:0.78rem; max-width:18rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title={v.path}>{short(v.path || "/")}</td>
@@ -457,6 +457,31 @@ function fmtTime(iso: string) {
 </AdminLayout>
 
 <script>
+  // ── Convert server timestamps (UTC) to viewer local time ──
+  (() => {
+    const cells = document.querySelectorAll<HTMLElement>(".local-time");
+    const pad = (n: number) => String(n).padStart(2, "0");
+    cells.forEach((el) => {
+      const iso = el.getAttribute("data-iso");
+      if (!iso) return;
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return;
+      el.textContent = `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      el.title = d.toLocaleString();
+    });
+    const tzLabel = document.getElementById("tz-label");
+    if (tzLabel) {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+        const off = -new Date().getTimezoneOffset() / 60;
+        const sign = off >= 0 ? "+" : "";
+        tzLabel.textContent = `(${tz} · UTC${sign}${off})`;
+      } catch {
+        tzLabel.textContent = "(local)";
+      }
+    }
+  })();
+
   // ── Interactive tooltip on line chart ──
   (() => {
     const wrap = document.getElementById("chart-wrap");
