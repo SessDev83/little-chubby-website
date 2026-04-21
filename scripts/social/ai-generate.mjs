@@ -225,12 +225,15 @@ ANTI-REPETITION:
 
 PLATFORM-SPECIFIC RULES:
 
-BLUESKY (max 280 characters for text body, hashtags counted separately):
+BLUESKY (HARD LIMIT 300 chars for text + hashtags COMBINED — validator will reject if over):
 - Ultra-concise, punchy, conversational
 - Include URLs in the text when relevant — they become clickable links automatically
 - Keep the URL short (Amazon short link or direct URL, no UTM params)
-- 2-3 hashtags maximum
-- Text body MUST be 280 characters or fewer (URL counts toward this limit)
+- 2 hashtags maximum (not 3 — leaves room for safety)
+- MANDATORY: one of the 2 hashtags MUST be #LittleChubbyPress (brand hashtag, validator enforces this on every platform).
+- Target: text ≤ 220 chars (leaves 80 chars budget for URL expansion + hashtags)
+- CRITICAL: text.length + hashtags.length MUST be under 290 chars. Count carefully.
+- ALWAYS include a CTA: a URL, a question, or "Link in bio" — never leave without a call-to-action.
 
 FACEBOOK (300-600 characters):
 - Longer, conversational, storytelling tone
