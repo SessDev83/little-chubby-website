@@ -289,6 +289,23 @@ Generate a detailed description for an AI image generator. The image should:
 - Be a clean, uncluttered square composition for social media
 - Feel joyful, cozy, and wholesome`;
 
+// ─── Category-of-the-day rotation (playbook §13.3) ─────────────────────────
+// Mon=Dinosaurs, Tue=Space, Wed=Animals & Nature, Thu=Jobs, Fri=Kids Favorites,
+// Sat=Food & Drinks / Mini Scenes, Sun=Basic Elements / Machines
+const CATEGORY_ROTATION = {
+  0: "Basic Elements", // Sunday
+  1: "Dinosaurs", // Monday
+  2: "Space & Astronauts", // Tuesday
+  3: "Animals & Nature", // Wednesday
+  4: "Jobs", // Thursday
+  5: "Kids Favorites (Toys & Fantasy)", // Friday
+  6: "Food & Drinks", // Saturday
+};
+
+export function getCategoryOfTheDay(date = new Date()) {
+  return CATEGORY_ROTATION[date.getDay()] || null;
+}
+
 // ─── Post type prompts ──────────────────────────────────────────────────────
 
 function buildPrompt(type, lang, data) {
@@ -413,6 +430,7 @@ KEY FACTS:
 - Downloads cost just 1 Peanut each (Peanuts are FREE to earn by sharing links to gallery reviews or coloring pages!)
 - Free account required to download
 - Perfect for rainy days, road trips, waiting rooms, or afternoon fun
+${data?.categoryOfTheDay ? `\nTODAY'S SPOTLIGHT CATEGORY: "${data.categoryOfTheDay}" — MUST be the specific category named in this post (playbook §13.3 category-of-the-day rotation).` : ""}
 
 SPRINT-SPECIFIC REQUIREMENTS (this is our #1 traffic driver — ~40% of our mix):
 - The hook MUST reference a CONCRETE situation: rainy afternoon, long drive, waiting-room time, airplane trip, post-school decompression, sibling quiet-time, grandparent-visit day. NOT generic "fun time".
@@ -574,6 +592,15 @@ function parseAIResponse(raw) {
  * } | null>}
  */
 export async function generateAIPost(type, lang, data, smartContext = null, recentHistory = null) {
+  // Auto-inject category-of-the-day for free-coloring (playbook §13.3).
+  if (type === "free-coloring") {
+    const dataWithCategory = { ...(data || {}) };
+    if (!dataWithCategory.categoryOfTheDay) {
+      dataWithCategory.categoryOfTheDay = getCategoryOfTheDay();
+    }
+    data = dataWithCategory;
+  }
+
   let prompt = buildPrompt(type, lang, data);
 
   // Inject recent post history for anti-repetition

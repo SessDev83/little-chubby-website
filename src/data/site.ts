@@ -36,7 +36,7 @@ export const siteConfig = {
     instagram: "https://www.instagram.com/LittleChubbyPress",
     facebook: "https://www.facebook.com/profile.php?id=61572034373766",
     bluesky: "https://bsky.app/profile/littlechubbypress.bsky.social",
-    amazonAuthor: "https://www.amazon.com/author/littlechubbypress"
+    amazonAuthor: "https://www.amazon.com/stores/Little-Chubby-Press/author/B0GT5SBZ58"
   },
   brandAssets: {
     logoMark: "/images/brand/logo-mark.webp",

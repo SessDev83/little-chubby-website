@@ -1,0 +1,273 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const sc = getServiceClient();
+
+const since30dIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+const since7dIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+// ── Parallel queries ─────────────────────────────────
+const [
+  { data: contentPerf },
+  { data: peanutShares },
+  { data: newsletterSubs },
+  { data: failures },
+] = await Promise.all([
+  sc
+    .from("content_performance")
+    .select("post_type, platform, likes, comments, shares, clicks, reach, posted_at")
+    .gte("created_at", since30dIso)
+    .order("posted_at", { ascending: false })
+    .limit(500),
+  sc
+    .from("credit_transactions")
+    .select("amount, created_at")
+    .eq("reason", "share")
+    .gte("created_at", since30dIso)
+    .limit(1000),
+  sc
+    .from("newsletter_subscribers")
+    .select("created_at, source")
+    .eq("confirmed", true)
+    .gte("created_at", since30dIso)
+    .limit(500),
+  (sc as any)
+    .from("validation_failures_recent")
+    .select("*")
+    .limit(50),
+]);
+
+const posts = contentPerf ?? [];
+const shares = peanutShares ?? [];
+const subs = newsletterSubs ?? [];
+const fails = failures ?? [];
+
+// ── Scoring v2 — playbook §12 ────────────────────────
+// score = 0.55*click_rate + 0.30*peanut_share_rate + 0.10*comment_rate + 0.05*like_rate
+const sharesByDay: Record<string, number> = {};
+for (const s of shares) {
+  const d = (s.created_at || "").slice(0, 10);
+  if (d) sharesByDay[d] = (sharesByDay[d] || 0) + (s.amount || 1);
+}
+
+type TypeAgg = {
+  post_type: string;
+  count: number;
+  clicks: number;
+  reach: number;
+  likes: number;
+  comments: number;
+  sharesCount: number;
+  peanutsAttributed: number;
+  lastPostedAt: string | null;
+};
+
+const byType = new Map<string, TypeAgg>();
+for (const p of posts) {
+  const key = p.post_type || "unknown";
+  if (!byType.has(key)) {
+    byType.set(key, {
+      post_type: key,
+      count: 0,
+      clicks: 0,
+      reach: 0,
+      likes: 0,
+      comments: 0,
+      sharesCount: 0,
+      peanutsAttributed: 0,
+      lastPostedAt: null,
+    });
+  }
+  const row = byType.get(key)!;
+  row.count++;
+  row.clicks += p.clicks || 0;
+  row.reach += p.reach || 50;
+  row.likes += p.likes || 0;
+  row.comments += p.comments || 0;
+  row.sharesCount += p.shares || 0;
+  const day = (p.posted_at || "").slice(0, 10);
+  if (day) row.peanutsAttributed += sharesByDay[day] || 0;
+  if (!row.lastPostedAt || (p.posted_at && p.posted_at > row.lastPostedAt)) {
+    row.lastPostedAt = p.posted_at;
+  }
+}
+
+const scored = Array.from(byType.values())
+  .map((r) => {
+    const imp = Math.max(1, r.reach);
+    const click_rate = r.clicks / imp;
+    const peanut_share_rate = r.peanutsAttributed / imp;
+    const comment_rate = r.comments / imp;
+    const like_rate = r.likes / imp;
+    const composite = 0.55 * click_rate + 0.30 * peanut_share_rate + 0.10 * comment_rate + 0.05 * like_rate;
+    return { ...r, click_rate, peanut_share_rate, comment_rate, like_rate, composite };
+  })
+  .sort((a, b) => b.composite - a.composite);
+
+// ── Totals + KPIs (playbook §14) ─────────────────────
+const totalPosts = posts.length;
+const totalClicks = posts.reduce((s, p) => s + (p.clicks || 0), 0);
+const totalPeanutShares = shares.length;
+const totalPeanutsEarned = shares.reduce((s, x) => s + (x.amount || 1), 0);
+const totalNewSubs = subs.length;
+
+const recentPosts7d = posts.filter((p) => (p.posted_at || "") >= since7dIso);
+const clicks7d = recentPosts7d.reduce((s, p) => s + (p.clicks || 0), 0);
+
+function fmtPct(v: number) {
+  return `${(v * 100).toFixed(2)}%`;
+}
+
+function fmtRate(v: number) {
+  return `${(v * 100).toFixed(3)}%`;
+}
+---
+
+<AdminLayout title="Content Performance" current="content-performance">
+  <h1>📈 Content Performance</h1>
+  <p style="margin-top:0.3rem; color:var(--ink-soft);">
+    Playbook §12 scoring over last 30 days. Primary KPIs: click-rate & peanut-share-rate.
+  </p>
+
+  {/* KPI tiles */}
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--brand-blue);">{totalPosts}</div>
+      <div class="stat-label">Posts (30d)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--brand-green);">{totalClicks}</div>
+      <div class="stat-label">Total clicks (30d)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--brand-blue);">{clicks7d}</div>
+      <div class="stat-label">Clicks (last 7d)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--accent-gold);">{totalPeanutShares}</div>
+      <div class="stat-label">🥜 Share events (30d)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--brand-green);">{totalPeanutsEarned}</div>
+      <div class="stat-label">Peanuts awarded (30d)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" style="color:var(--brand-blue);">{totalNewSubs}</div>
+      <div class="stat-label">📬 New confirmed subs (30d)</div>
+    </div>
+  </div>
+
+  {/* Scoring v2 table */}
+  <div class="surface-card" style="padding:1.4rem; margin-top:2rem;">
+    <h2 style="margin-bottom:0.8rem;">Growth scoring v2 — by post type</h2>
+    {scored.length === 0 ? (
+      <p style="color:var(--ink-soft);">No content_performance rows yet. Run scripts/agents/collect-social-metrics.mjs.</p>
+    ) : (
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Post type</th>
+              <th>#</th>
+              <th>Score</th>
+              <th>Click rate</th>
+              <th>🥜 Share rate</th>
+              <th>Comment rate</th>
+              <th>Like rate</th>
+              <th>Last post</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scored.map((r) => (
+              <tr>
+                <td><strong>{r.post_type}</strong></td>
+                <td>{r.count}</td>
+                <td style="font-variant-numeric:tabular-nums;">{r.composite.toFixed(4)}</td>
+                <td style="font-variant-numeric:tabular-nums;">{fmtPct(r.click_rate)}</td>
+                <td style="font-variant-numeric:tabular-nums;">{fmtRate(r.peanut_share_rate)}</td>
+                <td style="font-variant-numeric:tabular-nums;">{fmtPct(r.comment_rate)}</td>
+                <td style="font-variant-numeric:tabular-nums;">{fmtPct(r.like_rate)}</td>
+                <td style="font-size:0.82rem; color:var(--ink-soft);">{r.lastPostedAt?.slice(0, 10) ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+    <p style="font-size:0.85rem; color:var(--ink-soft); margin-top:0.8rem;">
+      Formula: <code>0.55·click + 0.30·peanut_share + 0.10·comment + 0.05·like</code>.
+      Share-rate is approximated per day (48h attribution window planned).
+    </p>
+  </div>
+
+  {/* Validation failures */}
+  <div class="surface-card" style="padding:1.4rem; margin-top:2rem;">
+    <h2 style="margin-bottom:0.8rem;">⚠️ Recent validation failures (blocked posts)</h2>
+    {fails.length === 0 ? (
+      <p style="color:var(--ink-soft);">None 🎉 — all recent posts passed validation.</p>
+    ) : (
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Type</th>
+              <th>Lang</th>
+              <th>Concept</th>
+              <th>1st violations</th>
+              <th>Retry violations</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fails.map((f: any) => (
+              <tr>
+                <td style="white-space:nowrap; font-size:0.82rem; color:var(--ink-soft);">{new Date(f.ts).toLocaleString()}</td>
+                <td><code>{f.post_type}</code></td>
+                <td>{f.lang}</td>
+                <td style="max-width:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{f.concept || "—"}</td>
+                <td>{f.first_attempt_violation_count ?? "?"}</td>
+                <td>{f.retry_violation_count ?? "?"}</td>
+                <td style="font-size:0.82rem;">{f.reason}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </div>
+</AdminLayout>
+
+<style>
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .stat-card {
+    background: var(--surface-card);
+    border: 1px solid var(--border-soft);
+    border-radius: 0.8rem;
+    padding: 1rem;
+    text-align: center;
+  }
+  .stat-number {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .stat-label {
+    margin-top: 0.3rem;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+</style>

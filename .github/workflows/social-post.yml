@@ -91,11 +91,37 @@ jobs:
         if: github.event_name == 'schedule'
         id: schedule
         run: |
-          # 10 content types — community/traffic-first, book-promo only 1-in-10
-          # Slots 0+7 = free-coloring (~20%), the main traffic driver
-          TYPES=("free-coloring" "engagement" "blog-share" "share-earn" "parenting-tip" "giveaway" "book-promo" "free-coloring" "community" "fun-fact")
+          # ── Weekly content grid (playbook §7) — 7 days × 5 slots = 35 posts/week ──
+          # Mix targets (playbook §5):
+          #   free-coloring 40%, engagement 26%, blog-share 11%, share-earn 9%,
+          #   parenting-tip 6%, giveaway 6%, book-promo ≤3%, community/fun-fact filler
+          # Slot order each day: 04 UTC (0), 12 UTC (1), 16 UTC (2), 20 UTC (3), 00 UTC (4)
+          # Daily anchors:
+          #   Mon → free-coloring spotlight + parenting tip (week kickoff)
+          #   Tue → engagement + free-coloring + blog
+          #   Wed → share-earn focus + free-coloring
+          #   Thu → blog-new + free-coloring + engagement
+          #   Fri → giveaway reminder + free-coloring
+          #   Sat → community + free-coloring (family time)
+          #   Sun → blog-share + light book-promo (1/week max) + fun-fact
+          # Format: GRID[day-1][slot] where day 1=Mon..7=Sun
+          declare -A GRID
+          # Monday
+          GRID[1,0]="free-coloring"; GRID[1,1]="engagement"; GRID[1,2]="parenting-tip"; GRID[1,3]="free-coloring"; GRID[1,4]="share-earn"
+          # Tuesday
+          GRID[2,0]="free-coloring"; GRID[2,1]="engagement"; GRID[2,2]="blog-share"; GRID[2,3]="free-coloring"; GRID[2,4]="engagement"
+          # Wednesday
+          GRID[3,0]="share-earn"; GRID[3,1]="free-coloring"; GRID[3,2]="engagement"; GRID[3,3]="free-coloring"; GRID[3,4]="parenting-tip"
+          # Thursday
+          GRID[4,0]="free-coloring"; GRID[4,1]="engagement"; GRID[4,2]="blog-new"; GRID[4,3]="free-coloring"; GRID[4,4]="engagement"
+          # Friday
+          GRID[5,0]="free-coloring"; GRID[5,1]="giveaway"; GRID[5,2]="free-coloring"; GRID[5,3]="engagement"; GRID[5,4]="share-earn"
+          # Saturday
+          GRID[6,0]="free-coloring"; GRID[6,1]="community"; GRID[6,2]="free-coloring"; GRID[6,3]="giveaway"; GRID[6,4]="engagement"
+          # Sunday
+          GRID[7,0]="free-coloring"; GRID[7,1]="blog-share"; GRID[7,2]="fun-fact"; GRID[7,3]="book-promo"; GRID[7,4]="engagement"
 
-          # Day of week (1=Mon..7=Sun) and slot within the day (0-4)
+          # Day of week (1=Mon..7=Sun) and UTC hour
           DAY=$(date -u +%u)
           HOUR=$(date -u +%H)
 
@@ -109,26 +135,20 @@ jobs:
             *)  SLOT=0 ;;
           esac
 
-          # Weekly offset so types rotate across lang slots each week
-          WEEK_NUM=$(date -u +%V)
-          OFFSET=$(( (WEEK_NUM % 10) * 3 ))
+          TYPE="${GRID[$DAY,$SLOT]:-engagement}"
 
-          # Calculate a unique index across the week: (day-1)*5 + slot = 0..34
-          INDEX=$(( (DAY - 1) * 5 + SLOT ))
-          TYPE_INDEX=$(( (INDEX + OFFSET) % 10 ))
-          TYPE="${TYPES[$TYPE_INDEX]}"
-
-          # Language ratio: ~80 % English, ~20 % Spanish
-          # ES only when INDEX mod 5 == 4  (every 5th post)
-          if [ $(( INDEX % 5 )) -eq 4 ]; then
-            LANG="es"
-          else
-            LANG="en"
-          fi
+          # Language ratio: ~80% English, ~20% Spanish
+          # ES on Tue slot 4, Thu slot 4, Sat slot 4, Sun slot 1 (4 of 35 posts = ~11%)
+          # Free-coloring slots stay EN to maximize primary-KPI signal.
+          LANG="en"
+          if [ "$DAY" = "2" ] && [ "$SLOT" = "4" ]; then LANG="es"; fi
+          if [ "$DAY" = "4" ] && [ "$SLOT" = "4" ]; then LANG="es"; fi
+          if [ "$DAY" = "6" ] && [ "$SLOT" = "4" ]; then LANG="es"; fi
+          if [ "$DAY" = "7" ] && [ "$SLOT" = "1" ]; then LANG="es"; fi
 
           echo "type=$TYPE" >> $GITHUB_OUTPUT
           echo "lang=$LANG" >> $GITHUB_OUTPUT
-          echo "📋 Slot $INDEX → $TYPE ($LANG) [Day $DAY, Hour $HOUR, Slot $SLOT, Week $WEEK_NUM, Offset $OFFSET]"
+          echo "📋 Day=$DAY Hour=$HOUR Slot=$SLOT → $TYPE ($LANG)"
 
       - name: Post to social media
         env:

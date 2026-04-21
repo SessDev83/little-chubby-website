@@ -126,10 +126,13 @@ function buildValidationHistory() {
 
 /**
  * Append a failed validation attempt to a JSONL log for later analysis.
+ * Also best-effort inserts a row into Supabase `validation_failures` so the
+ * operator can review via the admin dashboard (migration 029).
  */
 function logValidationFailure(entry) {
+  const record = { ts: new Date().toISOString(), ...entry };
   try {
-    const line = JSON.stringify({ ts: new Date().toISOString(), ...entry }) + "\n";
+    const line = JSON.stringify(record) + "\n";
     const prev = existsSync(VALIDATION_FAILURES_PATH)
       ? readFileSync(VALIDATION_FAILURES_PATH, "utf-8")
       : "";
@@ -137,6 +140,36 @@ function logValidationFailure(entry) {
   } catch (err) {
     console.log(`⚠️  Could not write validation log: ${err.message}`);
   }
+
+  // Best-effort Supabase upload. Never throws — a missing env just means local-only logging.
+  const SB_URL = process.env.PUBLIC_SUPABASE_URL;
+  const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SB_URL || !SB_KEY) return;
+
+  const row = {
+    ts: record.ts,
+    post_type: record.type || "unknown",
+    lang: record.lang || "en",
+    first_attempt: record.firstAttempt || {},
+    retry_attempt: record.retryAttempt || {},
+    concept: record.concept || null,
+    creative_id: record.creativeId || null,
+    flywheel_stage: typeof record.flywheelStage === "number" ? record.flywheelStage : null,
+    reason: record.reason || "retry_blocked",
+  };
+
+  fetch(`${SB_URL}/rest/v1/validation_failures`, {
+    method: "POST",
+    headers: {
+      apikey: SB_KEY,
+      Authorization: `Bearer ${SB_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(row),
+  }).catch((err) => {
+    console.log(`⚠️  Could not upload validation failure to Supabase: ${err.message}`);
+  });
 }
 
 /**
