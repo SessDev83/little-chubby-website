@@ -126,7 +126,7 @@ const blogShareTemplates = {
 const blogNewTemplates = {
   en: [
     (p) => ({
-      text: `🆕 Just published! "${p.title.en}"\n\n${p.summary.en}\n\nFresh off the blog — don't miss it!`,
+      text: `🆕 Just published! "${p.title.en}"\n\n${p.summary.en}\n\nFresh off the blog — worth a read.`,
       cta: `Read it now 👉 ${siteUrl(`/en/blog/${p.slug.en}`)}`,
     }),
     (p) => ({

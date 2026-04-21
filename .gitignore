@@ -30,6 +30,7 @@ pnpm-debug.log*
 scripts/social/.post-state.json
 scripts/social/.post-history.json
 scripts/social/.engage-state.json
+scripts/social/.validation-failures.jsonl
 
 # source image assets (too large for git)
 Free Images/

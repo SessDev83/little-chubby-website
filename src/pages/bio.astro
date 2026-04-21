@@ -1,0 +1,384 @@
+---
+// Link-in-bio hub — standalone, mobile-first, bilingual.
+// Linked from Instagram / TikTok / Pinterest profile bio.
+// Every outbound link carries utm_source=instagram-bio so IG traffic is attributable.
+// Playbook §9 + §16.
+
+import { siteConfig } from "../data/site";
+
+const canonical = new URL("/bio/", siteConfig.siteUrl).toString();
+
+const UTM_SOURCE = "instagram-bio";
+const UTM_MEDIUM = "social";
+const UTM_CAMPAIGN = "bio";
+
+type LinkItem = {
+  slug: string;
+  href: string;
+  emoji: string;
+  label: { es: string; en: string };
+  sub: { es: string; en: string };
+  primary?: boolean;
+  external?: boolean;
+};
+
+/**
+ * Build a destination URL with instagram-bio UTMs.
+ * Internal links get a path + ?utm params; external (Amazon) keep their own params.
+ */
+function withUtms(href: string, slug: string, lang: "es" | "en") {
+  const params = new URLSearchParams({
+    utm_source: UTM_SOURCE,
+    utm_medium: UTM_MEDIUM,
+    utm_campaign: UTM_CAMPAIGN,
+    utm_content: `${slug}-${lang}`
+  });
+  const sep = href.includes("?") ? "&" : "?";
+  return `${href}${sep}${params.toString()}`;
+}
+
+// Canonical destinations — keep ≤5 per playbook §9.
+const links: LinkItem[] = [
+  {
+    slug: "free-coloring",
+    href: "/LANG/coloring-corner/",
+    emoji: "🎨",
+    label: {
+      es: "Paginas para colorear gratis",
+      en: "Free coloring pages"
+    },
+    sub: {
+      es: "Descarga PDFs listos para imprimir",
+      en: "Printable PDFs, ready to color"
+    },
+    primary: true
+  },
+  {
+    slug: "gallery",
+    href: "/LANG/gallery/",
+    emoji: "🖼️",
+    label: {
+      es: "Sube el arte de tu peque",
+      en: "Upload your kid's artwork"
+    },
+    sub: {
+      es: "Comparte y gana Peanuts 🥜",
+      en: "Share and earn Peanuts 🥜"
+    }
+  },
+  {
+    slug: "lottery",
+    href: "/LANG/lottery/",
+    emoji: "🎟️",
+    label: {
+      es: "Sorteo mensual de libros",
+      en: "Monthly book giveaway"
+    },
+    sub: {
+      es: "Resena un libro, gana Tickets",
+      en: "Review a book, earn Tickets"
+    }
+  },
+  {
+    slug: "newsletter",
+    href: "/LANG/newsletter/",
+    emoji: "💌",
+    label: {
+      es: "Newsletter gratis",
+      en: "Free newsletter"
+    },
+    sub: {
+      es: "Paginas gratis + novedades cada semana",
+      en: "Free pages + updates each week"
+    }
+  },
+  {
+    slug: "amazon",
+    href: siteConfig.social.amazonAuthor,
+    emoji: "📚",
+    label: {
+      es: "Libros en Amazon",
+      en: "Books on Amazon"
+    },
+    sub: {
+      es: "Ver la coleccion completa",
+      en: "Browse the full collection"
+    },
+    external: true
+  }
+];
+
+// Pre-render href variants per language so we can hydrate without JS logic in template.
+const resolved = links.map((link) => {
+  const esHref = link.external
+    ? withUtms(link.href, link.slug, "es")
+    : withUtms(link.href.replace("LANG", "es"), link.slug, "es");
+  const enHref = link.external
+    ? withUtms(link.href, link.slug, "en")
+    : withUtms(link.href.replace("LANG", "en"), link.slug, "en");
+  return { ...link, esHref, enHref };
+});
+
+const pageTitle = "Little Chubby Press — Links";
+const pageDescription = "Free coloring pages, giveaways, newsletter, and books from Little Chubby Press.";
+const ogImage = new URL(siteConfig.brandAssets.ogCover, siteConfig.siteUrl).toString();
+---
+
+<!doctype html>
+<html lang="en" data-lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex, follow" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDescription} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={pageDescription} />
+    <meta name="twitter:image" content={ogImage} />
+    <style>
+      :root {
+        --brand-brown: #6b3d1f;
+        --brand-cream: #fff8ef;
+        --brand-coral: #e87a6b;
+        --brand-yellow: #f4c542;
+        --ink: #2a1f15;
+        --ink-soft: #6b5947;
+        --card-shadow: 0 6px 22px rgba(107, 61, 31, 0.12);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background:
+          radial-gradient(circle at 20% 10%, #ffeacf 0%, transparent 45%),
+          radial-gradient(circle at 85% 90%, #ffd6d0 0%, transparent 50%),
+          var(--brand-cream);
+        color: var(--ink);
+        min-height: 100dvh;
+        padding: clamp(1.25rem, 5vw, 2.5rem) 1rem 3rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .bio-shell {
+        width: 100%;
+        max-width: 28rem;
+      }
+      .bio-header { text-align: center; margin-bottom: 1.5rem; }
+      .bio-avatar {
+        width: 96px; height: 96px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: var(--card-shadow);
+        padding: 10px;
+        display: inline-block;
+      }
+      .bio-avatar img { width: 100%; height: 100%; object-fit: contain; }
+      .bio-title {
+        font-size: 1.35rem;
+        margin: 0.85rem 0 0.3rem;
+        color: var(--brand-brown);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .bio-tag {
+        font-size: 0.95rem;
+        color: var(--ink-soft);
+        margin: 0 auto 0.25rem;
+        max-width: 26ch;
+        line-height: 1.4;
+      }
+      .lang-switch {
+        display: inline-flex;
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 999px;
+        padding: 3px;
+        margin-top: 0.9rem;
+        box-shadow: var(--card-shadow);
+      }
+      .lang-switch button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        color: var(--ink-soft);
+        padding: 0.4rem 0.95rem;
+        border-radius: 999px;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+      }
+      .lang-switch button[aria-pressed="true"] {
+        background: var(--brand-brown);
+        color: #fff;
+      }
+      .bio-links { display: flex; flex-direction: column; gap: 0.7rem; }
+      .bio-link {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        background: #fff;
+        color: var(--ink);
+        border-radius: 16px;
+        padding: 0.9rem 1rem;
+        text-decoration: none;
+        box-shadow: var(--card-shadow);
+        border: 2px solid transparent;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .bio-link:active { transform: scale(0.985); }
+      .bio-link:focus-visible {
+        outline: none;
+        border-color: var(--brand-brown);
+        box-shadow: 0 0 0 3px rgba(107, 61, 31, 0.2);
+      }
+      .bio-link[data-primary="true"] {
+        background: linear-gradient(135deg, #fff4d6 0%, #ffd27a 100%);
+        border-color: var(--brand-yellow);
+      }
+      .bio-emoji {
+        font-size: 1.65rem;
+        flex: 0 0 auto;
+        line-height: 1;
+      }
+      .bio-text { display: flex; flex-direction: column; min-width: 0; }
+      .bio-label {
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--brand-brown);
+        line-height: 1.25;
+      }
+      .bio-sub {
+        font-size: 0.82rem;
+        color: var(--ink-soft);
+        margin-top: 2px;
+      }
+      .bio-arrow {
+        margin-left: auto;
+        color: var(--brand-brown);
+        font-size: 1.1rem;
+        flex: 0 0 auto;
+        opacity: 0.6;
+      }
+      .bio-social {
+        display: flex;
+        justify-content: center;
+        gap: 0.85rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .bio-social a {
+        color: var(--ink-soft);
+        text-decoration: none;
+        font-size: 0.85rem;
+        padding: 0.45rem 0.8rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.6);
+      }
+      .bio-foot {
+        margin-top: 1.25rem;
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--ink-soft);
+      }
+      [data-lang="es"] .en-only { display: none; }
+      [data-lang="en"] .es-only { display: none; }
+      @media (prefers-color-scheme: dark) {
+        body { color: var(--ink); }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="bio-shell" aria-label="Little Chubby Press links">
+      <header class="bio-header">
+        <span class="bio-avatar">
+          <img src={siteConfig.brandAssets.logoMark} alt="Little Chubby Press" width="76" height="76" />
+        </span>
+        <h1 class="bio-title">Little Chubby Press</h1>
+        <p class="bio-tag es-only">Libros de colorear creados por peques, para peques.</p>
+        <p class="bio-tag en-only">Coloring books created by kids, for kids.</p>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button type="button" data-set-lang="es" aria-pressed="false">ES</button>
+          <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+        </div>
+      </header>
+
+      <nav class="bio-links" aria-label="Destinations">
+        {resolved.map((link) => (
+          <a
+            class="bio-link"
+            data-primary={link.primary ? "true" : "false"}
+            data-slug={link.slug}
+            data-es-href={link.esHref}
+            data-en-href={link.enHref}
+            href={link.enHref}
+            rel={link.external ? "noopener nofollow" : "noopener"}
+            target={link.external ? "_blank" : "_self"}
+          >
+            <span class="bio-emoji" aria-hidden="true">{link.emoji}</span>
+            <span class="bio-text">
+              <span class="bio-label es-only">{link.label.es}</span>
+              <span class="bio-label en-only">{link.label.en}</span>
+              <span class="bio-sub es-only">{link.sub.es}</span>
+              <span class="bio-sub en-only">{link.sub.en}</span>
+            </span>
+            <span class="bio-arrow" aria-hidden="true">→</span>
+          </a>
+        ))}
+      </nav>
+
+      <div class="bio-social">
+        <a href={siteConfig.social.instagram} target="_blank" rel="noopener">Instagram</a>
+        <a href={siteConfig.social.facebook} target="_blank" rel="noopener">Facebook</a>
+        <a href={siteConfig.social.bluesky} target="_blank" rel="noopener">Bluesky</a>
+      </div>
+
+      <p class="bio-foot es-only">© {new Date().getFullYear()} Little Chubby Press</p>
+      <p class="bio-foot en-only">© {new Date().getFullYear()} Little Chubby Press</p>
+    </main>
+
+    <script is:inline>
+      (function () {
+        const root = document.documentElement;
+        const buttons = document.querySelectorAll("[data-set-lang]");
+        const anchors = document.querySelectorAll(".bio-link");
+
+        function applyLang(lang) {
+          if (lang !== "es" && lang !== "en") lang = "en";
+          root.setAttribute("data-lang", lang);
+          root.setAttribute("lang", lang);
+          buttons.forEach((b) => {
+            b.setAttribute("aria-pressed", b.getAttribute("data-set-lang") === lang ? "true" : "false");
+          });
+          anchors.forEach((a) => {
+            const href = a.getAttribute(lang === "es" ? "data-es-href" : "data-en-href");
+            if (href) a.setAttribute("href", href);
+          });
+          try { localStorage.setItem("lcp-bio-lang", lang); } catch {}
+        }
+
+        // Initial language: stored preference → browser → en
+        let initial = null;
+        try { initial = localStorage.getItem("lcp-bio-lang"); } catch {}
+        if (!initial) {
+          const nav = (navigator.language || "en").toLowerCase();
+          initial = nav.startsWith("es") ? "es" : "en";
+        }
+        applyLang(initial);
+
+        buttons.forEach((btn) => {
+          btn.addEventListener("click", () => applyLang(btn.getAttribute("data-set-lang")));
+        });
+      })();
+    </script>
+  </body>
+</html>

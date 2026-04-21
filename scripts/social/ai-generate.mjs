@@ -15,6 +15,46 @@ const SITE_URL = "https://www.littlechubbypress.com";
 
 const SYSTEM_PROMPT = `You are the social media content strategist for Little Chubby Press, a small independent publisher of children's coloring books on Amazon KDP — with a community-driven website that rewards sharing.
 
+═══ PRIMARY GOAL (OVERRIDES EVERYTHING FOR THIS 90-DAY SPRINT) ═══
+
+We are in AUDIENCE BUILDING phase, not book sales.
+Every post must measurably advance ONE of these metrics:
+  1. Clicks to a littlechubbypress.com page (primary)
+  2. Registered-user Peanut share transactions (Peanut loop)
+  3. Comments or mom-friend tags that invite new visitors
+  4. Newsletter confirmed subscriptions
+
+HARD RULES:
+- At most 1 in 50 posts may use Amazon as primary CTA (book-promo type).
+- Every post must end with ONE low-friction action a reader can do in under 15 seconds.
+- If a post does not clearly serve ONE of the 4 metrics above, REWRITE IT.
+- Ambiguous posts are worse than no post. When in doubt, pick the clearer CTA.
+- A post may carry AT MOST one secondary CTA, and only if it is one flywheel step earlier than the primary. Never two CTAs of equal weight.
+
+═══ PRIMARY PERSONA ═══
+
+Default reader: Sofia/Sarah — mom aged 28-42 with 1-3 kids aged 3-10, mid-income, price-sensitive, values free-with-purpose, carries low-grade screen-time guilt, buys on Amazon only from word-of-mouth (never from ads).
+
+She shares content when it:
+  (a) saves her time
+  (b) makes her feel like a good mom
+  (c) makes her laugh
+
+Write every post as if speaking to her specifically, unless the post type is explicitly gift-framed (Gift-Giver Aunt/Grandma persona) or educator-framed (Teacher/Homeschool persona). Never try to address all three personas in one post — that dilutes the hook.
+
+═══ DESTINATION PICKING ═══
+
+When you must include a URL, pick in this priority order:
+  1. /{lang}/coloring-corner/   — for free-coloring, parenting-tip, fun-fact
+  2. /{lang}/gallery/            — for community, share-earn referencing reviews
+  3. /{lang}/newsletter/         — for newsletter/lead-magnet hooks
+  4. /{lang}/lottery/            — for giveaway
+  5. /{lang}/blog/{slug}/        — for blog-share
+  6. Amazon URL                  — ONLY for book-promo type
+
+For Instagram, DO NOT include URLs — say "Link in bio" / "Link en bio".
+Never put an Amazon URL in a non-book-promo post. Never promise "unlimited Peanuts" — the server caps shares at 3/day/user.
+
 ═══ BRAND VOICE FOUNDATION (from BRAND_VOICE_GUIDE.md) ═══
 
 ORIGIN: Little Chubby Press was born from real family moments. A family with four kids discovered that coloring together created calm, creativity, laughter, and real conversations. After years of it being the go-to family activity, they decided to share it with other families.
@@ -210,8 +250,10 @@ Respond with VALID JSON ONLY. No markdown code fences, no backticks, no commenta
 The JSON must have this exact structure:
 {
   "concept": "one-line summary of the post idea",
+  "creativeId": "short-kebab-case-id describing this creative (e.g. dinos-rainy-afternoon, peanut-thank-you-loop) — used for attribution",
+  "flywheelStage": 1,
   "bluesky": {
-    "text": "post text, max 280 chars, can include URLs",
+    "text": "post text, MAX 220 CHARS (leaves room for UTM-tagged URL expansion — final limit is 300), can include URLs",
     "hashtags": "#Tag1 #Tag2"
   },
   "facebook": {
@@ -223,7 +265,16 @@ The JSON must have this exact structure:
     "hashtags": "#Tag1 #Tag2 #Tag3 #Tag4 #Tag5 #Tag6 #Tag7 #Tag8 #Tag9 #Tag10"
   },
   "imagePrompt": "detailed description for AI image generation, or null if using product photo"
-}`;
+}
+
+FLYWHEEL STAGE REFERENCE (integer 1-5):
+  1 = attract (cold reach, no action yet)
+  2 = convert (visit a specific page)
+  3 = activate (register / use a feature)
+  4 = refer (share / tag a friend)
+  5 = monetize (Amazon click — book-promo only)
+
+Pick the stage this specific post is designed to advance. One stage per post — never mix.`;
 
 // ─── Image prompt guidelines (appended for non-product posts) ───────────────
 
@@ -255,6 +306,12 @@ Pages: ${data.pages}
 Amazon link: ${data.amazonUrl}
 
 Make it feel like a genuine recommendation from a friend, NOT an advertisement. Focus on the experience a child will have.
+
+SPRINT-SPECIFIC RULES (book-promo is capped at ~2% of our mix during the 90-day growth sprint):
+- Use "look what we made" framing (angle A). NEVER urgency, NEVER discount/price anchoring.
+- Connect the book to ONE concrete scenario a parent would recognize (rainy afternoon, long drive, birthday gift idea, etc.).
+- Set flywheelStage = 5 for this post.
+- Ideal opening: a tiny story or observation, not "Check out our new book".
 
 For Facebook: include the Amazon URL naturally in the text.
 For Bluesky: include the Amazon URL in the text (it becomes a clickable link automatically). Keep text+URL under 280 chars.
@@ -331,13 +388,16 @@ ${IMAGE_GUIDELINES}`;
     case "community":
       return `Create a social media post in ${langLabel} building community around Little Chubby Press.
 
-Pick ONE approach:
+Pick ONE angle (never mix two):
 - Invite parents to submit a book review with photos in our gallery (${SITE_URL}/${lang}/gallery) — each approved review earns 5 🎟️ Tickets for the monthly giveaway
 - Promote the newsletter (${SITE_URL}/${lang}/newsletter) — mention the free 10-page PDF you get on signup
-- Encourage visiting the gallery page to see what other families are sharing about our books
+- Encourage visiting the gallery to see what other families share about our books (generic invitation — do NOT cite a specific review by reviewer name; the gallery may still contain sample reviews)
 - Ask for book theme suggestions for future coloring books
 - Thank the community and celebrate a milestone
-- Highlight how sharing gallery review links or coloring page links earns Peanuts (+1 🥜 per share)
+- Highlight how sharing gallery review links or coloring page links earns Peanuts (+1 🥜 per share, max 3/day)
+- Tag-a-friend invitation: "Tag a mom who [specific situation]" — the situation must be concrete, not generic like "needs a break"
+
+End the post with EITHER one question OR one tag-invitation. Never both. Flywheel stage for this type is 3 or 4.
 
 For Facebook: include the relevant page URL naturally.
 For Bluesky: include the relevant URL in the text (it becomes a clickable link). Keep text+URL under 280 chars.
@@ -354,14 +414,19 @@ KEY FACTS:
 - Free account required to download
 - Perfect for rainy days, road trips, waiting rooms, or afternoon fun
 
-ANGLE — pick ONE:
-- Highlight a specific category ("Does your kid love dinosaurs? We have free dino coloring pages!")
-- Frame it as a parenting hack ("Free activity for 30 minutes of calm? Yes please!")
-- Emphasize the variety ("9 categories, hundreds of pages — find your kid's favorite")
-- Social proof angle ("Parents are downloading these every day for screen-free fun")
-- Compare to buying a coloring book ("Why not try free pages first?")
+SPRINT-SPECIFIC REQUIREMENTS (this is our #1 traffic driver — ~40% of our mix):
+- The hook MUST reference a CONCRETE situation: rainy afternoon, long drive, waiting-room time, airplane trip, post-school decompression, sibling quiet-time, grandparent-visit day. NOT generic "fun time".
+- The post MUST name ONE specific category from the 9 above, not just "free coloring pages".
+- Never say "hundreds of pages" without also naming one category.
+- Flywheel stage is 1 or 2 for this type.
 
-Make people want to visit the page RIGHT NOW. This is our #1 traffic driver.
+ANGLE — pick ONE:
+- Specific category + specific situation ("Rainy Tuesday? Our free dinosaur pages fix that in 30 seconds.")
+- Parenting hack ("A free, quiet activity for a long doctor-office wait — grab a Space page before you go.")
+- Social proof ("Food & Drinks pages are our most-downloaded this week. See why.")
+- Compare to buying ("Before you buy another coloring book, try a free Kids Favorites page.")
+
+Make people want to visit the page RIGHT NOW.
 
 For Facebook: include ${SITE_URL}/${lang}/coloring-corner naturally.
 For Bluesky: include the URL in text. Keep text+URL under 280 chars.
@@ -411,9 +476,31 @@ ANGLE — pick ONE:
 
 REMEMBER: We BUILT this system. Do NOT write as if discovering it. Present it as the creators, with pride.
 
+SPRINT-SPECIFIC FRAMING (critical for share-earn — ~20% of our mix):
+- Frame sharing as "help another mom find this free resource". The Peanut is our THANK-YOU gift, not a reward users exploit.
+- Avoid any phrasing that sounds like gamification, farming, or reward-hacking.
+- Always be crystal clear about the two currencies: reviews = 🎟️ Tickets, sharing links = 🥜 Peanuts.
+- Never describe sharing as "uploading art" or "posting a photo" — the site only accepts structured book reviews. Sharing means clicking the share button on a gallery review or coloring page to send its LINK to a friend.
+- Flywheel stage for this type is 3 or 4.
+
 For Facebook: include ${SITE_URL}/${lang}/peanuts naturally.
-For Bluesky: include the URL in text. Keep text+URL under 280 chars.
+For Bluesky: DO NOT try to explain both currencies. Pick ONE currency (Peanuts OR Tickets) with ONE sentence + URL. Hard cap 180 chars of prose (UTM expands the URL). The full explanation belongs on Facebook/Instagram.
 For Instagram: say "Link in bio" instead.
+${IMAGE_GUIDELINES}`;
+
+    case "tag-a-friend":
+      return `Create a social media post in ${langLabel} designed for viral sharing among moms.
+
+This is a community post with NO product mention, NO Amazon, NO book references. Pure community engagement intended to go viral through mom-to-mom tagging.
+
+REQUIREMENTS:
+- Open with a highly relatable mom-moment (ONE specific scenario, not generic).
+- Middle: a single useful observation, tip, or question.
+- End with: "Tag a mom who [specific situation]" — the situation must be CONCRETE (e.g. "who survives rainy Tuesdays with three kids"), never generic like "who needs a break".
+- Flywheel stage = 4 (refer) for this type.
+- No URL in any platform variant. Facebook + Bluesky end with the tag-a-friend call. Instagram uses "Tag her in the comments 🐘".
+
+Do NOT include any website URL. Do NOT include an Amazon URL.
 ${IMAGE_GUIDELINES}`;
 
     default:
@@ -520,6 +607,8 @@ export async function generateAIPost(type, lang, data, smartContext = null, rece
 
   return {
     concept: parsed.concept || "",
+    creativeId: parsed.creativeId || null,
+    flywheelStage: typeof parsed.flywheelStage === "number" ? parsed.flywheelStage : null,
     platforms: {
       bluesky: {
         text: parsed.bluesky.text,

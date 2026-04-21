@@ -32,6 +32,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generatePost, generateWeeklyCalendar, buildUtmUrl } from "./content-templates.mjs";
 import { generateAIPost } from "./ai-generate.mjs";
+import { validatePost, injectUtms, formatReport } from "./validate-post.mjs";
 import { generateImage, downloadImage } from "./image-generate.mjs";
 import { postToBluesky } from "./platforms/bluesky.mjs";
 import { postToFacebook, postToInstagram, postToFacebookGroup } from "./platforms/meta.mjs";
@@ -48,6 +49,7 @@ const ROOT = resolve(__dirname, "../..");
 
 const POST_STATE_PATH = resolve(__dirname, ".post-state.json");
 const POST_HISTORY_PATH = resolve(__dirname, ".post-history.json");
+const VALIDATION_FAILURES_PATH = resolve(__dirname, ".validation-failures.jsonl");
 const MAX_HISTORY = 60; // keep last 60 posts (~12 days at 5/day)
 
 function loadPostState() {
@@ -108,6 +110,42 @@ function buildRecentHistorySummary() {
   });
 
   return `RECENT POSTS (avoid repeating similar concepts/angles):\n${lines.join("\n")}`;
+}
+
+/**
+ * Convert POST_HISTORY entries into the shape expected by validate-post.mjs
+ * (needs `type` and `postedAt`; per-platform text not tracked, which is fine
+ * because V14 falls back to 'skipped' when missing).
+ */
+function buildValidationHistory() {
+  return loadPostHistory().map((h) => ({
+    type: h.type,
+    postedAt: h.ts,
+  }));
+}
+
+/**
+ * Append a failed validation attempt to a JSONL log for later analysis.
+ */
+function logValidationFailure(entry) {
+  try {
+    const line = JSON.stringify({ ts: new Date().toISOString(), ...entry }) + "\n";
+    const prev = existsSync(VALIDATION_FAILURES_PATH)
+      ? readFileSync(VALIDATION_FAILURES_PATH, "utf-8")
+      : "";
+    writeFileSync(VALIDATION_FAILURES_PATH, prev + line);
+  } catch (err) {
+    console.log(`⚠️  Could not write validation log: ${err.message}`);
+  }
+}
+
+/**
+ * Format a validator result as a short hint the AI can use on retry.
+ */
+function violationsToRetryHint(result) {
+  if (!result || result.ok) return "";
+  const lines = result.violations.map((v) => `  - [${v.id}] (${v.platform}) ${v.message}`);
+  return `\n\n⚠️ YOUR PREVIOUS ATTEMPT WAS BLOCKED BY THE VALIDATOR. Fix ALL of these in the new version:\n${lines.join("\n")}\nReturn VALID JSON only, same schema as before.`;
 }
 
 /**
@@ -193,6 +231,7 @@ function parseArgs() {
     dryRun: false,
     noAi: false,
     smart: false,
+    skipValidator: false,
   };
 
   for (let i = 1; i < args.length; i++) {
@@ -217,6 +256,9 @@ function parseArgs() {
         break;
       case "--smart":
         opts.smart = true;
+        break;
+      case "--skip-validator":
+        opts.skipValidator = true;
         break;
     }
   }
@@ -731,6 +773,75 @@ async function main() {
     // Only reached when --no-ai or no ANTHROPIC_API_KEY
     const staticPost = generatePost(opts.type, opts.lang, data);
     post = adaptToPlatforms(staticPost, data, opts.lang);
+  }
+
+  // ─── Growth Playbook QA Gate (§11) ────────────────────────────────────
+  // Only runs when we actually used AI; static templates are trusted.
+  if (aiUsed && post && !opts.skipValidator) {
+    const validationHistory = buildValidationHistory();
+    const validationCtx = { type: opts.type, lang: opts.lang, history: validationHistory };
+
+    injectUtms(post, validationCtx);
+    let result = validatePost(post, validationCtx);
+
+    if (!result.ok) {
+      console.log(`\n🚫 Validator blocked the post (${result.violations.length} violation${result.violations.length === 1 ? "" : "s"}):`);
+      for (const v of result.violations) {
+        console.log(`   [${v.id}] (${v.platform}) ${v.message}`);
+      }
+
+      // One retry with the violations as a hint
+      console.log(`\n🔁 Asking Claude to regenerate with the violations fixed...\n`);
+      try {
+        const hint = violationsToRetryHint(result);
+        const recentHistory = buildRecentHistorySummary();
+        const retryContext = (recentHistory || "") + hint;
+        const retryPost = await generateAIPost(opts.type, opts.lang, data, smartContext, retryContext);
+        if (retryPost) {
+          injectUtms(retryPost, validationCtx);
+          const retryResult = validatePost(retryPost, validationCtx);
+          if (retryResult.ok) {
+            console.log(`✅ Retry passed validation.\n`);
+            post = retryPost;
+            result = retryResult;
+          } else {
+            console.log(`❌ Retry still blocked by ${retryResult.violations.length} violation(s). Skipping slot.`);
+            logValidationFailure({
+              type: opts.type,
+              lang: opts.lang,
+              firstAttempt: { violations: result.violations, post },
+              retryAttempt: { violations: retryResult.violations, post: retryPost },
+            });
+            return; // Skip publish
+          }
+        } else {
+          console.log(`❌ Retry returned null. Skipping slot.`);
+          logValidationFailure({
+            type: opts.type,
+            lang: opts.lang,
+            firstAttempt: { violations: result.violations, post },
+            retryAttempt: { error: "generateAIPost returned null" },
+          });
+          return;
+        }
+      } catch (err) {
+        console.log(`❌ Retry failed: ${err.message}. Skipping slot.`);
+        logValidationFailure({
+          type: opts.type,
+          lang: opts.lang,
+          firstAttempt: { violations: result.violations, post },
+          retryAttempt: { error: err.message },
+        });
+        return;
+      }
+    } else if (result.warnings.length > 0) {
+      console.log(`\n⚠️  Validator warnings (non-blocking):`);
+      for (const w of result.warnings) {
+        console.log(`   [${w.id}] (${w.platform}) ${w.message}`);
+      }
+    } else {
+      console.log(`\n✅ Validator passed.`);
+    }
   }
 
   // Display preview
