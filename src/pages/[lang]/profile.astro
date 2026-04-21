@@ -220,13 +220,15 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
           {userBadges.length > 0 && (
             <div class="profile-badge-strip" aria-label={text.profileBadgesTitle}>
               {userBadges.slice(0, 3).map((b: string) => (
-                <span class="profile-badge-chip" title={badgeLabelMap[b] || b}>
+                <a href="#badges-collection" class="profile-badge-chip" title={badgeLabelMap[b] || b}>
                   <span class="profile-badge-emoji" aria-hidden="true">{badgeEmoji[b] || "🎖️"}</span>
                   <span class="profile-badge-label">{badgeLabelMap[b] || b}</span>
-                </span>
+                </a>
               ))}
               {userBadges.length > 3 && (
-                <span class="profile-badge-more">{text.badgesMore.replace("{n}", String(userBadges.length - 3))}</span>
+                <a href="#badges-collection" class="profile-badge-more" title={text.profileBadgesCollection}>
+                  {text.badgesMore.replace("{n}", String(userBadges.length - 3))}
+                </a>
               )}
             </div>
           )}
@@ -256,6 +258,42 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
           <div class="hero-actions">
             <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-primary">{text.peanutShopTitle} &amp; {text.peanutHistory}</a>
           </div>
+        </div>
+      </div>
+
+      {/* ── Badges collection (all possible badges + owned state) ── */}
+      <div id="badges-collection" class="profile-badges-panel surface-card">
+        <div class="badges-panel-head">
+          <div>
+            <h2 class="profile-section-title" style="margin-top:0; margin-bottom:0.2rem;">{text.profileBadgesCollection}</h2>
+            <p class="badges-panel-subtitle">{text.profileBadgesSubtitle}</p>
+          </div>
+          <span class="badges-count-pill">
+            {text.profileBadgesCountOwned.replace("{owned}", String(userBadges.length)).replace("{total}", "4")}
+          </span>
+        </div>
+        <div class="badges-collection-grid">
+          {[
+            { type: "frame_gold",   icon: "🖼️", cost: 15 },
+            { type: "frame_silver", icon: "🪞", cost: 15 },
+            { type: "top_reviewer", icon: "⭐", cost: 15 },
+            { type: "star_parent",  icon: "💖", cost: 15 },
+          ].map((b) => {
+            const owned = userBadges.includes(b.type);
+            return (
+              <div class={`badge-card ${owned ? "owned" : "locked"}`}>
+                <div class="badge-card-icon" aria-hidden="true">{b.icon}</div>
+                <div class="badge-card-name">{badgeLabelMap[b.type] || b.type}</div>
+                {owned ? (
+                  <span class="badge-card-status owned">✓ {text.profileBadgesOwned}</span>
+                ) : (
+                  <a href={`/${lang}/peanuts/#shop`} class="badge-card-status locked">
+                    🥜 {b.cost} · {text.profileBadgesBuyNow}
+                  </a>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -793,26 +831,56 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
   }
   .avatar-wrap.frame-gold,
   .avatar-wrap.frame-silver {
-    padding: 4px;
-    background: linear-gradient(135deg, #d4af37, #f5d87a, #d4af37);
+    padding: 6px;
+    background:
+      conic-gradient(from 0deg,
+        #d4af37 0%,
+        #fff3b0 15%,
+        #ffd85e 30%,
+        #d4af37 45%,
+        #a8842a 60%,
+        #f5d87a 75%,
+        #d4af37 100%);
+    box-shadow:
+      0 0 0 2px #fff inset,
+      0 4px 16px rgba(212,175,55,0.45),
+      0 0 24px rgba(255,216,94,0.35);
   }
   .avatar-wrap.frame-silver {
-    background: linear-gradient(135deg, #b0b0b0, #e8e8e8, #b0b0b0);
+    background:
+      conic-gradient(from 0deg,
+        #9a9a9a 0%,
+        #f2f2f2 15%,
+        #d0d0d0 30%,
+        #a0a0a0 45%,
+        #e8e8e8 60%,
+        #b8b8b8 75%,
+        #9a9a9a 100%);
+    box-shadow:
+      0 0 0 2px #fff inset,
+      0 4px 16px rgba(180,180,180,0.5),
+      0 0 24px rgba(230,230,230,0.45);
   }
   .avatar-wrap.frame-gold .avatar-img,
   .avatar-wrap.frame-silver .avatar-img {
     border: 3px solid #fff;
+    display: block;
   }
-  @media (prefers-reduced-motion: no-preference) and (min-width: 640px) {
-    .avatar-wrap.frame-gold   { animation: frameShimmerGold 5s ease-in-out infinite; }
-    .avatar-wrap.frame-silver { animation: frameShimmerSilver 5s ease-in-out infinite; }
-    @keyframes frameShimmerGold {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.0); }
-      50%      { box-shadow: 0 0 14px 2px rgba(212,175,55,0.45); }
+  @media (prefers-reduced-motion: no-preference) {
+    .avatar-wrap.frame-gold,
+    .avatar-wrap.frame-silver {
+      animation: frameSpin 8s linear infinite;
     }
-    @keyframes frameShimmerSilver {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(180,180,180,0.0); }
-      50%      { box-shadow: 0 0 12px 2px rgba(180,180,180,0.45); }
+    @keyframes frameSpin {
+      to { transform: rotate(360deg); }
+    }
+    /* Counter-spin inner image so the photo stays still */
+    .avatar-wrap.frame-gold .avatar-img,
+    .avatar-wrap.frame-silver .avatar-img {
+      animation: frameSpinReverse 8s linear infinite;
+    }
+    @keyframes frameSpinReverse {
+      to { transform: rotate(-360deg); }
     }
   }
 
@@ -835,6 +903,14 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     font-weight: 600;
     color: var(--ink);
     line-height: 1;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .profile-badge-chip:hover,
+  .profile-badge-chip:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(212,175,55,0.35);
+    outline: none;
   }
   .profile-badge-emoji { font-size: 0.95rem; line-height: 1; }
   .profile-badge-label { white-space: nowrap; }
@@ -847,11 +923,111 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     font-size: 0.75rem;
     font-weight: 700;
     color: var(--brand-blue);
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .profile-badge-more:hover,
+  .profile-badge-more:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(74,144,217,0.35);
+    outline: none;
   }
   @media (max-width: 420px) {
     .profile-badge-label { display: none; }
     .profile-badge-chip { padding: 0.3rem 0.45rem; }
   }
+
+  /* Phase A: Badge collection panel */
+  .profile-badges-panel { padding: 1.5rem; scroll-margin-top: 80px; }
+  .badges-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .badges-panel-subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+  }
+  .badges-count-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.9rem;
+    background: linear-gradient(135deg, #fff3b0, #ffd85e);
+    color: #7a5a10;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  .badges-collection-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  @media (min-width: 640px) {
+    .badges-collection-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  .badge-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1rem 0.6rem;
+    border-radius: 14px;
+    border: 2px solid transparent;
+    background: #fffaf0;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  .badge-card.owned {
+    border-color: rgba(212,175,55,0.6);
+    background: linear-gradient(180deg, #fff7e0, #fff);
+    box-shadow: 0 2px 12px rgba(212,175,55,0.2);
+  }
+  .badge-card.locked { opacity: 0.6; background: #f7f7f7; }
+  .badge-card.locked:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+  .badge-card-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+    margin-bottom: 0.4rem;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
+  }
+  .badge-card.locked .badge-card-icon { filter: grayscale(1) opacity(0.7); }
+  .badge-card-name {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--ink);
+    margin-bottom: 0.5rem;
+    min-height: 2.2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .badge-card-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-decoration: none;
+    line-height: 1;
+  }
+  .badge-card-status.owned {
+    background: #e6f7e6;
+    color: #2a7a2a;
+    border: 1px solid rgba(42,122,42,0.25);
+  }
+  .badge-card-status.locked {
+    background: var(--brand-blue, #4a90d9);
+    color: #fff;
+  }
+  .badge-card-status.locked:hover { background: var(--brand-blue-dark, #2a6fb3); }
 
   .avatar-actions {
     display: flex;
