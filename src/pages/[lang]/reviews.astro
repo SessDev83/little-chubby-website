@@ -230,13 +230,13 @@ const approvedCount = myReviews.filter(r => r.status === "approved").length;
     ) : (
       <div style="max-width:42rem; margin:0 auto;">
 
-        {/* ── Peanuts earned info ── */}
+        {/* ── Tickets earned info ── */}
         {approvedCount > 0 && (
           <div class="surface-card peanuts-info" style="padding:1rem 1.4rem; margin-bottom:1.5rem; text-align:center;">
-            <p>🥜 {approvedCount} {approvedCount === 1
+            <p>🎟️ {approvedCount} {approvedCount === 1
               ? (lang === "es" ? "review aprobada" : "approved review")
-              : (lang === "es" ? "reviews aprobadas" : "approved reviews")} = <strong>{approvedCount * 5} 🥜</strong> {lang === "es" ? "ganados" : "earned"}</p>
-            <a href={`/${lang}/peanuts/`} class="btn-small" style="color:var(--accent-gold);">{text.peanutShopTitle} →</a>
+              : (lang === "es" ? "reviews aprobadas" : "approved reviews")} = <strong>{approvedCount * 5} 🎟️</strong> {lang === "es" ? "tickets ganados" : "tickets earned"}</p>
+            <a href={`/${lang}/lottery/`} class="btn-small" style="color:var(--accent-gold);">{text.navLottery || (lang === "es" ? "Sorteo" : "Giveaway")} →</a>
           </div>
         )}
 
