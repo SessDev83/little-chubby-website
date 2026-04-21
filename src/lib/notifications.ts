@@ -481,7 +481,39 @@ export async function emailUserLotteryWin(
   await sendToUser(userEmail, subject, html);
 }
 
-// ── Admin monthly draw report ────────────────────────
+/** Notify a user that someone gifted them lottery tickets */
+export async function emailUserGiftReceived(
+  recipientEmail: string,
+  senderDisplay: string,
+  quantity: number,
+  lang: string
+): Promise<void> {
+  const isEs = lang === "es";
+  const lotteryUrl = `https://littlechubbypress.com/${lang}/lottery/`;
+  const ticketWord = quantity === 1
+    ? (isEs ? "ticket" : "ticket")
+    : (isEs ? "tickets" : "tickets");
+  const subject = isEs
+    ? `🎁 ¡${senderDisplay} te regaló ${quantity} ${ticketWord} del sorteo!`
+    : `🎁 ${senderDisplay} gifted you ${quantity} giveaway ${ticketWord}!`;
+  const rows: [string, string | { raw: string }][] = [
+    [isEs ? "De parte de" : "From", senderDisplay],
+    [isEs ? "Regalo" : "Gift", `🎟️ ${quantity} ${ticketWord}`],
+    [isEs ? "Cómo usarlos" : "How to use them", isEs
+      ? "Inicia sesión, ve a la página del Sorteo y entra al sorteo del mes con tus tickets nuevos."
+      : "Log in, go to the Giveaway page and enter this month's draw with your new tickets."],
+    [isEs ? "Entrar al sorteo" : "Enter the giveaway", { raw: `<a href="${lotteryUrl}" style="color:#6b4c3b;font-weight:700">${escapeHtml(lotteryUrl)}</a>` }],
+  ];
+  const html = card(
+    "🎁",
+    isEs ? "¡Recibiste un regalo!" : "You got a gift!",
+    rows,
+    isEs
+      ? "Los tickets ya están en tu cuenta. Úsalos antes del sorteo del próximo mes para maximizar tus chances."
+      : "The tickets are already in your account. Use them before next month's draw to maximize your chances."
+  );
+  await sendToUser(recipientEmail, subject, html);
+}
 
 interface MonthlyDrawReport {
   month: string;

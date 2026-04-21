@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
+import { emailUserGiftReceived } from "../../lib/notifications";
 
 export const prerender = false;
 
@@ -80,6 +81,32 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         res.error === "invalid_quantity" ? 400 :
         res.error === "invalid_email" ? 400 : 403;
       return new Response(JSON.stringify(res), { status: code, headers });
+    }
+
+    // ── Fire-and-forget notification to the recipient ──
+    // Best effort: failures must not fail the gift itself.
+    try {
+      const { data: sender } = await svc
+        .from("profiles")
+        .select("display_name, email")
+        .eq("id", user_id)
+        .maybeSingle();
+      const normEmail = (res.recipient_email || recipient_email).toLowerCase().trim();
+      const { data: recipient } = await svc
+        .from("profiles")
+        .select("lang_pref")
+        .ilike("email", normEmail)
+        .maybeSingle();
+      const senderDisplay =
+        (sender?.display_name && sender.display_name.trim()) ||
+        (sender?.email ? sender.email.split("@")[0] : "") ||
+        "A friend";
+      const recipientLang = recipient?.lang_pref === "en" ? "en" : "es";
+      if (res.recipient_email) {
+        await emailUserGiftReceived(res.recipient_email, senderDisplay, qty, recipientLang);
+      }
+    } catch (e) {
+      console.warn("[gift-ticket] notify recipient failed:", (e as any)?.message);
     }
 
     return new Response(JSON.stringify(res), { status: 200, headers });
