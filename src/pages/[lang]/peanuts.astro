@@ -25,6 +25,7 @@ const reasonLabels: Record<string, string> = {
   lottery_entry: text.peanutShopLottery,
   ticket_purchase: lang === "es" ? "Compra de tickets" : "Ticket purchase",
   top_earner_bonus: text.peanutReasonTopEarner,
+  early_access: text.peanutReasonEarlyAccess,
 };
 
 const reasonIcons: Record<string, string> = {
@@ -38,6 +39,7 @@ const reasonIcons: Record<string, string> = {
   lottery_entry: "🎟️",
   ticket_purchase: "🎟️",
   top_earner_bonus: "🏆",
+  early_access: "🔓",
 };
 
 const badgeItems = [
@@ -283,6 +285,17 @@ try {
             <button class="btn btn-sm btn-buy" data-action="buy-accent" disabled>
               {text.peanutBuy}
             </button>
+          </div>
+
+          <h4 class="subshop-title">🔓 {text.peanutShopEarlyAccess}</h4>
+          <p class="subshop-desc">{text.peanutShopEarlyAccessDesc}</p>
+          <div class="shop-card early-access-card">
+            <span class="shop-icon">📖</span>
+            <span class="shop-name">{text.peanutShopEarlyAccess}</span>
+            <span class="shop-price">20 🥜 {lang === "es" ? "/ libro" : "/ book"}</span>
+            <a href={`/${lang}/books/early-access/`} class="btn btn-sm btn-buy">
+              {lang === "es" ? "Ver libros →" : "See books →"}
+            </a>
           </div>
 
           {activeDrops.length > 0 && (

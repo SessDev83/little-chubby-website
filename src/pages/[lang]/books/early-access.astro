@@ -1,0 +1,361 @@
+---
+export const prerender = false;
+
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { getLangFromParam, ui } from "../../../data/i18n";
+import type { Lang } from "../../../data/i18n";
+import { getServiceClient } from "../../../lib/supabase";
+import { books } from "../../../data/books";
+
+const lang = getLangFromParam(Astro.params.lang) as Lang;
+const text = ui[lang];
+const pathname = `/${lang}/books/early-access/`;
+
+// Signals to the platform: do not index, do not cache (master plan D-R3, D-R4).
+Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+Astro.response.headers.set("Cache-Control", "private, no-cache, max-age=0, must-revalidate");
+
+const user = Astro.locals.user;
+const sc = getServiceClient();
+
+interface EAConfig {
+  book_id: string;
+  release_at: string;
+  early_access_url: string | null;
+  title_es: string | null;
+  title_en: string | null;
+  cover_src: string | null;
+}
+
+// All configured upcoming books (released or upcoming) — we'll split client-side by window.
+let configs: EAConfig[] = [];
+try {
+  const { data } = await sc
+    .from("book_early_access_config")
+    .select("book_id, release_at, early_access_url, title_es, title_en, cover_src")
+    .order("release_at", { ascending: true });
+  configs = (data || []) as EAConfig[];
+} catch {
+  configs = [];
+}
+
+const now = Date.now();
+const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Only titles currently INSIDE the 7-day pre-release window.
+const availableNow = configs.filter(c => {
+  const r = Date.parse(c.release_at);
+  return r > now && r - now <= WINDOW_MS;
+});
+
+// Catalog metadata merge (fallback to static books.ts when titles missing).
+function metaFor(bookId: string) {
+  const staticBook = books.find(b => b.id === bookId);
+  return {
+    title_es: staticBook?.title?.es || bookId,
+    title_en: staticBook?.title?.en || bookId,
+    cover: staticBook?.coverSrc || null,
+  };
+}
+
+// Fetch the current user's existing unlocks.
+let unlockedIds: Set<string> = new Set();
+if (user) {
+  const { data: mine } = await sc
+    .from("book_early_access_unlocks")
+    .select("book_id")
+    .eq("user_id", user.id);
+  unlockedIds = new Set((mine || []).map(r => r.book_id));
+}
+
+const unlockedRows = configs.filter(c => unlockedIds.has(c.book_id));
+const EARLY_ACCESS_COST = 20;
+
+const pageTitle = lang === "es" ? "Acceso anticipado · Little Chubby Press" : "Early access · Little Chubby Press";
+const pageDesc  = lang === "es"
+  ? "Desbloquea los próximos libros 7 días antes de su lanzamiento con tus Peanuts."
+  : "Unlock upcoming books 7 days before public release with your Peanuts.";
+---
+
+<BaseLayout lang={lang} title={pageTitle} description={pageDesc} pathname={pathname}>
+  <section class="page-section">
+    <div class="container ea-container">
+      <header class="ea-head">
+        <a href={`/${lang}/peanuts/`} class="ea-back">← Peanuts</a>
+        <h1>🔓 {lang === "es" ? "Acceso anticipado a libros" : "Early access to books"}</h1>
+        <p class="ea-desc">
+          {lang === "es"
+            ? "Desbloquea los próximos libros 7 días antes de su publicación. 20 🥜 por libro."
+            : "Unlock upcoming books 7 days before their public release. 20 🥜 per book."}
+        </p>
+      </header>
+
+      {!user && (
+        <div class="ea-login-cta">
+          <p>{lang === "es" ? "Inicia sesión para desbloquear acceso anticipado." : "Sign in to unlock early access."}</p>
+          <a href={`/${lang}/login/?redirect=${encodeURIComponent(pathname)}`} class="btn btn-primary">
+            {lang === "es" ? "Iniciar sesión" : "Sign in"}
+          </a>
+        </div>
+      )}
+
+      {user && (
+        <>
+          <h2 class="ea-section-title">{lang === "es" ? "Disponibles ahora" : "Available now"}</h2>
+          {availableNow.length === 0 ? (
+            <p class="ea-empty">
+              {lang === "es"
+                ? "No hay libros en ventana de acceso anticipado en este momento. Vuelve pronto."
+                : "No books are in the early-access window right now. Check back soon."}
+            </p>
+          ) : (
+            <div class="ea-grid">
+              {availableNow.map(c => {
+                const meta = metaFor(c.book_id);
+                const title = lang === "es" ? (c.title_es || meta.title_es) : (c.title_en || meta.title_en);
+                const cover = c.cover_src || meta.cover;
+                const owned = unlockedIds.has(c.book_id);
+                const releaseMs = Date.parse(c.release_at);
+                return (
+                  <article class={`ea-card ${owned ? "is-owned" : ""}`}>
+                    {cover && <img class="ea-cover" src={cover} alt={title} loading="lazy" width="160" height="240" />}
+                    <h3 class="ea-title">{title}</h3>
+                    <span class="ea-countdown" data-release={releaseMs} aria-live="polite"></span>
+                    {owned ? (
+                      <>
+                        <span class="ea-owned">✓ {lang === "es" ? "Desbloqueado" : "Unlocked"}</span>
+                        {c.early_access_url && (
+                          <a href={c.early_access_url} class="btn btn-primary" rel="nofollow" target="_blank">
+                            {lang === "es" ? "Abrir vista previa" : "Open preview"}
+                          </a>
+                        )}
+                      </>
+                    ) : (
+                      <button class="btn btn-primary ea-buy" data-book-id={c.book_id}>
+                        {EARLY_ACCESS_COST} 🥜 · {lang === "es" ? "Desbloquear" : "Unlock"}
+                      </button>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          {unlockedRows.length > 0 && (
+            <>
+              <h2 class="ea-section-title" style="margin-top:2rem;">
+                {lang === "es" ? "Tus desbloqueos" : "Your unlocks"}
+              </h2>
+              <div class="ea-grid">
+                {unlockedRows.map(c => {
+                  const meta = metaFor(c.book_id);
+                  const title = lang === "es" ? (c.title_es || meta.title_es) : (c.title_en || meta.title_en);
+                  const cover = c.cover_src || meta.cover;
+                  return (
+                    <article class="ea-card is-owned">
+                      {cover && <img class="ea-cover" src={cover} alt={title} loading="lazy" width="160" height="240" />}
+                      <h3 class="ea-title">{title}</h3>
+                      <span class="ea-owned">✓ {lang === "es" ? "Desbloqueado" : "Unlocked"}</span>
+                      {c.early_access_url && (
+                        <a href={c.early_access_url} class="btn btn-sm btn-primary" rel="nofollow" target="_blank">
+                          {lang === "es" ? "Abrir vista previa" : "Open preview"}
+                        </a>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  </section>
+
+  <div id="toast-host" aria-live="polite"></div>
+</BaseLayout>
+
+<style>
+  .ea-container { max-width: 980px; }
+  .ea-head { text-align: center; margin-bottom: 1.5rem; }
+  .ea-back { color: var(--brand-blue); font-size: 0.88rem; text-decoration: none; }
+  .ea-back:hover { text-decoration: underline; }
+  .ea-head h1 { margin: 0.4rem 0 0.3rem; }
+  .ea-desc { color: var(--muted, #6b5d4c); margin: 0; }
+  .ea-login-cta {
+    margin: 2rem auto;
+    padding: 1.4rem 1.2rem;
+    max-width: 480px;
+    text-align: center;
+    background: #fffaed;
+    border: 1px solid rgba(217, 119, 6, 0.25);
+    border-radius: 12px;
+  }
+  .ea-login-cta p { margin: 0 0 0.9rem; }
+
+  .ea-section-title {
+    font-size: 1.25rem;
+    margin: 1.4rem 0 0.9rem;
+    color: var(--heading, #3d2c1e);
+  }
+  .ea-empty {
+    margin: 0.5rem 0 1.5rem;
+    padding: 1rem;
+    background: #fff;
+    border: 1px dashed rgba(0,0,0,0.15);
+    border-radius: 10px;
+    color: var(--muted, #6b5d4c);
+    text-align: center;
+  }
+
+  .ea-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  .ea-card {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .ea-card.is-owned {
+    border-color: rgba(34, 197, 94, 0.45);
+    background: linear-gradient(180deg, rgba(187, 247, 208, 0.2), #fff);
+  }
+  .ea-cover {
+    width: 120px;
+    height: auto;
+    border-radius: 6px;
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+  .ea-title {
+    font-size: 1rem;
+    margin: 0;
+    color: var(--heading, #3d2c1e);
+  }
+  .ea-countdown {
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #92400e;
+    background: rgba(251, 191, 36, 0.25);
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    min-height: 1.1rem;
+  }
+  .ea-owned {
+    color: var(--brand-green, #16a34a);
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+</style>
+
+<script>
+  const root = document.documentElement;
+  const lang = (root.getAttribute("lang") || "en").slice(0, 2);
+
+  function showToast(msg: string, kind: "success" | "error" | "info" = "info") {
+    const host = document.getElementById("toast-host");
+    if (!host) { alert(msg); return; }
+    const t = document.createElement("div");
+    t.className = `toast toast-${kind}`;
+    t.textContent = msg;
+    host.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+  }
+
+  // Countdown ticks
+  const countdownEls = document.querySelectorAll("[data-release]");
+  const tick = () => {
+    const now = Date.now();
+    countdownEls.forEach(el => {
+      const r = parseInt(el.getAttribute("data-release") || "0", 10);
+      const ms = r - now;
+      if (ms <= 0) {
+        el.textContent = lang === "es" ? "Ya publicado" : "Released";
+        return;
+      }
+      const d = Math.floor(ms / 86400000);
+      const h = Math.floor((ms % 86400000) / 3600000);
+      if (d >= 1) el.textContent = lang === "es" ? `Se publica en ${d}d ${h}h` : `Releases in ${d}d ${h}h`;
+      else        el.textContent = lang === "es" ? `Se publica en ${h}h` : `Releases in ${h}h`;
+    });
+  };
+  tick();
+  setInterval(tick, 60000);
+
+  // Buy buttons
+  document.querySelectorAll(".ea-buy").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const bookId = btn.getAttribute("data-book-id");
+      if (!bookId) return;
+      btn.setAttribute("disabled", "true");
+      try {
+        const res = await fetch("/api/buy-early-access/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ book_id: bookId }),
+        });
+        const data = await res.json();
+        if (data.error === "insufficient_credits") {
+          showToast(lang === "es" ? "No tienes suficientes Peanuts." : "Not enough Peanuts.", "error");
+          return;
+        }
+        if (data.error === "already_owned") {
+          showToast(lang === "es" ? "Ya tienes este acceso." : "You already own this.", "info");
+          return;
+        }
+        if (data.error === "early_access_closed") {
+          showToast(lang === "es" ? "Ya terminó la ventana de acceso anticipado." : "The early-access window has ended.", "info");
+          return;
+        }
+        if (data.error === "book_not_found") {
+          showToast(lang === "es" ? "Libro no disponible." : "Book not available.", "error");
+          return;
+        }
+        if (data.error) {
+          showToast(data.error, "error");
+          return;
+        }
+        showToast(lang === "es" ? "¡Desbloqueado! Recargando…" : "Unlocked! Reloading…", "success");
+        setTimeout(() => window.location.reload(), 900);
+      } catch (e) {
+        showToast(String((e as { message?: string })?.message || e || "error"), "error");
+      } finally {
+        btn.removeAttribute("disabled");
+      }
+    });
+  });
+</script>
+
+<style is:global>
+  #toast-host {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  #toast-host .toast {
+    padding: 0.7rem 1rem;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    font-weight: 600;
+    color: #fff;
+  }
+  #toast-host .toast-success { background: #16a34a; }
+  #toast-host .toast-error   { background: #dc2626; }
+  #toast-host .toast-info    { background: #2563eb; }
+</style>

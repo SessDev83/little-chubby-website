@@ -62,6 +62,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
         lottery_entry:    { es: "Boleto del sorteo",        en: "Lottery ticket" },
         ticket_purchase:  { es: "Compra de boleto",         en: "Ticket purchase" },
         top_earner_bonus: { es: "Bonus top del mes",        en: "Top earner bonus" },
+        early_access:     { es: "Acceso anticipado",        en: "Early access" },
       };
       const typeLabel = {
         earned: lang === "es" ? "Ganado" : "Earned",
