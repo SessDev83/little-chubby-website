@@ -125,19 +125,42 @@ const badgeLabelMap: Record<string, string> = {
 // Dynamic label for monthly top-earner badges (top_earner_YYYY_MM).
 const MONTH_NAMES_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const MONTH_NAMES_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+// Drops catalog (D.4): badge_type → { label, icon }
+const dropLabelMap: Record<string, { label: string; icon: string }> = {};
+if (userBadges.some(b => /^drop_/.test(b))) {
+  try {
+    const dropTypes = userBadges.filter(b => /^drop_/.test(b));
+    const { data: dropsMeta } = await supabase
+      .from("shop_drops")
+      .select("badge_type, label_es, label_en, icon")
+      .in("badge_type", dropTypes);
+    for (const row of (dropsMeta || [])) {
+      dropLabelMap[row.badge_type] = {
+        label: lang === "es" ? row.label_es : row.label_en,
+        icon: row.icon || "🎁",
+      };
+    }
+  } catch {}
+}
+
 function labelForBadge(bType: string): string {
   if (badgeLabelMap[bType]) return badgeLabelMap[bType];
+  if (dropLabelMap[bType]) return dropLabelMap[bType].label;
   const m = /^top_earner_(\d{4})_(\d{2})$/.exec(bType);
   if (m) {
     const mi = parseInt(m[2], 10) - 1;
     const name = (lang === "es" ? MONTH_NAMES_ES : MONTH_NAMES_EN)[mi] || m[2];
     return `${text.badgeTopEarner} ${name} ${m[1]}`;
   }
+  if (/^drop_/.test(bType)) return lang === "es" ? "Edición limitada" : "Limited edition";
   return bType;
 }
 function iconForBadge(bType: string): string {
   if (badgeEmoji[bType]) return badgeEmoji[bType];
+  if (dropLabelMap[bType]) return dropLabelMap[bType].icon;
   if (/^top_earner_/.test(bType)) return "\uD83C\uDFC6";
+  if (/^drop_/.test(bType)) return "\uD83C\uDF81";
   return "\u2B50";
 }
 const MILESTONES: { type: string; threshold: number }[] = [

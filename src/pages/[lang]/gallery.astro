@@ -87,11 +87,13 @@ function galLabelForBadge(bType: string): string {
     const name = (lang === "es" ? GAL_MONTHS_ES : GAL_MONTHS_EN)[mi] || m[2];
     return `${text.badgeTopEarner} ${name} ${m[1]}`;
   }
+  if (/^drop_/.test(bType)) return lang === "es" ? "Edición limitada" : "Limited edition";
   return bType;
 }
 function galIconForBadge(bType: string): string {
   if (badgeEmoji[bType]) return badgeEmoji[bType];
   if (/^top_earner_/.test(bType)) return "🏆";
+  if (/^drop_/.test(bType)) return "🎁";
   return "🎖️";
 }
 

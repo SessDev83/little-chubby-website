@@ -94,6 +94,43 @@ if (user) {
 }
 
 const rankMedals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+// ── Active limited-time drops (Phase D.4) ─────────────────────
+interface ShopDrop {
+  id: string;
+  badge_type: string;
+  label_es: string;
+  label_en: string;
+  desc_es: string | null;
+  desc_en: string | null;
+  icon: string;
+  cost: number;
+  active_from: string;
+  active_to: string;
+}
+let activeDrops: ShopDrop[] = [];
+let ownedDropTypes: Set<string> = new Set();
+try {
+  const nowIso = new Date().toISOString();
+  const { data: dropsData } = await sc
+    .from("shop_drops")
+    .select("id, badge_type, label_es, label_en, desc_es, desc_en, icon, cost, active_from, active_to")
+    .lte("active_from", nowIso)
+    .gt("active_to", nowIso)
+    .order("active_to", { ascending: true });
+  activeDrops = (dropsData || []) as ShopDrop[];
+  if (user && activeDrops.length > 0) {
+    const types = activeDrops.map(d => d.badge_type);
+    const { data: owned } = await sc
+      .from("profile_badges")
+      .select("badge_type")
+      .eq("user_id", user.id)
+      .in("badge_type", types);
+    ownedDropTypes = new Set((owned || []).map(r => r.badge_type));
+  }
+} catch {
+  activeDrops = [];
+}
 ---
 
 <BaseLayout
@@ -247,6 +284,43 @@ const rankMedals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
               {text.peanutBuy}
             </button>
           </div>
+
+          {activeDrops.length > 0 && (
+            <>
+              <h4 class="subshop-title">⏳ {text.peanutShopDrops}</h4>
+              <p class="subshop-desc">{text.peanutShopDropsDesc}</p>
+              <div class="shop-grid">
+                {activeDrops.map(d => {
+                  const owned = ownedDropTypes.has(d.badge_type);
+                  const label = lang === "es" ? d.label_es : d.label_en;
+                  const desc  = lang === "es" ? d.desc_es  : d.desc_en;
+                  const endsMs = Date.parse(d.active_to);
+                  return (
+                    <div
+                      class={`shop-card drop-card ${owned ? "is-owned" : ""}`}
+                      data-shop="drop"
+                      data-drop-id={d.id}
+                      data-ends={endsMs}
+                    >
+                      <span class="drop-ribbon">{text.peanutShopDropBadge}</span>
+                      <span class="shop-icon">{d.icon}</span>
+                      <span class="shop-name">{label}</span>
+                      {desc && <span class="drop-desc">{desc}</span>}
+                      <span class="shop-price">{d.cost} 🥜</span>
+                      <span class="drop-countdown" data-countdown={endsMs} aria-live="polite"></span>
+                      {owned ? (
+                        <span class="drop-owned-tag">✓ {text.profileBadgesOwned}</span>
+                      ) : (
+                        <button class="btn btn-sm btn-buy" data-action="buy-drop" data-drop-id={d.id}>
+                          {text.peanutBuy}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -627,6 +701,46 @@ const rankMedals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
       });
     });
 
+    // Limited-time drops
+    document.querySelectorAll("[data-action='buy-drop']").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const dropId = btn.getAttribute("data-drop-id");
+        if (!dropId) return;
+        await purchaseAction("/api/buy-drop/", { drop_id: dropId });
+      });
+    });
+
+    // Drop countdowns (pure presentation; server is source of truth)
+    const countdownEls = document.querySelectorAll("[data-countdown]");
+    if (countdownEls.length > 0) {
+      const tick = () => {
+        const now = Date.now();
+        countdownEls.forEach(el => {
+          const ends = parseInt(el.getAttribute("data-countdown") || "0", 10);
+          const ms = ends - now;
+          if (ms <= 0) {
+            el.textContent = lang === "es" ? "Terminado" : "Ended";
+            const card = el.closest(".drop-card");
+            const btn = card?.querySelector("[data-action='buy-drop']");
+            if (btn) btn.setAttribute("disabled", "true");
+            return;
+          }
+          const d = Math.floor(ms / 86400000);
+          const h = Math.floor((ms % 86400000) / 3600000);
+          const m = Math.floor((ms % 3600000) / 60000);
+          if (d >= 1) {
+            el.textContent = lang === "es" ? `Quedan ${d}d ${h}h` : `${d}d ${h}h left`;
+          } else if (h >= 1) {
+            el.textContent = lang === "es" ? `Quedan ${h}h ${m}m` : `${h}h ${m}m left`;
+          } else {
+            el.textContent = lang === "es" ? `Quedan ${m}m` : `${m}m left`;
+          }
+        });
+      };
+      tick();
+      setInterval(tick, 60000);
+    }
+
     // Accent-color picker: select swatch → enable button → buy
     document.querySelectorAll(".accent-card").forEach(card => {
       const swatches = card.querySelectorAll(".accent-swatch");
@@ -688,6 +802,14 @@ const rankMedals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
       }
       if (data.error === "invalid_color") {
         showToast(text.accentErrorInvalidColor || "Color not available.", "error");
+        return;
+      }
+      if (data.error === "drop_inactive") {
+        showToast(lang === "es" ? "Esta edición ya terminó." : "This drop has ended.", "info");
+        return;
+      }
+      if (data.error === "drop_not_found") {
+        showToast(lang === "es" ? "Edición no disponible." : "Drop not available.", "error");
         return;
       }
       if (data.error) {
@@ -1001,6 +1123,55 @@ const rankMedals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
   .accent-swatch.is-selected {
     border-color: var(--heading, #3d2c1e);
     box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--sw);
+  }
+
+  /* D.4: Limited-time drop cards */
+  .drop-card {
+    position: relative;
+    border: 1px solid rgba(217, 119, 6, 0.35);
+    background: linear-gradient(180deg, rgba(253, 230, 138, 0.18), #fffaed);
+  }
+  .drop-card.is-owned { opacity: 0.85; }
+  .drop-ribbon {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: #b45309;
+    color: #fff;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+  }
+  .drop-desc {
+    font-size: 0.78rem;
+    color: var(--muted, #6b5d4c);
+    text-align: center;
+    margin: 0.15rem 0 0.1rem;
+    padding: 0 0.3rem;
+  }
+  .drop-countdown {
+    display: inline-block;
+    margin-top: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #92400e;
+    background: rgba(251, 191, 36, 0.25);
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    min-height: 1rem;
+  }
+  .drop-owned-tag {
+    font-weight: 700;
+    color: var(--brand-green, #16a34a);
+    margin-top: 0.35rem;
+  }
+  .subshop-desc {
+    margin: 0 0 0.6rem;
+    color: var(--muted, #6b5d4c);
+    font-size: 0.88rem;
   }
 
   /* Leaderboard */
