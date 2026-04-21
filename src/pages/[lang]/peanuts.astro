@@ -89,60 +89,79 @@ const boostItems = [
     <div id="peanuts-content" style="display:none">
 
       <!-- Shop Section -->
-      <div class="shop-section">
+      <div class="shop-section" id="shop">
         <h2>🛍️ {text.peanutShopTitle}</h2>
 
-        <!-- Badges -->
-        <h3>{text.peanutShopBadge}</h3>
-        <div class="shop-grid">
-          {badgeItems.map(item => (
-            <div class="shop-card" data-shop="badge" data-type={item.type} data-cost={item.cost}>
-              <span class="shop-icon">{item.icon}</span>
-              <span class="shop-name">{item.label}</span>
-              <span class="shop-price">{item.cost} 🥜</span>
-              <button class="btn btn-sm btn-buy" data-action="buy-badge" data-badge={item.type}>
-                {text.peanutBuy}
-              </button>
+        <!-- ─── TIER 1 — Functional powers ─────────────────────── -->
+        <div class="tier-block tier-1">
+          <div class="tier-head">
+            <span class="tier-badge tier-badge-1">⚡ Tier 1</span>
+            <div class="tier-titles">
+              <h3 class="tier-title">{text.peanutShopTier1Title}</h3>
+              <p class="tier-subtitle">{text.peanutShopTier1Desc}</p>
             </div>
-          ))}
-        </div>
-
-        <!-- Boosts -->
-        <h3>{text.peanutShopBoost}</h3>
-        <div class="shop-grid">
-          {boostItems.map(item => (
-            <div class="shop-card" data-shop="boost" data-type={item.type} data-cost={item.cost}>
-              <span class="shop-icon">{item.icon}</span>
-              <span class="shop-name">{item.label}</span>
-              <span class="shop-price">{item.cost} 🥜</span>
-              <select class="boost-review-select" data-boost={item.type} style="display:none; width:100%; margin:0.4rem 0; padding:0.3rem; border-radius:6px; border:1px solid var(--border);">
-                <option value="">{lang === "es" ? "— Elige una review —" : "— Pick a review —"}</option>
-              </select>
-              <button class="btn btn-sm btn-buy" data-action="buy-boost" data-boost={item.type}>
-                {text.peanutBuy}
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <!-- Giveaway Tickets -->
-        <h3>{text.peanutShopLottery}</h3>
-        <p style="color:var(--ink-soft); font-size:0.88rem; margin:0 0 0.5rem;">{text.peanutShopLotteryDesc}</p>
-        <div class="shop-card lottery-entry-card">
-          <span class="shop-icon">🎟️</span>
-          <span class="shop-name">{lang === "es" ? "Comprar tickets" : "Buy tickets"}</span>
-          <span class="shop-price">3 🥜 / ticket</span>
-          <div class="lottery-qty">
-            <button class="qty-btn" id="qty-minus">−</button>
-            <span id="qty-value">1</span>
-            <button class="qty-btn" id="qty-plus">+</button>
           </div>
-          <button class="btn btn-sm btn-buy" id="buy-lottery-btn">
-            {text.peanutBuy} (<span id="lottery-total-cost">3</span> 🥜)
-          </button>
-          <a href={`/${lang}/lottery/`} style="font-size:0.82rem; color:var(--brand-blue); margin-top:0.3rem;">
-            {lang === "es" ? "Ver sorteo actual →" : "View current giveaway →"}
-          </a>
+
+          <h4 class="subshop-title">{text.peanutShopBoost}</h4>
+          <div class="shop-grid">
+            {boostItems.map(item => (
+              <div class="shop-card" data-shop="boost" data-type={item.type} data-cost={item.cost}>
+                <span class="shop-icon">{item.icon}</span>
+                <span class="shop-name">{item.label}</span>
+                <span class="shop-price">{item.cost} 🥜</span>
+                <select class="boost-review-select" data-boost={item.type} style="display:none; width:100%; margin:0.4rem 0; padding:0.3rem; border-radius:6px; border:1px solid var(--border);">
+                  <option value="">{lang === "es" ? "— Elige una review —" : "— Pick a review —"}</option>
+                </select>
+                <button class="btn btn-sm btn-buy" data-action="buy-boost" data-boost={item.type}>
+                  {text.peanutBuy}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <h4 class="subshop-title">{text.peanutShopLottery}</h4>
+          <p class="subshop-desc">{text.peanutShopLotteryDesc}</p>
+          <div class="shop-card lottery-entry-card">
+            <span class="shop-icon">🎟️</span>
+            <span class="shop-name">{lang === "es" ? "Comprar tickets" : "Buy tickets"}</span>
+            <span class="shop-price">3 🥜 / ticket</span>
+            <div class="lottery-qty">
+              <button class="qty-btn" id="qty-minus">−</button>
+              <span id="qty-value">1</span>
+              <button class="qty-btn" id="qty-plus">+</button>
+            </div>
+            <button class="btn btn-sm btn-buy" id="buy-lottery-btn">
+              {text.peanutBuy} (<span id="lottery-total-cost">3</span> 🥜)
+            </button>
+            <a href={`/${lang}/lottery/`} style="font-size:0.82rem; color:var(--brand-blue); margin-top:0.3rem;">
+              {lang === "es" ? "Ver sorteo actual →" : "View current giveaway →"}
+            </a>
+          </div>
+        </div>
+
+        <!-- ─── TIER 2 — Cosmetics & collectibles ─────────────────── -->
+        <div class="tier-block tier-2">
+          <div class="tier-head">
+            <span class="tier-badge tier-badge-2">🎨 Tier 2</span>
+            <div class="tier-titles">
+              <h3 class="tier-title">{text.peanutShopTier2Title}</h3>
+              <p class="tier-subtitle">{text.peanutShopTier2Desc}</p>
+            </div>
+          </div>
+
+          <h4 class="subshop-title">{text.peanutShopBadge}</h4>
+          <div class="shop-grid">
+            {badgeItems.map(item => (
+              <div class="shop-card" data-shop="badge" data-type={item.type} data-cost={item.cost}>
+                <span class="shop-icon">{item.icon}</span>
+                <span class="shop-name">{item.label}</span>
+                <span class="shop-price">{item.cost} 🥜</span>
+                <button class="btn btn-sm btn-buy" data-action="buy-badge" data-badge={item.type}>
+                  {text.peanutBuy}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -504,6 +523,67 @@ const boostItems = [
     color: #6b4c3b;
     font-size: 1rem;
     margin: 1.5rem 0 0.5rem;
+  }
+
+  /* Phase B: Tier 1 / Tier 2 blocks */
+  .tier-block {
+    margin-top: 1.25rem;
+    padding: 1rem 1rem 1.25rem;
+    border-radius: 16px;
+    border: 1px solid #eadfce;
+    background: #fffdf7;
+  }
+  .tier-block.tier-1 {
+    background: linear-gradient(180deg, #fff8e8 0%, #fffdf7 80%);
+    border-color: #f3d97a;
+  }
+  .tier-block.tier-2 {
+    background: linear-gradient(180deg, #fff0f6 0%, #fffdf7 80%);
+    border-color: #f2b5d0;
+  }
+  .tier-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .tier-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .tier-badge-1 { background: linear-gradient(135deg, #e8a83a, #d68b0f); }
+  .tier-badge-2 { background: linear-gradient(135deg, #d56a9e, #a8457a); }
+  .tier-titles { flex: 1; min-width: 0; }
+  .tier-title {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--heading, #3d2c1e);
+    font-weight: 800;
+  }
+  .tier-subtitle {
+    margin: 0.1rem 0 0;
+    font-size: 0.85rem;
+    color: #8a7765;
+  }
+  .subshop-title {
+    margin: 1.1rem 0 0.45rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #6b4c3b;
+  }
+  .subshop-desc {
+    margin: 0 0 0.5rem;
+    font-size: 0.83rem;
+    color: var(--ink-soft);
   }
 
   .shop-grid {
