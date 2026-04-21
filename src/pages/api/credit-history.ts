@@ -52,15 +52,16 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     if (wantsCsv) {
       const lang = (url.searchParams.get("lang") || "en").toLowerCase() === "es" ? "es" : "en";
       const reasonLabels: Record<string, { es: string; en: string }> = {
-        review:          { es: "Resena aprobada",          en: "Approved review" },
-        share:           { es: "Compartido",               en: "Shared link" },
-        download:        { es: "Descarga de ilustracion",  en: "Artwork download" },
-        admin:           { es: "Ajuste administrativo",    en: "Admin adjustment" },
-        giveaway:        { es: "Entrada sorteo",           en: "Giveaway entry" },
-        badge:           { es: "Compra de insignia",       en: "Badge purchase" },
-        boost:           { es: "Boost de resena",          en: "Review boost" },
-        lottery_entry:   { es: "Boleto del sorteo",        en: "Lottery ticket" },
-        ticket_purchase: { es: "Compra de boleto",         en: "Ticket purchase" },
+        review:           { es: "Resena aprobada",          en: "Approved review" },
+        share:            { es: "Compartido",               en: "Shared link" },
+        download:         { es: "Descarga de ilustracion",  en: "Artwork download" },
+        admin:            { es: "Ajuste administrativo",    en: "Admin adjustment" },
+        giveaway:         { es: "Entrada sorteo",           en: "Giveaway entry" },
+        badge:            { es: "Compra de insignia",       en: "Badge purchase" },
+        boost:            { es: "Boost de resena",          en: "Review boost" },
+        lottery_entry:    { es: "Boleto del sorteo",        en: "Lottery ticket" },
+        ticket_purchase:  { es: "Compra de boleto",         en: "Ticket purchase" },
+        top_earner_bonus: { es: "Bonus top del mes",        en: "Top earner bonus" },
       };
       const typeLabel = {
         earned: lang === "es" ? "Ganado" : "Earned",

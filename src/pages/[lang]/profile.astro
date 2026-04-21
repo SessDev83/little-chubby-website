@@ -79,15 +79,18 @@ try {
 }
 
 // ── Phase A: profile badges (read-only, fail-safe) ─────────────────
+// Temporary badges (top_earner_*) have expires_at; filter them out here.
 let userBadges: string[] = [];
 let hasFrameGold = false;
 let hasFrameSilver = false;
 try {
+  const nowIso = new Date().toISOString();
   const { data: badgeRows } = await supabase
     .from("profile_badges")
-    .select("badge_type")
+    .select("badge_type, expires_at")
     .eq("user_id", user.id)
-    .eq("active", true);
+    .eq("active", true)
+    .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
   userBadges = (badgeRows ?? []).map((r: any) => r.badge_type).filter(Boolean);
   hasFrameGold = userBadges.includes("frame_gold");
   hasFrameSilver = userBadges.includes("frame_silver") && !hasFrameGold;
@@ -116,6 +119,25 @@ const badgeLabelMap: Record<string, string> = {
   milestone_500: text.badgeMilestone500,
   milestone_1000: text.badgeMilestone1000,
 };
+
+// Dynamic label for monthly top-earner badges (top_earner_YYYY_MM).
+const MONTH_NAMES_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const MONTH_NAMES_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+function labelForBadge(bType: string): string {
+  if (badgeLabelMap[bType]) return badgeLabelMap[bType];
+  const m = /^top_earner_(\d{4})_(\d{2})$/.exec(bType);
+  if (m) {
+    const mi = parseInt(m[2], 10) - 1;
+    const name = (lang === "es" ? MONTH_NAMES_ES : MONTH_NAMES_EN)[mi] || m[2];
+    return `${text.badgeTopEarner} ${name} ${m[1]}`;
+  }
+  return bType;
+}
+function iconForBadge(bType: string): string {
+  if (badgeEmoji[bType]) return badgeEmoji[bType];
+  if (/^top_earner_/.test(bType)) return "\uD83C\uDFC6";
+  return "\u2B50";
+}
 const MILESTONES: { type: string; threshold: number }[] = [
   { type: "milestone_50", threshold: 50 },
   { type: "milestone_100", threshold: 100 },
@@ -256,9 +278,9 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
           {userBadges.length > 0 && (
             <div class="profile-badge-strip" aria-label={text.profileBadgesTitle}>
               {userBadges.slice(0, 3).map((b: string) => (
-                <a href="#badges-collection" class="profile-badge-chip" title={badgeLabelMap[b] || b}>
-                  <span class="profile-badge-emoji" aria-hidden="true">{badgeEmoji[b] || "🎖️"}</span>
-                  <span class="profile-badge-label">{badgeLabelMap[b] || b}</span>
+                <a href="#badges-collection" class="profile-badge-chip" title={labelForBadge(b)}>
+                  <span class="profile-badge-emoji" aria-hidden="true">{iconForBadge(b)}</span>
+                  <span class="profile-badge-label">{labelForBadge(b)}</span>
                 </a>
               ))}
               {userBadges.length > 3 && (

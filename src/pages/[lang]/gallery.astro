@@ -44,11 +44,13 @@ try {
   // Batch-fetch badges for all unique authors in one query (avoids N+1)
   const authorIds = Array.from(new Set(items.map((i: any) => i.user_id).filter(Boolean)));
   if (authorIds.length > 0) {
+    const nowIso = new Date().toISOString();
     const { data: badgeRows } = await supabase
       .from("profile_badges")
-      .select("user_id, badge_type")
+      .select("user_id, badge_type, expires_at")
       .in("user_id", authorIds)
-      .eq("active", true);
+      .eq("active", true)
+      .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
     (badgeRows ?? []).forEach((b: any) => {
       if (!b?.user_id || !b?.badge_type) return;
       const arr = badgesByUser[b.user_id] || (badgesByUser[b.user_id] = []);
@@ -72,6 +74,24 @@ const badgeLabel: Record<string, string> = {
   top_reviewer: text.badgeTopReviewer,
   star_parent: text.badgeStarParent,
 };
+// Dynamic label/icon for monthly top-earner badges.
+const GAL_MONTHS_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const GAL_MONTHS_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+function galLabelForBadge(bType: string): string {
+  if (badgeLabel[bType]) return badgeLabel[bType];
+  const m = /^top_earner_(\d{4})_(\d{2})$/.exec(bType);
+  if (m) {
+    const mi = parseInt(m[2], 10) - 1;
+    const name = (lang === "es" ? GAL_MONTHS_ES : GAL_MONTHS_EN)[mi] || m[2];
+    return `${text.badgeTopEarner} ${name} ${m[1]}`;
+  }
+  return bType;
+}
+function galIconForBadge(bType: string): string {
+  if (badgeEmoji[bType]) return badgeEmoji[bType];
+  if (/^top_earner_/.test(bType)) return "🏆";
+  return "🎖️";
+}
 
 // Merge sample reviews when gallery is empty or has few real reviews
 const realCount = items.length;
@@ -204,7 +224,7 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
                     {authorBadges.length > 0 && (
                       <span class="gallery-author-badges" aria-label="badges">
                         {authorBadges.map((b: string) => (
-                          <span class="author-badge" title={badgeLabel[b] || b}>{badgeEmoji[b] || "🎖️"}</span>
+                          <span class="author-badge" title={galLabelForBadge(b)}>{galIconForBadge(b)}</span>
                         ))}
                       </span>
                     )}
