@@ -86,13 +86,13 @@ const COPY = {
   },
   es: {
     bluesky: [
-      `👋 Bienvenidos! Esto es lo que hacemos:`,
+      `👋 Bienvenidos!`,
       ``,
       `Paginas para colorear GRATIS para ninos — ${CATEGORIES.es.length} categorias, actualizadas cada semana.`,
       `→ ${SITE}/es/coloring-corner`,
       ``,
-      `Hecho por una mama + un papa que dibujan todo a mano.`,
-      `Gana Cacahuetes 🥜 al compartir → obtienes descargas gratis.`,
+      `Dibujadas a mano por mama + papa.`,
+      `Gana Cacahuetes 🥜 al compartir.`,
     ].join("\n"),
     facebook: [
       `📌 Si acabas de encontrarnos, empieza aqui.`,
