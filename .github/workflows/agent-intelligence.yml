@@ -49,6 +49,7 @@ jobs:
           node scripts/agents/weekly-intelligence.mjs "${ARGS[@]}"
 
       - name: Generate weekly analytics report (last completed week)
+        if: always()
         env:
           PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -60,6 +61,7 @@ jobs:
           node scripts/agents/weekly-report.mjs "${ARGS[@]}"
 
       - name: Generate monthly analytics report (only on 1st of month)
+        if: always()
         env:
           PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

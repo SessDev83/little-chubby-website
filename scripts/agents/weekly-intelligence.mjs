@@ -322,10 +322,10 @@ async function analyzeWithClaude(prompt) {
       // Model downgrade Apr 2026: structured analytics summarisation doesn't
       // need Sonnet — Haiku 4.5 is plenty and ~75% cheaper.
       model: process.env.ANTHROPIC_AGENT_MODEL || "claude-haiku-4-5",
-      max_tokens: 3000,
+      max_tokens: 8000,
       messages: [{ role: "user", content: prompt }],
     }),
-    signal: AbortSignal.timeout(60_000),
+    signal: AbortSignal.timeout(120_000),
   });
 
   if (!res.ok) {
@@ -341,7 +341,33 @@ async function analyzeWithClaude(prompt) {
     raw = raw.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
   }
 
-  return JSON.parse(raw);
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    // Claude occasionally returns truncated JSON. Try to recover by trimming
+    // to the last complete object/array and closing brackets.
+    console.warn(`⚠️  JSON parse failed (${err.message}). Attempting recovery...`);
+    const recovered = recoverTruncatedJson(raw);
+    if (recovered) return recovered;
+    throw new Error(`Unparseable Claude response (first 500 chars): ${raw.slice(0, 500)}`);
+  }
+}
+
+function recoverTruncatedJson(raw) {
+  // Find the last well-formed closing brace position.
+  // Walk backwards trimming tokens until JSON.parse succeeds.
+  for (let end = raw.length; end > 100; end--) {
+    const slice = raw.slice(0, end);
+    // Must end on a structural char that could be valid
+    const last = slice[slice.length - 1];
+    if (last !== "}" && last !== "]") continue;
+    try {
+      const candidate = slice + (slice.includes("\"content_recommendations\"") && !slice.trim().endsWith("}") ? "}" : "");
+      return JSON.parse(candidate);
+    } catch { /* keep trimming */ }
+  }
+  // Last resort: return minimal shape so downstream doesn't crash.
+  return { strategic_insights: [], content_recommendations: [], alerts: [], optimization_priorities: [], summary: "(recovery failed: Claude output was truncated or malformed)" };
 }
 
 // ─── Store decisions in Supabase ───────────────────────────────────────────
