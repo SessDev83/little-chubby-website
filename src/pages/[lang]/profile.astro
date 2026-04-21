@@ -28,6 +28,7 @@ interface Profile {
   state: string | null;
   zip_code: string | null;
   country: string | null;
+  created_at?: string | null;
 }
 
 let profile: Profile | null = null;
@@ -38,10 +39,40 @@ let securityMessageType: "success" | "error" = "success";
 
 const { data: profileData } = await supabase
   .from("profiles")
-  .select("display_name, lang_pref, avatar_url, phone, address_line1, address_line2, city, state, zip_code, country")
+  .select("display_name, lang_pref, avatar_url, phone, address_line1, address_line2, city, state, zip_code, country, created_at")
   .eq("id", user.id)
   .single();
-profile = profileData;
+profile = profileData as (Profile & { created_at?: string | null }) | null;
+
+// ── Activity stats (read-only, fail-safe) ──────────────────────────
+let statDownloads = 0;
+let statReviews = 0;
+let statGallery = 0;
+let statTickets = 0;
+try {
+  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const [dl, rv, gl, lt] = await Promise.all([
+    supabase.from("artwork_downloads").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    supabase.from("book_reviews").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "approved"),
+    supabase.from("gallery_feed").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    supabase.from("lottery_entries").select("entry_count").eq("user_id", user.id).eq("month", currentMonth),
+  ]);
+  statDownloads = dl.count ?? 0;
+  statReviews = rv.count ?? 0;
+  statGallery = gl.count ?? 0;
+  statTickets = (lt.data ?? []).reduce((s, r: any) => s + (r.entry_count || 0), 0);
+} catch {
+  // Silently degrade — if any table is missing, stats just show 0
+}
+
+function formatJoinDate(iso?: string | null): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { month: "long", year: "numeric" });
+  } catch { return ""; }
+}
+const memberSince = formatJoinDate(profile?.created_at);
 
 if (Astro.request.method === "POST") {
   if (!validateOrigin(Astro.request, Astro.url)) {
@@ -121,52 +152,78 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
   <section class="page-section container">
     <div class="profile-layout">
 
-      {/* ── Peanuts Summary Card ── */}
-      <div class="peanuts-summary surface-card" id="peanuts-profile-card" style="display:none;">
-        <div class="peanuts-summary-inner">
-          <span class="peanuts-summary-icon">🥜</span>
-          <div class="peanuts-summary-info">
-            <span class="peanuts-summary-balance" id="profile-peanuts-balance">0</span>
-            <span class="peanuts-summary-label">{text.peanutBalance}</span>
-          </div>
-          <div class="peanuts-summary-links">
-            <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-secondary">{text.peanutHistory}</a>
-            <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-primary">{text.peanutShopTitle}</a>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Avatar ── */}
-      <div class="profile-avatar-section surface-card">
-        <div class="avatar-wrapper">
+      {/* ── Hero identity card ── */}
+      <div class="profile-hero surface-card">
+        <div class="hero-avatar">
           <img
             id="avatar-preview"
             src={profile?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.display_name || user.email || "U")}&background=4a90d9&color=fff&size=128`}
             alt={text.profileAvatar}
-            width="128"
-            height="128"
+            width="112"
+            height="112"
             class="avatar-img"
           />
+          <div class="avatar-actions">
+            <label class="btn btn-secondary btn-sm" for="avatar-input" style="cursor:pointer;">
+              {text.profileAvatarChange}
+            </label>
+            <input
+              type="file"
+              id="avatar-input"
+              accept="image/jpeg,image/png,image/webp"
+              style="display:none;"
+            />
+            {profile?.avatar_url && (
+              <button type="button" id="avatar-remove" class="btn btn-secondary btn-sm" style="color:#8f1f18;">
+                {text.profileAvatarRemove}
+              </button>
+            )}
+          </div>
+          <p id="avatar-status" style="font-size:0.82rem; color:var(--ink-soft); margin-top:0.4rem; text-align:center;"></p>
         </div>
-        <div class="avatar-actions">
-          <label class="btn btn-secondary btn-sm" for="avatar-input" style="cursor:pointer;">
-            {text.profileAvatarChange}
-          </label>
-          <input
-            type="file"
-            id="avatar-input"
-            accept="image/jpeg,image/png,image/webp"
-            style="display:none;"
-          />
-          {profile?.avatar_url && (
-            <button type="button" id="avatar-remove" class="btn btn-secondary btn-sm" style="color:#8f1f18;">
-              {text.profileAvatarRemove}
-            </button>
+        <div class="hero-info">
+          <h1 class="hero-name">{profile?.display_name || user.email}</h1>
+          <p class="hero-email">{user.email}</p>
+          {memberSince && (
+            <p class="hero-meta">🗓️ {text.profileMemberSince} {memberSince}</p>
           )}
+          <div class="hero-peanuts" id="peanuts-profile-card" style="display:none;">
+            <span class="peanuts-summary-icon" aria-hidden="true">🥜</span>
+            <span class="peanuts-summary-balance" id="profile-peanuts-balance">0</span>
+            <span class="peanuts-summary-label">{text.peanutBalance}</span>
+            <div class="hero-peanuts-links">
+              <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-secondary">{text.peanutHistory}</a>
+              <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-primary">{text.peanutShopTitle}</a>
+            </div>
+          </div>
         </div>
-        <p id="avatar-status" style="font-size:0.85rem; color:var(--ink-soft); margin-top:0.5rem;"></p>
-        <p style="text-align:center; font-weight:600; margin-top:0.8rem;">{profile?.display_name || user.email}</p>
-        <p style="text-align:center; color:var(--ink-soft); font-size:0.9rem;">{user.email}</p>
+      </div>
+
+      {/* ── Activity stats ── */}
+      <div class="profile-activity surface-card">
+        <h2 class="profile-section-title" style="margin-top:0;">{text.profileActivityTitle}</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon" aria-hidden="true">🎨</div>
+            <div class="stat-value">{statDownloads.toLocaleString()}</div>
+            <div class="stat-label">{text.profileStatDownloads}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" aria-hidden="true">⭐</div>
+            <div class="stat-value">{statReviews.toLocaleString()}</div>
+            <div class="stat-label">{text.profileStatReviews}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" aria-hidden="true">📸</div>
+            <div class="stat-value">{statGallery.toLocaleString()}</div>
+            <div class="stat-label">{text.profileStatGallery}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" aria-hidden="true">🎟️</div>
+            <div class="stat-value">{statTickets.toLocaleString()}</div>
+            <div class="stat-label">{text.profileStatTickets}</div>
+          </div>
+        </div>
       </div>
 
       {/* ── Profile form ── */}
@@ -503,26 +560,135 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
   .profile-layout {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 1.5rem;
-    max-width: 48rem;
+    gap: 1.2rem;
+    max-width: 64rem;
     margin: 0 auto;
   }
 
-  @media (min-width: 640px) {
+  @media (min-width: 900px) {
     .profile-layout {
-      grid-template-columns: 14rem 1fr;
-      align-items: start;
+      grid-template-columns: 1fr;
+      gap: 1.4rem;
     }
   }
 
-  .profile-avatar-section {
+  /* ── Hero identity card ── */
+  .profile-hero {
     padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
     text-align: center;
   }
-
-  .avatar-wrapper {
+  @media (min-width: 640px) {
+    .profile-hero {
+      flex-direction: row;
+      align-items: center;
+      text-align: left;
+      gap: 1.8rem;
+      padding: 1.8rem 2rem;
+    }
+  }
+  .hero-avatar {
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+  .hero-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .hero-name {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin: 0;
+    color: var(--ink);
+    word-break: break-word;
+  }
+  .hero-email {
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    margin: 0;
+    word-break: break-all;
+  }
+  .hero-meta {
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    margin: 0.2rem 0 0.4rem;
+  }
+  .hero-peanuts {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.9rem;
+    background: linear-gradient(90deg, rgba(251, 191, 36, 0.12), rgba(251, 191, 36, 0.03));
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    margin-top: 0.4rem;
+  }
+  .hero-peanuts .peanuts-summary-icon { font-size: 1.5rem; }
+  .hero-peanuts .peanuts-summary-balance {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #8b6914;
+  }
+  .hero-peanuts .peanuts-summary-label {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .hero-peanuts-links {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-left: auto;
+  }
+
+  /* ── Activity stats grid ── */
+  .profile-activity { padding: 1.3rem 1.4rem; }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.7rem;
+  }
+  @media (min-width: 640px) {
+    .stats-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.9rem;
+    }
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 0.9rem;
+    padding: 0.9rem 0.7rem;
+    text-align: center;
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
     justify-content: center;
+    gap: 0.2rem;
+  }
+  .stat-icon { font-size: 1.5rem; line-height: 1; }
+  .stat-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .stat-label {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
   .avatar-img {
