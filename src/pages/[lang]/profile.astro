@@ -189,7 +189,9 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
           {memberSince && (
             <p class="hero-meta">🗓️ {text.profileMemberSince} {memberSince}</p>
           )}
-          <div class="hero-currencies">
+          <div class="hero-currencies-block">
+            <p class="hero-currencies-title">{text.profileAvailableCurrencies}</p>
+            <div class="hero-currencies">
             <div class="currency-pill currency-peanuts" id="peanuts-profile-card">
               <span class="currency-icon" aria-hidden="true">🥜</span>
               <div class="currency-info">
@@ -203,6 +205,7 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
                 <span class="currency-balance">{statTickets.toLocaleString()}</span>
                 <span class="currency-label">{text.lotteryTickets}</span>
               </div>
+            </div>
             </div>
           </div>
           <div class="hero-actions">
@@ -635,19 +638,29 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     color: var(--ink-soft);
     margin: 0.2rem 0 0.4rem;
   }
+  .hero-currencies-block {
+    margin-top: 0.75rem;
+  }
+  .hero-currencies-title {
+    margin: 0 0 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+  }
   .hero-currencies {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.6rem;
-    margin-top: 0.5rem;
   }
   .currency-pill {
     display: flex;
     align-items: center;
-    gap: 0.55rem;
-    padding: 0.65rem 0.85rem;
+    gap: 0.65rem;
+    padding: 0.75rem 0.95rem;
     border-radius: 0.9rem;
-    border: 1px solid var(--line);
+    border: 1.5px solid var(--line);
     background: var(--surface);
     min-width: 0;
   }
