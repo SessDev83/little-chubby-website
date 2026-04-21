@@ -33,12 +33,14 @@ const navItems = [
 
       <div class="header-actions">
         <a href={`/${lang}/login/`} class="header-login" id="auth-login">{text.navLogin}</a>
-        <a href={`/${lang}/lottery/`} class="header-tickets" id="auth-tickets" style="display:none;" title={lang === "es" ? "Tus Tickets" : "Your Tickets"}>
-          🎟️ <span id="tickets-count">0</span>
-        </a>
-        <a href={`/${lang}/peanuts/`} class="header-peanuts" id="auth-peanuts" style="display:none;" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
-          🥜 <span id="peanuts-count">0</span>
-        </a>
+        <span class="header-currencies" id="auth-currencies" style="display:none;">
+          <a href={`/${lang}/lottery/`} class="header-tickets" id="auth-tickets" title={lang === "es" ? "Tus Tickets" : "Your Tickets"}>
+            🎟️ <span id="tickets-count">0</span>
+          </a>
+          <a href={`/${lang}/peanuts/`} class="header-peanuts" id="auth-peanuts" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
+            🥜 <span id="peanuts-count">0</span>
+          </a>
+        </span>
         <button class="header-bell" id="auth-bell" style="display:none;" title={lang === "es" ? "Notificaciones" : "Notifications"} aria-label="Notifications">
           🔔 <span class="bell-badge" id="bell-badge" style="display:none;">0</span>
         </button>
@@ -153,6 +155,7 @@ const navItems = [
     var peanutsCount = document.getElementById("peanuts-count");
     var ticketsEl = document.getElementById("auth-tickets");
     var ticketsCount = document.getElementById("tickets-count");
+    var currenciesEl = document.getElementById("auth-currencies");
 
     if (loginEl) loginEl.style.display = loggedIn ? "none" : "";
     if (usernameEl) {
@@ -164,8 +167,7 @@ const navItems = [
     }
     if (settingsAuthItems) settingsAuthItems.style.display = loggedIn ? "" : "none";
     if (settingsLoginHint) settingsLoginHint.style.display = loggedIn ? "none" : "";
-    if (peanutsEl) peanutsEl.style.display = loggedIn ? "" : "none";
-    if (ticketsEl) ticketsEl.style.display = loggedIn ? "" : "none";
+    if (currenciesEl) currenciesEl.style.display = loggedIn ? "" : "none";
 
     // Bell + notifications
     var bellEl = document.getElementById("auth-bell");

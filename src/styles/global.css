@@ -214,19 +214,25 @@ main {
 }
 
 /* ── Username Display ───────────────────────── */
+.header-currencies {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .header-tickets {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
   text-decoration: none;
   font-family: "Baloo 2", "Trebuchet MS", sans-serif;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   color: var(--brand-brown);
   background: #fef3e2;
   border: 1.5px solid #e8c868;
   border-radius: 999px;
-  padding: 0.2rem 0.6rem;
+  padding: 0.3rem 0.75rem;
   white-space: nowrap;
   transition: background-color 0.2s ease;
 }
@@ -242,16 +248,16 @@ main {
 .header-peanuts {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.3rem;
   text-decoration: none;
   font-family: "Baloo 2", "Trebuchet MS", sans-serif;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   color: var(--brand-brown);
   background: #fdf6e3;
   border: 1.5px solid #e6d5a8;
   border-radius: 999px;
-  padding: 0.2rem 0.6rem;
+  padding: 0.3rem 0.75rem;
   white-space: nowrap;
   transition: background-color 0.2s ease;
 }
@@ -513,7 +519,14 @@ main {
   .header-peanuts,
   .header-tickets {
     font-size: 0.72rem;
-    padding: 0.15rem 0.45rem;
+    padding: 0.1rem 0.45rem;
+    gap: 0.2rem;
+  }
+
+  .header-currencies {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.18rem;
   }
 
   .header-nav {
