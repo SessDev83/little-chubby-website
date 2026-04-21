@@ -291,11 +291,14 @@ function checkV7_instagramUrl(variant) {
 }
 
 function checkV8_blueskyLength(variant) {
-  const text = variant?.text || "";
-  if (text.length > BLUESKY_MAX_CHARS) {
+  // Measure the FULL posted text (text + hashtags appended at send time),
+  // not just variant.text — post.mjs auto-truncates at 297 but that silently
+  // drops the hashtags. Better to block and retry with a shorter draft.
+  const full = fullText(variant);
+  if (full.length > BLUESKY_MAX_CHARS) {
     return [{
       id: "V8", platform: "bluesky", severity: "block",
-      message: `Bluesky text is ${text.length} chars, over the ${BLUESKY_MAX_CHARS} limit.`,
+      message: `Bluesky full text (text + hashtags) is ${full.length} chars, over the ${BLUESKY_MAX_CHARS} limit.`,
     }];
   }
   return [];
@@ -514,11 +517,11 @@ function checkV20_bookPlusAmazonInNonPromo(platform, variant, type) {
 // ─── Warnings (W1-W4) ──────────────────────────────────────────────────────
 
 function warnW1_blueskyLong(variant) {
-  const text = variant?.text || "";
+  const text = fullText(variant);
   if (text.length > 260 && text.length <= BLUESKY_MAX_CHARS) {
     return [{
       id: "W1", platform: "bluesky", severity: "warn",
-      message: `Bluesky text is ${text.length} chars — close to limit, may be cut off with URL facets.`,
+      message: `Bluesky full text is ${text.length} chars — close to limit, may be cut off with URL facets.`,
     }];
   }
   return [];
