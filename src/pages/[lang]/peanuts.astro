@@ -169,18 +169,37 @@ const boostItems = [
       <div class="history-section">
         <h2>{text.peanutHistory}</h2>
 
+        <div class="history-controls">
+          <div class="history-range" role="tablist" aria-label={text.peanutHistory}>
+            <button class="range-btn active" data-range="30d">{text.peanutHistoryRange30}</button>
+            <button class="range-btn" data-range="90d">{text.peanutHistoryRange90}</button>
+            <button class="range-btn" data-range="all">{text.peanutHistoryRangeAll}</button>
+          </div>
+          <a id="tx-export-csv" class="history-export" href="#" download>
+            ⬇️ {text.peanutHistoryExport}
+          </a>
+        </div>
+
+        {/* A: Summary card */}
+        <div id="history-summary" class="history-summary" aria-live="polite">
+          <div class="history-summary-loading">…</div>
+        </div>
+
+        {/* Filter chips for the grouped list */}
         <div class="history-filters">
           <button class="filter-btn active" data-filter="all">{text.peanutFilterAll}</button>
           <button class="filter-btn" data-filter="earned">{text.peanutFilterEarned}</button>
           <button class="filter-btn" data-filter="spent">{text.peanutFilterSpent}</button>
         </div>
 
+        {/* B: Day-grouped collapsible list */}
         <div id="tx-list" class="tx-list">
           <p class="tx-empty">{text.peanutNoTransactions}</p>
         </div>
 
+        {/* C: Load older */}
         <button id="tx-load-more" class="btn btn-outline" style="display:none">
-          {text.galleryLoadMore}
+          {text.peanutHistoryLoadOlder}
         </button>
       </div>
     </div>
@@ -190,11 +209,20 @@ const boostItems = [
   </section>
 </BaseLayout>
 
-<script define:vars={{ lang, reasonLabels: JSON.stringify(reasonLabels), reasonIcons: JSON.stringify(reasonIcons) }}>
+<script define:vars={{ lang, reasonLabels: JSON.stringify(reasonLabels), reasonIcons: JSON.stringify(reasonIcons), uiText: JSON.stringify({
+  events: text.peanutHistoryEvents,
+  oneEvent: text.peanutHistoryOneEvent,
+  net: text.peanutHistoryNet,
+  summaryTitle: text.peanutHistorySummaryTitle,
+  dayNet: text.peanutHistoryDayNet,
+  noTx: text.peanutNoTransactions,
+}) }}>
 (function() {
   const labels = JSON.parse(reasonLabels);
   const icons = JSON.parse(reasonIcons);
+  const ui = JSON.parse(uiText);
   let currentFilter = "all";
+  let currentRange = "30d";
   let currentPage = 1;
   let balance = 0;
   let lotteryQty = 1;
@@ -214,6 +242,8 @@ const boostItems = [
     await loadBoostReviews();
     setupShop();
     setupFilters();
+    setupRangeTabs();
+    setupCsvExport();
     setupLotteryQty();
   }
 
@@ -238,7 +268,7 @@ const boostItems = [
   async function loadHistory() {
     let data;
     try {
-      const res = await fetch(`/api/credit-history/?page=${currentPage}&filter=${currentFilter}`, {
+      const res = await fetch(`/api/credit-history/?page=${currentPage}&filter=${currentFilter}&range=${currentRange}`, {
         credentials: "same-origin",
       });
       data = await res.json();
@@ -266,40 +296,115 @@ const boostItems = [
     const headerBadge = document.getElementById("peanuts-count");
     if (headerBadge) headerBadge.textContent = balance;
 
+    if (currentPage === 1) {
+      renderSummary(data.summary || [], data.rangeNet || 0);
+    }
     renderTransactions(data.transactions || [], currentPage === 1);
 
     const loadMore = document.getElementById("tx-load-more");
     loadMore.style.display = data.hasMore ? "block" : "none";
     loadMore.onclick = () => { currentPage++; loadHistory(); };
+
+    // Update CSV link
+    const csv = document.getElementById("tx-export-csv");
+    if (csv) csv.setAttribute("href", `/api/credit-history/?format=csv&range=${currentRange}`);
   }
 
-  const emptyText = lang === "es" ? "Sin transacciones." : "No transactions.";
+  function renderSummary(summary, rangeNet) {
+    const box = document.getElementById("history-summary");
+    if (!summary || summary.length === 0) {
+      box.innerHTML = `<p class="tx-empty" style="margin:0">${ui.noTx}</p>`;
+      return;
+    }
+    const rows = summary.map(s => {
+      const icon = icons[s.reason] || "🥜";
+      const label = labels[s.reason] || s.reason;
+      const sign = s.net > 0 ? "+" : "";
+      const evText = s.count === 1
+        ? ui.oneEvent
+        : ui.events.replace("{n}", String(s.count));
+      const cls = s.net > 0 ? "sum-earned" : s.net < 0 ? "sum-spent" : "";
+      return `<div class="sum-row ${cls}">
+        <span class="sum-icon">${icon}</span>
+        <span class="sum-label">${label}</span>
+        <span class="sum-count">${evText}</span>
+        <span class="sum-net">${sign}${s.net} 🥜</span>
+      </div>`;
+    }).join("");
+    const netSign = rangeNet > 0 ? "+" : "";
+    const netCls = rangeNet > 0 ? "net-positive" : rangeNet < 0 ? "net-negative" : "";
+    box.innerHTML = `
+      <div class="summary-head">📊 ${ui.summaryTitle}</div>
+      <div class="sum-rows">${rows}</div>
+      <div class="summary-net ${netCls}">${ui.net}: <strong>${netSign}${rangeNet} 🥜</strong></div>
+    `;
+  }
+
+  function groupByDay(txs) {
+    const map = new Map();
+    txs.forEach(tx => {
+      const d = new Date(tx.created_at);
+      const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(tx);
+    });
+    return Array.from(map.entries()); // [[day, txs[]], ...] preserves order
+  }
+
+  function dayLabel(ymd) {
+    const d = new Date(ymd + "T00:00:00Z");
+    return d.toLocaleDateString(lang === "es" ? "es-ES" : "en-US", {
+      month: "short", day: "numeric", year: "numeric"
+    });
+  }
 
   function renderTransactions(txs, replace) {
     const list = document.getElementById("tx-list");
     if (replace) list.innerHTML = "";
 
     if (txs.length === 0 && replace) {
-      list.innerHTML = `<p class="tx-empty">${emptyText}</p>`;
+      list.innerHTML = `<p class="tx-empty">${ui.noTx}</p>`;
       return;
     }
 
-    txs.forEach(tx => {
-      const el = document.createElement("div");
-      el.className = `tx-row ${tx.amount > 0 ? "tx-earned" : "tx-spent"}`;
-      const date = new Date(tx.created_at).toLocaleDateString(lang === "es" ? "es-ES" : "en-US", {
-        month: "short", day: "numeric", year: "numeric"
-      });
-      const icon = icons[tx.reason] || "🥜";
-      const label = labels[tx.reason] || tx.reason;
-      const sign = tx.amount > 0 ? "+" : "";
-      el.innerHTML = `
-        <span class="tx-icon">${icon}</span>
-        <span class="tx-label">${label}</span>
-        <span class="tx-date">${date}</span>
-        <span class="tx-amount">${sign}${tx.amount} 🥜</span>
+    const groups = groupByDay(txs);
+    groups.forEach(([ymd, dayTxs]) => {
+      const dayNet = dayTxs.reduce((s, t) => s + (t.amount || 0), 0);
+      const netSign = dayNet > 0 ? "+" : "";
+      const netCls = dayNet > 0 ? "net-positive" : dayNet < 0 ? "net-negative" : "";
+      const evText = dayTxs.length === 1
+        ? ui.oneEvent
+        : ui.events.replace("{n}", String(dayTxs.length));
+
+      const details = document.createElement("details");
+      details.className = "tx-day";
+
+      const summary = document.createElement("summary");
+      summary.className = "tx-day-head";
+      summary.innerHTML = `
+        <span class="tx-day-date">${dayLabel(ymd)}</span>
+        <span class="tx-day-count">${evText}</span>
+        <span class="tx-day-net ${netCls}">${ui.dayNet} ${netSign}${dayNet} 🥜</span>
       `;
-      list.appendChild(el);
+      details.appendChild(summary);
+
+      const body = document.createElement("div");
+      body.className = "tx-day-body";
+      dayTxs.forEach(tx => {
+        const row = document.createElement("div");
+        row.className = `tx-row ${tx.amount > 0 ? "tx-earned" : "tx-spent"}`;
+        const icon = icons[tx.reason] || "🥜";
+        const label = labels[tx.reason] || tx.reason;
+        const sign = tx.amount > 0 ? "+" : "";
+        row.innerHTML = `
+          <span class="tx-icon">${icon}</span>
+          <span class="tx-label">${label}</span>
+          <span class="tx-amount">${sign}${tx.amount} 🥜</span>
+        `;
+        body.appendChild(row);
+      });
+      details.appendChild(body);
+      list.appendChild(details);
     });
   }
 
@@ -313,6 +418,23 @@ const boostItems = [
         loadHistory();
       });
     });
+  }
+
+  function setupRangeTabs() {
+    document.querySelectorAll(".range-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentRange = btn.dataset.range;
+        currentPage = 1;
+        loadHistory();
+      });
+    });
+  }
+
+  function setupCsvExport() {
+    const csv = document.getElementById("tx-export-csv");
+    if (csv) csv.setAttribute("href", `/api/credit-history/?format=csv&range=${currentRange}`);
   }
 
   function setupLotteryQty() {
@@ -741,6 +863,135 @@ const boostItems = [
     padding: 2rem;
   }
 
+  /* History controls: range tabs + CSV export */
+  .history-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0.25rem 0 1rem;
+  }
+  .history-range {
+    display: inline-flex;
+    background: #f7f2ea;
+    border-radius: 999px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .range-btn {
+    border: none;
+    background: transparent;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #6b4c3b;
+    font-weight: 600;
+    min-height: 36px;
+  }
+  .range-btn.active {
+    background: #fff;
+    color: #3d2c1e;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .history-export {
+    font-size: 0.8rem;
+    color: #6b4c3b;
+    text-decoration: none;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #e8e0d4;
+    border-radius: 8px;
+    background: #fff;
+    white-space: nowrap;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .history-export:hover { background: #f5f0e8; }
+
+  /* Summary card (Section A) */
+  .history-summary {
+    background: linear-gradient(135deg, #fff8e8 0%, #fffdf7 100%);
+    border: 1px solid #f3d97a;
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
+  }
+  .summary-head {
+    font-weight: 700;
+    color: #3d2c1e;
+    font-size: 0.95rem;
+    margin-bottom: 0.6rem;
+  }
+  .sum-rows { display: flex; flex-direction: column; gap: 0.35rem; }
+  .sum-row {
+    display: grid;
+    grid-template-columns: 1.75rem 1fr auto auto;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.4rem 0.1rem;
+    font-size: 0.85rem;
+  }
+  .sum-icon { font-size: 1.05rem; text-align: center; }
+  .sum-label { color: #3d2c1e; font-weight: 500; }
+  .sum-count { color: #8a7a68; font-size: 0.75rem; }
+  .sum-net { font-weight: 700; white-space: nowrap; text-align: right; }
+  .sum-earned .sum-net { color: #2e7d32; }
+  .sum-spent .sum-net { color: #c62828; }
+  .summary-net {
+    margin-top: 0.7rem;
+    padding-top: 0.7rem;
+    border-top: 1px dashed #e8d89a;
+    font-size: 0.9rem;
+    color: #3d2c1e;
+    text-align: right;
+  }
+  .net-positive strong { color: #2e7d32; }
+  .net-negative strong { color: #c62828; }
+
+  /* Day-grouped list (Section B) */
+  .tx-day {
+    background: #fff;
+    border: 1px solid #f0ebe4;
+    border-radius: 10px;
+    margin-bottom: 0.4rem;
+    overflow: hidden;
+  }
+  .tx-day-head {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.7rem 0.85rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    list-style: none;
+    min-height: 44px;
+  }
+  .tx-day-head::-webkit-details-marker { display: none; }
+  .tx-day-head::before {
+    content: "▸";
+    display: inline-block;
+    margin-right: 0.4rem;
+    color: #b8a890;
+    transition: transform 0.15s;
+  }
+  .tx-day[open] .tx-day-head::before { transform: rotate(90deg); }
+  .tx-day-date { color: #3d2c1e; font-weight: 600; }
+  .tx-day-count { color: #8a7a68; font-size: 0.75rem; }
+  .tx-day-net { font-weight: 700; white-space: nowrap; }
+  .tx-day-net.net-positive { color: #2e7d32; }
+  .tx-day-net.net-negative { color: #c62828; }
+  .tx-day-body {
+    border-top: 1px solid #f0ebe4;
+    padding: 0.4rem 0.85rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    background: #fbfaf7;
+  }
+
   .btn-outline {
     display: block;
     margin: 1rem auto 0;
@@ -783,5 +1034,12 @@ const boostItems = [
     .shop-grid { grid-template-columns: repeat(2, 1fr); }
     .tx-row { grid-template-columns: 2rem 1fr auto; }
     .tx-date { display: none; }
+    .history-controls { flex-direction: column; align-items: stretch; }
+    .history-range { justify-content: center; }
+    .history-export { text-align: center; justify-content: center; }
+    .sum-row { grid-template-columns: 1.5rem 1fr auto; }
+    .sum-count { display: none; }
+    .tx-day-head { grid-template-columns: 1fr auto; }
+    .tx-day-count { display: none; }
   }
 </style>

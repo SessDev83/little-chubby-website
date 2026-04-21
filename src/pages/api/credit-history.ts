@@ -35,9 +35,48 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     // Parse query params
     const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
     const filter = url.searchParams.get("filter") || "all"; // all | earned | spent
+    const range = url.searchParams.get("range") || "30d"; // 30d | 90d | all
+    const wantsCsv = url.searchParams.get("format") === "csv";
     const offset = (page - 1) * PAGE_SIZE;
 
-    // Build query
+    // Compute range start
+    const rangeStart: string | null = (() => {
+      if (range === "all") return null;
+      const d = new Date();
+      const days = range === "90d" ? 90 : 30;
+      d.setUTCDate(d.getUTCDate() - days);
+      return d.toISOString();
+    })();
+
+    // ── CSV export (all transactions in selected range, no pagination) ──
+    if (wantsCsv) {
+      let csvQuery = svc
+        .from("credit_transactions")
+        .select("amount, reason, ref_id, created_at")
+        .eq("user_id", user_id)
+        .order("created_at", { ascending: false });
+      if (rangeStart) csvQuery = csvQuery.gte("created_at", rangeStart);
+      const { data: csvRows } = await csvQuery;
+      const lines = ["date,amount,reason,ref_id"];
+      (csvRows || []).forEach((r: any) => {
+        const row = [
+          new Date(r.created_at).toISOString(),
+          String(r.amount),
+          String(r.reason || "").replace(/,/g, ";"),
+          String(r.ref_id || ""),
+        ];
+        lines.push(row.join(","));
+      });
+      return new Response(lines.join("\n"), {
+        status: 200,
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="peanuts-history-${range}.csv"`,
+        },
+      });
+    }
+
+    // Build main paginated query (scoped to selected range)
     let query = svc
       .from("credit_transactions")
       .select("id, amount, reason, ref_id, created_at", { count: "exact" })
@@ -50,6 +89,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     } else if (filter === "spent") {
       query = query.lt("amount", 0);
     }
+    if (rangeStart) query = query.gte("created_at", rangeStart);
 
     const { data: transactions, count, error } = await query;
 
@@ -74,7 +114,27 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       balance = (allTx || []).reduce((s, r) => s + (r.amount || 0), 0);
     }
 
-    // Get summary stats
+    // ── Summary by reason within selected range (for card A) ──
+    let summaryQuery = svc
+      .from("credit_transactions")
+      .select("amount, reason")
+      .eq("user_id", user_id);
+    if (rangeStart) summaryQuery = summaryQuery.gte("created_at", rangeStart);
+    const { data: summaryRows } = await summaryQuery;
+    const summaryMap: Record<string, { count: number; net: number }> = {};
+    let rangeNet = 0;
+    (summaryRows || []).forEach((r: any) => {
+      const key = r.reason || "other";
+      if (!summaryMap[key]) summaryMap[key] = { count: 0, net: 0 };
+      summaryMap[key].count += 1;
+      summaryMap[key].net += r.amount || 0;
+      rangeNet += r.amount || 0;
+    });
+    const summary = Object.entries(summaryMap)
+      .map(([reason, v]) => ({ reason, count: v.count, net: v.net }))
+      .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+
+    // Lifetime totals (unchanged, kept for balance-hero stats)
     const { data: earnedData } = await svc
       .from("credit_transactions")
       .select("amount")
@@ -100,6 +160,9 @@ export const GET: APIRoute = async ({ url, cookies }) => {
         page,
         pageSize: PAGE_SIZE,
         hasMore: (count || 0) > offset + PAGE_SIZE,
+        range,
+        rangeNet,
+        summary,
       }),
       { status: 200, headers }
     );
