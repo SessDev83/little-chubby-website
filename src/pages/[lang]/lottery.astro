@@ -369,6 +369,29 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
               <p style="color:var(--ink-soft); font-size:0.88rem; margin-top:0.6rem;">{text.lotteryStatusDrawn}</p>
             )}
 
+            {ticketBalance > 0 && (
+              <details class="gift-ticket-box" style="margin-top:1rem;">
+                <summary class="gift-ticket-summary">
+                  🎁 {text.giftTicketCta}
+                </summary>
+                <div class="gift-ticket-body">
+                  <p class="gift-ticket-hint">{text.giftTicketHint}</p>
+                  <label class="gift-ticket-label" for="gift-recipient-email">{text.giftTicketEmailLabel}</label>
+                  <input type="email" id="gift-recipient-email" class="gift-ticket-input" placeholder="amigo@ejemplo.com" maxlength="320" />
+                  <label class="gift-ticket-label" for="gift-quantity">{text.giftTicketQtyLabel}</label>
+                  <div class="lottery-qty" style="justify-content:flex-start;">
+                    <button type="button" class="qty-btn" id="gift-qty-minus">−</button>
+                    <span id="gift-qty-value">1</span>
+                    <button type="button" class="qty-btn" id="gift-qty-plus">+</button>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-primary" id="gift-send-btn" style="margin-top:0.6rem;">
+                    🎁 {text.giftTicketSend}
+                  </button>
+                  <p class="msg" id="gift-msg" style="display:none; margin-top:0.5rem;"></p>
+                </div>
+              </details>
+            )}
+
             <div class="entries-actions" style="margin-top:1rem;">
               <a href={`/${lang}/peanuts/`} class="btn btn-sm btn-secondary">🥜 {lang === "es" ? "Comprar más tickets" : "Buy more tickets"}</a>
               <a href={`/${lang}/reviews/`} class="btn btn-secondary btn-sm">{text.reviewsHeading} →</a>
@@ -587,6 +610,96 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
         } finally {
           gqBtn.disabled = false;
           gqBtn.textContent = "🎟️ Enter giveaway";
+        }
+      });
+    }
+
+    // ── Gift tickets to a friend ──
+    const giftBtn = document.getElementById("gift-send-btn");
+    const giftQtyMinus = document.getElementById("gift-qty-minus");
+    const giftQtyPlus = document.getElementById("gift-qty-plus");
+    const giftQtyVal = document.getElementById("gift-qty-value");
+    const giftMsg = document.getElementById("gift-msg");
+    const giftEmail = document.getElementById("gift-recipient-email");
+    const LANG = document.documentElement.lang === "en" ? "en" : "es";
+    const giftLabels = LANG === "es"
+      ? {
+          invalid_email: "Email inválido.",
+          invalid_quantity: "Cantidad inválida.",
+          recipient_not_found: "No encontramos una cuenta con ese email.",
+          self_gift_not_allowed: "No puedes regalarte a ti mismo.",
+          insufficient_tickets: "No tienes suficientes tickets.",
+          rate_limit: "Límite diario alcanzado (3 regalos por día).",
+          generic: "No se pudo enviar el regalo.",
+          success: "¡Regalo enviado a {email}!",
+          sending: "Enviando…",
+        }
+      : {
+          invalid_email: "Invalid email.",
+          invalid_quantity: "Invalid quantity.",
+          recipient_not_found: "No account found with that email.",
+          self_gift_not_allowed: "You can't gift yourself.",
+          insufficient_tickets: "Not enough tickets.",
+          rate_limit: "Daily limit reached (3 gifts per day).",
+          generic: "Could not send gift.",
+          success: "Gift sent to {email}!",
+          sending: "Sending…",
+        };
+    if (giftQtyMinus && giftQtyPlus && giftQtyVal) {
+      giftQtyMinus.addEventListener("click", () => {
+        const v = parseInt(giftQtyVal.textContent || "1", 10);
+        if (v > 1) giftQtyVal.textContent = String(v - 1);
+      });
+      giftQtyPlus.addEventListener("click", () => {
+        const v = parseInt(giftQtyVal.textContent || "1", 10);
+        if (v < 5) giftQtyVal.textContent = String(v + 1);
+      });
+    }
+    if (giftBtn) {
+      giftBtn.addEventListener("click", async () => {
+        if (!giftMsg || !giftEmail || !giftQtyVal) return;
+        giftMsg.style.display = "none";
+        giftMsg.classList.remove("msg-success", "msg-error");
+        const email = (giftEmail.value || "").trim();
+        const qty = parseInt(giftQtyVal.textContent || "1", 10);
+        const originalLabel = giftBtn.textContent;
+        giftBtn.disabled = true;
+        giftBtn.textContent = giftLabels.sending;
+        try {
+          const res = await fetch("/api/gift-ticket/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ recipient_email: email, quantity: qty }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            const key = data && data.error ? data.error : "generic";
+            const label = giftLabels[key] || giftLabels.generic;
+            giftMsg.textContent = label;
+            giftMsg.classList.add("msg-error");
+            giftMsg.style.display = "block";
+            return;
+          }
+          // Update sender balance in-page
+          const balEl = document.getElementById("giveaway-ticket-balance");
+          if (balEl && typeof data.sender_balance === "number") balEl.textContent = data.sender_balance;
+          const ht = document.getElementById("tickets-count");
+          if (ht && typeof data.sender_balance === "number") ht.textContent = data.sender_balance;
+          if (typeof data.sender_balance === "number") {
+            sessionStorage.setItem("lcp-tickets", String(data.sender_balance));
+          }
+          giftMsg.textContent = giftLabels.success.replace("{email}", data.recipient_email || email);
+          giftMsg.classList.add("msg-success");
+          giftMsg.style.display = "block";
+          giftEmail.value = "";
+          giftQtyVal.textContent = "1";
+        } catch (e) {
+          giftMsg.textContent = giftLabels.generic;
+          giftMsg.classList.add("msg-error");
+          giftMsg.style.display = "block";
+        } finally {
+          giftBtn.disabled = false;
+          giftBtn.textContent = originalLabel;
         }
       });
     }
@@ -1026,5 +1139,52 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
     margin: 0;
     color: var(--brand-blue);
     font-weight: 600;
+  }
+
+  /* ── Gift tickets ── */
+  .gift-ticket-box {
+    border: 1px dashed #ffb84a;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #fff8ec 0%, #fff2db 100%);
+    padding: 0.6rem 0.9rem;
+  }
+  .gift-ticket-summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: #7a3f0b;
+    font-size: 0.95rem;
+    list-style: none;
+  }
+  .gift-ticket-summary::-webkit-details-marker { display: none; }
+  .gift-ticket-summary::after {
+    content: "▾";
+    float: right;
+    transition: transform 0.2s ease;
+  }
+  .gift-ticket-box[open] .gift-ticket-summary::after { transform: rotate(180deg); }
+  .gift-ticket-body { padding-top: 0.6rem; }
+  .gift-ticket-hint {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    margin: 0 0 0.6rem;
+  }
+  .gift-ticket-label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0.4rem 0 0.25rem;
+  }
+  .gift-ticket-input {
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid #d9b679;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    background: #fff;
+  }
+  .gift-ticket-input:focus {
+    outline: 2px solid #f3b86b;
+    outline-offset: 1px;
   }
 </style>
