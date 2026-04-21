@@ -47,11 +47,12 @@ const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 // Model upgrade Apr 2026: blogs are long-form SEO — Opus 4.7 gives noticeably
 // better prose + reasoning. Cost impact: ~$0.02 per blog post.
 const CLAUDE_MODEL = process.env.ANTHROPIC_BLOG_MODEL || "claude-opus-4-7";
-const MAX_TOKENS = 4096;
+const MAX_TOKENS = 8192;
 
 const NANO_API_URL = "https://api.nanobananaapi.dev/v1/images/generate";
-// Model upgrade Apr 2026: Gemini 3 Pro @ 2K for blog heroes (better hero image quality).
-const IMG_MODEL = process.env.NANO_BANANA_BLOG_MODEL || "gemini-3-pro-image-preview-2k";
+// Model Apr 2026: flash-image-hd (5 credits) — matches social quality and avoids Pro 2K timeouts.
+// Override via NANO_BANANA_BLOG_MODEL for premium hero images.
+const IMG_MODEL = process.env.NANO_BANANA_BLOG_MODEL || "gemini-2.5-flash-image-hd";
 const IMG_SIZE = 800;
 const WEBP_QUALITY = 80;
 
@@ -348,7 +349,7 @@ async function generateHeroImage(imagePrompt, filename) {
       model: IMG_MODEL,
       image_size: "1:1",
     }),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(240_000),
   });
 
   if (!res.ok) {

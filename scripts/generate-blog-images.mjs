@@ -49,8 +49,8 @@ if (!API_KEY) {
 }
 
 const API_URL = "https://api.nanobananaapi.dev/v1/images/generate";
-// Model upgrade Apr 2026: align with social (gemini-3-pro 2K). Blog heroes benefit most from extra resolution.
-const MODEL = process.env.NANO_BANANA_BLOG_MODEL || "gemini-3-pro-image-preview-2k";
+// Model Apr 2026: flash-image-hd (5 credits) — avoids Pro 2K timeouts. Override via env.
+const MODEL = process.env.NANO_BANANA_BLOG_MODEL || "gemini-2.5-flash-image-hd";
 
 // â”€â”€â”€ Image prompts per blog post â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -163,7 +163,7 @@ async function generateImage(prompt) {
       model: MODEL,
       image_size: "1:1",
     }),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(240_000),
   });
 
   if (!res.ok) {

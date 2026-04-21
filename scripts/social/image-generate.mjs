@@ -11,10 +11,11 @@
  */
 
 const API_URL = "https://api.nanobananaapi.dev/v1/images/generate";
-// Model upgrade Apr 2026: gemini-2.5-flash-image (2 credits) → gemini-3-pro-image-preview-2k
-// (8 credits). 4× cost but 2 generations newer + 2K resolution. Per-post cost still < $0.05.
-// Overridable via env for quick rollback.
-const MODEL = process.env.NANO_BANANA_MODEL || "gemini-3-pro-image-preview-2k";
+// Model Apr 2026: gemini-2.5-flash-image-hd (5 credits) for social.
+// Upgrade from base gemini-2.5-flash-image (2 credits) — HD output, same speed.
+// Gemini 3 Pro 2K proved too slow (>240s timeouts) for the scheduler; reserved for blog heroes.
+// Override via NANO_BANANA_MODEL env for experiments.
+const MODEL = process.env.NANO_BANANA_MODEL || "gemini-2.5-flash-image-hd";
 
 // ─── Brand visual guidelines (prepended to every prompt) ────────────────────
 // Shared brand style — used by social posts AND blog hero images.
@@ -62,7 +63,7 @@ export async function generateImage(prompt) {
       model: MODEL,
       image_size: "1:1",
     }),
-    signal: AbortSignal.timeout(120_000),
+    signal: AbortSignal.timeout(240_000),
   });
 
   if (!res.ok) {
