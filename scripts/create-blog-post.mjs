@@ -44,7 +44,9 @@ if (existsSync(envPath)) {
 // ─── API config ─────────────────────────────────────────────────────────────
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const CLAUDE_MODEL = "claude-sonnet-4-20250514";
+// Model upgrade Apr 2026: blogs are long-form SEO — Opus 4.7 gives noticeably
+// better prose + reasoning. Cost impact: ~$0.02 per blog post.
+const CLAUDE_MODEL = process.env.ANTHROPIC_BLOG_MODEL || "claude-opus-4-7";
 const MAX_TOKENS = 4096;
 
 const NANO_API_URL = "https://api.nanobananaapi.dev/v1/images/generate";

@@ -319,7 +319,9 @@ async function analyzeWithClaude(prompt) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      // Model downgrade Apr 2026: structured analytics summarisation doesn't
+      // need Sonnet — Haiku 4.5 is plenty and ~75% cheaper.
+      model: process.env.ANTHROPIC_AGENT_MODEL || "claude-haiku-4-5",
       max_tokens: 3000,
       messages: [{ role: "user", content: prompt }],
     }),

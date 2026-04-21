@@ -6,7 +6,9 @@
  */
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-20250514";
+// Model upgrade Apr 2026: Sonnet 4 → Sonnet 4.6 (same price, 2 generations
+// newer, better instruction-following for strict char limits & rules).
+const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
 const MAX_TOKENS = 1500;
 
 const SITE_URL = "https://www.littlechubbypress.com";
