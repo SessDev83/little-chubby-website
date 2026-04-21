@@ -528,6 +528,8 @@ export async function emailUserGiftInvite(
   const ticketWord = "tickets";
   const expDate = new Date(expiresAt);
   const expLabel = expDate.toLocaleDateString(isEs ? "es-ES" : "en-US", { year: "numeric", month: "long", day: "numeric" });
+  const bonusDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const bonusLabel = bonusDeadline.toLocaleDateString(isEs ? "es-ES" : "en-US", { year: "numeric", month: "long", day: "numeric" });
 
   const subject = isEs
     ? `🎁 ${senderDisplay} te regaló ${quantity} ${ticketWord} — crea tu cuenta para reclamarlos`
@@ -540,6 +542,9 @@ export async function emailUserGiftInvite(
       ? "Crea una cuenta gratis con ESTE email y los tickets se acreditan automáticamente."
       : "Create a free account with THIS email and the tickets are credited automatically."],
     [isEs ? "Crear cuenta" : "Create account", { raw: `<a href="${signupUrl}" style="color:#6b4c3b;font-weight:700">${escapeHtml(signupUrl)}</a>` }],
+    [isEs ? "🎉 Bonus para tu amigo" : "🎉 Bonus for your friend", isEs
+      ? `Si creas tu cuenta antes del ${bonusLabel} (7 días), ${senderDisplay} recibirá de vuelta los mismos ${quantity} tickets como premio por invitarte. ¡Es gratis para ti!`
+      : `If you sign up before ${bonusLabel} (within 7 days), ${senderDisplay} gets the same ${quantity} tickets back as a thank-you reward. Free for you!`],
     [isEs ? "Fecha límite" : "Claim by", expLabel],
   ];
   const html = card(

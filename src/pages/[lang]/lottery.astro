@@ -376,6 +376,7 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
                 </summary>
                 <div class="gift-ticket-body">
                   <p class="gift-ticket-hint">{text.giftTicketHint}</p>
+                  <p class="gift-ticket-bonus">{text.giftTicketBonus}</p>
                   <label class="gift-ticket-label" for="gift-recipient-email">{text.giftTicketEmailLabel}</label>
                   <input type="email" id="gift-recipient-email" class="gift-ticket-input" placeholder="amigo@ejemplo.com" maxlength="320" />
                   <label class="gift-ticket-label" for="gift-quantity">{text.giftTicketQtyLabel}</label>
@@ -1170,6 +1171,16 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
     font-size: 0.82rem;
     color: var(--ink-soft);
     margin: 0 0 0.6rem;
+  }
+  .gift-ticket-bonus {
+    font-size: 0.82rem;
+    color: #7a3f0b;
+    background: #fff2c7;
+    border: 1px solid #ffd98a;
+    border-radius: 8px;
+    padding: 0.45rem 0.6rem;
+    margin: 0 0 0.6rem;
+    line-height: 1.35;
   }
   .gift-ticket-label {
     display: block;
