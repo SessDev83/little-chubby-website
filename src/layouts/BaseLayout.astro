@@ -264,6 +264,18 @@ const articleJsonLd = articleSchema ? JSON.stringify({
         var sk = document.querySelector('meta[name="x-sb-key"]');
         if (!sb || !sk) return;
         var body = { path: p, referrer: document.referrer || null, visitor_hash: vh };
+        // Capture UTM parameters from landing URL (set by social agents)
+        try {
+          var qs = new URLSearchParams(location.search);
+          var us = qs.get("utm_source");
+          if (us) {
+            body.utm_source = us;
+            body.utm_medium = qs.get("utm_medium") || null;
+            body.utm_campaign = qs.get("utm_campaign") || null;
+            body.utm_content = qs.get("utm_content") || null;
+            body.landing_page = p + location.search;
+          }
+        } catch(e){}
         // Try to get country from Vercel header (edge) or timezone fallback
         try {
           var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";

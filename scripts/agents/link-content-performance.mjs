@@ -115,34 +115,79 @@ async function upsertPerformance(row) {
 }
 
 // ─── Fetch UTM-tagged clicks from pageviews ────────────────────────────────
+// Returns two aggregates:
+//   byContent  — per-post attribution: key = "platform|utm_content" → count
+//   byCampaign — legacy fallback:      key = "platform|utm_campaign" → count
 
 async function fetchUtmClicks(daysBack) {
   const since = new Date();
   since.setUTCDate(since.getUTCDate() - daysBack);
   const sinceStr = since.toISOString();
 
+  // Prefer the new utm_* columns populated by the tracker since migration 031.
+  // Fallback to parsing the referrer URL for rows that predate that.
   const rows = await querySupabase(
     "pageviews",
-    `select=referrer,created_at&referrer=not.is.null&created_at=gte.${sinceStr}&limit=10000`
+    `select=referrer,utm_source,utm_medium,utm_campaign,utm_content,created_at&created_at=gte.${sinceStr}&limit=20000`
   );
 
-  // Parse UTM params from referrers
-  const clicks = {}; // key: "source|campaign" → count
+  const byContent = {};
+  const byCampaign = {};
 
   for (const row of rows) {
-    if (!row.referrer) continue;
-    try {
-      const url = new URL(row.referrer);
-      const source = url.searchParams.get("utm_source");
-      const campaign = url.searchParams.get("utm_campaign");
-      if (source) {
-        const key = `${source}|${campaign || "organic"}`;
-        clicks[key] = (clicks[key] || 0) + 1;
-      }
-    } catch { /* not a valid URL */ }
+    let source = row.utm_source || null;
+    let medium = row.utm_medium || null;
+    let campaign = row.utm_campaign || null;
+    let content = row.utm_content || null;
+
+    // Legacy fallback: parse referrer URL if row has no utm columns yet
+    if (!source && row.referrer) {
+      try {
+        const u = new URL(row.referrer);
+        source = u.searchParams.get("utm_source");
+        medium = u.searchParams.get("utm_medium");
+        campaign = u.searchParams.get("utm_campaign");
+        content = u.searchParams.get("utm_content");
+      } catch { /* not a URL */ }
+    }
+
+    if (!source) continue;
+
+    if (content) {
+      const k = `${source}|${content}`;
+      byContent[k] = (byContent[k] || 0) + 1;
+    }
+    const kC = `${source}|${campaign || "organic"}`;
+    byCampaign[kC] = (byCampaign[kC] || 0) + 1;
   }
 
-  return clicks;
+  return { byContent, byCampaign };
+}
+
+// ─── Extract UTM + canonical URL embedded in a post's text ─────────────────
+// Our social agents always inject URLs tagged with utm_content=<creative-id>
+// (see scripts/social/content-templates.mjs → buildUtmUrl).
+// This function yanks the first tagged URL out of a post body so we can map
+// post → clicks by exact creative-id.
+function extractEmbeddedUtm(text) {
+  if (!text) return null;
+  const match = text.match(/https?:\/\/[^\s)]+/g);
+  if (!match) return null;
+  for (const raw of match) {
+    try {
+      const u = new URL(raw);
+      if (!u.hostname.includes("littlechubbypress")) continue;
+      const source = u.searchParams.get("utm_source");
+      const campaign = u.searchParams.get("utm_campaign");
+      const content = u.searchParams.get("utm_content");
+      if (source || campaign || content) {
+        // Canonical URL: strip querystring
+        const canonical = `${u.origin}${u.pathname}`;
+        return { source, campaign, content, canonical };
+      }
+    } catch { /* malformed URL */ }
+  }
+  return null;
 }
 
 // ─── Fetch recent Bluesky posts with engagement ────────────────────────────
@@ -182,15 +227,35 @@ async function fetchFacebookPosts() {
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.data || []).map((post) => ({
+    const posts = (data.data || []).map((post) => ({
       platform: "facebook",
       post_id: post.id,
       text: post.message || "",
       likes: post.likes?.summary?.total_count || 0,
       comments: post.comments?.summary?.total_count || 0,
       shares: post.shares?.count || 0,
+      reach: 0,
+      impressions: 0,
       posted_at: post.created_time,
     }));
+
+    // Enrich with reach/impressions (best effort — some accounts lack permission)
+    for (const p of posts) {
+      try {
+        const iRes = await fetch(
+          `${GRAPH_API}/${encodeURIComponent(p.post_id)}/insights?metric=post_impressions,post_impressions_unique&access_token=${encodeURIComponent(token)}`
+        );
+        if (!iRes.ok) continue;
+        const iData = await iRes.json();
+        for (const m of iData.data || []) {
+          const v = m.values?.[0]?.value || 0;
+          if (m.name === "post_impressions") p.impressions = v;
+          if (m.name === "post_impressions_unique") p.reach = v;
+        }
+      } catch { /* ignore per-post errors */ }
+    }
+
+    return posts;
   } catch (err) {
     console.log(`  ⚠️  Facebook fetch failed: ${err.message}`);
     return [];
@@ -206,19 +271,43 @@ async function fetchInstagramPosts() {
 
   try {
     const res = await fetch(
-      `${GRAPH_API}/${encodeURIComponent(igUserId)}/media?fields=id,caption,timestamp,like_count,comments_count&limit=25&access_token=${encodeURIComponent(token)}`
+      `${GRAPH_API}/${encodeURIComponent(igUserId)}/media?fields=id,caption,timestamp,media_type,like_count,comments_count&limit=25&access_token=${encodeURIComponent(token)}`
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.data || []).map((item) => ({
+    const posts = (data.data || []).map((item) => ({
       platform: "instagram",
       post_id: item.id,
       text: item.caption || "",
       likes: item.like_count || 0,
       comments: item.comments_count || 0,
       shares: 0,
+      reach: 0,
+      impressions: 0,
+      media_type: item.media_type,
       posted_at: item.timestamp,
     }));
+
+    // Enrich with reach/impressions (IG Business API)
+    for (const p of posts) {
+      try {
+        const metric = p.media_type === "VIDEO" || p.media_type === "REELS"
+          ? "reach,impressions,video_views"
+          : "reach,impressions";
+        const iRes = await fetch(
+          `${GRAPH_API}/${encodeURIComponent(p.post_id)}/insights?metric=${metric}&access_token=${encodeURIComponent(token)}`
+        );
+        if (!iRes.ok) continue;
+        const iData = await iRes.json();
+        for (const m of iData.data || []) {
+          const v = m.values?.[0]?.value || 0;
+          if (m.name === "reach") p.reach = v;
+          if (m.name === "impressions") p.impressions = v;
+        }
+      } catch { /* ignore per-post errors */ }
+    }
+
+    return posts;
   } catch (err) {
     console.log(`  ⚠️  Instagram fetch failed: ${err.message}`);
     return [];
@@ -241,19 +330,29 @@ function detectPostType(text) {
 }
 
 // ─── Match UTM clicks to posts ─────────────────────────────────────────────
+// Strategy:
+//   1. Preferred — match by utm_content (unique per-post creative-id).
+//   2. Fallback  — match by utm_campaign (post_type) when no creative-id.
 
-function matchClicksToPost(post, utmClicks) {
-  // Match by platform source + campaign (post type)
-  const postType = detectPostType(post.text);
+function matchClicksToPost(post, utmClicks, embedded) {
+  const postType = embedded?.campaign || detectPostType(post.text);
   const source = post.platform;
 
   let clicks = 0;
 
-  for (const [key, count] of Object.entries(utmClicks)) {
-    const [utmSource, utmCampaign] = key.split("|");
-    // Only count clicks that match BOTH platform AND campaign type
-    if (utmSource === source && utmCampaign === postType) {
-      clicks += count;
+  // Preferred: exact creative-id match
+  if (embedded?.content) {
+    const k = `${source}|${embedded.content}`;
+    clicks = utmClicks.byContent[k] || 0;
+  }
+
+  // Fallback: aggregate by campaign if no per-post clicks found
+  if (clicks === 0) {
+    for (const [key, count] of Object.entries(utmClicks.byCampaign)) {
+      const [utmSource, utmCampaign] = key.split("|");
+      if (utmSource === source && utmCampaign === postType) {
+        clicks += count;
+      }
     }
   }
 
@@ -271,10 +370,12 @@ async function main() {
   // Step 1: Fetch UTM-tagged clicks from pageviews
   console.log("📊 Fetching UTM-tagged clicks from pageviews...");
   const utmClicks = await fetchUtmClicks(daysBack);
-  const totalUtmClicks = Object.values(utmClicks).reduce((a, b) => a + b, 0);
-  console.log(`   Found ${totalUtmClicks} UTM-tagged clicks across ${Object.keys(utmClicks).length} source/campaign combos.\n`);
+  const totalByContent = Object.values(utmClicks.byContent).reduce((a, b) => a + b, 0);
+  const totalByCampaign = Object.values(utmClicks.byCampaign).reduce((a, b) => a + b, 0);
+  console.log(`   ${totalByContent} clicks attributed to ${Object.keys(utmClicks.byContent).length} creative-ids.`);
+  console.log(`   ${totalByCampaign} clicks across ${Object.keys(utmClicks.byCampaign).length} source/campaign combos.\n`);
 
-  for (const [key, count] of Object.entries(utmClicks)) {
+  for (const [key, count] of Object.entries(utmClicks.byCampaign)) {
     console.log(`   ${key}: ${count} clicks`);
   }
 
@@ -290,8 +391,9 @@ async function main() {
   // Step 3: Link posts to clicks and store
   let linked = 0;
   for (const post of allPosts) {
-    const postType = detectPostType(post.text);
-    const { clicks, campaign } = matchClicksToPost(post, utmClicks);
+    const embedded = extractEmbeddedUtm(post.text);
+    const postType = embedded?.campaign || detectPostType(post.text);
+    const { clicks, campaign } = matchClicksToPost(post, utmClicks, embedded);
 
     await upsertPerformance({
       post_type: postType,
@@ -302,6 +404,9 @@ async function main() {
       comments: post.comments,
       shares: post.shares,
       clicks,
+      reach: post.reach || 0,
+      impressions: post.impressions || 0,
+      content_url: embedded?.canonical || null,
       utm_campaign: campaign,
     });
     linked++;

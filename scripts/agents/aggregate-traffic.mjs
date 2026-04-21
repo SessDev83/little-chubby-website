@@ -57,7 +57,7 @@ function getTargetDate() {
 async function queryPageviews(date) {
   const dayStart = `${date}T00:00:00.000Z`;
   const dayEnd = `${date}T23:59:59.999Z`;
-  const params = `select=path,referrer,visitor_hash,country&created_at=gte.${dayStart}&created_at=lte.${dayEnd}&limit=10000`;
+  const params = `select=path,referrer,visitor_hash,country,utm_source,utm_medium,utm_campaign,utm_content&created_at=gte.${dayStart}&created_at=lte.${dayEnd}&limit=10000`;
   const res = await fetch(`${SUPABASE_URL}/rest/v1/pageviews?${params}`, {
     headers: {
       apikey: SUPABASE_KEY,
@@ -131,7 +131,21 @@ const SEARCH_DOMAINS = [
   "yahoo.com", "baidu.com", "yandex.com", "ecosia.org",
 ];
 
-function classifySource(referrer) {
+function classifySource(referrer, utm) {
+  // ── UTM takes priority over referrer when present ───────────────────────
+  if (utm && utm.utm_source) {
+    const source = utm.utm_source.toLowerCase();
+    const medium = (utm.utm_medium || "").toLowerCase();
+    if (medium === "email" || source === "newsletter" || source === "resend") {
+      return { category: "email", detail: source };
+    }
+    if (["bluesky", "facebook", "instagram", "pinterest", "twitter", "x", "tiktok", "reddit", "linkedin"].includes(source)) {
+      return { category: "social", detail: source };
+    }
+    if (medium === "social") return { category: "social", detail: source };
+    return { category: "referral", detail: source };
+  }
+
   if (!referrer) return { category: "direct", detail: "" };
 
   let hostname;
@@ -197,7 +211,11 @@ async function main() {
   const groups = {};
 
   for (const row of rows) {
-    const source = classifySource(row.referrer);
+    const source = classifySource(row.referrer, {
+      utm_source: row.utm_source,
+      utm_medium: row.utm_medium,
+      utm_campaign: row.utm_campaign,
+    });
     if (!source) continue; // self-referral
 
     const key = `${source.category}|${source.detail || ""}`;

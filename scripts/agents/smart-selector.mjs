@@ -57,7 +57,7 @@ async function fetchSmartContext() {
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [recentDecisions, contentPerf, trafficInsights, socialMetrics, topPages, peanutShares, newsletterSubs] = await Promise.all([
+  const [recentDecisions, contentPerf, trafficInsights, socialMetrics, topPages, peanutShares, newsletterSubs, latestWeekly] = await Promise.all([
     // Latest agent decisions (recommendations from weekly intelligence)
     querySupabase("agent_decisions", `select=decision_type,recommended_action,reasoning,confidence_score,created_at&created_at=gte.${since7d}&order=created_at.desc&limit=20`),
 
@@ -78,9 +78,12 @@ async function fetchSmartContext() {
 
     // Newsletter signups in last 30 days — secondary conversion signal
     querySupabase("newsletter_subscribers", `select=created_at,source,confirmed&confirmed=eq.true&created_at=gte.${since30d}&limit=200`),
+
+    // Latest weekly_report — structured recommendations + best post types from the analytics agent
+    querySupabase("weekly_reports", `select=week_start,week_end,summary,best_post_types,best_posting_hours,recommendations,top_posts&order=week_start.desc&limit=1`),
   ]);
 
-  return { recentDecisions, contentPerf, trafficInsights, socialMetrics, topPages, peanutShares, newsletterSubs };
+  return { recentDecisions, contentPerf, trafficInsights, socialMetrics, topPages, peanutShares, newsletterSubs, latestWeekly: latestWeekly?.[0] || null };
 }
 
 // ─── Scoring v2 — playbook §12 ─────────────────────────────────────────────
@@ -169,7 +172,33 @@ function computeScoringV2(context) {
 function buildPerformanceSummary(context) {
   const lines = [];
 
-  // ─── Growth scoring v2 (playbook §12) — surfaced first since it's the primary signal ──
+  // ─── Latest weekly report (playbook §12 feedback loop) ─────────────────
+  // This is the highest-signal input: a curated roll-up with best post types,
+  // best posting hours and prioritised recommendations.
+  if (context.latestWeekly) {
+    const w = context.latestWeekly;
+    lines.push(`WEEKLY REPORT (${w.week_start} → ${w.week_end}):`);
+    lines.push(`  Summary: ${w.summary || "—"}`);
+    if (Array.isArray(w.best_post_types) && w.best_post_types.length) {
+      lines.push("  Best post types (ranked):");
+      for (const t of w.best_post_types.slice(0, 5)) {
+        lines.push(`    #${t.rank} ${t.post_type} — ${t.total_clicks} clicks, ${t.total_engagement} eng, avg_ctr=${t.avg_ctr}`);
+      }
+    }
+    if (Array.isArray(w.best_posting_hours) && w.best_posting_hours.length) {
+      const top3 = w.best_posting_hours.slice(0, 3).map((h) => `${h.hour}:00(${h.avg_engagement})`).join(" · ");
+      lines.push(`  Best posting hours (UTC, avg eng): ${top3}`);
+    }
+    if (Array.isArray(w.recommendations) && w.recommendations.length) {
+      lines.push("  🎯 Prioritised recommendations from analytics agent:");
+      for (const r of w.recommendations.slice(0, 5)) {
+        lines.push(`    [${r.priority.toUpperCase()}] ${r.action}`);
+      }
+    }
+    lines.push("");
+  }
+
+  // ─── Growth scoring v2 (playbook §12) — surfaced second ──
   const scoring = computeScoringV2(context);
   if (scoring && scoring.ranked.length > 0) {
     lines.push("GROWTH SCORING v2 (last 30 days, playbook §12):");
