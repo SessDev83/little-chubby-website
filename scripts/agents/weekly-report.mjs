@@ -48,18 +48,23 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 // ─── Date helpers ──────────────────────────────────────────────────────────
 function getWeekWindow() {
   const idx = process.argv.indexOf("--week");
-  let ref;
+  let mon;
   if (idx !== -1 && process.argv[idx + 1]) {
-    ref = new Date(process.argv[idx + 1] + "T00:00:00Z");
+    // Treat the provided date as any day within the target week.
+    const ref = new Date(process.argv[idx + 1] + "T00:00:00Z");
+    const dow = ref.getUTCDay(); // 0=Sun, 1=Mon
+    const diffToMon = (dow + 6) % 7;
+    mon = new Date(ref); mon.setUTCDate(mon.getUTCDate() - diffToMon);
   } else {
-    ref = new Date();
-    // step back 1 day so the "last completed week" query on a Monday targets previous Mon→Sun
-    ref.setUTCDate(ref.getUTCDate() - 1);
+    // Default: the last fully completed Mon→Sun week (the one that ended
+    // on the most recent Sunday that is strictly in the past).
+    const today = new Date();
+    const dow = today.getUTCDay();
+    const daysBackToLastSun = dow === 0 ? 7 : dow; // Sun→7, Mon→1, Tue→2...
+    const lastSun = new Date(today);
+    lastSun.setUTCDate(lastSun.getUTCDate() - daysBackToLastSun);
+    mon = new Date(lastSun); mon.setUTCDate(mon.getUTCDate() - 6);
   }
-  // Find Monday of that week (ISO — Monday = 1)
-  const dow = ref.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  const diffToMon = (dow + 6) % 7;
-  const mon = new Date(ref); mon.setUTCDate(mon.getUTCDate() - diffToMon);
   mon.setUTCHours(0, 0, 0, 0);
   const sun = new Date(mon); sun.setUTCDate(sun.getUTCDate() + 6);
   sun.setUTCHours(23, 59, 59, 999);
