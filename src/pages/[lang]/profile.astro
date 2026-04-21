@@ -193,18 +193,18 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
             <p class="hero-currencies-title">{text.profileAvailableCurrencies}</p>
             <div class="hero-currencies">
             <div class="currency-pill currency-peanuts" id="peanuts-profile-card">
-              <span class="currency-icon" aria-hidden="true">🥜</span>
-              <div class="currency-info">
+              <div class="currency-top">
+                <span class="currency-icon" aria-hidden="true">🥜</span>
                 <span class="currency-balance" id="profile-peanuts-balance">{peanutsBalance.toLocaleString()}</span>
-                <span class="currency-label">{text.peanutBalance}</span>
               </div>
+              <span class="currency-label">Peanuts</span>
             </div>
             <div class="currency-pill currency-tickets">
-              <span class="currency-icon" aria-hidden="true">🎟️</span>
-              <div class="currency-info">
+              <div class="currency-top">
+                <span class="currency-icon" aria-hidden="true">🎟️</span>
                 <span class="currency-balance">{statTickets.toLocaleString()}</span>
-                <span class="currency-label">{text.lotteryTickets}</span>
               </div>
+              <span class="currency-label">{lang === "es" ? "Tickets" : "Tickets"}</span>
             </div>
             </div>
           </div>
@@ -462,48 +462,51 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
       status.textContent = "Uploading…";
       status.style.color = "var(--ink-soft)";
 
-      var ext = file.name.split(".").pop().toLowerCase();
-      var filePath = userId + "/avatar." + ext;
+      // Client-side compression: downscale to 512x512 and re-encode as WebP (~0.85)
+      function compress(srcFile) {
+        return new Promise(function(resolve) {
+          var img = new Image();
+          var url = URL.createObjectURL(srcFile);
+          img.onload = function() {
+            URL.revokeObjectURL(url);
+            var MAX = 512;
+            var w = img.width, h = img.height;
+            if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+            else if (h >= w && h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
+            var canvas = document.createElement("canvas");
+            canvas.width = w; canvas.height = h;
+            var ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            var mime = "image/webp";
+            canvas.toBlob(function(blob) {
+              if (!blob) { resolve(srcFile); return; }
+              // If compression made it bigger, keep original
+              if (blob.size >= srcFile.size) { resolve(srcFile); return; }
+              var compressed = new File([blob], "avatar.webp", { type: mime });
+              resolve(compressed);
+            }, mime, 0.85);
+          };
+          img.onerror = function() { URL.revokeObjectURL(url); resolve(srcFile); };
+          img.src = url;
+        });
+      }
 
-      // Get the access token from the cookie for the upload
-      // We use the Supabase REST API directly
-      var accessToken = "";
-      document.cookie.split(";").forEach(function(c) {
-        var parts = c.trim().split("=");
-        if (parts[0] === "sb-access-token") accessToken = decodeURIComponent(parts.slice(1).join("="));
-      });
-
-      // Upload via fetch (Supabase Storage REST API)
-      fetch(supabaseUrl + "/storage/v1/object/avatars/" + filePath, {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + accessToken,
-          "apikey": supabaseAnonKey,
-          "Content-Type": file.type,
-          "x-upsert": "true"
-        },
-        body: file
-      })
-      .then(function(res) {
-        if (!res.ok) throw new Error("Upload failed");
-        var publicUrl = supabaseUrl + "/storage/v1/object/public/avatars/" + filePath + "?t=" + Date.now();
-        preview.src = publicUrl;
-
-        // Save avatar_url to profile
-        return fetch(supabaseUrl + "/rest/v1/profiles?id=eq." + userId, {
-          method: "PATCH",
-          headers: {
-            "Authorization": "Bearer " + accessToken,
-            "apikey": supabaseAnonKey,
-            "Content-Type": "application/json",
-            "Prefer": "return=minimal"
-          },
-          body: JSON.stringify({ avatar_url: publicUrl.split("?")[0] })
+      compress(file).then(function(finalFile) {
+        var fd = new FormData();
+        fd.append("file", finalFile);
+        return fetch("/api/upload-avatar/", {
+          method: "POST",
+          credentials: "same-origin",
+          body: fd
         });
       })
-      .then(function() {
+      .then(function(res) { return res.json().then(function(j){ return { ok: res.ok, body: j }; }); })
+      .then(function(r) {
+        if (!r.ok || !r.body.ok) throw new Error(r.body.error || "upload failed");
+        preview.src = r.body.url;
         status.textContent = "✓";
         status.style.color = "var(--brand-green)";
+        if (removeBtn) removeBtn.style.display = "";
       })
       .catch(function() {
         status.textContent = "Upload failed";
@@ -515,50 +518,15 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
   if (removeBtn) {
     removeBtn.addEventListener("click", function() {
       status.textContent = "Removing…";
-      var accessToken = "";
-      document.cookie.split(";").forEach(function(c) {
-        var parts = c.trim().split("=");
-        if (parts[0] === "sb-access-token") accessToken = decodeURIComponent(parts.slice(1).join("="));
-      });
+      status.style.color = "var(--ink-soft)";
 
-      // List files for user, then remove them
-      fetch(supabaseUrl + "/storage/v1/object/list/avatars/" + userId, {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer " + accessToken,
-          "apikey": supabaseAnonKey,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ prefix: "" })
+      fetch("/api/upload-avatar/", {
+        method: "DELETE",
+        credentials: "same-origin"
       })
-      .then(function(r) { return r.json(); })
-      .then(function(files) {
-        if (!files || !files.length) return;
-        var paths = files.map(function(f) { return userId + "/" + f.name; });
-        return fetch(supabaseUrl + "/storage/v1/object/avatars", {
-          method: "DELETE",
-          headers: {
-            "Authorization": "Bearer " + accessToken,
-            "apikey": supabaseAnonKey,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ prefixes: paths })
-        });
-      })
-      .then(function() {
-        // Clear avatar_url in profile
-        return fetch(supabaseUrl + "/rest/v1/profiles?id=eq." + userId, {
-          method: "PATCH",
-          headers: {
-            "Authorization": "Bearer " + accessToken,
-            "apikey": supabaseAnonKey,
-            "Content-Type": "application/json",
-            "Prefer": "return=minimal"
-          },
-          body: JSON.stringify({ avatar_url: null })
-        });
-      })
-      .then(function() {
+      .then(function(res) { return res.json().then(function(j){ return { ok: res.ok, body: j }; }); })
+      .then(function(r) {
+        if (!r.ok || !r.body.ok) throw new Error(r.body.error || "remove failed");
         preview.src = "https://ui-avatars.com/api/?name=U&background=4a90d9&color=fff&size=128";
         removeBtn.style.display = "none";
         status.textContent = "✓";
@@ -656,13 +624,20 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
   }
   .currency-pill {
     display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 0.75rem 0.95rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    padding: 0.7rem 0.95rem;
     border-radius: 0.9rem;
     border: 1.5px solid var(--line);
     background: var(--surface);
     min-width: 0;
+  }
+  .currency-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    line-height: 1;
   }
   .currency-peanuts {
     background: linear-gradient(90deg, rgba(251, 191, 36, 0.14), rgba(251, 191, 36, 0.04));
@@ -680,14 +655,16 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     min-width: 0;
   }
   .currency-balance {
-    font-size: 1.35rem;
+    font-size: 1.55rem;
     font-weight: 800;
     color: var(--ink);
+    line-height: 1;
   }
   .currency-peanuts .currency-balance { color: #8b6914; }
   .currency-tickets .currency-balance { color: #1e40af; }
   .currency-label {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
+    font-weight: 600;
     color: var(--ink-soft);
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -905,7 +882,7 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
       if (d.user && typeof d.balance === "number") {
         var card = document.getElementById("peanuts-profile-card");
         var bal = document.getElementById("profile-peanuts-balance");
-        if (card) card.style.display = "block";
+        if (card) card.style.display = "flex";
         if (bal) bal.textContent = String(d.balance);
       }
     })
