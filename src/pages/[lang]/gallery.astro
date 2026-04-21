@@ -752,10 +752,20 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
     opacity: 0;
     transform: translateY(20px);
     transition: opacity 0.45s ease, transform 0.45s ease, box-shadow 0.2s;
+    scroll-margin-top: 96px;
   }
   .gallery-card.visible { opacity: 1; transform: translateY(0); }
   .gallery-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.1); transform: translateY(-4px); }
   .gallery-card.visible:hover { transform: translateY(-4px); }
+  .gallery-card:target {
+    box-shadow: 0 0 0 3px #ffd85e, 0 8px 24px rgba(211,164,66,0.35);
+    animation: reviewTargetPulse 1.6s ease-out 1;
+  }
+  @keyframes reviewTargetPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255,216,94,0.8); }
+    60%  { box-shadow: 0 0 0 12px rgba(255,216,94,0); }
+    100% { box-shadow: 0 0 0 3px #ffd85e, 0 8px 24px rgba(211,164,66,0.35); }
+  }
   .gallery-card.featured {
     border-color: var(--accent-gold);
     box-shadow: 0 0 0 2px rgba(211,164,66,0.2);

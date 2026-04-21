@@ -50,12 +50,14 @@ let statReviews = 0;
 let statPeanutsEarned = 0;
 let statTickets = 0;
 let peanutsBalance = 0;
+let latestReviewId: string | null = null;
 try {
-  const [dl, rv, tt, pn] = await Promise.all([
+  const [dl, rv, tt, pn, lr] = await Promise.all([
     supabase.from("artwork_downloads").select("id", { count: "exact", head: true }).eq("user_id", user.id),
     supabase.from("book_reviews").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "approved"),
     supabase.from("ticket_transactions").select("amount").eq("user_id", user.id),
     supabase.from("credit_transactions").select("amount").eq("user_id", user.id),
+    supabase.from("book_reviews").select("id").eq("user_id", user.id).eq("status", "approved").order("submitted_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
   statDownloads = dl.count ?? 0;
   statReviews = rv.count ?? 0;
@@ -63,6 +65,7 @@ try {
   const pnRows = pn.data ?? [];
   peanutsBalance = pnRows.reduce((s, r: any) => s + (r.amount || 0), 0);
   statPeanutsEarned = pnRows.reduce((s, r: any) => s + Math.max(0, r.amount || 0), 0);
+  latestReviewId = (lr.data as any)?.id ?? null;
 } catch {
   // Silently degrade — if any table is missing, stats just show 0
 }
@@ -306,7 +309,7 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
             <div class="stat-value">{statDownloads.toLocaleString()}</div>
             <div class="stat-label">{text.profileStatDownloads}</div>
           </a>
-          <a href={`/${lang}/books/`} class="stat-card">
+          <a href={latestReviewId ? `/${lang}/gallery/#review-${latestReviewId}` : `/${lang}/gallery/`} class="stat-card">
             <div class="stat-icon" aria-hidden="true">⭐</div>
             <div class="stat-value">{statReviews.toLocaleString()}</div>
             <div class="stat-label">{text.profileStatReviews}</div>
