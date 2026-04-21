@@ -59,11 +59,20 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       });
     }
 
-    // Get current balance
-    const { data: balanceData } = await svc.rpc("get_user_credits", {
+    // Get current balance (RPC first, fall back to summing transactions)
+    let balance = 0;
+    const { data: balanceData, error: balanceErr } = await svc.rpc("get_user_credits", {
       p_user_id: user_id,
     });
-    const balance = typeof balanceData === "number" ? balanceData : 0;
+    if (!balanceErr && typeof balanceData === "number") {
+      balance = balanceData;
+    } else {
+      const { data: allTx } = await svc
+        .from("credit_transactions")
+        .select("amount")
+        .eq("user_id", user_id);
+      balance = (allTx || []).reduce((s, r) => s + (r.amount || 0), 0);
+    }
 
     // Get summary stats
     const { data: earnedData } = await svc

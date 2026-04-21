@@ -217,24 +217,37 @@ const boostItems = [
   }
 
   async function loadHistory() {
-    const res = await fetch(`/api/credit-history/?page=${currentPage}&filter=${currentFilter}`, {
-      credentials: "same-origin",
-    });
-    const data = await res.json();
+    let data;
+    try {
+      const res = await fetch(`/api/credit-history/?page=${currentPage}&filter=${currentFilter}`, {
+        credentials: "same-origin",
+      });
+      data = await res.json();
+      if (!res.ok) {
+        console.error("[peanuts] HTTP", res.status, data);
+        return;
+      }
+    } catch (e) {
+      console.error("[peanuts] fetch failed", e);
+      return;
+    }
 
-    if (data.error) return;
+    if (data.error) {
+      console.error("[peanuts] API error:", data.error);
+      return;
+    }
 
-    balance = data.balance;
+    balance = data.balance || 0;
     document.getElementById("balance-number").textContent = balance;
-    document.getElementById("stat-earned").textContent = "+" + data.totalEarned;
-    document.getElementById("stat-spent").textContent = "-" + data.totalSpent;
+    document.getElementById("stat-earned").textContent = "+" + (data.totalEarned || 0);
+    document.getElementById("stat-spent").textContent = "-" + (data.totalSpent || 0);
 
     // Update header badge via sessionStorage
     sessionStorage.setItem("lcp-peanuts", String(balance));
     const headerBadge = document.getElementById("peanuts-count");
     if (headerBadge) headerBadge.textContent = balance;
 
-    renderTransactions(data.transactions, currentPage === 1);
+    renderTransactions(data.transactions || [], currentPage === 1);
 
     const loadMore = document.getElementById("tx-load-more");
     loadMore.style.display = data.hasMore ? "block" : "none";
