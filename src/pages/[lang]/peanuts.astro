@@ -536,7 +536,10 @@ const boostItems = [
         if (ht) ht.textContent = data.ticket_balance;
         sessionStorage.setItem("lcp-tickets", String(data.ticket_balance));
       }
-      showToast(lang === "es" ? "¡Compra realizada!" : "Purchase complete!", "success");
+      const successMsg = data.extended
+        ? (lang === "es" ? "¡Boost extendido +7 dias!" : "Boost extended +7 days!")
+        : (lang === "es" ? "¡Compra realizada!" : "Purchase complete!");
+      showToast(successMsg, "success");
       currentPage = 1;
       loadHistory();
     } catch {

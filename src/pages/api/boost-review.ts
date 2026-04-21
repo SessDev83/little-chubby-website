@@ -91,7 +91,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    const res = result as { success: boolean; error?: string; balance?: number; cost?: number; boost_id?: string; expires_at?: string };
+    const res = result as { success: boolean; error?: string; balance?: number; cost?: number; boost_id?: string; expires_at?: string; extended?: boolean };
 
     if (!res.success) {
       const statusMap: Record<string, number> = {
@@ -110,6 +110,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         boost_id: res.boost_id,
         expires_at: res.expires_at,
         balance: res.balance,
+        extended: !!res.extended,
       }),
       { status: 200, headers }
     );
