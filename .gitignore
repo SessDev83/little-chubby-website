@@ -39,6 +39,7 @@ Raw awesome girls revie muestra/
 # operator-only temp files (auto-generated helpers — not part of repo)
 _APPLY_*.sql
 _PIN_POSTS_*.txt
+PIN_TO_COPY/
 .commit-msg.tmp
 astro-build*.log
 astro-check*.log
