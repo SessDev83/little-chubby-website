@@ -11,6 +11,10 @@ const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
 const pathname = `/${lang}/register/`;
 
+// Optional: prefill email when coming from a gift invite link.
+const prefillEmailRaw = Astro.url.searchParams.get("email") || "";
+const prefillEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(prefillEmailRaw) ? prefillEmailRaw : "";
+
 // If already logged in, redirect to profile
 const user = Astro.locals.user;
 if (user) {
@@ -94,6 +98,7 @@ if (Astro.request.method === "POST") {
               required
               autocomplete="email"
               inputmode="email"
+              value={prefillEmail}
             />
           </div>
 

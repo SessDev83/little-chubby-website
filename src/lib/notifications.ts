@@ -515,6 +515,44 @@ export async function emailUserGiftReceived(
   await sendToUser(recipientEmail, subject, html);
 }
 
+/** Invite a non-registered recipient to create an account and claim gifted tickets */
+export async function emailUserGiftInvite(
+  recipientEmail: string,
+  senderDisplay: string,
+  quantity: number,
+  lang: string,
+  expiresAt: string | Date
+): Promise<void> {
+  const isEs = lang === "es";
+  const signupUrl = `https://littlechubbypress.com/${lang}/register/?email=${encodeURIComponent(recipientEmail)}`;
+  const ticketWord = "tickets";
+  const expDate = new Date(expiresAt);
+  const expLabel = expDate.toLocaleDateString(isEs ? "es-ES" : "en-US", { year: "numeric", month: "long", day: "numeric" });
+
+  const subject = isEs
+    ? `🎁 ${senderDisplay} te regaló ${quantity} ${ticketWord} — crea tu cuenta para reclamarlos`
+    : `🎁 ${senderDisplay} sent you ${quantity} ${ticketWord} — create an account to claim them`;
+
+  const rows: [string, string | { raw: string }][] = [
+    [isEs ? "De parte de" : "From", senderDisplay],
+    [isEs ? "Regalo" : "Gift", `🎟️ ${quantity} ${ticketWord}`],
+    [isEs ? "Cómo reclamarlos" : "How to claim", isEs
+      ? "Crea una cuenta gratis con ESTE email y los tickets se acreditan automáticamente."
+      : "Create a free account with THIS email and the tickets are credited automatically."],
+    [isEs ? "Crear cuenta" : "Create account", { raw: `<a href="${signupUrl}" style="color:#6b4c3b;font-weight:700">${escapeHtml(signupUrl)}</a>` }],
+    [isEs ? "Fecha límite" : "Claim by", expLabel],
+  ];
+  const html = card(
+    "🎁",
+    isEs ? "¡Tienes un regalo esperando!" : "You have a gift waiting!",
+    rows,
+    isEs
+      ? "Si no creas una cuenta antes de la fecha límite, los tickets se devuelven al remitente. Registrarse es gratis y sin compromiso."
+      : "If you don't create an account before the deadline, the tickets go back to the sender. Signing up is free — no strings attached."
+  );
+  await sendToUser(recipientEmail, subject, html);
+}
+
 interface MonthlyDrawReport {
   month: string;
   prizeBook: string;

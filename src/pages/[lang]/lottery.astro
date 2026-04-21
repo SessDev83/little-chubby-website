@@ -632,6 +632,7 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
           rate_limit: "Límite diario alcanzado (3 regalos por día).",
           generic: "No se pudo enviar el regalo.",
           success: "¡Regalo enviado a {email}!",
+          pending: "¡Invitación enviada a {email}! Los tickets quedan reservados 30 días mientras crea su cuenta.",
           sending: "Enviando…",
         }
       : {
@@ -643,6 +644,7 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
           rate_limit: "Daily limit reached (3 gifts per day).",
           generic: "Could not send gift.",
           success: "Gift sent to {email}!",
+          pending: "Invite sent to {email}! Tickets are reserved for 30 days while they create their account.",
           sending: "Sending…",
         };
     if (giftQtyMinus && giftQtyPlus && giftQtyVal) {
@@ -688,7 +690,8 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
           if (typeof data.sender_balance === "number") {
             sessionStorage.setItem("lcp-tickets", String(data.sender_balance));
           }
-          giftMsg.textContent = giftLabels.success.replace("{email}", data.recipient_email || email);
+          const labelKey = data.pending ? "pending" : "success";
+          giftMsg.textContent = giftLabels[labelKey].replace("{email}", data.recipient_email || email);
           giftMsg.classList.add("msg-success");
           giftMsg.style.display = "block";
           giftEmail.value = "";

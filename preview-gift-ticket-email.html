@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Email Preview — Gift Tickets Received</title>
+<style>
+  body { margin: 0; padding: 2rem 1rem; background: #e8e0d4; font-family: system-ui, sans-serif; color: #3a2a1a; }
+  h1 { text-align: center; margin: 0 0 1.5rem; font-size: 1.3rem; color: #6b4c3b; }
+  .preview-bar { max-width: 680px; margin: 0 auto 1rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+  .preview-bar button { padding: 0.45rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.88rem; }
+  .preview-bar button.active { background: #d3a442; color: #fff; }
+  .preview-bar button:not(.active) { background: #fff; color: #6b4c3b; border: 1px solid #cbbfa8; }
+  .preview-bar span { font-size: 0.85rem; color: #6b4c3b; }
+
+  /* Gmail-ish wrapper */
+  .inbox-wrap { max-width: 680px; margin: 0 auto; }
+  .inbox-row {
+    background: #fff; border: 1px solid #d9cdb4; border-radius: 8px;
+    overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+  .inbox-head {
+    padding: 0.8rem 1rem; background: #faf5e9; border-bottom: 1px solid #e8ddbf;
+    font-size: 0.82rem; color: #6b4c3b;
+  }
+  .inbox-head b { color: #3a2a1a; }
+  .email-body {
+    padding: 1.5rem 1.3rem;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 15px; line-height: 1.55; color: #222;
+  }
+  .email-body p { margin: 0 0 0.9rem; }
+
+  .flow {
+    max-width: 680px; margin: 2rem auto 0;
+    background: #fff; border: 1px solid #d9cdb4; border-radius: 10px; padding: 1.2rem 1.4rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+  .flow h2 { margin: 0 0 0.8rem; font-size: 1.05rem; color: #6b4c3b; }
+  .flow ol { margin: 0 0 0.3rem 1.1rem; padding: 0; }
+  .flow li { margin-bottom: 0.55rem; font-size: 0.93rem; }
+  .flow .note {
+    margin-top: 0.9rem; padding: 0.7rem 0.9rem; background: #fff8ec;
+    border-left: 3px solid #d3a442; border-radius: 4px; font-size: 0.85rem; color: #6b4c3b;
+  }
+  .tag {
+    display: inline-block; padding: 0.08rem 0.5rem; border-radius: 4px;
+    background: #f3e7c9; color: #6b4c3b; font-size: 0.78rem; font-weight: 700;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<h1>🎁 Gift-ticket email — preview & flow</h1>
+
+<div class="preview-bar">
+  <span>Language:</span>
+  <button id="btn-es" class="active" onclick="show('es')">Español</button>
+  <button id="btn-en" onclick="show('en')">English</button>
+  <span style="margin-left:auto;">From: hello@littlechubbypress.com</span>
+</div>
+
+<!-- ────── ES ────── -->
+<div id="inbox-es" class="inbox-wrap">
+  <div class="inbox-row">
+    <div class="inbox-head">
+      <div><b>De:</b> Little Chubby Press &lt;hello@littlechubbypress.com&gt;</div>
+      <div><b>Para:</b> amiga@ejemplo.com</div>
+      <div><b>Asunto:</b> 🎁 ¡Ivan te regaló 2 tickets del sorteo!</div>
+    </div>
+    <div class="email-body">
+      <p><b>¡Recibiste un regalo!</b></p>
+      <p>
+        <b>De parte de:</b> Ivan<br>
+        <b>Regalo:</b> 🎟️ 2 tickets<br>
+        <b>Cómo usarlos:</b> Inicia sesión, ve a la página del Sorteo y entra al sorteo del mes con tus tickets nuevos.<br>
+        <b>Entrar al sorteo:</b> <a href="https://littlechubbypress.com/es/lottery/" style="color:#6b4c3b;font-weight:700">https://littlechubbypress.com/es/lottery/</a>
+      </p>
+      <br><span style="color:#999;font-size:12px">Los tickets ya están en tu cuenta. Úsalos antes del sorteo del próximo mes para maximizar tus chances.</span>
+      <br><span style="color:#aaa;font-size:11px">2026-04-21 18:30 UTC</span>
+    </div>
+  </div>
+</div>
+
+<!-- ────── EN ────── -->
+<div id="inbox-en" class="inbox-wrap" style="display:none;">
+  <div class="inbox-row">
+    <div class="inbox-head">
+      <div><b>From:</b> Little Chubby Press &lt;hello@littlechubbypress.com&gt;</div>
+      <div><b>To:</b> friend@example.com</div>
+      <div><b>Subject:</b> 🎁 Ivan gifted you 2 giveaway tickets!</div>
+    </div>
+    <div class="email-body">
+      <p><b>You got a gift!</b></p>
+      <p>
+        <b>From:</b> Ivan<br>
+        <b>Gift:</b> 🎟️ 2 tickets<br>
+        <b>How to use them:</b> Log in, go to the Giveaway page and enter this month's draw with your new tickets.<br>
+        <b>Enter the giveaway:</b> <a href="https://littlechubbypress.com/en/lottery/" style="color:#6b4c3b;font-weight:700">https://littlechubbypress.com/en/lottery/</a>
+      </p>
+      <br><span style="color:#999;font-size:12px">The tickets are already in your account. Use them before next month's draw to maximize your chances.</span>
+      <br><span style="color:#aaa;font-size:11px">2026-04-21 18:30 UTC</span>
+    </div>
+  </div>
+</div>
+
+<!-- ────── FLOW ────── -->
+<div class="flow">
+  <h2>📬 Flujo del destinatario — paso a paso</h2>
+  <ol>
+    <li>
+      <b>Recibe el email</b> <span class="tag">inmediato</span> en el idioma de su cuenta
+      (<code>profiles.lang_pref</code>) — no el del remitente.
+    </li>
+    <li>
+      <b>Los tickets ya están en su balance</b> antes de abrir el email (la RPC los acredita dentro de la misma transacción que descontó al remitente). No hay "aceptar regalo".
+    </li>
+    <li>
+      Hace click en <b>"Entrar al sorteo"</b> → aterriza en <code>/es/lottery/</code> o <code>/en/lottery/</code>.
+    </li>
+    <li>
+      Si ya tiene sesión, ve su balance actualizado en la tarjeta "Tickets disponibles" (ej: 3 → 5 tickets). Si no, hace login y vuelve automáticamente.
+    </li>
+    <li>
+      Usa el stepper <b>"¿Cuántos tickets quieres usar?"</b> y presiona <b>"Entrar al sorteo"</b> para reservar entradas al sorteo del mes.
+    </li>
+    <li>
+      También puede <b>re-regalar tickets</b> a otra persona desde la misma página (mismo panel 🎁 "Gift tickets to a friend").
+    </li>
+  </ol>
+  <div class="note">
+    <b>Notas técnicas:</b>
+    Email enviado fire-and-forget vía Resend → si Resend cae, el regalo NO se revierte.
+    Asunto y contenido bilingües según <code>lang_pref</code> del destinatario.
+    Nombre del remitente = <code>display_name</code> → local-part del email → "A friend" como fallback.
+  </div>
+</div>
+
+<script>
+  function show(lang) {
+    document.getElementById('inbox-es').style.display = lang === 'es' ? '' : 'none';
+    document.getElementById('inbox-en').style.display = lang === 'en' ? '' : 'none';
+    document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  }
+</script>
+
+</body>
+</html>

@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
-import { emailUserGiftReceived } from "../../lib/notifications";
+import { emailUserGiftReceived, emailUserGiftInvite } from "../../lib/notifications";
 
 export const prerender = false;
 
@@ -63,10 +63,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const res = result as {
       success: boolean;
+      pending?: boolean;
       error?: string;
       quantity?: number;
       sender_balance?: number;
       recipient_email?: string;
+      expires_at?: string;
+      token?: string;
       balance?: number;
       limit?: number;
     };
@@ -88,22 +91,32 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     try {
       const { data: sender } = await svc
         .from("profiles")
-        .select("display_name, email")
+        .select("display_name, email, lang_pref")
         .eq("id", user_id)
-        .maybeSingle();
-      const normEmail = (res.recipient_email || recipient_email).toLowerCase().trim();
-      const { data: recipient } = await svc
-        .from("profiles")
-        .select("lang_pref")
-        .ilike("email", normEmail)
         .maybeSingle();
       const senderDisplay =
         (sender?.display_name && sender.display_name.trim()) ||
         (sender?.email ? sender.email.split("@")[0] : "") ||
         "A friend";
-      const recipientLang = recipient?.lang_pref === "en" ? "en" : "es";
-      if (res.recipient_email) {
-        await emailUserGiftReceived(res.recipient_email, senderDisplay, qty, recipientLang);
+
+      if (res.pending) {
+        // No profile yet → invite the recipient to sign up.
+        const inviteLang = sender?.lang_pref === "en" ? "en" : "es"; // fallback to sender's lang
+        if (res.recipient_email && res.expires_at) {
+          await emailUserGiftInvite(res.recipient_email, senderDisplay, qty, inviteLang, res.expires_at);
+        }
+      } else {
+        // Direct gift → use recipient's own lang_pref.
+        const normEmail = (res.recipient_email || recipient_email).toLowerCase().trim();
+        const { data: recipient } = await svc
+          .from("profiles")
+          .select("lang_pref")
+          .ilike("email", normEmail)
+          .maybeSingle();
+        const recipientLang = recipient?.lang_pref === "en" ? "en" : "es";
+        if (res.recipient_email) {
+          await emailUserGiftReceived(res.recipient_email, senderDisplay, qty, recipientLang);
+        }
       }
     } catch (e) {
       console.warn("[gift-ticket] notify recipient failed:", (e as any)?.message);
