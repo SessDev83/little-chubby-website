@@ -50,7 +50,8 @@ const CLAUDE_MODEL = process.env.ANTHROPIC_BLOG_MODEL || "claude-opus-4-7";
 const MAX_TOKENS = 4096;
 
 const NANO_API_URL = "https://api.nanobananaapi.dev/v1/images/generate";
-const IMG_MODEL = "gemini-2.5-flash-image";
+// Model upgrade Apr 2026: Gemini 3 Pro @ 2K for blog heroes (better hero image quality).
+const IMG_MODEL = process.env.NANO_BANANA_BLOG_MODEL || "gemini-3-pro-image-preview-2k";
 const IMG_SIZE = 800;
 const WEBP_QUALITY = 80;
 

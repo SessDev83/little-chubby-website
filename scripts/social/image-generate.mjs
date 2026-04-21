@@ -11,7 +11,10 @@
  */
 
 const API_URL = "https://api.nanobananaapi.dev/v1/images/generate";
-const MODEL = "gemini-2.5-flash-image";
+// Model upgrade Apr 2026: gemini-2.5-flash-image (2 credits) → gemini-3-pro-image-preview-2k
+// (8 credits). 4× cost but 2 generations newer + 2K resolution. Per-post cost still < $0.05.
+// Overridable via env for quick rollback.
+const MODEL = process.env.NANO_BANANA_MODEL || "gemini-3-pro-image-preview-2k";
 
 // ─── Brand visual guidelines (prepended to every prompt) ────────────────────
 // Shared brand style — used by social posts AND blog hero images.

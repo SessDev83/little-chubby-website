@@ -49,7 +49,8 @@ if (!API_KEY) {
 }
 
 const API_URL = "https://api.nanobananaapi.dev/v1/images/generate";
-const MODEL = "gemini-2.5-flash-image";
+// Model upgrade Apr 2026: align with social (gemini-3-pro 2K). Blog heroes benefit most from extra resolution.
+const MODEL = process.env.NANO_BANANA_BLOG_MODEL || "gemini-3-pro-image-preview-2k";
 
 // â”€â”€â”€ Image prompts per blog post â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
