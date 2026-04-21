@@ -45,7 +45,18 @@ const badgeItems = [
   { type: "frame_silver", label: text.badgeFrameSilver, icon: "🪞", cost: 15 },
   { type: "top_reviewer", label: text.badgeTopReviewer, icon: "⭐", cost: 15 },
   { type: "star_parent", label: text.badgeStarParent, icon: "💖", cost: 15 },
+  { type: "frame_animated", label: text.badgeFrameAnimated, icon: "🎭", cost: 20 },
 ];
+
+const ACCENT_COLORS = [
+  { id: "gold",   swatch: "#f59e0b" },
+  { id: "coral",  swatch: "#fb7185" },
+  { id: "teal",   swatch: "#14b8a6" },
+  { id: "violet", swatch: "#8b5cf6" },
+  { id: "rose",   swatch: "#f472b6" },
+  { id: "sage",   swatch: "#84cc16" },
+];
+const ACCENT_COST = 8;
 
 const boostItems = [
   { type: "pin_7d", label: text.boostPin7d, icon: "📌", cost: 10 },
@@ -211,6 +222,30 @@ const rankMedals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
                 </button>
               </div>
             ))}
+          </div>
+
+          <h4 class="subshop-title">🎨 {text.peanutShopAccent}</h4>
+          <p class="subshop-desc">{text.peanutShopAccentDesc}</p>
+          <div class="shop-card accent-card" data-shop="accent" data-cost={ACCENT_COST}>
+            <span class="shop-icon">🎨</span>
+            <span class="shop-name">{text.peanutShopAccent}</span>
+            <span class="shop-price">{ACCENT_COST} 🥜</span>
+            <div class="accent-swatches" role="radiogroup" aria-label={text.peanutShopAccent}>
+              {ACCENT_COLORS.map(c => (
+                <button
+                  type="button"
+                  class="accent-swatch"
+                  role="radio"
+                  aria-checked="false"
+                  data-accent={c.id}
+                  style={`--sw:${c.swatch};`}
+                  title={c.id}
+                />
+              ))}
+            </div>
+            <button class="btn btn-sm btn-buy" data-action="buy-accent" disabled>
+              {text.peanutBuy}
+            </button>
           </div>
         </div>
       </div>
@@ -591,6 +626,32 @@ const rankMedals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
         await purchaseAction("/api/buy-highlight/", { review_id: reviewId });
       });
     });
+
+    // Accent-color picker: select swatch → enable button → buy
+    document.querySelectorAll(".accent-card").forEach(card => {
+      const swatches = card.querySelectorAll(".accent-swatch");
+      const buyBtn = card.querySelector("[data-action='buy-accent']");
+      let chosen = null;
+      swatches.forEach(sw => {
+        sw.addEventListener("click", () => {
+          chosen = sw.getAttribute("data-accent");
+          swatches.forEach(s => {
+            s.setAttribute("aria-checked", s === sw ? "true" : "false");
+            s.classList.toggle("is-selected", s === sw);
+          });
+          if (buyBtn) buyBtn.removeAttribute("disabled");
+        });
+      });
+      if (buyBtn) {
+        buyBtn.addEventListener("click", async () => {
+          if (!chosen) {
+            showToast(lang === "es" ? "Elige un color primero." : "Pick a color first.", "error");
+            return;
+          }
+          await purchaseAction("/api/buy-accent/", { color: chosen });
+        });
+      }
+    });
   }
 
   async function purchaseAction(url, body) {
@@ -623,6 +684,10 @@ const rankMedals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
       }
       if (data.error === "not_review_owner") {
         showToast(text.highlightErrorNotOwner || "You can only highlight your own reviews.", "error");
+        return;
+      }
+      if (data.error === "invalid_color") {
+        showToast(text.accentErrorInvalidColor || "Color not available.", "error");
         return;
       }
       if (data.error) {
@@ -912,6 +977,30 @@ const rankMedals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
   .history-section h2 {
     color: var(--heading, #3d2c1e);
     margin-bottom: 0.5rem;
+  }
+
+  /* Accent color swatches */
+  .accent-swatches {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0.5rem 0 0.6rem;
+  }
+  .accent-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid rgba(0,0,0,0.12);
+    background: var(--sw);
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .accent-swatch:hover { transform: scale(1.1); }
+  .accent-swatch.is-selected {
+    border-color: var(--heading, #3d2c1e);
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--sw);
   }
 
   /* Leaderboard */

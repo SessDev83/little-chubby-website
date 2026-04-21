@@ -3,8 +3,14 @@ import { getServiceClient, supabase } from "../../lib/supabase";
 
 export const prerender = false;
 
-const BADGE_COST = 15;
-const VALID_TYPES = ["frame_gold", "frame_silver", "top_reviewer", "star_parent"];
+const BADGE_COSTS: Record<string, number> = {
+  frame_gold: 15,
+  frame_silver: 15,
+  top_reviewer: 15,
+  star_parent: 15,
+  frame_animated: 20,
+};
+const VALID_TYPES = Object.keys(BADGE_COSTS);
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   const headers = { "Content-Type": "application/json" };
@@ -59,7 +65,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const { data: result, error: rpcErr } = await svc.rpc("purchase_badge", {
       p_user_id: user_id,
       p_badge_type: badge_type,
-      p_cost: BADGE_COST,
+      p_cost: BADGE_COSTS[badge_type],
     });
 
     if (rpcErr) {

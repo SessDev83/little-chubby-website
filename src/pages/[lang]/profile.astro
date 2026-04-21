@@ -41,7 +41,7 @@ let securityMessageType: "success" | "error" = "success";
 
 const { data: profileData } = await supabase
   .from("profiles")
-  .select("display_name, lang_pref, avatar_url, phone, address_line1, address_line2, city, state, zip_code, country, show_in_leaderboards, created_at")
+  .select("display_name, lang_pref, avatar_url, phone, address_line1, address_line2, city, state, zip_code, country, show_in_leaderboards, accent_color, created_at")
   .eq("id", user.id)
   .single();
 profile = profileData as (Profile & { created_at?: string | null }) | null;
@@ -100,6 +100,7 @@ try {
 const badgeEmoji: Record<string, string> = {
   frame_gold: "🖼️",
   frame_silver: "🪞",
+  frame_animated: "🎭",
   top_reviewer: "⭐",
   star_parent: "💖",
   milestone_50: "🌱",
@@ -111,6 +112,7 @@ const badgeEmoji: Record<string, string> = {
 const badgeLabelMap: Record<string, string> = {
   frame_gold: text.badgeFrameGold,
   frame_silver: text.badgeFrameSilver,
+  frame_animated: text.badgeFrameAnimated,
   top_reviewer: text.badgeTopReviewer,
   star_parent: text.badgeStarParent,
   milestone_50: text.badgeMilestone50,
@@ -145,7 +147,12 @@ const MILESTONES: { type: string; threshold: number }[] = [
   { type: "milestone_500", threshold: 500 },
   { type: "milestone_1000", threshold: 1000 },
 ];
-const avatarFrameClass = hasFrameGold ? "frame-gold" : hasFrameSilver ? "frame-silver" : "";
+const hasFrameAnimated = userBadges.includes("frame_animated");
+const avatarFrameClass = hasFrameAnimated
+  ? "frame-animated"
+  : hasFrameGold ? "frame-gold" : hasFrameSilver ? "frame-silver" : "";
+const accentColor = (profile as any)?.accent_color as string | null | undefined;
+const accentClass = accentColor ? `has-accent accent-${accentColor}` : "";
 
 function formatJoinDate(iso?: string | null): string {
   if (!iso) return "";
@@ -267,7 +274,7 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
           <p id="avatar-status" style="font-size:0.82rem; color:var(--ink-soft); margin-top:0.4rem; text-align:center;"></p>
         </div>
         <div class="hero-info">
-          <h1 class="hero-name">{profile?.display_name || user.email}</h1>
+          <h1 class={`hero-name ${accentClass}`}>{profile?.display_name || user.email}</h1>
           {currentStreak > 0 && (
             <div class="streak-pill" title={longestStreak > currentStreak ? `${text.profileStreakBest || "Best"}: ${longestStreak}` : undefined}>
               <span class="streak-flame" aria-hidden="true">🔥</span>
@@ -327,15 +334,16 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
             <p class="badges-panel-subtitle">{text.profileBadgesSubtitle}</p>
           </div>
           <span class="badges-count-pill">
-            {text.profileBadgesCountOwned.replace("{owned}", String(userBadges.length)).replace("{total}", "4")}
+            {text.profileBadgesCountOwned.replace("{owned}", String(userBadges.length)).replace("{total}", "5")}
           </span>
         </div>
         <div class="badges-collection-grid">
           {[
-            { type: "frame_gold",   icon: "🖼️", cost: 15 },
-            { type: "frame_silver", icon: "🪞", cost: 15 },
-            { type: "top_reviewer", icon: "⭐", cost: 15 },
-            { type: "star_parent",  icon: "💖", cost: 15 },
+            { type: "frame_gold",     icon: "🖼️", cost: 15 },
+            { type: "frame_silver",   icon: "🪞", cost: 15 },
+            { type: "top_reviewer",   icon: "⭐", cost: 15 },
+            { type: "star_parent",    icon: "💖", cost: 15 },
+            { type: "frame_animated", icon: "🎭", cost: 20 },
           ].map((b) => {
             const owned = userBadges.includes(b.type);
             return (
@@ -990,6 +998,41 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
       to { transform: rotate(-360deg); }
     }
   }
+
+  /* D.1: animated rainbow frame (gated mobile-first for battery) */
+  .avatar-wrap.frame-animated {
+    padding: 6px;
+    background: conic-gradient(from 0deg,
+      #f59e0b, #fb7185, #8b5cf6, #14b8a6, #84cc16, #f472b6, #f59e0b);
+    box-shadow: 0 0 0 2px #fff inset, 0 4px 18px rgba(139, 92, 246, 0.35);
+  }
+  .avatar-wrap.frame-animated .avatar-img {
+    border: 3px solid #fff;
+    display: block;
+  }
+  @media (prefers-reduced-motion: no-preference) and (min-width: 768px) {
+    .avatar-wrap.frame-animated {
+      animation: frameSpin 5s linear infinite;
+    }
+    .avatar-wrap.frame-animated .avatar-img {
+      animation: frameSpinReverse 5s linear infinite;
+    }
+  }
+
+  /* D.1: accent color tokens (allowlisted in DB; safe to map) */
+  .hero-name.has-accent {
+    padding: 0.1rem 0.55rem;
+    border-radius: 8px;
+    background: var(--accent-bg, transparent);
+    color: var(--accent-fg, inherit);
+    display: inline-block;
+  }
+  .hero-name.accent-gold   { --accent-bg: rgba(245,158,11,0.14); --accent-fg: #78350f; }
+  .hero-name.accent-coral  { --accent-bg: rgba(251,113,133,0.14); --accent-fg: #9f1239; }
+  .hero-name.accent-teal   { --accent-bg: rgba(20,184,166,0.14); --accent-fg: #115e59; }
+  .hero-name.accent-violet { --accent-bg: rgba(139,92,246,0.14); --accent-fg: #5b21b6; }
+  .hero-name.accent-rose   { --accent-bg: rgba(244,114,182,0.14); --accent-fg: #9d174d; }
+  .hero-name.accent-sage   { --accent-bg: rgba(132,204,22,0.14); --accent-fg: #3f6212; }
 
   /* Phase A: Profile badges strip (hero) */
   .profile-badge-strip {
