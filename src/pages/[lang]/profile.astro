@@ -355,6 +355,24 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         </div>
       </div>
 
+      {/* ── Tab navigation ── */}
+      <nav class="profile-tabs" role="tablist" aria-label={text.profileHeading}>
+        <button type="button" role="tab" class="profile-tab is-active" data-tab="adventure" aria-selected="true" aria-controls="panel-adventure">
+          <span class="profile-tab-icon" aria-hidden="true">🎮</span>
+          <span class="profile-tab-label">{text.profileTabAdventure}</span>
+        </button>
+        <button type="button" role="tab" class="profile-tab" data-tab="settings" aria-selected="false" aria-controls="panel-settings">
+          <span class="profile-tab-icon" aria-hidden="true">⚙️</span>
+          <span class="profile-tab-label">{text.profileTabSettings}</span>
+        </button>
+        <button type="button" role="tab" class="profile-tab" data-tab="security" aria-selected="false" aria-controls="panel-security">
+          <span class="profile-tab-icon" aria-hidden="true">🔒</span>
+          <span class="profile-tab-label">{text.profileTabSecurity}</span>
+        </button>
+      </nav>
+
+      <div id="panel-adventure" class="tab-panel" data-panel="adventure" role="tabpanel" aria-labelledby="tab-adventure">
+
       {/* ── Badges collection (all possible badges + owned state) ── */}
       <div id="badges-collection" class="profile-badges-panel surface-card">
         <div class="badges-panel-head">
@@ -452,6 +470,10 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         </div>
       </div>
 
+      </div>{/* /panel-adventure */}
+
+      <div id="panel-settings" class="tab-panel" data-panel="settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+
       {/* ── Profile form ── */}
       <div class="profile-forms">
 
@@ -488,72 +510,78 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
             </div>
           </div>
 
-          <h2 class="profile-section-title" style="margin-top:1.5rem;">{text.profileAddressSection}</h2>
-
-          <div class="form-group">
-            <label for="address_line1">{text.profileAddress1}</label>
-            <input
-              type="text"
-              id="address_line1"
-              name="address_line1"
-              value={profile?.address_line1 || ""}
-              autocomplete="address-line1"
-            />
-          </div>
-          <div class="form-group">
-            <label for="address_line2">{text.profileAddress2}</label>
-            <input
-              type="text"
-              id="address_line2"
-              name="address_line2"
-              value={profile?.address_line2 || ""}
-              autocomplete="address-line2"
-            />
-          </div>
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="city">{text.profileCity}</label>
-              <input
-                type="text"
-                id="city"
-                name="city"
-                value={profile?.city || ""}
-                autocomplete="address-level2"
-              />
+          <details class="form-collapsible" style="margin-top:1.25rem;">
+            <summary>
+              <span class="collapsible-title">📬 {text.profileAddressSection}</span>
+              <span class="collapsible-hint">{text.profileAddressHint}</span>
+            </summary>
+            <div class="collapsible-body">
+              <div class="form-group">
+                <label for="address_line1">{text.profileAddress1}</label>
+                <input
+                  type="text"
+                  id="address_line1"
+                  name="address_line1"
+                  value={profile?.address_line1 || ""}
+                  autocomplete="address-line1"
+                />
+              </div>
+              <div class="form-group">
+                <label for="address_line2">{text.profileAddress2}</label>
+                <input
+                  type="text"
+                  id="address_line2"
+                  name="address_line2"
+                  value={profile?.address_line2 || ""}
+                  autocomplete="address-line2"
+                />
+              </div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="city">{text.profileCity}</label>
+                  <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    value={profile?.city || ""}
+                    autocomplete="address-level2"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="state">{text.profileState}</label>
+                  <input
+                    type="text"
+                    id="state"
+                    name="state"
+                    value={profile?.state || ""}
+                    autocomplete="address-level1"
+                  />
+                </div>
+              </div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="zip_code">{text.profileZip}</label>
+                  <input
+                    type="text"
+                    id="zip_code"
+                    name="zip_code"
+                    value={profile?.zip_code || ""}
+                    autocomplete="postal-code"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="country">{text.profileCountry}</label>
+                  <input
+                    type="text"
+                    id="country"
+                    name="country"
+                    value={profile?.country || ""}
+                    autocomplete="country-name"
+                  />
+                </div>
+              </div>
             </div>
-            <div class="form-group">
-              <label for="state">{text.profileState}</label>
-              <input
-                type="text"
-                id="state"
-                name="state"
-                value={profile?.state || ""}
-                autocomplete="address-level1"
-              />
-            </div>
-          </div>
-          <div class="form-grid-2">
-            <div class="form-group">
-              <label for="zip_code">{text.profileZip}</label>
-              <input
-                type="text"
-                id="zip_code"
-                name="zip_code"
-                value={profile?.zip_code || ""}
-                autocomplete="postal-code"
-              />
-            </div>
-            <div class="form-group">
-              <label for="country">{text.profileCountry}</label>
-              <input
-                type="text"
-                id="country"
-                name="country"
-                value={profile?.country || ""}
-                autocomplete="country-name"
-              />
-            </div>
-          </div>
+          </details>
 
           <h2 class="profile-section-title" style="margin-top:1.5rem;">{text.profilePreferences}</h2>
 
@@ -581,9 +609,12 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
             </label>
           </div>
 
-          <fieldset class="form-group" style="margin-top:1.25rem; border:1px solid var(--border, #e8e0d4); border-radius:8px; padding:0.9rem 1rem;">
-            <legend style="font-weight:700; padding:0 0.35rem;">{text.profileNotifPrefs}</legend>
-            <p style="font-size:0.85rem; color:var(--muted); margin:0 0 0.75rem;">{text.profileNotifPrefsHint}</p>
+          <details class="form-collapsible" style="margin-top:1.25rem;">
+            <summary>
+              <span class="collapsible-title">🔔 {text.profileNotifSummary}</span>
+              <span class="collapsible-hint">{text.profileNotifPrefsHint}</span>
+            </summary>
+            <div class="collapsible-body">
 
             <label style="display:flex; align-items:flex-start; gap:0.55rem; cursor:pointer; margin-bottom:0.55rem;">
               <input
@@ -623,13 +654,20 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
                 <span style="font-size:0.85rem; color:var(--muted);">{text.profileNotifShopHint}</span>
               </span>
             </label>
-          </fieldset>
+            </div>
+          </details>
 
           <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem;">
             {text.profileSave}
           </button>
         </form>
+      </div>
 
+      </div>{/* /panel-settings */}
+
+      <div id="panel-security" class="tab-panel" data-panel="security" role="tabpanel" aria-labelledby="tab-security" hidden>
+
+      <div class="profile-forms">
         {/* ── Security section ── */}
         <div class="surface-card profile-section">
           <h2 class="profile-section-title">{text.profileSecurity}</h2>
@@ -699,6 +737,8 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
           <a href={`/${lang}/logout/`} class="btn btn-secondary">{text.navLogout}</a>
         </div>
       </div>
+
+      </div>{/* /panel-security */}
     </div>
   </section>
 </BaseLayout>
@@ -808,6 +848,55 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
       });
     });
   }
+
+  // ── Profile tabs (mobile-first) ──
+  (function(){
+    var tabs = document.querySelectorAll(".profile-tab");
+    var panels = document.querySelectorAll(".tab-panel");
+    if (!tabs.length || !panels.length) return;
+    function activate(name){
+      var found = false;
+      tabs.forEach(function(t){
+        var on = t.dataset.tab === name;
+        if (on) found = true;
+        t.classList.toggle("is-active", on);
+        t.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      if (!found) return;
+      panels.forEach(function(p){
+        p.hidden = p.dataset.panel !== name;
+      });
+      // Scroll to top of panel on mobile for clarity
+      var active = document.querySelector(".tab-panel:not([hidden])");
+      if (active && window.scrollY > active.offsetTop) {
+        window.scrollTo({ top: active.offsetTop - 80, behavior: "smooth" });
+      }
+    }
+    tabs.forEach(function(t){
+      t.addEventListener("click", function(){
+        var name = t.dataset.tab;
+        activate(name);
+        try { history.replaceState(null, "", "#" + name); } catch(e){}
+      });
+    });
+    // Deeplink: #adventure/#settings/#security OR any element id inside a panel
+    var hash = (location.hash || "").replace("#","");
+    if (hash) {
+      var validTabs = ["adventure","settings","security"];
+      if (validTabs.indexOf(hash) >= 0) {
+        activate(hash);
+      } else {
+        var target = document.getElementById(hash);
+        if (target) {
+          var panel = target.closest(".tab-panel");
+          if (panel) {
+            activate(panel.dataset.panel);
+            setTimeout(function(){ target.scrollIntoView({ behavior: "smooth", block: "start" }); }, 80);
+          }
+        }
+      }
+    }
+  })();
 </script>
 
 <style>
@@ -824,6 +913,117 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
       grid-template-columns: 1fr;
       gap: 1.4rem;
     }
+  }
+
+  /* ── Profile tabs (mobile-first) ── */
+  .profile-tabs {
+    display: flex;
+    gap: 0.3rem;
+    padding: 0.3rem;
+    background: #f3ece0;
+    border: 1px solid #e8e0d4;
+    border-radius: 14px;
+    position: sticky;
+    top: 0.5rem;
+    z-index: 5;
+    backdrop-filter: saturate(1.1);
+  }
+  .profile-tab {
+    flex: 1;
+    min-width: 0;
+    padding: 0.65rem 0.35rem;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #7a6a50;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .profile-tab-icon { font-size: 1.1rem; line-height: 1; }
+  .profile-tab-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .profile-tab:hover { color: var(--ink); }
+  .profile-tab.is-active {
+    background: #fff;
+    color: #3d2c1e;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  }
+  .profile-tab:focus-visible {
+    outline: 2px solid var(--brand-blue);
+    outline-offset: 2px;
+  }
+  @media (min-width: 640px) {
+    .profile-tab {
+      flex-direction: row;
+      gap: 0.45rem;
+      font-size: 0.95rem;
+      padding: 0.7rem 0.9rem;
+    }
+    .profile-tab-icon { font-size: 1.15rem; }
+  }
+
+  .tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+  .tab-panel[hidden] { display: none; }
+
+  /* ── Collapsible sections (details/summary) ── */
+  .form-collapsible {
+    border: 1px solid #e8e0d4;
+    border-radius: 12px;
+    background: #fffaf0;
+    overflow: hidden;
+  }
+  .form-collapsible > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    position: relative;
+    padding-right: 2.4rem;
+  }
+  .form-collapsible > summary::-webkit-details-marker { display: none; }
+  .form-collapsible > summary::after {
+    content: "▾";
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.85rem;
+    color: #8b6914;
+    transition: transform 0.2s;
+  }
+  .form-collapsible[open] > summary::after {
+    transform: translateY(-50%) rotate(180deg);
+  }
+  .form-collapsible .collapsible-title {
+    font-weight: 700;
+    color: #3d2c1e;
+    font-size: 0.95rem;
+  }
+  .form-collapsible .collapsible-hint {
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    line-height: 1.35;
+  }
+  .form-collapsible .collapsible-body {
+    padding: 0.9rem 1rem 1rem;
+    border-top: 1px solid #e8e0d4;
+    background: #fff;
   }
 
   /* ── Hero identity card ── */
