@@ -1,0 +1,175 @@
+---
+import type { Lang } from "../data/i18n";
+import { ui } from "../data/i18n";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const text = ui[lang];
+
+// Only render for authenticated users who have NOT yet confirmed the gate.
+// Middleware sets Astro.locals.parentConsentAt.
+const user = Astro.locals.user;
+const consentAt = Astro.locals.parentConsentAt;
+const shouldShow = Boolean(user) && !consentAt;
+
+if (!shouldShow) {
+  return null;
+}
+---
+
+<aside
+  id="parent-gate-banner"
+  class="parent-gate-banner"
+  role="region"
+  aria-labelledby="parent-gate-title"
+>
+  <div class="parent-gate-inner">
+    <div class="parent-gate-text">
+      <h2 id="parent-gate-title" class="parent-gate-title">{text.parentGateTitle}</h2>
+      <p class="parent-gate-body" set:html={text.parentGateBody}></p>
+    </div>
+    <form id="parent-gate-form" class="parent-gate-form" novalidate>
+      <label class="parent-gate-check">
+        <input type="checkbox" id="parent-gate-check-input" required />
+        <span>{text.parentGateCheckbox}</span>
+      </label>
+      <button type="submit" class="btn btn-primary btn-sm" id="parent-gate-submit">
+        {text.parentGateSubmit}
+      </button>
+      <p class="parent-gate-status" id="parent-gate-status" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</aside>
+
+<script
+  is:inline
+  define:vars={{
+    tSaved: text.parentGateSaved,
+    tError: text.parentGateError,
+  }}
+>
+  (function(){
+    var form = document.getElementById("parent-gate-form");
+    var banner = document.getElementById("parent-gate-banner");
+    if (!form || !banner) return;
+    var input = document.getElementById("parent-gate-check-input");
+    var btn = document.getElementById("parent-gate-submit");
+    var statusEl = document.getElementById("parent-gate-status");
+    form.addEventListener("submit", async function(ev){
+      ev.preventDefault();
+      if (!input || !input.checked) return;
+      if (btn) btn.disabled = true;
+      if (statusEl) { statusEl.textContent = "…"; statusEl.style.color = ""; }
+      try {
+        var res = await fetch("/api/confirm-parental-consent", {
+          method: "POST",
+          credentials: "same-origin",
+        });
+        var data = null;
+        try { data = await res.json(); } catch (_) {}
+        if (res.ok && data && data.ok) {
+          if (statusEl) {
+            statusEl.textContent = tSaved;
+            statusEl.style.color = "var(--color-success, #2e7d32)";
+          }
+          setTimeout(function(){
+            if (banner && banner.parentNode) banner.parentNode.removeChild(banner);
+          }, 900);
+          return;
+        }
+        if (statusEl) {
+          statusEl.textContent = tError;
+          statusEl.style.color = "var(--color-error, #c0392b)";
+        }
+        if (btn) btn.disabled = false;
+      } catch (_) {
+        if (statusEl) {
+          statusEl.textContent = tError;
+          statusEl.style.color = "var(--color-error, #c0392b)";
+        }
+        if (btn) btn.disabled = false;
+      }
+    });
+  })();
+</script>
+
+<style>
+  .parent-gate-banner {
+    background: #fff8e1;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    color: #4a3a10;
+    padding: 0.8rem 1rem;
+  }
+
+  .parent-gate-inner {
+    max-width: 72rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .parent-gate-title {
+    font-size: 1rem;
+    margin: 0 0 0.15rem;
+    font-weight: 700;
+  }
+
+  .parent-gate-body {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+
+  .parent-gate-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .parent-gate-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    cursor: pointer;
+  }
+
+  .parent-gate-check input[type="checkbox"] {
+    margin-top: 0.2rem;
+    flex: 0 0 auto;
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .parent-gate-status {
+    margin: 0;
+    font-size: 0.88rem;
+    min-height: 1.1em;
+  }
+
+  @media (min-width: 640px) {
+    .parent-gate-inner {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.4rem;
+    }
+    .parent-gate-text {
+      flex: 1 1 auto;
+    }
+    .parent-gate-form {
+      flex: 0 0 auto;
+      align-items: flex-end;
+      min-width: 18rem;
+    }
+    .parent-gate-form .btn {
+      align-self: flex-end;
+    }
+  }
+</style>

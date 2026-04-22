@@ -5,6 +5,7 @@ import Footer from "../components/Footer.astro";
 import CookieConsent from "../components/CookieConsent.astro";
 import LeadMagnetPopup from "../components/LeadMagnetPopup.astro";
 import ChubbyChat from "../components/ChubbyChat.astro";
+import ParentalConsentBanner from "../components/ParentalConsentBanner.astro";
 import { siteConfig } from "../data/site";
 import type { Lang } from "../data/i18n";
 import { switchLangPath } from "../data/i18n";
@@ -202,6 +203,7 @@ const articleJsonLd = articleSchema ? JSON.stringify({
   </head>
   <body>
     <a class="skip-link" href="#contenido-principal">{skipLabel}</a>
+    <ParentalConsentBanner lang={lang} />
     <Header lang={lang} pathname={pathname} alternatePath={alternatePath} />
     <main id="contenido-principal">
       <slot />

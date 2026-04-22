@@ -4,6 +4,7 @@ import { supabase, getServiceClient } from "./lib/supabase";
 export const onRequest = defineMiddleware(async (context, next) => {
   // Default: no user
   context.locals.user = null;
+  context.locals.parentConsentAt = null;
 
   const accessToken = context.cookies.get("sb-access-token")?.value;
   const refreshToken = context.cookies.get("sb-refresh-token")?.value;
@@ -63,7 +64,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       const sc = getServiceClient();
       const { data: profile } = await sc
         .from("profiles")
-        .select("suspended")
+        .select("suspended, parent_consent_at")
         .eq("id", data.session.user.id)
         .single();
       if (profile?.suspended) {
@@ -79,6 +80,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
         }
         return context.redirect("/es/login/");
       }
+      context.locals.parentConsentAt = profile?.parent_consent_at ?? null;
     } catch { /* non-blocking: allow through if check fails */ }
   }
 

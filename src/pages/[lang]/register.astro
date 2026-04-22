@@ -33,19 +33,27 @@ if (Astro.request.method === "POST") {
   const email = formData.get("email")?.toString().trim() || "";
   const password = formData.get("password")?.toString() || "";
   const confirmPassword = formData.get("confirm_password")?.toString() || "";
+  const parentConsent = formData.get("parent_consent")?.toString() === "on";
 
-  if (password.length < 6) {
+  if (!parentConsent) {
+    message = text.registerParentConsentError;
+    messageType = "error";
+  } else if (password.length < 6) {
     message = text.registerPasswordTooShort;
     messageType = "error";
   } else if (password !== confirmPassword) {
     message = text.registerPasswordMismatch;
     messageType = "error";
   } else if (email) {
+    const consentTimestamp = new Date().toISOString();
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${Astro.url.origin}/${lang}/auth/callback/`,
+        data: {
+          parent_consent_at: consentTimestamp,
+        },
       },
     });
 
@@ -126,6 +134,16 @@ if (Astro.request.method === "POST") {
             />
           </div>
 
+          <label class="consent-row">
+            <input
+              type="checkbox"
+              name="parent_consent"
+              id="parent_consent"
+              required
+            />
+            <span>{text.registerParentConsentLabel}</span>
+          </label>
+
           <button type="submit" class="btn btn-primary" style="width:100%;">
             {text.registerSubmit}
           </button>
@@ -164,5 +182,27 @@ if (Astro.request.method === "POST") {
     background: rgba(220, 50, 50, 0.08);
     color: #8f1f18;
     border: 1px solid rgba(220, 50, 50, 0.25);
+  }
+
+  .consent-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin: 0.2rem 0 0.6rem;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    cursor: pointer;
+  }
+
+  .consent-row input[type="checkbox"] {
+    margin-top: 0.2rem;
+    flex: 0 0 auto;
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .consent-row span {
+    flex: 1 1 auto;
+    color: var(--text-soft, #444);
   }
 </style>

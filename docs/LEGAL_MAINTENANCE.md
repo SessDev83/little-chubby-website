@@ -55,7 +55,13 @@ under the Risk Register. Short list today (April 22, 2026):
    COPPA requires verifiable parental consent for direct data collection from
    under-13s. Currently only a text disclaimer in privacy §8 and FAQ. Should
    design an opt-in "I am a parent, my child is X years old" gate.
-   _Status:_ **pending** (next up).
+   _Status:_ ✅ **SHIPPED** (migration 052 + commit pending). Adopted a
+   **minimal, privacy-first** design: one checkbox "I'm 18+ and the adult
+   managing this account" at signup (hard block) and a **soft non-blocking
+   banner** on authenticated pages for legacy users (retroactive). We do NOT
+   collect any child data (no name, no age, no birth year). Only
+   `profiles.parent_consent_at timestamptz` is stored. FAQ entry and privacy
+   §6 updated to match.
 2. **"Delete my account" self-service** — ✅ **SHIPPED** (commit e9c3372,
    migration 051). Danger zone in Profile → Security with email-typed
    confirmation; calls RPC `delete_user_account` which deletes `auth.users`
