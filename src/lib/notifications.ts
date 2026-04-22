@@ -78,6 +78,48 @@ export async function sendToUser(to: string, subject: string, html: string): Pro
   }
 }
 
+// ── Notification preferences gate (E.4) ──────────────
+// Kinds: "giveaway" (gifted tickets), "community" (shoutout/pin),
+//        "shop" (drops, early access). Winner, account & security
+//        emails are transactional and bypass this check.
+// Returns true when pref is missing (forward-compatible) or explicitly on.
+export async function canSendEmail(
+  userId: string,
+  kind: "giveaway" | "community" | "shop",
+): Promise<boolean> {
+  try {
+    const svc = getServiceClient();
+    const { data, error } = await svc.rpc("can_send_email", {
+      p_user_id: userId,
+      p_kind: kind,
+    });
+    if (error) {
+      console.error("[notifications] can_send_email RPC error:", error.message);
+      return true; // fail-open: do not block on RPC errors
+    }
+    // RPC returns boolean; Supabase wraps in value — coerce safely.
+    if (typeof data === "boolean") return data;
+    return true;
+  } catch (err) {
+    console.error("[notifications] canSendEmail threw:", err);
+    return true; // fail-open
+  }
+}
+
+// Convenience: gate + send. Use for non-transactional user emails.
+export async function sendToUserIfAllowed(
+  userId: string,
+  kind: "giveaway" | "community" | "shop",
+  to: string,
+  subject: string,
+  html: string,
+): Promise<{ sent: boolean; reason?: "opted_out" | "send_failed" }> {
+  const allowed = await canSendEmail(userId, kind);
+  if (!allowed) return { sent: false, reason: "opted_out" };
+  const ok = await sendToUser(to, subject, html);
+  return ok ? { sent: true } : { sent: false, reason: "send_failed" };
+}
+
 // ── Subscriber email template ────────────────────────
 
 function subscriberEmail(lang: string, bodyContent: string, confirmToken?: string): string {
