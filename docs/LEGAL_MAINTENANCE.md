@@ -10,13 +10,14 @@
 | Page | Path | Source |
 |---|---|---|
 | Privacy policy | `/es/privacy/`, `/en/privacy/` | [src/pages/[lang]/privacy.astro](../src/pages/%5Blang%5D/privacy.astro) |
+| Terms &amp; conditions | `/es/terms/`, `/en/terms/` | [src/pages/[lang]/terms.astro](../src/pages/%5Blang%5D/terms.astro) |
 | FAQ | `/es/faq/`, `/en/faq/` | [src/pages/[lang]/faq.astro](../src/pages/%5Blang%5D/faq.astro) |
 | Contact | `/es/contact/`, `/en/contact/` | [src/pages/[lang]/contact.astro](../src/pages/%5Blang%5D/contact.astro) |
 
 ## Bi-weekly checklist (every other Monday)
 
 1. **Last-updated date** — bump `lastUpdatedES` / `lastUpdatedEN` constants in
-   `privacy.astro` AND `faq.astro` to today's date in both languages.
+   `privacy.astro`, `terms.astro` AND `faq.astro` to today's date in both languages.
 2. **Third-party providers** — confirm the list matches reality (currently
    Supabase, Vercel, Resend, Google Fonts, Amazon link-outs). If a new
    integration was shipped (e.g. Stripe, PostHog, Sentry, a new email provider),
@@ -54,19 +55,24 @@ under the Risk Register. Short list today (April 22, 2026):
    COPPA requires verifiable parental consent for direct data collection from
    under-13s. Currently only a text disclaimer in privacy §8 and FAQ. Should
    design an opt-in "I am a parent, my child is X years old" gate.
-2. **No "Download my data" self-service** — users must email support. Consider
-   a profile button that generates a JSON export on demand.
-3. **No "Delete my account" self-service** — same: email only today. A
-   confirm-delete button inside Profile → Security would lower friction and
-   reduce legal risk.
-4. **Cookie banner lacks granular control** — all "essential" today. If we
+   _Status:_ **pending** (next up).
+2. **"Delete my account" self-service** — ✅ **SHIPPED** (commit e9c3372,
+   migration 051). Danger zone in Profile → Security with email-typed
+   confirmation; calls RPC `delete_user_account` which deletes `auth.users`
+   (cascades through profiles and all user-owned tables) plus
+   `newsletter_subscribers` by email.
+3. **"Download my data" self-service** — ✅ **SHIPPED** (commit 906cc4b).
+   `/api/export-my-data` returns a single JSON with 17 user-scoped tables;
+   button lives in Profile → Security → "Privacy &amp; data".
+4. **Terms of Service page** — ✅ **SHIPPED**. `/es/terms/` and `/en/terms/`
+   with 12 sections (acceptance, eligibility, community rules, symbolic
+   peanuts/tickets, user content license, giveaways, suspension,
+   limitation of liability, governing law, changes, contact). Footer link
+   added.
+5. **Cookie banner lacks granular control** — all "essential" today. If we
    ever add non-essential tracking, must be upgraded to categorized banner.
-5. **Retention logs for analytics** — today retained indefinitely because
+6. **Retention logs for analytics** — today retained indefinitely because
    anonymous; confirm Vercel's retention and document it here explicitly.
-6. **Terms of Service page does not exist** — only privacy is public.
-   Consider adding a lightweight ToS covering: acceptable use, community
-   rules, peanuts/tickets are not money, admin right to suspend abusive
-   accounts, limitation of liability.
 7. **No DPA / Record of Processing Activities** — internal-only document, but
    required under GDPR art. 30 once we cross 250 users or process sensitive
    data. Stub to be added when we hit launch.

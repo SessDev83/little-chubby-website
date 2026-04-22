@@ -14,6 +14,7 @@ export const ui = {
     navContact: "Contacto",
     navAbout: "Nosotros",
     navPrivacy: "Privacidad",
+    navTerms: "Terminos",
     navFaq: "FAQ",
     languageToggleLabel: "Cambiar idioma",
     ctaBuyOnAmazon: "Comprar en Amazon",
@@ -47,6 +48,10 @@ export const ui = {
       "Contacta a Little Chubby Press para colaboraciones, prensa, consultas de libros y propuestas editoriales.",
     privacyMetaDescription:
       "Revisa la politica de privacidad de Little Chubby Press: datos personales, cookies y gestion de comunicaciones.",
+    termsMetaTitle: "Terminos y condiciones | Little Chubby Press",
+    termsMetaDescription:
+      "Terminos de uso de Little Chubby Press: reglas de la comunidad, cacahuetes y tickets simbolicos, contenido publicado, cancelacion y limitacion de responsabilidad.",
+    termsSectionTitle: "Terminos y condiciones",
     thanksMetaDescription:
       "Pagina de confirmacion de Little Chubby Press tras enviar tu formulario o suscripcion correctamente.",
     booksSectionTitle: "Nuestros libros",
@@ -515,6 +520,7 @@ export const ui = {
     navContact: "Contact",
     navAbout: "About",
     navPrivacy: "Privacy",
+    navTerms: "Terms",
     navFaq: "FAQ",
     languageToggleLabel: "Switch language",
     ctaBuyOnAmazon: "Buy on Amazon",
@@ -548,6 +554,10 @@ export const ui = {
       "Contact Little Chubby Press for collaborations, media requests, book questions, and editorial inquiries.",
     privacyMetaDescription:
       "Read the Little Chubby Press privacy policy covering personal data, cookies, and communication preferences.",
+    termsMetaTitle: "Terms & conditions | Little Chubby Press",
+    termsMetaDescription:
+      "Little Chubby Press terms of use: community rules, symbolic peanuts and tickets, user content, cancellation, and limitation of liability.",
+    termsSectionTitle: "Terms & conditions",
     thanksMetaDescription:
       "Confirmation page after your message or newsletter signup at Little Chubby Press, with next-step guidance.",
     booksSectionTitle: "Our books",

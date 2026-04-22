@@ -1,0 +1,304 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { siteConfig } from "../../data/site";
+import { languages, getLangFromParam, ui } from "../../data/i18n";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/terms/`;
+
+// Last updated date — keep in sync with docs/LEGAL_MAINTENANCE.md bi-weekly review.
+const lastUpdatedES = "22 de abril de 2026";
+const lastUpdatedEN = "April 22, 2026";
+---
+
+<BaseLayout lang={lang} title={text.termsMetaTitle} description={text.termsMetaDescription} pathname={pathname}>
+  <section class="page-section">
+    <div class="container">
+      <article class="surface-card" style="padding: clamp(1rem, 2.8vw, 2rem);">
+        <h1>{text.termsSectionTitle}</h1>
+
+        {
+          lang === "es" ? (
+            <div class="article-prose">
+              <p><strong>Ultima actualizacion:</strong> {lastUpdatedES}.</p>
+              <p>
+                Bienvenido a {siteConfig.brandName}. Estos terminos regulan el uso de nuestra web
+                <a href="https://littlechubbypress.com"> littlechubbypress.com</a>, de la comunidad asociada
+                (resenas, galeria, sorteos, cacahuetes y tickets) y de los emails que enviamos. Al crear una
+                cuenta o participar en la comunidad, confirmas que has leido y aceptas estos terminos.
+              </p>
+
+              <h2>1. Aceptacion</h2>
+              <p>
+                Al registrarte, enviar una resena, suscribirte al newsletter o reclamar cacahuetes/tickets,
+                aceptas estos terminos y nuestra <a href={`/${lang}/privacy/`}>politica de privacidad</a>.
+                Si no estas de acuerdo con alguna parte, no uses la app.
+              </p>
+
+              <h2>2. Quien puede registrarse</h2>
+              <ul>
+                <li>Debes ser mayor de 13 anos para crear una cuenta por ti mismo.</li>
+                <li>Si eres menor de edad segun la ley de tu pais, necesitas el consentimiento verificable de un padre, madre o tutor legal. La cuenta se gestiona bajo su responsabilidad.</li>
+                <li>Una persona puede tener <strong>una sola cuenta</strong>. Cuentas duplicadas para acumular mas cacahuetes/tickets se consideran fraude.</li>
+                <li>La informacion que das (email, nombre visible, direccion si aplica) debe ser veraz y mantenerse actualizada.</li>
+              </ul>
+
+              <h2>3. Reglas de la comunidad</h2>
+              <p>Al subir contenido (resena, foto, mensaje, avatar, nombre visible) te comprometes a:</p>
+              <ul>
+                <li><strong>No publicar spam ni publicidad</strong> de terceros no autorizada.</li>
+                <li><strong>No usar lenguaje ofensivo</strong>, odio, acoso, amenazas o contenido sexual/violento.</li>
+                <li><strong>No subir material con derechos de autor que no sean tuyos</strong> (por ejemplo, fotos de otros libros distintos a los nuestros, imagenes de stock sin licencia, personajes protegidos). Las fotos de resena deben mostrar tu copia fisica o digital de nuestros libros.</li>
+                <li><strong>No hacerte pasar por otra persona</strong> ni usar datos ajenos.</li>
+                <li><strong>No intentar manipular</strong> el sistema de cacahuetes, tickets, sorteos o ranking con cuentas falsas, automatismos o explotacion de bugs.</li>
+                <li><strong>No enviar informacion personal de menores</strong> en resenas o mensajes publicos.</li>
+              </ul>
+              <p>
+                Nos reservamos el derecho de rechazar, editar o eliminar contenido que incumpla estas reglas,
+                con o sin aviso previo. Las decisiones de moderacion son finales.
+              </p>
+
+              <h2>4. Cacahuetes y tickets (moneda simbolica)</h2>
+              <ul>
+                <li>Los <strong>cacahuetes</strong> y <strong>tickets</strong> son <strong>virtuales, simbolicos y sin valor monetario</strong>. No son dinero, no representan deuda y <strong>no son canjeables por efectivo</strong>.</li>
+                <li>Se ganan de forma gratuita (resenas aprobadas, rachas diarias, bonos, descargas, referidos).</li>
+                <li>Se gastan en la tienda interna (descargas, badges cosmeticos, boosts, entradas extra al sorteo).</li>
+                <li>Son <strong>intransferibles</strong> fuera de la plataforma y <strong>no pueden venderse</strong> a terceros.</li>
+                <li>Si detectamos fraude, actividad automatizada o explotacion de bugs, podemos <strong>revertir</strong> cacahuetes/tickets, suspender o eliminar la cuenta. Esto no da derecho a compensacion.</li>
+                <li>Si cerramos la app o finalizamos el programa, los saldos simbolicos caducan sin derecho a reembolso (te avisariamos con al menos 30 dias de antelacion).</li>
+              </ul>
+
+              <h2>5. Resenas y contenido del usuario</h2>
+              <p>
+                Las resenas, fotos y mensajes que publicas en la galeria siguen siendo tuyos. Al subirlos, nos
+                <strong> cedes una licencia no exclusiva, mundial y sin coste</strong> para mostrarlos, reproducirlos y
+                adaptarlos dentro de la app y para materiales de marketing relacionados con
+                {" "}{siteConfig.brandName} (redes sociales, newsletter, pagina de agradecimiento a la comunidad).
+                Esta licencia se mantiene incluso si eliminas tu cuenta para los materiales ya publicados; en
+                cualquier caso, nos comprometemos a retirarlos a peticion expresa tuya por email.
+              </p>
+              <p>
+                Garantizas que tienes todos los derechos necesarios sobre lo que subes y que no infringes derechos
+                de terceros (copyright, imagen, marca). Eres responsable del contenido que publicas.
+              </p>
+
+              <h2>6. Sorteos y giveaways</h2>
+              <ul>
+                <li>Participar es gratis. Los tickets se obtienen usando la app normalmente; nunca pedimos pago.</li>
+                <li>El sorteo es aleatorio entre los tickets validos del mes.</li>
+                <li>El ganador recibe el aviso por email. Si no responde en el plazo indicado, reservamos el derecho a extraer otro ganador.</li>
+                <li>Los premios pueden ser digitales (descargas, cacahuetes extra) o fisicos (libros). Los premios fisicos solo se envian a la direccion que el ganador facilite y a paises donde podamos enviar.</li>
+                <li>No garantizamos un valor minimo ni un numero minimo de ganadores.</li>
+              </ul>
+
+              <h2>7. Suspension y cancelacion por abuso</h2>
+              <p>
+                Podemos suspender o cancelar tu cuenta de forma inmediata si:
+              </p>
+              <ul>
+                <li>Incumples estos terminos o las reglas de la comunidad.</li>
+                <li>Detectamos fraude en cacahuetes, tickets o sorteos.</li>
+                <li>Recibimos una reclamacion legal creible (copyright, acoso, proteccion de menores).</li>
+                <li>Usas la plataforma para actividades ilegales.</li>
+              </ul>
+              <p>
+                Puedes cancelar tu cuenta en cualquier momento desde <a href={`/${lang}/profile/`}>tu perfil</a> (seccion
+                "Privacidad y datos" &rarr; "Eliminar mi cuenta"). La eliminacion es inmediata y borra tu perfil,
+                resenas, fotos y saldos simbolicos. Antes puedes <strong>descargar una copia de tus datos</strong> desde la
+                misma seccion.
+              </p>
+
+              <h2>8. Limitacion de responsabilidad</h2>
+              <p>
+                {siteConfig.brandName} se ofrece "tal cual", sin garantias explicitas de disponibilidad continua ni de
+                ausencia de errores. Dentro de lo permitido por ley:
+              </p>
+              <ul>
+                <li>No somos responsables de perdidas indirectas, lucro cesante, perdida de datos o interrupciones del servicio.</li>
+                <li>No somos responsables del contenido subido por otros usuarios (resenas, fotos, mensajes), aunque moderamos de buena fe.</li>
+                <li>No somos responsables del contenido de sitios externos enlazados (Amazon, redes sociales, politicas de proveedores).</li>
+                <li>Nuestra responsabilidad total, si la ley no permite excluirla, se limita al valor monetario que hayas pagado (que normalmente es cero, dado que la participacion es gratuita).</li>
+              </ul>
+              <p>
+                Nada en estos terminos limita la responsabilidad por dolo, negligencia grave o lo que la ley no
+                permita excluir.
+              </p>
+
+              <h2>9. Cambios en el servicio</h2>
+              <p>
+                Podemos modificar, suspender temporalmente o dejar de ofrecer funciones de la app cuando lo
+                necesitemos por motivos tecnicos, legales o estrategicos. Intentaremos avisar con antelacion
+                razonable de cambios importantes (por email o banner en la app).
+              </p>
+
+              <h2>10. Jurisdiccion y ley aplicable</h2>
+              <p>
+                Estos terminos se rigen por la legislacion del pais donde {siteConfig.brandName} tiene su sede
+                operativa, sin perjuicio de las normas imperativas de proteccion al consumidor del pais donde
+                residas. Cualquier disputa se resolvera preferentemente de forma amistosa por email; si no es
+                posible, ante los tribunales competentes.
+              </p>
+
+              <h2>11. Cambios en estos terminos</h2>
+              <p>
+                Revisamos esta pagina <strong>cada 2 semanas</strong> durante la fase activa de desarrollo. Cuando haya
+                cambios sustanciales, actualizaremos la fecha de arriba y, si te afectan directamente, te
+                avisaremos por email o con un banner en la app. Si sigues usando la app tras un cambio, se
+                considera que lo aceptas.
+              </p>
+
+              <h2>12. Contacto</h2>
+              <p>
+                Dudas sobre estos terminos, reclamaciones o solicitudes:
+                <a href={`mailto:${siteConfig.contactEmail}`}> {siteConfig.contactEmail}</a>.
+              </p>
+              <p style="margin-top:1.5rem; font-size:0.9rem; opacity:0.75;">
+                Lee tambien nuestra <a href={`/${lang}/privacy/`}>politica de privacidad</a> y la <a href={`/${lang}/faq/`}>FAQ</a>.
+              </p>
+            </div>
+          ) : (
+            <div class="article-prose">
+              <p><strong>Last updated:</strong> {lastUpdatedEN}.</p>
+              <p>
+                Welcome to {siteConfig.brandName}. These terms govern your use of our website
+                <a href="https://littlechubbypress.com"> littlechubbypress.com</a>, the associated community
+                (reviews, gallery, giveaways, peanuts and tickets), and the emails we send. By creating an
+                account or taking part in the community, you confirm you have read and accept these terms.
+              </p>
+
+              <h2>1. Acceptance</h2>
+              <p>
+                By signing up, submitting a review, subscribing to the newsletter or claiming peanuts/tickets,
+                you accept these terms and our <a href={`/${lang}/privacy/`}>privacy policy</a>. If you do not
+                agree with any part, please do not use the app.
+              </p>
+
+              <h2>2. Who can register</h2>
+              <ul>
+                <li>You must be at least 13 years old to create an account by yourself.</li>
+                <li>If you are a minor under the law of your country, you need verifiable parental or guardian consent. The account is managed under their responsibility.</li>
+                <li>A person may only have <strong>one account</strong>. Duplicate accounts created to farm peanuts/tickets count as fraud.</li>
+                <li>The information you provide (email, display name, address if applicable) must be truthful and kept up to date.</li>
+              </ul>
+
+              <h2>3. Community rules</h2>
+              <p>When uploading content (review, photo, message, avatar, display name) you agree to:</p>
+              <ul>
+                <li><strong>No spam or unauthorized third-party advertising.</strong></li>
+                <li><strong>No offensive language</strong>, hate speech, harassment, threats, sexual or violent content.</li>
+                <li><strong>No uploading copyrighted material that is not yours</strong> (e.g. photos of books other than ours, unlicensed stock images, protected characters). Review photos must show your physical or digital copy of our books.</li>
+                <li><strong>No impersonation</strong> or use of other people's data.</li>
+                <li><strong>No attempting to game</strong> the peanut, ticket, giveaway or leaderboard system through fake accounts, automation, or bug exploitation.</li>
+                <li><strong>No sharing personal information about minors</strong> in public reviews or messages.</li>
+              </ul>
+              <p>
+                We reserve the right to refuse, edit or remove content that breaks these rules, with or without
+                notice. Moderation decisions are final.
+              </p>
+
+              <h2>4. Peanuts and tickets (symbolic currency)</h2>
+              <ul>
+                <li><strong>Peanuts</strong> and <strong>tickets</strong> are <strong>virtual, symbolic and have no monetary value</strong>. They are not money, do not represent debt, and <strong>cannot be redeemed for cash</strong>.</li>
+                <li>They are earned for free (approved reviews, daily streaks, bonuses, downloads, referrals).</li>
+                <li>They are spent inside the app (downloads, cosmetic badges, boosts, extra giveaway entries).</li>
+                <li>They are <strong>non-transferable</strong> outside the platform and <strong>cannot be sold</strong> to third parties.</li>
+                <li>If we detect fraud, automated activity, or bug exploitation, we may <strong>reverse</strong> peanuts/tickets and suspend or delete the account. This does not give a right to compensation.</li>
+                <li>If we shut down the app or end the program, symbolic balances expire with no refund (we would give at least 30 days' notice).</li>
+              </ul>
+
+              <h2>5. Reviews and user content</h2>
+              <p>
+                Reviews, photos and messages you post in the gallery remain yours. By uploading them, you grant
+                us <strong>a non-exclusive, worldwide, royalty-free license</strong> to display, reproduce and adapt them
+                inside the app and for marketing materials related to {siteConfig.brandName} (social media,
+                newsletter, community thank-you page). This license survives account deletion for already
+                published materials; however, we will take them down on explicit request sent by email.
+              </p>
+              <p>
+                You warrant that you hold all necessary rights over what you upload and that you do not infringe
+                third-party rights (copyright, likeness, trademark). You are responsible for the content you
+                publish.
+              </p>
+
+              <h2>6. Giveaways</h2>
+              <ul>
+                <li>Entry is free. Tickets are earned through normal use of the app; we never ask for payment.</li>
+                <li>The draw is random among valid tickets for the month.</li>
+                <li>The winner is notified by email. If they do not reply within the stated window, we reserve the right to draw another winner.</li>
+                <li>Prizes can be digital (downloads, extra peanuts) or physical (books). Physical prizes are shipped only to the address provided by the winner and to countries we can ship to.</li>
+                <li>We do not guarantee a minimum value or a minimum number of winners.</li>
+              </ul>
+
+              <h2>7. Suspension and cancellation for abuse</h2>
+              <p>We may suspend or cancel your account immediately if:</p>
+              <ul>
+                <li>You break these terms or the community rules.</li>
+                <li>We detect fraud in peanuts, tickets or giveaways.</li>
+                <li>We receive a credible legal complaint (copyright, harassment, child protection).</li>
+                <li>You use the platform for illegal activities.</li>
+              </ul>
+              <p>
+                You can cancel your account at any time from <a href={`/${lang}/profile/`}>your profile</a>
+                (section "Privacy &amp; data" &rarr; "Delete my account"). Deletion is immediate and erases your
+                profile, reviews, photos and symbolic balances. Before deleting, you can <strong>download a copy of
+                your data</strong> from the same section.
+              </p>
+
+              <h2>8. Limitation of liability</h2>
+              <p>
+                {siteConfig.brandName} is provided "as is", without explicit guarantees of continuous availability
+                or error-free operation. To the extent permitted by law:
+              </p>
+              <ul>
+                <li>We are not liable for indirect losses, lost profits, data loss, or service interruptions.</li>
+                <li>We are not liable for content uploaded by other users (reviews, photos, messages), although we moderate in good faith.</li>
+                <li>We are not liable for the content of external sites linked from ours (Amazon, social media, provider policies).</li>
+                <li>Our total liability, where it cannot be excluded by law, is limited to the monetary amount you have paid (normally zero, since participation is free).</li>
+              </ul>
+              <p>
+                Nothing in these terms limits liability for willful misconduct, gross negligence, or anything
+                the law does not allow to be excluded.
+              </p>
+
+              <h2>9. Changes to the service</h2>
+              <p>
+                We may modify, temporarily suspend or discontinue features of the app when needed for technical,
+                legal or strategic reasons. We will try to give reasonable advance notice of material changes
+                (by email or an in-app banner).
+              </p>
+
+              <h2>10. Governing law and jurisdiction</h2>
+              <p>
+                These terms are governed by the law of the country where {siteConfig.brandName} operates, without
+                prejudice to mandatory consumer protection rules of the country where you live. Any dispute
+                will preferably be resolved amicably by email; if not possible, before the competent courts.
+              </p>
+
+              <h2>11. Changes to these terms</h2>
+              <p>
+                We review this page <strong>every 2 weeks</strong> during the active development phase. When there are
+                material changes, we update the date at the top and, if they affect you directly, we notify you
+                by email or with an in-app banner. If you keep using the app after a change, you are deemed to
+                accept it.
+              </p>
+
+              <h2>12. Contact</h2>
+              <p>
+                Questions about these terms, complaints or requests:
+                <a href={`mailto:${siteConfig.contactEmail}`}> {siteConfig.contactEmail}</a>.
+              </p>
+              <p style="margin-top:1.5rem; font-size:0.9rem; opacity:0.75;">
+                Read also our <a href={`/${lang}/privacy/`}>privacy policy</a> and the <a href={`/${lang}/faq/`}>FAQ</a>.
+              </p>
+            </div>
+          )
+        }
+      </article>
+    </div>
+  </section>
+</BaseLayout>
