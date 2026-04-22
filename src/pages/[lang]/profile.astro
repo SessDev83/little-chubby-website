@@ -778,6 +778,28 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
               <a href={`/${lang}/privacy/`}>{text.profilePrivacyLink}</a>
             </p>
           </details>
+
+          <details class="security-block danger-block">
+            <summary>{text.profileDeleteTitle}</summary>
+            <p class="privacy-block-hint">{text.profileDeleteHint}</p>
+            <form id="delete-account-form" class="security-form" novalidate>
+              <div class="form-group">
+                <label for="delete-confirm">{text.profileDeleteConfirmLabel}</label>
+                <input
+                  type="email"
+                  id="delete-confirm"
+                  name="confirm"
+                  autocomplete="off"
+                  placeholder={text.profileDeleteConfirmPlaceholder}
+                  required
+                />
+              </div>
+              <button type="submit" class="btn btn-danger btn-sm" id="delete-account-submit">
+                {text.profileDeleteButton}
+              </button>
+              <p class="form-status" id="delete-account-status" role="status" aria-live="polite"></p>
+            </form>
+          </details>
         </div>
 
         <div style="text-align:center; margin-top:1.5rem;">
@@ -943,6 +965,62 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         }
       }
     }
+  })();
+</script>
+
+<script is:inline define:vars={{
+  homeUrl: `/${lang}/`,
+  tSuccess: text.profileDeleteSuccess,
+  tErrorGeneric: text.profileDeleteErrorGeneric,
+  tErrorMismatch: text.profileDeleteErrorMismatch,
+}}>
+  (function(){
+    var form = document.getElementById("delete-account-form");
+    if (!form) return;
+    var input = document.getElementById("delete-confirm");
+    var btn = document.getElementById("delete-account-submit");
+    var statusEl = document.getElementById("delete-account-status");
+    form.addEventListener("submit", async function(ev){
+      ev.preventDefault();
+      if (!input || !btn || !statusEl) return;
+      var confirmVal = (input.value || "").trim();
+      if (!confirmVal) {
+        statusEl.textContent = tErrorMismatch;
+        statusEl.style.color = "var(--color-error, #c0392b)";
+        return;
+      }
+      btn.disabled = true;
+      statusEl.textContent = "…";
+      statusEl.style.color = "";
+      try {
+        var res = await fetch("/api/delete-account", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirm: confirmVal }),
+          credentials: "same-origin",
+        });
+        var data = null;
+        try { data = await res.json(); } catch (_) {}
+        if (res.ok && data && data.ok) {
+          statusEl.textContent = tSuccess;
+          statusEl.style.color = "var(--color-success, #2e7d32)";
+          setTimeout(function(){ window.location.href = homeUrl; }, 1500);
+          return;
+        }
+        var err = data && data.error;
+        if (err === "confirm_mismatch") {
+          statusEl.textContent = tErrorMismatch;
+        } else {
+          statusEl.textContent = tErrorGeneric;
+        }
+        statusEl.style.color = "var(--color-error, #c0392b)";
+        btn.disabled = false;
+      } catch (_) {
+        statusEl.textContent = tErrorGeneric;
+        statusEl.style.color = "var(--color-error, #c0392b)";
+        btn.disabled = false;
+      }
+    });
   })();
 </script>
 
@@ -1614,6 +1692,38 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     margin: 0.6rem 0 0;
     font-size: 0.85rem;
     opacity: 0.8;
+  }
+
+  .danger-block {
+    border-color: rgba(192, 57, 43, 0.45);
+    background: rgba(192, 57, 43, 0.04);
+  }
+
+  .danger-block summary {
+    color: #c0392b;
+  }
+
+  .btn-danger {
+    background: #c0392b;
+    color: #fff;
+    border: 1px solid #c0392b;
+  }
+
+  .btn-danger:hover,
+  .btn-danger:focus-visible {
+    background: #a5281c;
+    border-color: #a5281c;
+  }
+
+  .btn-danger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .form-status {
+    margin: 0.6rem 0 0;
+    font-size: 0.9rem;
+    min-height: 1.2em;
   }
 
   .btn-sm {
