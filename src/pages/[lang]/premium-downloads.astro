@@ -1,0 +1,97 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Button from "../../components/Button.astro";
+import { languages, getLangFromParam, ui } from "../../data/i18n";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/premium-downloads/`;
+
+const title = text.premiumDownloadsTitle;
+const description = text.premiumDownloadsLead;
+---
+
+<BaseLayout lang={lang} title={title} description={description} pathname={pathname}>
+  <section class="page-section">
+    <div class="container">
+      <article class="surface-card premium-coming-soon">
+        <span class="premium-tag">{text.premiumDownloadsTag}</span>
+        <h1>{text.premiumDownloadsTitle}</h1>
+        <p class="lede">{text.premiumDownloadsLead}</p>
+
+        <div class="preview-grid" aria-hidden="true">
+          <div class="preview-tile">🎨</div>
+          <div class="preview-tile">🦕</div>
+          <div class="preview-tile">🚀</div>
+          <div class="preview-tile">🐾</div>
+        </div>
+
+        <h2>{text.premiumDownloadsWhatTitle}</h2>
+        <p>{text.premiumDownloadsWhatBody}</p>
+
+        <h2>{text.premiumDownloadsHowTitle}</h2>
+        <ul>
+          <li>{text.premiumDownloadsHow1}</li>
+          <li>{text.premiumDownloadsHow2}</li>
+          <li>{text.premiumDownloadsHow3}</li>
+        </ul>
+
+        <div class="hero-actions" style="margin-top:1.5rem;">
+          <Button href={`/${lang}/peanuts/`} label={text.premiumDownloadsCtaShop} variant="primary" />
+          <Button href={`/${lang}/`} label={text.thanksBackHome} variant="secondary" />
+        </div>
+      </article>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .premium-coming-soon {
+    padding: clamp(1.4rem, 3vw, 2.4rem);
+    max-width: 46rem;
+    margin: 0 auto;
+  }
+  .premium-tag {
+    display:inline-block;
+    padding: 0.25rem 0.75rem;
+    background: linear-gradient(135deg, #f0d76e, #e4a13b);
+    color: #3a2a05;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.8rem;
+  }
+  .premium-coming-soon h1 { margin:0 0 0.4rem; }
+  .premium-coming-soon .lede {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    margin-bottom: 1.4rem;
+  }
+  .preview-grid {
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+    margin: 1rem 0 1.6rem;
+  }
+  .preview-tile {
+    aspect-ratio: 1 / 1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 2.2rem;
+    background: repeating-linear-gradient(45deg, #fff7e6, #fff7e6 8px, #ffe9c6 8px, #ffe9c6 16px);
+    border-radius: 14px;
+    border: 1px dashed var(--border);
+  }
+  .premium-coming-soon h2 {
+    margin-top: 1.2rem;
+    font-size: 1.1rem;
+  }
+  .premium-coming-soon ul { margin: 0 0 0.6rem 1.1rem; }
+  .premium-coming-soon li { margin-bottom: 0.3rem; }
+</style>

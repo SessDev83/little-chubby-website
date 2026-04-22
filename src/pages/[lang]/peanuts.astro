@@ -231,6 +231,20 @@ try {
             </div>
           </div>
 
+          <h4 class="subshop-title">🎨 {text.peanutShopMultipack}</h4>
+          <p class="subshop-desc">{text.peanutShopMultipackDesc}</p>
+          <div class="shop-grid">
+            <div class="shop-card multipack-card is-coming-soon" data-shop="multipack" data-cost="5">
+              <span class="shop-ribbon">{text.peanutShopComingSoon}</span>
+              <span class="shop-icon">🎨</span>
+              <span class="shop-name">{text.peanutShopMultipack}</span>
+              <span class="shop-price">5 🥜 · 3 {lang === "es" ? "descargas" : "downloads"}</span>
+              <a href={`/${lang}/premium-downloads/`} class="btn btn-sm btn-secondary">
+                {text.peanutShopLearnMore}
+              </a>
+            </div>
+          </div>
+
           <h4 class="subshop-title">{text.peanutShopLottery}</h4>
           <p class="subshop-desc">{text.peanutShopLotteryDesc}</p>
           <div class="shop-card lottery-entry-card">
@@ -1121,6 +1135,26 @@ try {
 
   .shop-card:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  .shop-card.is-coming-soon {
+    position: relative;
+    opacity: 0.88;
+    background: repeating-linear-gradient(45deg, #fff 0, #fff 10px, #fff8e8 10px, #fff8e8 20px);
+  }
+
+  .shop-ribbon {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: #3d2c1e;
+    color: #fff;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .shop-icon { font-size: 1.8rem; }

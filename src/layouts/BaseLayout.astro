@@ -34,7 +34,7 @@ const hidePopupPaths = ["/admin", "/login", "/register", "/thanks", "/auth", "/l
 const showLeadMagnet = !hidePopupPaths.some((p) => pathname.includes(p));
 // Block search engines from admin / auth pages and per-user dynamic pages
 const noIndexPaths = ["/admin", "/login", "/register", "/auth", "/logout", "/forgot-password"];
-const noIndexSubstrings = ["/books/early-access"];
+const noIndexSubstrings = ["/books/early-access", "/premium-downloads"];
 const shouldNoIndex =
   noIndexPaths.some((p) => pathname.startsWith(p)) ||
   noIndexSubstrings.some((p) => pathname.includes(p));
