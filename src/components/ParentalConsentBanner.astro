@@ -11,9 +11,12 @@ const text = ui[lang];
 
 // Only render for authenticated users who have NOT yet confirmed the gate.
 // Middleware sets Astro.locals.parentConsentAt.
+// Skip on /admin/* — admin users are vetted adults; banner would be noise.
 const user = Astro.locals.user;
 const consentAt = Astro.locals.parentConsentAt;
-const shouldShow = Boolean(user) && !consentAt;
+const pathname = Astro.url.pathname;
+const isAdminArea = pathname.startsWith("/admin");
+const shouldShow = Boolean(user) && !consentAt && !isAdminArea;
 
 if (!shouldShow) {
   return null;
