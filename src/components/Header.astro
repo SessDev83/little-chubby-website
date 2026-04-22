@@ -33,7 +33,7 @@ const navItems = [
 
       <div class="header-actions">
         <a href={`/${lang}/login/`} class="header-login" id="auth-login">{text.navLogin}</a>
-        <span class="header-currencies" id="auth-currencies" style="display:none;">
+        <span class="header-currencies header-currencies--desktop" id="auth-currencies" style="display:none;">
           <a href={`/${lang}/lottery/`} class="header-tickets" id="auth-tickets" title={lang === "es" ? "Tus Tickets" : "Your Tickets"}>
             🎟️ <span id="tickets-count">0</span>
           </a>
@@ -113,6 +113,30 @@ const navItems = [
       </div>
     </div>
 
+    <div class="header-currencies-mobile" id="auth-currencies-mobile" style="display:none;">
+      <button
+        type="button"
+        class="currencies-mobile-toggle"
+        id="currencies-mobile-toggle"
+        aria-expanded="false"
+        aria-controls="currencies-mobile-panel"
+      >
+        <span class="currencies-mobile-emoji" aria-hidden="true">🎟️🥜</span>
+        <span class="currencies-mobile-label">{lang === "es" ? "Mi saldo" : "My balance"}</span>
+        <svg class="currencies-mobile-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="currencies-mobile-panel" id="currencies-mobile-panel" hidden>
+        <a href={`/${lang}/lottery/`} class="header-tickets" title={lang === "es" ? "Tus Tickets" : "Your Tickets"}>
+          🎟️ <span id="tickets-count-m">0</span>
+        </a>
+        <a href={`/${lang}/peanuts/`} class="header-peanuts" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
+          🥜 <span id="peanuts-count-m">0</span>
+        </a>
+      </div>
+    </div>
+
     <nav class="header-nav" id="mobile-nav" aria-label="Primary">
       <ul>
         {
@@ -156,6 +180,9 @@ const navItems = [
     var ticketsEl = document.getElementById("auth-tickets");
     var ticketsCount = document.getElementById("tickets-count");
     var currenciesEl = document.getElementById("auth-currencies");
+    var currenciesMobileEl = document.getElementById("auth-currencies-mobile");
+    var peanutsCountM = document.getElementById("peanuts-count-m");
+    var ticketsCountM = document.getElementById("tickets-count-m");
 
     if (loginEl) loginEl.style.display = loggedIn ? "none" : "";
     if (usernameEl) {
@@ -168,6 +195,7 @@ const navItems = [
     if (settingsAuthItems) settingsAuthItems.style.display = loggedIn ? "" : "none";
     if (settingsLoginHint) settingsLoginHint.style.display = loggedIn ? "none" : "";
     if (currenciesEl) currenciesEl.style.display = loggedIn ? "" : "none";
+    if (currenciesMobileEl) currenciesMobileEl.style.display = loggedIn ? "" : "none";
 
     // Bell + notifications
     var bellEl = document.getElementById("auth-bell");
@@ -236,19 +264,41 @@ const navItems = [
       if (cached !== null) peanutsCount.textContent = cached;
       var cachedTickets = sessionStorage.getItem("lcp-tickets");
       if (cachedTickets !== null && ticketsCount) ticketsCount.textContent = cachedTickets;
+      if (cached !== null && peanutsCountM) peanutsCountM.textContent = cached;
+      if (cachedTickets !== null && ticketsCountM) ticketsCountM.textContent = cachedTickets;
       fetch("/api/me/", { credentials: "same-origin" })
         .then(function(r) { return r.json(); })
         .then(function(d) {
           if (d.balance !== undefined) {
             peanutsCount.textContent = String(d.balance);
+            if (peanutsCountM) peanutsCountM.textContent = String(d.balance);
             sessionStorage.setItem("lcp-peanuts", String(d.balance));
           }
           if (d.tickets !== undefined && ticketsCount) {
             ticketsCount.textContent = String(d.tickets);
+            if (ticketsCountM) ticketsCountM.textContent = String(d.tickets);
             sessionStorage.setItem("lcp-tickets", String(d.tickets));
           }
         })
         .catch(function() {});
+    }
+
+    // Mobile currencies accordion toggle
+    var oldCurrenciesToggle = document.getElementById("currencies-mobile-toggle");
+    var currenciesPanel = document.getElementById("currencies-mobile-panel");
+    if (oldCurrenciesToggle && currenciesPanel) {
+      var currenciesToggle = oldCurrenciesToggle.cloneNode(true);
+      oldCurrenciesToggle.parentNode.replaceChild(currenciesToggle, oldCurrenciesToggle);
+      currenciesToggle.addEventListener("click", function(e) {
+        e.stopPropagation();
+        var isOpen = currenciesToggle.getAttribute("aria-expanded") === "true";
+        currenciesToggle.setAttribute("aria-expanded", String(!isOpen));
+        if (isOpen) {
+          currenciesPanel.setAttribute("hidden", "");
+        } else {
+          currenciesPanel.removeAttribute("hidden");
+        }
+      });
     }
 
     const rootLang = document.documentElement.getAttribute("lang");

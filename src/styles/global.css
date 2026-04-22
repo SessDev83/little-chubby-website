@@ -270,6 +270,55 @@ main {
   text-align: center;
 }
 
+/* ── Mobile currencies accordion (hidden on desktop) ── */
+.header-currencies-mobile {
+  display: none;
+}
+
+.currencies-mobile-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #fdf6e3;
+  border: 1.5px solid #e6d5a8;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  cursor: pointer;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--brand-brown);
+  line-height: 1;
+  transition: background-color 0.2s ease;
+}
+.currencies-mobile-toggle:hover {
+  background: #f5ecd3;
+}
+.currencies-mobile-emoji {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.currencies-mobile-chevron {
+  transition: transform 0.2s ease;
+}
+.currencies-mobile-toggle[aria-expanded="true"] .currencies-mobile-chevron {
+  transform: rotate(180deg);
+}
+.currencies-mobile-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.currencies-mobile-panel[hidden] {
+  display: none;
+}
+.currencies-mobile-panel .header-tickets,
+.currencies-mobile-panel .header-peanuts {
+  font-size: 0.95rem;
+  padding: 0.3rem 0.75rem;
+}
+
 /* ── Notification Bell ──────────────────────── */
 .header-bell {
   position: relative;
@@ -503,8 +552,8 @@ main {
   }
 
   .brand-link img {
-    width: 2rem;
-    height: 2rem;
+    width: 2.6rem;
+    height: 2.6rem;
   }
 
   .header-actions {
@@ -523,10 +572,13 @@ main {
     gap: 0.2rem;
   }
 
-  .header-currencies {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.18rem;
+  .header-currencies--desktop {
+    display: none !important;
+  }
+
+  .header-currencies-mobile {
+    display: block;
+    margin-top: 0.4rem;
   }
 
   .header-nav {
