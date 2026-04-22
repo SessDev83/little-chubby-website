@@ -923,8 +923,9 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     border: 1px solid #e8e0d4;
     border-radius: 14px;
     position: sticky;
-    top: 0.5rem;
-    z-index: 5;
+    top: calc(var(--header-h, 0px) + 0.4rem);
+    z-index: 20;
+    box-shadow: 0 4px 14px rgba(61, 44, 30, 0.08);
     backdrop-filter: saturate(1.1);
   }
   .profile-tab {
