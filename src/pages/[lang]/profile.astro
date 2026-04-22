@@ -757,6 +757,29 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
           </details>
         </div>
 
+        {/* ── Privacy & data (GDPR) section ── */}
+        <div class="surface-card profile-section" id="privacy-data">
+          <h2 class="profile-section-title">{text.profilePrivacyTitle}</h2>
+          <p class="profile-section-subtitle">{text.profilePrivacySubtitle}</p>
+
+          <details class="security-block">
+            <summary>{text.profileExportDataTitle}</summary>
+            <p class="privacy-block-hint">{text.profileExportDataHint}</p>
+            <a
+              href={`/api/export-my-data`}
+              class="btn btn-primary btn-sm"
+              download
+              rel="nofollow"
+            >
+              {text.profileExportDataButton}
+            </a>
+            <p class="privacy-block-foot">
+              {text.profileExportDataFoot}{" "}
+              <a href={`/${lang}/privacy/`}>{text.profilePrivacyLink}</a>
+            </p>
+          </details>
+        </div>
+
         <div style="text-align:center; margin-top:1.5rem;">
           <a href={`/${lang}/logout/`} class="btn btn-secondary">{text.navLogout}</a>
         </div>
@@ -1573,6 +1596,24 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
   .security-form .form-group {
     margin-bottom: 0.6rem;
+  }
+
+  .profile-section-subtitle {
+    margin: 0 0 0.8rem;
+    font-size: 0.95rem;
+    color: var(--text-soft, #555);
+  }
+
+  .privacy-block-hint {
+    margin: 0.6rem 0 0.8rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .privacy-block-foot {
+    margin: 0.6rem 0 0;
+    font-size: 0.85rem;
+    opacity: 0.8;
   }
 
   .btn-sm {
