@@ -31,7 +31,11 @@ const faqES: QA[] = [
   },
   {
     q: "¿Borran mi cuenta si yo lo pido?",
-    a: "Si. Escribenos a " + siteConfig.contactEmail + " desde el email con el que te registraste. Borramos tu perfil, tus resenas, tus fotos y tus saldos internos en un maximo de 30 dias. Conservamos solo datos anonimos agregados y algunos logs tecnicos obligatorios por ley.",
+    a: "Si. No hace falta escribirnos: desde tu perfil, en la seccion 'Privacidad y datos', tienes un boton rojo 'Eliminar mi cuenta'. Tu perfil, resenas, fotos y saldos desaparecen al instante de la app y las copias de seguridad se purgan en un maximo de 30 dias. Antes de borrar, desde la misma seccion puedes descargar una copia de todos tus datos. Solo conservamos estadisticas anonimas agregadas y los registros tecnicos obligatorios por ley.",
+  },
+  {
+    q: "¿Como cambio mi email?",
+    a: "Desde 'Profile → Seguridad → Cambiar email'. Escribes el nuevo email, nosotros enviamos un enlace de confirmacion a esa direccion, y cuando lo pulsas queda actualizado. Tranqui: tus cacahuetes, tickets, resenas y badges estan ligados a tu cuenta (no al email), asi que no pierdes nada al cambiarlo.",
   },
   {
     q: "¿Como descargo una lamina para colorear?",
@@ -75,7 +79,7 @@ const faqES: QA[] = [
   },
   {
     q: "¿Hay un minimo de edad para crear una cuenta?",
-    a: "La app esta pensada para padres, madres y tutores. Menores de 13 anos NO deben crear cuenta por su cuenta: debe gestionarla un adulto de la familia. Si detectamos una cuenta infantil sin consentimiento parental la eliminamos.",
+    a: "Si. La cuenta la gestiona un adulto de 18 anos o mas (padre, madre, abuelo/a o tutor/a legal). Lo confirmas con una casilla al registrarte. Los peques de la familia pueden leer los libros, colorear y participar contigo, pero la cuenta siempre esta a nombre del adulto responsable. Si detectamos una cuenta gestionada por un menor sin adulto detras, la eliminamos.",
   },
   {
     q: "¿Los premios del sorteo son reales?",
@@ -103,11 +107,11 @@ const faqES: QA[] = [
   },
   {
     q: "¿Puedo regalar tickets a otra persona?",
-    a: "Si. Desde la pagina 'Lottery' puedes regalar tickets a otro usuario registrado. Si el destinatario no los reclama en 14 dias se devuelven automaticamente a tu cuenta.",
+    a: "Si. Desde la pagina 'Lottery' puedes regalar tickets a un amigo, este registrado o no. Si aun no tiene cuenta, le enviamos una invitacion por email y los tickets quedan reservados 30 dias a su nombre; si crea cuenta en los primeros 7 dias, como bonus referido te devolvemos a ti la misma cantidad de tickets como premio.",
   },
   {
     q: "¿Puedo ver que datos tenes sobre mi?",
-    a: "Si. Escribenos a " + siteConfig.contactEmail + " y te enviamos una exportacion de tus datos en un plazo maximo de 30 dias. Es un derecho reconocido por GDPR y leyes equivalentes.",
+    a: "Si, cuando quieras. Desde tu perfil, en la seccion 'Privacidad y datos', pulsa 'Descargar mis datos' y te generamos un archivo con toda tu informacion al instante. Si prefieres pedirlo por email tambien puedes escribir a " + siteConfig.contactEmail + " y te respondemos en un plazo maximo de 30 dias. Es un derecho reconocido por el GDPR y leyes equivalentes.",
   },
   {
     q: "¿Que cookies usa la app?",
@@ -166,11 +170,11 @@ const faqEN: QA[] = [
   },
   {
     q: "Can I gift tickets to someone else?",
-    a: "Yes. From the 'Lottery' page you can gift tickets to another registered user. If the recipient does not claim them in 14 days, they bounce back to your account automatically.",
+    a: "Yes. From the 'Lottery' page you can gift tickets to a friend, registered or not. If they don't have an account yet, we email them an invite and the tickets are reserved in their name for 30 days; if they create their account within the first 7 days, as a referral bonus we credit you back the same amount of tickets as a reward.",
   },
   {
     q: "Can I see what data you have about me?",
-    a: "Yes. Email us at " + siteConfig.contactEmail + " and we send you an export of your data within 30 days. It is a right recognized by GDPR and equivalent laws.",
+    a: "Yes, any time. In your profile, under 'Privacy & data', hit 'Download my data' and we generate a file with all your info on the spot. If you prefer email, write to " + siteConfig.contactEmail + " and we reply within 30 days max. It is a right recognized by GDPR and equivalent laws.",
   },
   {
     q: "Can I use the app offline?",
@@ -178,7 +182,7 @@ const faqEN: QA[] = [
   },
   {
     q: "Do you delete my account if I ask?",
-    a: "Yes. Email us at " + siteConfig.contactEmail + " from the address you signed up with. We erase your profile, reviews, photos and internal balances within 30 days. We only keep aggregated anonymous data and a few technical logs we are legally required to retain.",
+    a: "Yes. No need to email us: from your profile, under 'Privacy & data', there's a red 'Delete my account' button. Your profile, reviews, photos and balances vanish from the app immediately and backup copies are purged within 30 days max. Before deleting, from the same section you can download a full copy of your data. We only keep aggregated anonymous stats and the technical logs the law requires.",
   },
   {
     q: "Do you pay real money for peanuts?",
@@ -187,6 +191,10 @@ const faqEN: QA[] = [
   {
     q: "Do you sell or share my data with third parties?",
     a: "No. We never sell data and we do not share it for advertising. We only share it with strictly necessary providers (database, hosting, emails), under contract and solely to deliver the service.",
+  },
+  {
+    q: "How do I change my email?",
+    a: "From 'Profile → Security → Change email'. Type the new address, we send a confirmation link there, and once you click it the change is live. Don't worry: your peanuts, tickets, reviews and badges are tied to your account (not to the email), so nothing is lost when you switch.",
   },
   {
     q: "How do I download a coloring sheet?",
@@ -218,7 +226,7 @@ const faqEN: QA[] = [
   },
   {
     q: "Is there an age limit to create an account?",
-    a: "The app is built for parents and guardians. Children under 13 MUST NOT create an account on their own: a family adult must manage it. If we find a child account without parental consent, we delete it.",
+    a: "Yes. The account is managed by an adult aged 18 or over (parent, grandparent, legal guardian). You confirm this with a checkbox at sign-up. The little ones in the family can read the books, color, and join in with you, but the account always stays under the responsible adult. If we find an account being managed by a minor without an adult behind it, we delete it.",
   },
   {
     q: "Is the app free?",
