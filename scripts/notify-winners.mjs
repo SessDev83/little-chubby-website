@@ -53,6 +53,23 @@ async function supabasePatch(table, id, body) {
   if (!res.ok) throw new Error(`Supabase PATCH ${table}/${id}: ${res.status}`);
 }
 
+async function supabaseRpc(fn, args) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(args),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase RPC ${fn}: ${res.status} ${err}`);
+  }
+  return res.json();
+}
+
 // ─── Email templates ───────────────────────────────────────────────────────
 function subjectLine(lang) {
   return lang === "es"
@@ -190,6 +207,25 @@ async function main() {
     try {
       await sendEmail(profile.email, subject, html);
       await supabasePatch("lottery_winners", w.id, { notified: true });
+      // Idempotent +20 🥜 bonus for the winner (master plan §14 / L4)
+      try {
+        const result = await supabaseRpc("grant_giveaway_bonus", {
+          p_winner_id: w.id,
+          p_amount: 20,
+        });
+        const row = Array.isArray(result) ? result[0] : result;
+        const status = row?.status || "unknown";
+        if (status === "granted") {
+          console.log(`    🥜 +20 granted (balance: ${row?.new_balance ?? "?"})`);
+        } else if (status === "already_granted") {
+          console.log(`    🥜 bonus already granted (balance: ${row?.new_balance ?? "?"})`);
+        } else {
+          console.log(`    ⚠️  bonus status: ${status}`);
+        }
+      } catch (bonusErr) {
+        // Don't fail the whole notification if bonus RPC errors — just log.
+        console.error(`    ⚠️  Bonus RPC failed: ${bonusErr.message}`);
+      }
       console.log(`    ✅ Sent & marked notified`);
       sent++;
     } catch (err) {
