@@ -310,6 +310,22 @@ try {
             </a>
           </div>
 
+          <h4 class="subshop-title">📣 {text.peanutShopShoutout}</h4>
+          <p class="subshop-desc">{text.peanutShopShoutoutDesc}</p>
+          <div class="shop-grid">
+            <div class="shop-card shoutout-card" data-shop="shoutout" data-cost="30">
+              <span class="shop-icon">📣</span>
+              <span class="shop-name">{text.peanutShopShoutout}</span>
+              <span class="shop-price">30 🥜</span>
+              <select class="shoutout-review-select" style="display:none; width:100%; margin:0.4rem 0; padding:0.3rem; border-radius:6px; border:1px solid var(--border);">
+                <option value="">{lang === "es" ? "— Elige una review —" : "— Pick a review —"}</option>
+              </select>
+              <button class="btn btn-sm btn-buy" data-action="buy-shoutout">
+                {text.peanutBuy}
+              </button>
+            </div>
+          </div>
+
           {activeDrops.length > 0 && (
             <>
               <h4 class="subshop-title">⏳ {text.peanutShopDrops}</h4>
@@ -482,6 +498,15 @@ try {
         });
       });
       document.querySelectorAll(".home-pin-review-select").forEach(sel => {
+        sel.style.display = approved.length > 0 ? "block" : "none";
+        approved.forEach(r => {
+          const opt = document.createElement("option");
+          opt.value = r.id;
+          opt.textContent = (r.book_title || r.book_id) + " ★" + r.rating;
+          sel.appendChild(opt);
+        });
+      });
+      document.querySelectorAll(".shoutout-review-select").forEach(sel => {
         sel.style.display = approved.length > 0 ? "block" : "none";
         approved.forEach(r => {
           const opt = document.createElement("option");
@@ -749,6 +774,20 @@ try {
       });
     });
 
+    // Social shoutout button (E.1)
+    document.querySelectorAll("[data-action='buy-shoutout']").forEach(btn => {
+      const card = btn.closest(".shop-card");
+      const select = card.querySelector(".shoutout-review-select");
+      btn.addEventListener("click", async () => {
+        const reviewId = select.value;
+        if (!reviewId) {
+          showToast(lang === "es" ? "Selecciona una review." : "Select a review first.", "error");
+          return;
+        }
+        await purchaseAction("/api/buy-shoutout/", { review_id: reviewId });
+      });
+    });
+
     // Limited-time drops
     document.querySelectorAll("[data-action='buy-drop']").forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -846,6 +885,10 @@ try {
       }
       if (data.error === "home_pin_active_on_other") {
         showToast(text.homePinErrorActiveOther || (lang === "es" ? "Ya tienes otra review fijada en la home." : "You already have another review pinned on the home page."), "info");
+        return;
+      }
+      if (data.error === "active_shoutout_exists") {
+        showToast(text.shoutoutErrorActiveExists || (lang === "es" ? "Esta review ya tiene un shoutout en curso." : "This review already has a pending shoutout."), "info");
         return;
       }
       if (data.error === "not_review_owner") {

@@ -1,0 +1,238 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { getServiceClient, isAdmin } from "../../lib/supabase";
+import { validateOrigin } from "../../lib/csrf";
+import { sendToUserIfAllowed } from "../../lib/notifications";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const sc = getServiceClient();
+
+let flash = "";
+let flashErr = "";
+
+async function auditLog(action: string, targetId: string | null, details: Record<string, unknown> = {}) {
+  try {
+    await sc.from("admin_audit_log").insert({
+      admin_id: user!.email || user!.id,
+      action,
+      target_type: "shoutout",
+      target_id: targetId,
+      details: details as any,
+    });
+  } catch { /* non-blocking */ }
+}
+
+if (Astro.request.method === "POST") {
+  if (!validateOrigin(Astro.request, Astro.url)) {
+    flashErr = "⛔ Request blocked: invalid origin.";
+  } else {
+    const form = await Astro.request.formData();
+    const action = form.get("action")?.toString() || "";
+    const orderId = form.get("order_id")?.toString() || "";
+    const note = (form.get("admin_note")?.toString() || "").slice(0, 500);
+    const publishedUrl = (form.get("published_url")?.toString() || "").slice(0, 500);
+
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) {
+      flashErr = "Invalid order id.";
+    } else if (action === "approve") {
+      const { error } = await sc.from("shoutout_orders").update({
+        status: "approved",
+        admin_note: note || null,
+        reviewed_at: new Date().toISOString(),
+      }).eq("id", orderId).eq("status", "queued");
+      if (error) flashErr = error.message; else { flash = "Approved."; await auditLog("approve", orderId, { note }); }
+    } else if (action === "publish") {
+      if (!/^https?:\/\//i.test(publishedUrl)) {
+        flashErr = "Published URL must be a valid http(s) link.";
+      } else {
+        const { data: ord, error: uerr } = await sc.from("shoutout_orders").update({
+          status: "published",
+          published_url: publishedUrl,
+          admin_note: note || null,
+          published_at: new Date().toISOString(),
+        }).eq("id", orderId).in("status", ["queued", "approved"]).select("user_id, review_id").maybeSingle();
+        if (uerr || !ord) {
+          flashErr = uerr?.message || "Order not updatable (wrong status?).";
+        } else {
+          flash = "Published.";
+          await auditLog("publish", orderId, { url: publishedUrl });
+          // Notify user (respects E.4 community prefs)
+          try {
+            const { data: prof } = await sc.from("profiles")
+              .select("email, display_name, lang_pref")
+              .eq("id", ord.user_id).maybeSingle();
+            if (prof?.email) {
+              const isEs = prof.lang_pref === "es";
+              const subject = isEs
+                ? "¡Tu reseña está en nuestras redes! 📣"
+                : "Your review is live on our socials! 📣";
+              const html = isEs
+                ? `<p>¡Hola ${prof.display_name || ""}!</p>
+                   <p>Acabamos de publicar tu reseña destacada en redes sociales.</p>
+                   <p><a href="${publishedUrl}">Míralo aquí</a>.</p>
+                   <p>¡Gracias por apoyar a Little Chubby Press! 🥜</p>`
+                : `<p>Hi ${prof.display_name || ""}!</p>
+                   <p>We just featured your review on our social channels.</p>
+                   <p><a href="${publishedUrl}">See it here</a>.</p>
+                   <p>Thanks for supporting Little Chubby Press! 🥜</p>`;
+              await sendToUserIfAllowed(ord.user_id, "community", prof.email, subject, html);
+            }
+          } catch { /* non-blocking */ }
+        }
+      }
+    } else if (action === "reject") {
+      const { data: r } = await sc.rpc("refund_shoutout", { p_order_id: orderId, p_admin_note: note || null });
+      const res = (r || {}) as { ok?: boolean; error?: string; already_refunded?: boolean };
+      if (res.ok) { flash = res.already_refunded ? "Already refunded." : "Rejected + refunded."; await auditLog("reject_refund", orderId, { note }); }
+      else flashErr = res.error || "Refund failed.";
+    }
+  }
+}
+
+const { data: queued } = await sc.from("shoutout_orders")
+  .select("id, user_id, review_id, cost, status, admin_note, created_at")
+  .in("status", ["queued", "approved"])
+  .order("created_at", { ascending: true });
+
+const { data: recent } = await sc.from("shoutout_orders")
+  .select("id, user_id, review_id, cost, status, admin_note, published_url, published_at, created_at")
+  .in("status", ["published", "rejected", "refunded"])
+  .order("created_at", { ascending: false })
+  .limit(25);
+
+const allUserIds = [...new Set([...(queued || []), ...(recent || [])].map(o => o.user_id))];
+const allReviewIds = [...new Set([...(queued || []), ...(recent || [])].map(o => o.review_id))];
+
+const [{ data: profs }, { data: reviews }] = await Promise.all([
+  allUserIds.length
+    ? sc.from("profiles").select("id, display_name, email").in("id", allUserIds)
+    : Promise.resolve({ data: [] as any[] }),
+  allReviewIds.length
+    ? sc.from("book_reviews").select("id, book_id, rating, review_text, status").in("id", allReviewIds)
+    : Promise.resolve({ data: [] as any[] }),
+]);
+
+const profMap = new Map((profs || []).map(p => [p.id, p]));
+const reviewMap = new Map((reviews || []).map(r => [r.id, r]));
+
+function fmtDate(d: string | null | undefined): string {
+  if (!d) return "";
+  try { return new Date(d).toISOString().replace("T", " ").slice(0, 16); } catch { return d; }
+}
+---
+
+<AdminLayout title="Shoutouts" current="shoutouts">
+  <h1>📣 Social Shoutouts</h1>
+  <p style="color:var(--ink-soft); margin-top:0.2rem;">Users spent peanuts to get their reviews featured on Little Chubby's social channels.</p>
+
+  {flash && <div class="admin-flash" style="background:#d4edda; color:#155724; padding:0.6rem 1rem; border-radius:8px; margin:0.8rem 0;">{flash}</div>}
+  {flashErr && <div class="admin-flash" style="background:#f8d7da; color:#721c24; padding:0.6rem 1rem; border-radius:8px; margin:0.8rem 0;">{flashErr}</div>}
+
+  <section style="margin-top:1.5rem;">
+    <h2 style="margin-bottom:0.6rem;">Queue ({(queued || []).length})</h2>
+    {(queued || []).length === 0
+      ? <p style="color:var(--ink-soft);">No queued shoutouts.</p>
+      : <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>User</th>
+                <th>Review</th>
+                <th>Cost</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(queued || []).map(o => {
+                const p = profMap.get(o.user_id) as any;
+                const r = reviewMap.get(o.review_id) as any;
+                return (
+                  <tr>
+                    <td>{fmtDate(o.created_at)}</td>
+                    <td>{p?.display_name || "—"}<br/><small style="color:var(--ink-soft);">{p?.email || ""}</small></td>
+                    <td>
+                      <strong>{r?.book_id || "?"}</strong> ({r?.rating || "?"}★)<br/>
+                      <small style="color:var(--ink-soft);">{(r?.review_text || "").slice(0, 120)}…</small>
+                    </td>
+                    <td>{o.cost} 🥜</td>
+                    <td><span class="badge">{o.status}</span></td>
+                    <td>
+                      <details>
+                        <summary style="cursor:pointer; color:var(--brand-blue);">Actions</summary>
+                        <form method="POST" style="margin-top:0.5rem; display:grid; gap:0.4rem;">
+                          <input type="hidden" name="order_id" value={o.id} />
+                          <input type="text" name="admin_note" placeholder="Optional note (max 500 chars)" maxlength="500" style="width:100%; padding:0.3rem;" />
+                          <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                            {o.status === "queued" && (
+                              <button type="submit" name="action" value="approve" class="btn btn-sm">Approve</button>
+                            )}
+                            <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger" onclick="return confirm('Reject and refund this user?');">Reject + Refund</button>
+                          </div>
+                          <input type="url" name="published_url" placeholder="https://..." pattern="https?://.+" style="width:100%; padding:0.3rem;" />
+                          <button type="submit" name="action" value="publish" class="btn btn-sm btn-primary">Publish with URL</button>
+                        </form>
+                      </details>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+    }
+  </section>
+
+  <section style="margin-top:2rem;">
+    <h2 style="margin-bottom:0.6rem;">Recent history</h2>
+    {(recent || []).length === 0
+      ? <p style="color:var(--ink-soft);">No past shoutouts.</p>
+      : <div class="admin-table-wrapper">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>User</th>
+                <th>Review</th>
+                <th>Status</th>
+                <th>Link / Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(recent || []).map(o => {
+                const p = profMap.get(o.user_id) as any;
+                const r = reviewMap.get(o.review_id) as any;
+                return (
+                  <tr>
+                    <td>{fmtDate(o.published_at || o.created_at)}</td>
+                    <td>{p?.display_name || "—"}</td>
+                    <td>{r?.book_id || "?"}</td>
+                    <td><span class="badge">{o.status}</span></td>
+                    <td>
+                      {o.published_url ? <a href={o.published_url} target="_blank" rel="noopener">View</a> : null}
+                      {o.admin_note ? <div style="color:var(--ink-soft); font-size:0.85em;">{o.admin_note}</div> : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+    }
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-table-wrapper { overflow-x:auto; }
+  .admin-table { width:100%; border-collapse:collapse; }
+  .admin-table th, .admin-table td { padding:0.6rem 0.5rem; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  .admin-table th { background:var(--bg-alt); }
+  .badge { display:inline-block; padding:0.15rem 0.5rem; border-radius:999px; background:var(--bg-alt); font-size:0.8em; }
+</style>
