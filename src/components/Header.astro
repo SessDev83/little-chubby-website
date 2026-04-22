@@ -7,9 +7,10 @@ interface Props {
   lang: Lang;
   pathname: string;
   alternatePath?: string;
+  hideNav?: boolean;
 }
 
-const { lang, pathname, alternatePath } = Astro.props;
+const { lang, pathname, alternatePath, hideNav = false } = Astro.props;
 const text = ui[lang];
 const homeHref = `/${lang}/`;
 
@@ -112,17 +113,19 @@ const navItems = [
             </div>
           </div>
         </div>
-        <button
-          class="hamburger"
-          type="button"
-          aria-label={lang === "es" ? "Abrir menú" : "Open menu"}
-          aria-expanded="false"
-          aria-controls="mobile-nav"
-        >
-          <span class="hamburger-line"></span>
-          <span class="hamburger-line"></span>
-          <span class="hamburger-line"></span>
-        </button>
+        {!hideNav && (
+          <button
+            class="hamburger"
+            type="button"
+            aria-label={lang === "es" ? "Abrir menú" : "Open menu"}
+            aria-expanded="false"
+            aria-controls="mobile-nav"
+          >
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+          </button>
+        )}
       </div>
     </div>
 
@@ -159,25 +162,27 @@ const navItems = [
       </div>
     </div>
 
-    <nav class="header-nav" id="mobile-nav" aria-label="Primary">
-      <ul>
-        {
-          navItems.map((item) => {
-            const isHome = item.href === `/${lang}/`;
-            const isCurrent = isHome
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(item.href);
-            return (
-              <li>
-                <a href={item.href} aria-current={isCurrent ? "page" : undefined}>
-                  {item.label}
-                </a>
-              </li>
-            );
-          })
-        }
-      </ul>
-    </nav>
+    {!hideNav && (
+      <nav class="header-nav" id="mobile-nav" aria-label="Primary">
+        <ul>
+          {
+            navItems.map((item) => {
+              const isHome = item.href === `/${lang}/`;
+              const isCurrent = isHome
+                ? pathname === item.href
+                : pathname === item.href || pathname.startsWith(item.href);
+              return (
+                <li>
+                  <a href={item.href} aria-current={isCurrent ? "page" : undefined}>
+                    {item.label}
+                  </a>
+                </li>
+              );
+            })
+          }
+        </ul>
+      </nav>
+    )}
   </div>
 </header>
 

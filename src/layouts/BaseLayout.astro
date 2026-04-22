@@ -33,6 +33,7 @@ const { lang, title, description, pathname, alternatePath, breadcrumbs, articleS
 // Show lead magnet popup on public-facing pages only
 const hidePopupPaths = ["/admin", "/login", "/register", "/thanks", "/auth", "/logout", "/forgot-password"];
 const showLeadMagnet = !hidePopupPaths.some((p) => pathname.includes(p));
+const hideHeaderNav = ["/login", "/register", "/forgot-password"].some((p) => pathname.includes(p));
 // Block search engines from admin / auth pages and per-user dynamic pages
 const noIndexPaths = ["/admin", "/login", "/register", "/auth", "/logout", "/forgot-password"];
 const noIndexSubstrings = ["/books/early-access", "/premium-downloads"];
@@ -204,7 +205,7 @@ const articleJsonLd = articleSchema ? JSON.stringify({
   <body>
     <a class="skip-link" href="#contenido-principal">{skipLabel}</a>
     <ParentalConsentBanner lang={lang} />
-    <Header lang={lang} pathname={pathname} alternatePath={alternatePath} />
+    <Header lang={lang} pathname={pathname} alternatePath={alternatePath} hideNav={hideHeaderNav} />
     <main id="contenido-principal">
       <slot />
     </main>
