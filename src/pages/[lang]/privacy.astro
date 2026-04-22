@@ -10,6 +10,10 @@ export function getStaticPaths() {
 const lang = getLangFromParam(Astro.params.lang);
 const text = ui[lang];
 const pathname = `/${lang}/privacy/`;
+
+// Last updated date — keep in sync with docs/LEGAL_MAINTENANCE.md bi-weekly review.
+const lastUpdatedES = "22 de abril de 2026";
+const lastUpdatedEN = "April 22, 2026";
 ---
 
 <BaseLayout lang={lang} title={text.privacyMetaTitle} description={text.privacyMetaDescription} pathname={pathname}>
@@ -21,52 +25,326 @@ const pathname = `/${lang}/privacy/`;
         {
           lang === "es" ? (
             <div class="article-prose">
-              <p>Ultima actualizacion: 7 de abril de 2026.</p>
+              <p><strong>Ultima actualizacion:</strong> {lastUpdatedES}.</p>
               <p>
-                En {siteConfig.brandName} respetamos tu privacidad. Esta pagina resume como recopilamos, usamos y
-                protegemos tus datos.
+                En {siteConfig.brandName} nos tomamos tu privacidad muy en serio. Nuestra app esta pensada para familias,
+                asi que tratamos tus datos con el mismo cuidado que nos gustaria para los nuestros. Esta politica explica
+                <strong> que datos recopilamos, por que, con quien los compartimos y que derechos tienes</strong>. Si algo no
+                queda claro, escribenos a <a href={`mailto:${siteConfig.contactEmail}`}>{siteConfig.contactEmail}</a>.
               </p>
-              <h2>1. Datos que recopilamos</h2>
-              <p>Recopilamos la informacion que envias voluntariamente mediante formularios de contacto o newsletter.</p>
-              <h2>2. Uso de la informacion</h2>
-              <p>Usamos tus datos para responder mensajes, enviar novedades y mejorar la experiencia del sitio.</p>
-              <h2>3. Proveedores externos</h2>
+
+              <h2>1. Quienes somos</h2>
               <p>
-                Los formularios pueden procesarse mediante servicios de terceros (por ejemplo Formspree),
-                sujetos a sus propias politicas de privacidad.
+                {siteConfig.brandName} publica libros infantiles bilingues y ofrece una comunidad en
+                <a href="https://littlechubbypress.com"> littlechubbypress.com</a> con galeria de resenas, sorteos
+                mensuales gratuitos y material para colorear gratuito o premium. Somos los responsables del tratamiento
+                de tus datos.
               </p>
-              <h2>4. Conservacion y derechos</h2>
+
+              <h2>2. Datos que recopilamos</h2>
+              <p><strong>2.1. Datos que tu nos das directamente:</strong></p>
+              <ul>
+                <li><strong>Cuenta:</strong> email y contrasena al registrarte.</li>
+                <li><strong>Perfil (opcional):</strong> nombre visible, foto de avatar, idioma preferido, direccion postal y telefono (solo si eliges darlos, por ejemplo para enviar un premio fisico).</li>
+                <li><strong>Contenido que publicas:</strong> fotos de resenas de libros (portada e interior), texto de resena, puntuacion de 1-5 estrellas, mensajes que envias via contacto.</li>
+                <li><strong>Newsletter:</strong> email, nombre e idioma si te suscribes.</li>
+                <li><strong>Preferencias:</strong> idioma, si quieres aparecer o no en el ranking publico, consentimiento de cookies.</li>
+              </ul>
+              <p><strong>2.2. Datos que se generan automaticamente con tu uso:</strong></p>
+              <ul>
+                <li><strong>Actividad en la cuenta:</strong> racha diaria, cacahuetes ganados/gastados, tickets de sorteo, descargas de laminas, resenas enviadas, badges comprados, historial de transacciones internas.</li>
+                <li><strong>Analiticas anonimas:</strong> paginas visitadas, referente, parametros UTM, zona horaria aproximada y un hash diario para contar visitantes unicos <strong>sin identificarte personalmente</strong>.</li>
+                <li><strong>Seguridad:</strong> marcas de tiempo de inicio de sesion, limites de tasa, intentos fallidos y, cuando aplica, acciones de moderacion.</li>
+              </ul>
+              <p><strong>2.3. Datos que NO recopilamos:</strong></p>
+              <ul>
+                <li>No usamos Google Analytics, Meta Pixel ni herramientas similares de tracking individual.</li>
+                <li>No grabamos sesiones ni movimientos del mouse.</li>
+                <li>No vendemos ni cedemos tus datos con fines publicitarios.</li>
+                <li>No procesamos pagos con tarjeta (nuestra tienda usa solo moneda interna &quot;cacahuetes&quot;, que se gana gratis).</li>
+              </ul>
+
+              <h2>3. Para que usamos tus datos</h2>
+              <ul>
+                <li><strong>Prestar el servicio:</strong> crear tu cuenta, mostrar tu perfil, publicar tus resenas, enviarte tus cacahuetes y tickets, ejecutar el sorteo mensual.</li>
+                <li><strong>Enviarte emails esenciales:</strong> confirmacion de cuenta, confirmacion de newsletter (doble opt-in), aviso si ganas un sorteo, cambios importantes en terminos o privacidad.</li>
+                <li><strong>Enviarte emails opcionales:</strong> newsletter semanal, recordatorios de racha, resumenes del ranking. Siempre puedes darte de baja con un clic.</li>
+                <li><strong>Moderar y proteger la comunidad:</strong> revisar fotos de resenas antes de publicarlas, prevenir fraude en cacahuetes/tickets, aplicar limites anti-abuso.</li>
+                <li><strong>Mejorar el producto:</strong> analizar metricas agregadas (nunca individuales) para entender que contenido funciona.</li>
+                <li><strong>Cumplir obligaciones legales:</strong> responder requerimientos legales cuando la ley nos obligue.</li>
+              </ul>
+
+              <h2>4. Base legal del tratamiento (GDPR)</h2>
+              <ul>
+                <li><strong>Ejecucion de contrato:</strong> todo lo necesario para darte el servicio que pediste al registrarte.</li>
+                <li><strong>Consentimiento:</strong> newsletter y cookies no esenciales (puedes retirarlo cuando quieras).</li>
+                <li><strong>Interes legitimo:</strong> analiticas anonimas agregadas y seguridad de la plataforma.</li>
+                <li><strong>Obligacion legal:</strong> conservacion de ciertos registros si la ley lo exige.</li>
+              </ul>
+
+              <h2>5. Con quien compartimos datos</h2>
               <p>
-                Puedes solicitar acceso, correccion o eliminacion de tus datos escribiendo a {siteConfig.contactEmail}.
+                Trabajamos con proveedores que actuan como encargados de tratamiento bajo contrato. No les
+                permitimos usar tus datos para sus propios fines.
               </p>
-              <h2>5. Contacto</h2>
+              <ul>
+                <li><strong>Supabase</strong> (base de datos, autenticacion y almacenamiento de imagenes) — <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer">politica</a>.</li>
+                <li><strong>Vercel</strong> (hosting, y analiticas agregadas sin cookies de terceros) — <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">politica</a>.</li>
+                <li><strong>Resend</strong> (envio de emails transaccionales y newsletter) — <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">politica</a>.</li>
+                <li><strong>Google Fonts</strong> (fuentes tipograficas) — <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">politica</a>.</li>
+              </ul>
               <p>
-                Para cualquier consulta de privacidad, escribe a
+                Los enlaces a Amazon, Instagram, Facebook, Bluesky y Pinterest son solo referencias externas; si haces
+                clic sales de nuestra app y se aplica la politica de privacidad de ese servicio.
+              </p>
+
+              <h2>6. Cookies y almacenamiento local</h2>
+              <p>Usamos lo minimo indispensable:</p>
+              <ul>
+                <li><strong>Cookies esenciales</strong> de sesion (<code>sb-access-token</code>, <code>sb-refresh-token</code>, <code>sb-logged-in</code>) — necesarias para mantenerte conectado y proteger tu cuenta. Duran 7 dias y son httpOnly + Secure.</li>
+                <li><strong>LocalStorage</strong> en tu navegador: idioma, saldo de cacahuetes en cache, estado de banners y tu respuesta al aviso de cookies. Se queda en tu dispositivo, no se envia a servidores externos.</li>
+                <li><strong>Analiticas de Vercel</strong> sin cookies de terceros: no te identifican ni cruzan datos con otras webs.</li>
+                <li><strong>No usamos</strong> cookies publicitarias ni de tracking cross-site.</li>
+              </ul>
+
+              <h2>7. Contenido que publicas en la comunidad</h2>
+              <p>
+                Cuando subes una resena con fotos (portada e interior) y es aprobada por moderacion, <strong>se hace publica en
+                la galeria</strong> junto con tu nombre visible y los badges que hayas elegido mostrar. Esto es parte del servicio
+                comunitario. En cualquier momento puedes:
+              </p>
+              <ul>
+                <li>Editar o eliminar tu resena desde tu perfil.</li>
+                <li>Desactivar la opcion de aparecer en el ranking mensual.</li>
+                <li>Cambiar tu nombre visible o avatar.</li>
+              </ul>
+
+              <h2>8. Menores y familias</h2>
+              <p>
+                Nuestra app esta pensada para <strong>padres, madres y tutores</strong> que quieren compartir libros con sus peques.
+                <strong>No esta disenada para que menores de 13 anos creen cuentas por su cuenta.</strong> Si tienes menos de
+                13 anos, por favor pide a un adulto de tu familia que gestione la cuenta y la interaccion contigo.
+              </p>
+              <p>
+                No recopilamos conscientemente datos de menores de 13 sin consentimiento verificable de un padre o tutor.
+                Si descubrimos que una cuenta pertenece a un menor de 13 sin ese consentimiento, la eliminaremos.
+                Si crees que eso ha ocurrido, escribenos a <a href={`mailto:${siteConfig.contactEmail}`}>{siteConfig.contactEmail}</a>.
+              </p>
+
+              <h2>9. Tus derechos</h2>
+              <p>Donde la ley lo permita (incluido GDPR en la UE y leyes equivalentes en otros paises), puedes:</p>
+              <ul>
+                <li><strong>Acceder</strong> a los datos que tenemos sobre ti.</li>
+                <li><strong>Rectificar</strong> datos inexactos.</li>
+                <li><strong>Eliminar</strong> tu cuenta y datos asociados (&quot;derecho al olvido&quot;).</li>
+                <li><strong>Oponerte</strong> o <strong>limitar</strong> ciertos tratamientos.</li>
+                <li><strong>Portar</strong> tus datos a otro servicio (exportacion).</li>
+                <li><strong>Retirar el consentimiento</strong> para newsletter y cookies no esenciales en cualquier momento.</li>
+                <li><strong>Presentar una reclamacion</strong> ante la autoridad de proteccion de datos de tu pais.</li>
+              </ul>
+              <p>
+                Para ejercerlos escribenos a <a href={`mailto:${siteConfig.contactEmail}`}>{siteConfig.contactEmail}</a>.
+                Responderemos en un plazo maximo de 30 dias.
+              </p>
+
+              <h2>10. Cuanto tiempo conservamos tus datos</h2>
+              <ul>
+                <li><strong>Cuenta activa:</strong> mientras mantengas la cuenta abierta.</li>
+                <li><strong>Cuenta eliminada:</strong> borramos perfil, resenas, fotos y saldos internos en un plazo maximo de 30 dias. Mantenemos registros agregados anonimos para estadisticas y algunos registros tecnicos que la ley nos obligue conservar (por ejemplo, logs de seguridad) durante un maximo de 12 meses.</li>
+                <li><strong>Newsletter:</strong> hasta que te des de baja; despues conservamos solo una marca de unsubscribe para respetar tu decision.</li>
+                <li><strong>Analiticas:</strong> agregadas y anonimas, sin caducidad, porque no te identifican.</li>
+              </ul>
+
+              <h2>11. Seguridad</h2>
+              <p>
+                Usamos HTTPS en todo el sitio, cookies httpOnly + Secure, Row Level Security en la base de datos,
+                limites de tasa en las APIs y moderacion manual de contenido subido por usuarios. Ningun sistema
+                es 100% invulnerable, pero aplicamos buenas practicas de la industria y auditamos el panel de
+                administracion periodicamente.
+              </p>
+
+              <h2>12. Transferencias internacionales</h2>
+              <p>
+                Nuestros proveedores (Supabase, Vercel, Resend, Google Fonts) pueden procesar datos fuera del pais
+                donde te encuentres (por ejemplo, en Estados Unidos o la UE). Todos cuentan con garantias
+                legales reconocidas (Clausulas Contractuales Tipo de la UE u equivalentes).
+              </p>
+
+              <h2>13. Cambios en esta politica</h2>
+              <p>
+                Revisamos esta pagina <strong>cada 2 semanas</strong> durante la fase activa de desarrollo.
+                Cuando haya cambios importantes actualizaremos la fecha arriba y, si te afectan directamente,
+                te avisaremos por email o con un banner en la app.
+              </p>
+
+              <h2>14. Contacto</h2>
+              <p>
+                Cualquier duda, peticion o reclamacion sobre privacidad:
                 <a href={`mailto:${siteConfig.contactEmail}`}> {siteConfig.contactEmail}</a>.
+              </p>
+              <p style="margin-top:1.5rem; font-size:0.9rem; opacity:0.75;">
+                Resumen rapido en formato preguntas y respuestas: <a href={`/${lang}/faq/`}>FAQ</a>.
               </p>
             </div>
           ) : (
             <div class="article-prose">
-              <p>Last updated: April 7, 2026.</p>
+              <p><strong>Last updated:</strong> {lastUpdatedEN}.</p>
               <p>
-                At {siteConfig.brandName}, we respect your privacy. This page summarizes how we collect, use, and
-                protect your information.
+                At {siteConfig.brandName} we take your privacy seriously. Our app is built for families, so we treat
+                your data with the same care we would want for ours. This policy explains
+                <strong> what data we collect, why, who we share it with and what rights you have</strong>. If anything is
+                unclear, email us at <a href={`mailto:${siteConfig.contactEmail}`}>{siteConfig.contactEmail}</a>.
               </p>
-              <h2>1. Data we collect</h2>
-              <p>We collect data that you voluntarily submit through contact and newsletter forms.</p>
-              <h2>2. How we use data</h2>
-              <p>We use your information to reply to messages, send updates, and improve the website experience.</p>
-              <h2>3. Third-party providers</h2>
+
+              <h2>1. Who we are</h2>
               <p>
-                Forms may be processed through third-party services (for example Formspree), each with
-                their own privacy policies.
+                {siteConfig.brandName} publishes bilingual children's books and runs a community at
+                <a href="https://littlechubbypress.com"> littlechubbypress.com</a> with a review gallery, free monthly
+                giveaways and free/premium coloring material. We are the data controller of your information.
               </p>
-              <h2>4. Retention and rights</h2>
-              <p>You can request data access, correction, or deletion by emailing {siteConfig.contactEmail}.</p>
-              <h2>5. Contact</h2>
+
+              <h2>2. Data we collect</h2>
+              <p><strong>2.1. Data you give us directly:</strong></p>
+              <ul>
+                <li><strong>Account:</strong> email and password when you register.</li>
+                <li><strong>Profile (optional):</strong> display name, avatar, preferred language, postal address and phone (only if you choose to provide them, for example to ship a physical prize).</li>
+                <li><strong>Content you post:</strong> book review photos (cover and interior), review text, 1–5 star rating, messages you send through the contact form.</li>
+                <li><strong>Newsletter:</strong> email, name and language if you subscribe.</li>
+                <li><strong>Preferences:</strong> language, whether to appear on the public leaderboard, cookie consent.</li>
+              </ul>
+              <p><strong>2.2. Data generated automatically from your use:</strong></p>
+              <ul>
+                <li><strong>Account activity:</strong> daily streak, peanuts earned/spent, giveaway tickets, artwork downloads, reviews submitted, badges purchased, internal transaction history.</li>
+                <li><strong>Anonymous analytics:</strong> pages visited, referrer, UTM parameters, approximate timezone, and a daily hash to count unique visitors <strong>without identifying you personally</strong>.</li>
+                <li><strong>Security:</strong> login timestamps, rate limits, failed attempts and, where relevant, moderation actions.</li>
+              </ul>
+              <p><strong>2.3. Data we do NOT collect:</strong></p>
+              <ul>
+                <li>No Google Analytics, Meta Pixel, or similar individual tracking tools.</li>
+                <li>No session recordings or mouse tracking.</li>
+                <li>We do not sell or rent your data for advertising.</li>
+                <li>No card payments (our shop uses only in-app "peanuts" currency, which is earned for free).</li>
+              </ul>
+
+              <h2>3. How we use your data</h2>
+              <ul>
+                <li><strong>To provide the service:</strong> create your account, display your profile, publish your reviews, credit your peanuts and tickets, run the monthly giveaway.</li>
+                <li><strong>To send essential emails:</strong> account confirmation, newsletter double opt-in, giveaway winner notice, material changes to these terms or privacy.</li>
+                <li><strong>To send optional emails:</strong> weekly newsletter, streak reminders, leaderboard recaps. You can unsubscribe with one click at any time.</li>
+                <li><strong>To moderate and protect the community:</strong> review photos before public display, prevent peanut/ticket fraud, enforce anti-abuse rate limits.</li>
+                <li><strong>To improve the product:</strong> analyze aggregate metrics (never individual) to understand what content works.</li>
+                <li><strong>To comply with legal obligations</strong> when required by law.</li>
+              </ul>
+
+              <h2>4. Legal basis for processing (GDPR)</h2>
+              <ul>
+                <li><strong>Contract performance:</strong> everything needed to deliver the service you signed up for.</li>
+                <li><strong>Consent:</strong> newsletter and non-essential cookies (you can withdraw it anytime).</li>
+                <li><strong>Legitimate interest:</strong> aggregated anonymous analytics and platform security.</li>
+                <li><strong>Legal obligation:</strong> retention of certain records when the law requires it.</li>
+              </ul>
+
+              <h2>5. Who we share data with</h2>
               <p>
-                For privacy requests, contact
+                We work with providers acting as data processors under contract. They are not allowed to use your
+                data for their own purposes.
+              </p>
+              <ul>
+                <li><strong>Supabase</strong> (database, authentication and image storage) — <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer">policy</a>.</li>
+                <li><strong>Vercel</strong> (hosting and cookieless aggregate analytics) — <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">policy</a>.</li>
+                <li><strong>Resend</strong> (transactional emails and newsletter delivery) — <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer">policy</a>.</li>
+                <li><strong>Google Fonts</strong> (typography) — <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">policy</a>.</li>
+              </ul>
+              <p>
+                Links to Amazon, Instagram, Facebook, Bluesky and Pinterest are external references; clicking them
+                takes you off our app and the privacy policy of that service applies.
+              </p>
+
+              <h2>6. Cookies and local storage</h2>
+              <p>We use only the minimum necessary:</p>
+              <ul>
+                <li><strong>Essential session cookies</strong> (<code>sb-access-token</code>, <code>sb-refresh-token</code>, <code>sb-logged-in</code>) — required to keep you logged in and protect your account. They last 7 days and are httpOnly + Secure.</li>
+                <li><strong>LocalStorage</strong> in your browser: language, cached peanut balance, banner state, and your cookie consent answer. It stays on your device, we do not send it to external servers.</li>
+                <li><strong>Vercel analytics</strong> without third-party cookies: no personal identification, no cross-site data matching.</li>
+                <li><strong>We do NOT use</strong> advertising cookies or cross-site tracking.</li>
+              </ul>
+
+              <h2>7. Content you post to the community</h2>
+              <p>
+                When you submit a review with photos (cover and interior) and it is approved by moderation,
+                <strong> it becomes public in the gallery</strong> together with your display name and any badges you chose to
+                show. That is part of the community feature. You can at any time:
+              </p>
+              <ul>
+                <li>Edit or delete your review from your profile.</li>
+                <li>Turn off the option to appear on the monthly leaderboard.</li>
+                <li>Change your display name or avatar.</li>
+              </ul>
+
+              <h2>8. Children and families</h2>
+              <p>
+                Our app is built for <strong>parents and guardians</strong> who want to share books with their little ones.
+                <strong> It is not designed for children under 13 to create accounts on their own.</strong> If you are under
+                13, please ask a trusted adult in your family to manage the account and any interaction with you.
+              </p>
+              <p>
+                We do not knowingly collect data from children under 13 without verifiable parental consent.
+                If we discover that an account belongs to a child under 13 without that consent, we will delete it.
+                If you believe this has happened, email us at <a href={`mailto:${siteConfig.contactEmail}`}>{siteConfig.contactEmail}</a>.
+              </p>
+
+              <h2>9. Your rights</h2>
+              <p>Where the law allows (including GDPR in the EU and equivalent laws in other countries), you can:</p>
+              <ul>
+                <li><strong>Access</strong> the data we hold about you.</li>
+                <li><strong>Correct</strong> inaccurate data.</li>
+                <li><strong>Delete</strong> your account and associated data ("right to be forgotten").</li>
+                <li><strong>Object</strong> to or <strong>restrict</strong> certain processing.</li>
+                <li><strong>Port</strong> your data to another service (export).</li>
+                <li><strong>Withdraw consent</strong> for newsletter and non-essential cookies at any time.</li>
+                <li><strong>Lodge a complaint</strong> with the data protection authority in your country.</li>
+              </ul>
+              <p>
+                To exercise them, email <a href={`mailto:${siteConfig.contactEmail}`}>{siteConfig.contactEmail}</a>.
+                We respond within 30 days at most.
+              </p>
+
+              <h2>10. How long we keep your data</h2>
+              <ul>
+                <li><strong>Active account:</strong> as long as you keep the account open.</li>
+                <li><strong>Deleted account:</strong> profile, reviews, photos and internal balances are erased within 30 days at most. We keep aggregated anonymous records for statistics and a small set of technical logs (e.g. security logs) for up to 12 months when required by law.</li>
+                <li><strong>Newsletter:</strong> until you unsubscribe; afterwards we keep only an unsubscribe flag to respect your decision.</li>
+                <li><strong>Analytics:</strong> aggregated and anonymous, no expiration, because it does not identify you.</li>
+              </ul>
+
+              <h2>11. Security</h2>
+              <p>
+                We use HTTPS site-wide, httpOnly + Secure cookies, Row Level Security in the database, API rate
+                limiting and manual moderation of user-uploaded content. No system is 100% secure, but we follow
+                industry best practices and audit the admin panel periodically.
+              </p>
+
+              <h2>12. International transfers</h2>
+              <p>
+                Our providers (Supabase, Vercel, Resend, Google Fonts) may process data outside the country where
+                you are located (e.g. in the United States or the EU). All of them provide recognized legal
+                safeguards (EU Standard Contractual Clauses or equivalent).
+              </p>
+
+              <h2>13. Changes to this policy</h2>
+              <p>
+                We review this page <strong>every 2 weeks</strong> during the active development phase. When there are
+                material changes we update the date at the top and, if they affect you directly, we notify you by
+                email or with an in-app banner.
+              </p>
+
+              <h2>14. Contact</h2>
+              <p>
+                Any question, request or privacy complaint:
                 <a href={`mailto:${siteConfig.contactEmail}`}> {siteConfig.contactEmail}</a>.
+              </p>
+              <p style="margin-top:1.5rem; font-size:0.9rem; opacity:0.75;">
+                Quick Q&A summary: <a href={`/${lang}/faq/`}>FAQ</a>.
               </p>
             </div>
           )

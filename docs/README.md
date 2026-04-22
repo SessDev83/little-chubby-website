@@ -23,6 +23,9 @@
 - [ADMIN_SECURITY_AUDIT.md](./ADMIN_SECURITY_AUDIT.md)
 - [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md)
 
+### ⚖️ Legal & user-facing explainers (bi-weekly review)
+- [LEGAL_MAINTENANCE.md](./LEGAL_MAINTENANCE.md) — Bi-weekly checklist for privacy policy + FAQ + contact. Tracks gaps (age gate, self-serve deletion, ToS) against the master plan.
+
 ### 📎 Also at repo root (GitHub convention)
 - `README.md` — public-facing repo readme
 - `SECURITY.md` — GitHub security policy

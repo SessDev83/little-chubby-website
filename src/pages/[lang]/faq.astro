@@ -1,0 +1,494 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { siteConfig } from "../../data/site";
+import { languages, getLangFromParam, ui } from "../../data/i18n";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/faq/`;
+
+// Last updated — kept in sync with privacy + docs/LEGAL_MAINTENANCE.md (bi-weekly review).
+const lastUpdatedES = "22 de abril de 2026";
+const lastUpdatedEN = "April 22, 2026";
+
+// ---------------------------------------------------------------------------
+// FAQ content — ALWAYS ALPHABETICAL A→Z by question, in both languages.
+// When adding a new Q&A, insert it in alphabetical order. Each item is
+// rendered as a native <details> accordion for zero-JS, fully accessible UX.
+// Keep ES and EN arrays in strict parity (same number of entries, same order).
+// ---------------------------------------------------------------------------
+
+type QA = { q: string; a: string };
+
+const faqES: QA[] = [
+  {
+    q: "¿Aparece mi resena automaticamente en la galeria publica?",
+    a: "Solo despues de que un humano la revise y la apruebe. Moderamos para proteger a la comunidad (sin datos personales visibles, sin contenido inadecuado). Puedes editarla o borrarla cuando quieras desde tu perfil.",
+  },
+  {
+    q: "¿Borran mi cuenta si yo lo pido?",
+    a: "Si. Escribenos a " + siteConfig.contactEmail + " desde el email con el que te registraste. Borramos tu perfil, tus resenas, tus fotos y tus saldos internos en un maximo de 30 dias. Conservamos solo datos anonimos agregados y algunos logs tecnicos obligatorios por ley.",
+  },
+  {
+    q: "¿Como descargo una lamina para colorear?",
+    a: "En la pagina 'Coloring Corner'. Cada descarga cuesta 1 cacahuete 🥜 (que se gana gratis compartiendo, con tu racha diaria o dejando resenas aprobadas).",
+  },
+  {
+    q: "¿Como funciona el sorteo mensual?",
+    a: "Cada mes regalamos 1 libro fisico gratis. Cada resena aprobada te da 5 tickets 🎟️ y puedes comprar mas con cacahuetes (3 🥜 = 1 ticket). El sorteo se ejecuta automaticamente el dia 1 de cada mes y notificamos al ganador por email.",
+  },
+  {
+    q: "¿Como funcionan los cacahuetes 🥜?",
+    a: "Son nuestra moneda interna. Se ganan GRATIS (compartiendo, con tu racha diaria, con resenas) y se gastan en cosas cosmeticas o utiles (badges, boosts, descargas, tickets). Nunca cuestan dinero real. No se pueden comprar, no se pueden canjear por dinero.",
+  },
+  {
+    q: "¿Como funciona la racha diaria?",
+    a: "Si entras a la app al menos una vez al dia, tu racha sube. Por mantenerla ganas +2 cacahuetes al dia. Si fallas un dia, la racha vuelve a 1 (salvo que tengas un freeze disponible).",
+  },
+  {
+    q: "¿Como me doy de baja del newsletter?",
+    a: "Cada email tiene un enlace 'Unsubscribe / Darme de baja' al final. Un solo clic basta. No pedimos motivos ni confirmaciones extra.",
+  },
+  {
+    q: "¿Como subo una resena de un libro?",
+    a: "Ve a 'Reviews' desde el menu, elige el libro, sube una foto de la portada + al menos 1 foto del interior, pon tu puntuacion (1-5 estrellas) y, si quieres, un comentario. Despues pasa por moderacion.",
+  },
+  {
+    q: "¿Cuanto tardan en aprobar mi resena?",
+    a: "Intentamos moderarla en menos de 48 horas. Cuando se aprueba recibes un email y tus 5 tickets se suman automaticamente a tu cuenta.",
+  },
+  {
+    q: "¿En que idiomas esta la app?",
+    a: "Espanol e Ingles, con paridad total: cada pagina, email y notificacion existe en ambos. Tenemos en el plan anadir Italiano, Portugues y Frances en las siguientes fases.",
+  },
+  {
+    q: "¿Es gratis usar la app?",
+    a: "Si. Registrarse, dejar resenas, descargar laminas gratis, participar en el sorteo mensual y ganar cacahuetes es 100% gratis. Los libros fisicos se compran en Amazon; ahi sales de nuestra app.",
+  },
+  {
+    q: "¿Funciona la app sin conexion (offline)?",
+    a: "Hoy no. La app es 100% web. Los siguientes pasos del plan incluyen convertirla en PWA (instalable en movil) y mas adelante en app nativa.",
+  },
+  {
+    q: "¿Hay un minimo de edad para crear una cuenta?",
+    a: "La app esta pensada para padres, madres y tutores. Menores de 13 anos NO deben crear cuenta por su cuenta: debe gestionarla un adulto de la familia. Si detectamos una cuenta infantil sin consentimiento parental la eliminamos.",
+  },
+  {
+    q: "¿Los premios del sorteo son reales?",
+    a: "Si. Enviamos un libro fisico al ganador de cada mes. Por eso, si tu direccion postal aparece en el perfil, solo la pedimos en ese momento para hacer el envio. Nunca la usamos para publicidad.",
+  },
+  {
+    q: "¿Me pueden pagar por dejar una resena?",
+    a: "No. Las recompensas siempre son cacahuetes 🥜 y tickets 🎟️ del sistema interno. Nunca dinero real, nunca pago directo, nunca promesas externas.",
+  },
+  {
+    q: "¿Mis datos viajan fuera de mi pais?",
+    a: "Nuestros proveedores (Supabase, Vercel, Resend, Google Fonts) pueden procesar datos en Estados Unidos o la Union Europea. Todos cumplen con las clausulas contractuales tipo u equivalentes, garantizando proteccion legal aunque el servidor este en otra jurisdiccion.",
+  },
+  {
+    q: "¿Pagan dinero real por cacahuetes?",
+    a: "No. Los cacahuetes son solo una moneda interna simbolica. No se compran, no se venden, no tienen valor monetario fuera de la app.",
+  },
+  {
+    q: "¿Puedo cambiar mi nombre visible o avatar cuando quiera?",
+    a: "Si. Desde 'Profile → Settings' puedes cambiar nombre, avatar, idioma y direccion postal las veces que necesites.",
+  },
+  {
+    q: "¿Puedo participar en el sorteo sin gastar dinero?",
+    a: "Si, al 100%. Todas las formas de ganar tickets son gratuitas: dejar resenas aprobadas (+5), suscribirte al newsletter (+1), mantener racha y canjear cacahuetes (3 🥜 = 1 ticket).",
+  },
+  {
+    q: "¿Puedo regalar tickets a otra persona?",
+    a: "Si. Desde la pagina 'Lottery' puedes regalar tickets a otro usuario registrado. Si el destinatario no los reclama en 14 dias se devuelven automaticamente a tu cuenta.",
+  },
+  {
+    q: "¿Puedo ver que datos tenes sobre mi?",
+    a: "Si. Escribenos a " + siteConfig.contactEmail + " y te enviamos una exportacion de tus datos en un plazo maximo de 30 dias. Es un derecho reconocido por GDPR y leyes equivalentes.",
+  },
+  {
+    q: "¿Que cookies usa la app?",
+    a: "Solo esenciales: 3 cookies de sesion de Supabase (httpOnly + Secure, duran 7 dias) para mantenerte conectado. NO usamos cookies publicitarias, ni Google Analytics, ni Meta Pixel, ni trackers de terceros.",
+  },
+  {
+    q: "¿Que es el badge destacado?",
+    a: "Un badge que tu eliges mostrar publicamente junto a tu nombre en la galeria. Solo puedes destacar uno que ya poseas. Se cambia desde 'Profile → Adventure → Badge destacado'.",
+  },
+  {
+    q: "¿Que es el ranking mensual?",
+    a: "Los 5 usuarios que mas cacahuetes ganan en el mes aparecen en la pagina 'Peanuts'. Es OPT-IN: por defecto NO apareces. Desde 'Profile → Settings → Mostrar en rankings' lo activas o desactivas cuando quieras.",
+  },
+  {
+    q: "¿Que hago si un email o una resena parece spam o abuso?",
+    a: "Escribenos a " + siteConfig.contactEmail + " con una captura. Revisamos en menos de 48 horas. Tenemos moderacion humana + limites automaticos anti-abuso (rate limiting) en todas las acciones importantes.",
+  },
+  {
+    q: "¿Que pasa si olvido mi contrasena?",
+    a: "En la pagina de login hay un enlace 'Olvide mi contrasena'. Te enviamos un email con un enlace seguro para crear una nueva. Tambien puedes entrar con 'magic link' (un enlace de un solo uso que llega a tu email).",
+  },
+  {
+    q: "¿Que pasa si rechazan mi resena?",
+    a: "Te llega un email explicando el motivo (foto borrosa, sin interior visible, contenido inapropiado, etc.). Puedes editarla y volver a enviarla. No pierdes cacahuetes por reintentarlo.",
+  },
+  {
+    q: "¿Quien ve mi email?",
+    a: "Solo nosotros (el equipo interno) y nuestros proveedores tecnicos (Supabase para autenticarte, Resend para enviarte emails). Nunca se muestra publicamente en la galeria ni en tu perfil publico.",
+  },
+  {
+    q: "¿Se me cobra automaticamente algo?",
+    a: "Nunca. No guardamos tarjetas ni procesamos pagos. La unica transaccion externa posible es comprar un libro en Amazon, y eso ocurre fuera de nuestra app, dentro de la web de Amazon.",
+  },
+  {
+    q: "¿Venden o ceden mis datos a terceros?",
+    a: "No. Nunca vendemos datos y no los cedemos con fines publicitarios. Solo los comparten con nuestros proveedores estrictamente necesarios (base de datos, hosting, emails), bajo contrato y solo para prestar el servicio.",
+  },
+];
+
+const faqEN: QA[] = [
+  {
+    q: "Are giveaway prizes real?",
+    a: "Yes. Every month we ship one physical book to the winner. That is why, if you put your postal address in your profile, we only use it at that moment to send the prize. We never use it for advertising.",
+  },
+  {
+    q: "Are you going to charge me automatically?",
+    a: "Never. We do not store cards and we do not process payments. The only external transaction possible is buying a book on Amazon, which happens off our app, inside Amazon.",
+  },
+  {
+    q: "Can I change my display name or avatar whenever I want?",
+    a: "Yes. In 'Profile → Settings' you can change name, avatar, language and postal address as many times as you need.",
+  },
+  {
+    q: "Can I enter the giveaway without spending money?",
+    a: "Yes, 100%. All ways to earn tickets are free: approved reviews (+5), newsletter subscription (+1), daily streak, and redeeming peanuts (3 🥜 = 1 ticket).",
+  },
+  {
+    q: "Can I gift tickets to someone else?",
+    a: "Yes. From the 'Lottery' page you can gift tickets to another registered user. If the recipient does not claim them in 14 days, they bounce back to your account automatically.",
+  },
+  {
+    q: "Can I see what data you have about me?",
+    a: "Yes. Email us at " + siteConfig.contactEmail + " and we send you an export of your data within 30 days. It is a right recognized by GDPR and equivalent laws.",
+  },
+  {
+    q: "Can I use the app offline?",
+    a: "Not today. The app is 100% web. The next steps in our plan include turning it into a PWA (installable on mobile) and later a native app.",
+  },
+  {
+    q: "Do you delete my account if I ask?",
+    a: "Yes. Email us at " + siteConfig.contactEmail + " from the address you signed up with. We erase your profile, reviews, photos and internal balances within 30 days. We only keep aggregated anonymous data and a few technical logs we are legally required to retain.",
+  },
+  {
+    q: "Do you pay real money for peanuts?",
+    a: "No. Peanuts are a symbolic internal currency. They cannot be bought, sold or redeemed for money outside the app.",
+  },
+  {
+    q: "Do you sell or share my data with third parties?",
+    a: "No. We never sell data and we do not share it for advertising. We only share it with strictly necessary providers (database, hosting, emails), under contract and solely to deliver the service.",
+  },
+  {
+    q: "How do I download a coloring sheet?",
+    a: "On the 'Coloring Corner' page. Each download costs 1 peanut 🥜 (earned for free by sharing, by your daily streak, or by approved reviews).",
+  },
+  {
+    q: "How do I submit a book review?",
+    a: "Go to 'Reviews' in the menu, pick the book, upload a cover photo + at least 1 interior photo, set your rating (1–5 stars) and, optionally, a comment. Then it goes through moderation.",
+  },
+  {
+    q: "How do I unsubscribe from the newsletter?",
+    a: "Every email has an 'Unsubscribe' link at the bottom. One click is enough. We do not ask for reasons or extra confirmations.",
+  },
+  {
+    q: "How does the daily streak work?",
+    a: "If you visit the app at least once a day, your streak goes up. Keeping it earns you +2 peanuts per day. If you miss a day, it resets to 1 (unless you have a streak freeze available).",
+  },
+  {
+    q: "How does the monthly giveaway work?",
+    a: "Every month we give away 1 free physical book. Every approved review earns you 5 tickets 🎟️, and you can buy more with peanuts (3 🥜 = 1 ticket). The draw runs automatically on day 1 of each month and we notify the winner by email.",
+  },
+  {
+    q: "How do peanuts 🥜 work?",
+    a: "They are our in-app currency. Earned FOR FREE (sharing, daily streak, reviews) and spent on cosmetic or useful things (badges, boosts, downloads, tickets). They never cost real money. They cannot be bought and cannot be redeemed for cash.",
+  },
+  {
+    q: "How long until my review is approved?",
+    a: "We aim to moderate in under 48 hours. When it is approved you receive an email and your 5 tickets are automatically credited to your account.",
+  },
+  {
+    q: "Is there an age limit to create an account?",
+    a: "The app is built for parents and guardians. Children under 13 MUST NOT create an account on their own: a family adult must manage it. If we find a child account without parental consent, we delete it.",
+  },
+  {
+    q: "Is the app free?",
+    a: "Yes. Registering, posting reviews, downloading free artwork, entering the monthly giveaway and earning peanuts is 100% free. Physical books are bought on Amazon; that happens off our app.",
+  },
+  {
+    q: "My review was rejected — what now?",
+    a: "You get an email explaining why (blurry photo, no interior visible, inappropriate content, etc.). You can edit and resubmit. No peanuts are lost for retrying.",
+  },
+  {
+    q: "My data — does it travel outside my country?",
+    a: "Our providers (Supabase, Vercel, Resend, Google Fonts) may process data in the United States or the European Union. All of them comply with Standard Contractual Clauses or equivalent, ensuring legal protection even when the server is in another jurisdiction.",
+  },
+  {
+    q: "What cookies does the app use?",
+    a: "Only essential ones: 3 Supabase session cookies (httpOnly + Secure, 7-day lifetime) to keep you logged in. We do NOT use advertising cookies, Google Analytics, Meta Pixel or any third-party trackers.",
+  },
+  {
+    q: "What do I do if an email or a review looks like spam or abuse?",
+    a: "Email us at " + siteConfig.contactEmail + " with a screenshot. We review in under 48 hours. We run human moderation + automatic anti-abuse limits (rate limiting) on all important actions.",
+  },
+  {
+    q: "What happens if I forget my password?",
+    a: "On the login page there is a 'Forgot password' link. We send you an email with a secure link to create a new one. You can also sign in with a 'magic link' (a single-use link delivered to your email).",
+  },
+  {
+    q: "What is the featured badge?",
+    a: "A badge you choose to display publicly next to your name in the gallery. You can only feature one you already own. Change it from 'Profile → Adventure → Featured badge'.",
+  },
+  {
+    q: "What is the monthly leaderboard?",
+    a: "The top 5 peanut-earners of the month appear on the 'Peanuts' page. It is OPT-IN: by default you do NOT appear. From 'Profile → Settings → Show me on leaderboards' you toggle it anytime.",
+  },
+  {
+    q: "What languages is the app in?",
+    a: "Spanish and English, with full parity: every page, email and notification exists in both. Italian, Portuguese and French are planned for upcoming phases.",
+  },
+  {
+    q: "Who sees my email?",
+    a: "Only us (the internal team) and our technical providers (Supabase for authentication, Resend for sending emails). It is never shown publicly in the gallery or on your public profile.",
+  },
+  {
+    q: "Will my review show up in the public gallery automatically?",
+    a: "Only after a human reviewer approves it. We moderate to protect the community (no personal data visible, no inappropriate content). You can edit or delete it anytime from your profile.",
+  },
+  {
+    q: "Will you pay me for leaving a review?",
+    a: "No. Rewards are always peanuts 🥜 and tickets 🎟️ from the internal system. Never real money, never direct payment, never external promises.",
+  },
+];
+
+// Group by first letter for alphabetical sticky index (A–Z rail).
+// Articles ("¿Como" → C, "How" → H) are what drives sort here; accents are
+// normalized out so Spanish sorts naturally.
+function firstLetter(s: string): string {
+  const m = s.replace(/^[¿¡\s"'"]+/, "").toUpperCase();
+  const first = m.charAt(0);
+  const normalized = first.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return /[A-Z]/.test(normalized) ? normalized : "#";
+}
+
+const source = lang === "es" ? faqES : faqEN;
+const sorted = [...source].sort((a, b) => a.q.localeCompare(b.q, lang, { sensitivity: "base" }));
+
+const groups: Record<string, QA[]> = {};
+for (const item of sorted) {
+  const l = firstLetter(item.q);
+  if (!groups[l]) groups[l] = [];
+  groups[l].push(item);
+}
+const letters = Object.keys(groups).sort();
+
+const pageTitle = lang === "es" ? "Preguntas frecuentes (FAQ)" : "Frequently Asked Questions (FAQ)";
+const pageDescription = lang === "es"
+  ? "Respuestas claras sobre como funciona Little Chubby Press: cuenta, privacidad, cacahuetes, sorteo mensual y comunidad. Ordenado de la A a la Z."
+  : "Clear answers about how Little Chubby Press works: account, privacy, peanuts, monthly giveaway and community. Sorted A to Z.";
+
+const introES = "Todas las respuestas en orden alfabetico de la A a la Z. Haz clic en cada pregunta para desplegar su respuesta. Revisamos esta pagina cada 2 semanas mientras la app esta en desarrollo activo.";
+const introEN = "All answers in alphabetical order from A to Z. Click any question to expand the answer. We review this page every 2 weeks while the app is in active development.";
+---
+
+<BaseLayout lang={lang} title={pageTitle} description={pageDescription} pathname={pathname}>
+  <section class="page-section">
+    <div class="container faq-container">
+      <article class="surface-card faq-card">
+        <header class="faq-header">
+          <h1>{pageTitle}</h1>
+          <p class="faq-updated">
+            <strong>{lang === "es" ? "Ultima actualizacion" : "Last updated"}:</strong>{" "}
+            {lang === "es" ? lastUpdatedES : lastUpdatedEN}
+          </p>
+          <p class="faq-intro">{lang === "es" ? introES : introEN}</p>
+        </header>
+
+        <nav class="faq-az-rail" aria-label={lang === "es" ? "Indice A a la Z" : "A to Z index"}>
+          {letters.map((l) => (
+            <a href={`#faq-letter-${l}`} class="faq-az-letter">{l}</a>
+          ))}
+        </nav>
+
+        <div class="faq-groups">
+          {letters.map((l) => (
+            <section class="faq-group" id={`faq-letter-${l}`}>
+              <h2 class="faq-letter-heading">{l}</h2>
+              {groups[l].map((item, idx) => (
+                <details class="faq-item">
+                  <summary class="faq-q">
+                    <span class="faq-q-text">{item.q}</span>
+                    <span class="faq-chev" aria-hidden="true">+</span>
+                  </summary>
+                  <div class="faq-a">
+                    <p>{item.a}</p>
+                  </div>
+                </details>
+              ))}
+            </section>
+          ))}
+        </div>
+
+        <footer class="faq-footer">
+          <p>
+            {lang === "es"
+              ? "Si no encuentras tu respuesta aqui, escribenos: "
+              : "If you cannot find your answer here, email us: "}
+            <a href={`mailto:${siteConfig.contactEmail}`}>{siteConfig.contactEmail}</a>
+          </p>
+          <p class="faq-footer-links">
+            <a href={`/${lang}/privacy/`}>{lang === "es" ? "Politica de privacidad" : "Privacy policy"}</a>
+            <span aria-hidden="true"> · </span>
+            <a href={`/${lang}/contact/`}>{lang === "es" ? "Contacto" : "Contact"}</a>
+          </p>
+        </footer>
+      </article>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .faq-container { max-width: 880px; }
+  .faq-card {
+    padding: clamp(1rem, 2.8vw, 2rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .faq-header h1 { margin: 0 0 0.35rem; }
+  .faq-updated { margin: 0 0 0.5rem; font-size: 0.92rem; opacity: 0.8; }
+  .faq-intro { margin: 0; opacity: 0.9; }
+
+  /* A → Z sticky rail */
+  .faq-az-rail {
+    position: sticky;
+    top: calc(var(--header-h, 64px) + 0.5rem);
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.35rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--surface-soft, rgba(255, 255, 255, 0.85));
+    backdrop-filter: saturate(140%) blur(6px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 999px;
+    justify-content: center;
+  }
+  .faq-az-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-decoration: none;
+    color: var(--brand-blue, #2d6dc7);
+    background: rgba(45, 109, 199, 0.08);
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .faq-az-letter:hover,
+  .faq-az-letter:focus-visible {
+    background: rgba(45, 109, 199, 0.18);
+    transform: translateY(-1px);
+  }
+
+  .faq-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+  }
+  .faq-group { scroll-margin-top: calc(var(--header-h, 64px) + 3.25rem); }
+  .faq-letter-heading {
+    font-size: 1.8rem;
+    margin: 0 0 0.6rem;
+    padding: 0.1rem 0.7rem;
+    display: inline-block;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(45,109,199,0.14), rgba(92,150,80,0.14));
+    color: var(--brand-blue, #2d6dc7);
+  }
+
+  /* Accordion item */
+  .faq-item {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    margin-bottom: 0.55rem;
+    background: var(--surface, #fff);
+    overflow: hidden;
+    transition: box-shadow 0.15s ease;
+  }
+  .faq-item[open] {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    border-color: rgba(45, 109, 199, 0.35);
+  }
+  .faq-q {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+  .faq-q::-webkit-details-marker { display: none; }
+  .faq-q-text { flex: 1 1 auto; }
+  .faq-chev {
+    flex: 0 0 auto;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(45, 109, 199, 0.12);
+    color: var(--brand-blue, #2d6dc7);
+    font-weight: 700;
+    font-size: 1.1rem;
+    transition: transform 0.2s ease;
+  }
+  .faq-item[open] .faq-chev { transform: rotate(45deg); }
+
+  .faq-a {
+    padding: 0 1rem 0.95rem;
+    color: var(--text-soft, #333);
+    line-height: 1.55;
+  }
+  .faq-a p { margin: 0; }
+
+  .faq-footer {
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    font-size: 0.95rem;
+  }
+  .faq-footer p { margin: 0.25rem 0; }
+  .faq-footer-links { opacity: 0.85; font-size: 0.9rem; }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .faq-chev { transition: none; }
+    .faq-az-letter { transition: none; }
+  }
+
+  /* Mobile tuning */
+  @media (max-width: 640px) {
+    .faq-q { padding: 0.75rem 0.85rem; font-size: 0.97rem; }
+    .faq-a { padding: 0 0.85rem 0.85rem; }
+    .faq-letter-heading { font-size: 1.5rem; }
+  }
+</style>
