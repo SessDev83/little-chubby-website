@@ -93,6 +93,113 @@ const bookCardLabels = {
     </div>
   </section>
 
+  <section class="page-section" id="home-pins-section" data-lang={lang} hidden>
+    <div class="container">
+      <div class="section-head">
+        <h2>{text.homeCommunitySpotlight}</h2>
+        <p>{text.homeCommunitySpotlightDesc}</p>
+      </div>
+      <div id="home-pins-strip" class="home-pins-strip" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <script is:inline>
+    (async function () {
+      const section = document.getElementById("home-pins-section");
+      const strip = document.getElementById("home-pins-strip");
+      if (!section || !strip) return;
+      const lang = section.getAttribute("data-lang") === "en" ? "en" : "es";
+      try {
+        const res = await fetch("/api/home-pins/", { credentials: "omit" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const pins = Array.isArray(data && data.pins) ? data.pins : [];
+        if (pins.length === 0) return;
+        const esc = (s) => String(s == null ? "" : s)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+        const cards = pins.map((p) => {
+          const name = esc(p.display_name || (lang === "es" ? "Lector" : "Reader"));
+          const stars = "\u2605".repeat(Math.max(0, Math.min(5, parseInt(p.rating, 10) || 0)));
+          const quote = esc(p.review_text || "");
+          const photo = p.photo_url ? esc(p.photo_url) : "";
+          const bookHref = `/${lang}/books/${encodeURIComponent(p.book_id)}/`;
+          const photoBlock = photo
+            ? `<a href="${bookHref}" class="home-pin-photo" aria-hidden="true"><img src="${photo}" alt="" loading="lazy" decoding="async" /></a>`
+            : "";
+          return `<article class="home-pin-card">
+            ${photoBlock}
+            <div class="home-pin-body">
+              <p class="home-pin-stars" aria-label="${stars.length} / 5">${stars}</p>
+              <blockquote class="home-pin-quote">${quote}</blockquote>
+              <p class="home-pin-meta">
+                <span class="home-pin-author">${name}</span>
+                &nbsp;&middot;&nbsp;
+                <a class="home-pin-booklink" href="${bookHref}">${lang === "es" ? "Ver libro" : "See the book"}</a>
+              </p>
+            </div>
+          </article>`;
+        }).join("");
+        strip.innerHTML = cards;
+        section.removeAttribute("hidden");
+      } catch { /* keep hidden on error */ }
+    })();
+  </script>
+
+  <style>
+    #home-pins-section .home-pins-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+    .home-pin-card {
+      display: flex;
+      flex-direction: column;
+      background: var(--surface, #fff);
+      border: 1px solid var(--border, #e8e0d4);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+    .home-pin-photo {
+      display: block;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      background: #f6f1e7;
+    }
+    .home-pin-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .home-pin-body {
+      padding: 0.9rem 1rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .home-pin-stars {
+      margin: 0;
+      color: #d3a442;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+    }
+    .home-pin-quote {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      color: var(--text, #2f261f);
+    }
+    .home-pin-meta {
+      margin: 0.2rem 0 0;
+      font-size: 0.85rem;
+      color: var(--muted, #6b5f55);
+    }
+    .home-pin-author { font-weight: 600; }
+    .home-pin-booklink { color: var(--link, #1f4f86); text-decoration: underline; }
+  </style>
+
   <section class="page-section">
     <div class="container">
       <div class="section-head">

@@ -217,6 +217,18 @@ try {
                 {text.peanutBuy}
               </button>
             </div>
+            <div class="shop-card home-pin-card" data-shop="home-pin" data-cost="25">
+              <span class="shop-icon">🎯</span>
+              <span class="shop-name">{text.peanutShopHomePin}</span>
+              <span class="shop-price">25 🥜 · 3d</span>
+              <span class="shop-desc" style="font-size:0.8rem; opacity:0.85;">{text.peanutShopHomePinDesc}</span>
+              <select class="home-pin-review-select" style="display:none; width:100%; margin:0.4rem 0; padding:0.3rem; border-radius:6px; border:1px solid var(--border);">
+                <option value="">{lang === "es" ? "— Elige una review —" : "— Pick a review —"}</option>
+              </select>
+              <button class="btn btn-sm btn-buy" data-action="buy-home-pin">
+                {text.peanutBuy}
+              </button>
+            </div>
           </div>
 
           <h4 class="subshop-title">{text.peanutShopLottery}</h4>
@@ -461,6 +473,15 @@ try {
         });
       });
       document.querySelectorAll(".highlight-review-select").forEach(sel => {
+        sel.style.display = approved.length > 0 ? "block" : "none";
+        approved.forEach(r => {
+          const opt = document.createElement("option");
+          opt.value = r.id;
+          opt.textContent = (r.book_title || r.book_id) + " ★" + r.rating;
+          sel.appendChild(opt);
+        });
+      });
+      document.querySelectorAll(".home-pin-review-select").forEach(sel => {
         sel.style.display = approved.length > 0 ? "block" : "none";
         approved.forEach(r => {
           const opt = document.createElement("option");
@@ -714,6 +735,20 @@ try {
       });
     });
 
+    // Home-page pin button (E.2)
+    document.querySelectorAll("[data-action='buy-home-pin']").forEach(btn => {
+      const card = btn.closest(".shop-card");
+      const select = card.querySelector(".home-pin-review-select");
+      btn.addEventListener("click", async () => {
+        const reviewId = select.value;
+        if (!reviewId) {
+          showToast(lang === "es" ? "Selecciona una review." : "Select a review first.", "error");
+          return;
+        }
+        await purchaseAction("/api/buy-home-pin/", { review_id: reviewId });
+      });
+    });
+
     // Limited-time drops
     document.querySelectorAll("[data-action='buy-drop']").forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -807,6 +842,10 @@ try {
       }
       if (data.error === "highlight_active_on_other") {
         showToast(text.highlightErrorActiveOther || "You already have another highlighted review.", "info");
+        return;
+      }
+      if (data.error === "home_pin_active_on_other") {
+        showToast(text.homePinErrorActiveOther || (lang === "es" ? "Ya tienes otra review fijada en la home." : "You already have another review pinned on the home page."), "info");
         return;
       }
       if (data.error === "not_review_owner") {
