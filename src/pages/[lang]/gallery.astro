@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import UserFlair from "../../components/UserFlair.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase } from "../../lib/supabase";
@@ -25,6 +26,8 @@ let totalCount = 0;
 let fetchError = false;
 // Map author user_id -> active badge_type[] (max 3) for the initial SSR page
 const badgesByUser: Record<string, string[]> = {};
+// Phase F: map author user_id -> { avatar_url, accent_color, featured_badge }
+const identityByUser: Record<string, { avatar_url: string | null; accent_color: string | null; featured_badge: string | null }> = {};
 try {
   const { count } = await supabase
     .from("gallery_feed")
@@ -55,6 +58,20 @@ try {
       if (!b?.user_id || !b?.badge_type) return;
       const arr = badgesByUser[b.user_id] || (badgesByUser[b.user_id] = []);
       if (arr.length < 3) arr.push(b.badge_type);
+    });
+
+    // Phase F — fetch identity (avatar, accent, featured badge) per author
+    const { data: profRows } = await supabase
+      .from("profiles")
+      .select("id, avatar_url, accent_color, featured_badge")
+      .in("id", authorIds);
+    (profRows ?? []).forEach((p: any) => {
+      if (!p?.id) return;
+      identityByUser[p.id] = {
+        avatar_url: p.avatar_url ?? null,
+        accent_color: p.accent_color ?? null,
+        featured_badge: p.featured_badge ?? null,
+      };
     });
   }
 } catch {
@@ -180,6 +197,17 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
             const extras: string[] = item.extra_photos || [];
             const allPhotos = [item.photo_url, ...extras];
             const authorBadges: string[] = (item.user_id && badgesByUser[item.user_id]) || [];
+            const identity = (item.user_id && identityByUser[item.user_id]) || null;
+            // Pick the frame badge the user actively wears (prefer animated > gold > silver).
+            const frameBadge =
+              authorBadges.includes("frame_animated") ? "frame_animated"
+              : authorBadges.includes("frame_gold") ? "frame_gold"
+              : authorBadges.includes("frame_silver") ? "frame_silver"
+              : null;
+            // Featured badge is only shown when the user explicitly chose one AND still owns it.
+            const featuredBadge = identity?.featured_badge && authorBadges.includes(identity.featured_badge)
+              ? identity.featured_badge
+              : null;
             const cardClass =
               "gallery-card" +
               (item.featured ? " featured" : "") +
@@ -224,8 +252,20 @@ if (realCount < SAMPLE_THRESHOLD && !fetchError) {
                 {item.review_text && <p class="gallery-text">{item.review_text}</p>}
                 <div class="gallery-footer">
                   <span class="gallery-author">
-                    <span class="gallery-author-name">— {item.display_name}</span>
-                    {authorBadges.length > 0 && (
+                    {item.user_id ? (
+                      <UserFlair
+                        displayName={item.display_name}
+                        avatarUrl={identity?.avatar_url}
+                        accentColor={identity?.accent_color}
+                        frameBadge={frameBadge}
+                        featuredBadge={featuredBadge}
+                        size="sm"
+                        lang={lang}
+                      />
+                    ) : (
+                      <span class="gallery-author-name">— {item.display_name}</span>
+                    )}
+                    {authorBadges.length > 0 && !item.user_id && (
                       <span class="gallery-author-badges" aria-label="badges">
                         {authorBadges.map((b: string) => (
                           <span class="author-badge" title={galLabelForBadge(b)}>{galIconForBadge(b)}</span>

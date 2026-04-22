@@ -1,0 +1,258 @@
+---
+// ═══════════════════════════════════════════════════════════════
+// UserFlair — single source of truth for public user identity.
+// ═══════════════════════════════════════════════════════════════
+// Renders: avatar (with frame) + display_name (with accent color)
+// + optional featured badge chip.
+//
+// Props are deliberately narrow — the caller is responsible for
+// fetching the data (keeps this component stateless + fast).
+// All visual tokens (frames, accents, badge emoji) are mirrored
+// from profile.astro / gallery.astro so behavior stays identical.
+//
+// Used by: gallery cards, leaderboard rows (Phase F.2),
+//          home-pin strip (F.2), shoutout feed (F.2).
+// ═══════════════════════════════════════════════════════════════
+
+export interface UserFlairProps {
+  displayName: string | null | undefined;
+  avatarUrl?: string | null;
+  accentColor?: string | null;           // 'gold' | 'coral' | 'teal' | 'violet' | 'rose' | 'sage'
+  frameBadge?: string | null;            // the frame badge the user actively wears
+  featuredBadge?: string | null;         // the featured badge chip next to name
+  size?: "sm" | "md" | "lg";
+  lang?: "es" | "en";
+  linkHref?: string | null;              // optional anchor wrap
+}
+
+const {
+  displayName,
+  avatarUrl = null,
+  accentColor = null,
+  frameBadge = null,
+  featuredBadge = null,
+  size = "md",
+  lang = "en",
+  linkHref = null,
+} = Astro.props as UserFlairProps;
+
+const ALLOWED_ACCENTS = new Set(["gold", "coral", "teal", "violet", "rose", "sage"]);
+const safeAccent = accentColor && ALLOWED_ACCENTS.has(accentColor) ? accentColor : null;
+
+// Frame class mapping (matches profile.astro)
+function frameClassFor(b: string | null | undefined): string {
+  if (b === "frame_animated") return "frame-animated";
+  if (b === "frame_gold") return "frame-gold";
+  if (b === "frame_silver") return "frame-silver";
+  return "";
+}
+const frameClass = frameClassFor(frameBadge);
+
+// Pixel sizes per size variant
+const dims = size === "sm" ? 32 : size === "lg" ? 64 : 44;
+const safeName = (displayName || "").toString().trim();
+const initialName = safeName || (lang === "es" ? "Usuario" : "User");
+
+// Fallback avatar via ui-avatars (same pattern profile.astro uses)
+const computedAvatar = avatarUrl
+  || `https://ui-avatars.com/api/?name=${encodeURIComponent(initialName)}&background=4a90d9&color=fff&size=${dims * 2}`;
+
+// Badge icon + label
+const BADGE_EMOJI: Record<string, string> = {
+  frame_gold: "🖼️",
+  frame_silver: "🪞",
+  frame_animated: "🎭",
+  top_reviewer: "⭐",
+  star_parent: "💖",
+  milestone_50: "🥜",
+  milestone_100: "💯",
+  milestone_250: "🏅",
+  milestone_500: "🎖️",
+  milestone_1000: "🏆",
+};
+const BADGE_LABEL_ES: Record<string, string> = {
+  frame_gold: "Marco dorado",
+  frame_silver: "Marco plateado",
+  frame_animated: "Marco animado",
+  top_reviewer: "Top reviewer",
+  star_parent: "Papá/Mamá estrella",
+  milestone_50: "Primer puñado",
+  milestone_100: "Centenario",
+  milestone_250: "Cacahuetero",
+  milestone_500: "Medio millar",
+  milestone_1000: "Leyenda Chubby",
+};
+const BADGE_LABEL_EN: Record<string, string> = {
+  frame_gold: "Gold frame",
+  frame_silver: "Silver frame",
+  frame_animated: "Animated frame",
+  top_reviewer: "Top reviewer",
+  star_parent: "Star parent",
+  milestone_50: "First handful",
+  milestone_100: "Centennial",
+  milestone_250: "Peanut collector",
+  milestone_500: "Half a thousand",
+  milestone_1000: "Chubby Legend",
+};
+function iconFor(b: string): string {
+  if (BADGE_EMOJI[b]) return BADGE_EMOJI[b];
+  if (/^top_earner_/.test(b)) return "🏆";
+  if (/^drop_/.test(b)) return "🎁";
+  return "🎖️";
+}
+function labelFor(b: string, l: string): string {
+  const map = l === "es" ? BADGE_LABEL_ES : BADGE_LABEL_EN;
+  if (map[b]) return map[b];
+  if (/^top_earner_/.test(b)) return l === "es" ? "Top del mes" : "Top of the month";
+  if (/^drop_/.test(b)) return l === "es" ? "Edición limitada" : "Limited edition";
+  return b;
+}
+
+const Tag = linkHref ? "a" : "span";
+---
+
+<Tag
+  class:list={["user-flair", `size-${size}`]}
+  href={linkHref || undefined}
+>
+  <span class:list={["uf-avatar-wrap", frameClass]} aria-hidden={avatarUrl ? undefined : "true"}>
+    <img
+      class="uf-avatar-img"
+      src={computedAvatar}
+      alt=""
+      width={dims}
+      height={dims}
+      loading="lazy"
+      decoding="async"
+    />
+  </span>
+  <span class="uf-text">
+    <span class:list={["uf-name", safeAccent && `uf-accent-${safeAccent}`]}>
+      {initialName}
+    </span>
+    {featuredBadge && (
+      <span class="uf-featured" title={labelFor(featuredBadge, lang)} aria-label={labelFor(featuredBadge, lang)}>
+        <span class="uf-featured-icon" aria-hidden="true">{iconFor(featuredBadge)}</span>
+        <span class="uf-featured-label">{labelFor(featuredBadge, lang)}</span>
+      </span>
+    )}
+  </span>
+</Tag>
+
+<style>
+  .user-flair {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: inherit;
+    min-width: 0;
+  }
+  .user-flair.size-sm { gap: 0.4rem; }
+  .user-flair.size-lg { gap: 0.7rem; }
+
+  .uf-avatar-wrap {
+    display: inline-block;
+    border-radius: 50%;
+    padding: 0;
+    position: relative;
+    line-height: 0;
+    flex-shrink: 0;
+  }
+  .uf-avatar-img {
+    display: block;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--brand-blue);
+    width: 44px;
+    height: 44px;
+  }
+  .user-flair.size-sm .uf-avatar-img { width: 32px; height: 32px; border-width: 1.5px; }
+  .user-flair.size-lg .uf-avatar-img { width: 64px; height: 64px; border-width: 3px; }
+
+  /* Frames — mirrors profile.astro tokens */
+  .uf-avatar-wrap.frame-gold,
+  .uf-avatar-wrap.frame-silver {
+    padding: 3px;
+    background:
+      conic-gradient(from 0deg,
+        #d4af37 0%, #fff3b0 15%, #ffd85e 30%, #d4af37 45%,
+        #a8842a 60%, #f5d87a 75%, #d4af37 90%, #fff3b0 100%);
+  }
+  .uf-avatar-wrap.frame-silver {
+    background:
+      conic-gradient(from 0deg,
+        #c0c0c0 0%, #ffffff 15%, #e0e0e0 30%, #c0c0c0 45%,
+        #a0a0a0 60%, #f0f0f0 75%, #c0c0c0 90%, #ffffff 100%);
+  }
+  .uf-avatar-wrap.frame-gold .uf-avatar-img,
+  .uf-avatar-wrap.frame-silver .uf-avatar-img {
+    border: 2px solid var(--surface, #fff);
+  }
+  .uf-avatar-wrap.frame-animated {
+    padding: 3px;
+    background: conic-gradient(from 0deg, #ff6b6b, #ffd93d, #6bcf7f, #4ecdc4, #a29bfe, #ff6b6b);
+    animation: uf-frame-spin 6s linear infinite;
+  }
+  .uf-avatar-wrap.frame-animated .uf-avatar-img {
+    border: 2px solid var(--surface, #fff);
+  }
+  @keyframes uf-frame-spin {
+    to { transform: rotate(360deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .uf-avatar-wrap.frame-animated { animation: none; }
+  }
+
+  .uf-text {
+    display: inline-flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 0.15rem;
+  }
+
+  .uf-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--ink);
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 180px;
+  }
+  .user-flair.size-sm .uf-name { font-size: 0.82rem; max-width: 140px; }
+  .user-flair.size-lg .uf-name { font-size: 1.02rem; max-width: 220px; }
+
+  /* Accents (mirror profile.astro tokens — never reflect raw user input) */
+  .uf-accent-gold   { color: #78350f; }
+  .uf-accent-coral  { color: #9f1239; }
+  .uf-accent-teal   { color: #115e59; }
+  .uf-accent-violet { color: #4c1d95; }
+  .uf-accent-rose   { color: #9d174d; }
+  .uf-accent-sage   { color: #3f6212; }
+
+  .uf-featured {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--ink-soft);
+    max-width: 180px;
+  }
+  .uf-featured-icon { font-size: 0.8rem; flex-shrink: 0; }
+  .uf-featured-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .user-flair.size-sm .uf-featured { font-size: 0.62rem; padding: 0.08rem 0.35rem; }
+  .user-flair.size-sm .uf-featured-label { max-width: 120px; }
+  .user-flair.size-lg .uf-featured { font-size: 0.72rem; }
+</style>

@@ -42,7 +42,7 @@ let securityMessageType: "success" | "error" = "success";
 
 const { data: profileData } = await supabase
   .from("profiles")
-  .select("display_name, lang_pref, avatar_url, phone, address_line1, address_line2, city, state, zip_code, country, show_in_leaderboards, notification_prefs, accent_color, created_at")
+  .select("display_name, lang_pref, avatar_url, phone, address_line1, address_line2, city, state, zip_code, country, show_in_leaderboards, notification_prefs, accent_color, featured_badge, created_at")
   .eq("id", user.id)
   .single();
 profile = profileData as (Profile & { created_at?: string | null }) | null;
@@ -402,6 +402,37 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
           })}
         </div>
       </div>
+
+      {/* ── Featured badge picker (Phase F — visibility loop) ── */}
+      {userBadges.length > 0 && (
+        <div id="featured-badge-picker" class="profile-badges-panel surface-card">
+          <div class="badges-panel-head">
+            <div>
+              <h2 class="profile-section-title" style="margin-top:0; margin-bottom:0.2rem;">{text.profileFeaturedBadgeTitle}</h2>
+              <p class="badges-panel-subtitle">{text.profileFeaturedBadgeSubtitle}</p>
+            </div>
+          </div>
+          <div class="featured-picker" data-current={(profile as any)?.featured_badge || ""}>
+            <button type="button" class="featured-option" data-badge="" aria-pressed={!(profile as any)?.featured_badge}>
+              <span class="featured-option-icon" aria-hidden="true">🚫</span>
+              <span class="featured-option-label">{text.profileFeaturedBadgeNone}</span>
+            </button>
+            {userBadges.map((b: string) => (
+              <button
+                type="button"
+                class="featured-option"
+                data-badge={b}
+                aria-pressed={(profile as any)?.featured_badge === b}
+                title={labelForBadge(b)}
+              >
+                <span class="featured-option-icon" aria-hidden="true">{iconForBadge(b)}</span>
+                <span class="featured-option-label">{labelForBadge(b)}</span>
+              </button>
+            ))}
+          </div>
+          <p id="featured-badge-status" class="featured-status" role="status" aria-live="polite"></p>
+        </div>
+      )}
 
       {/* ── Milestones (earned automatically) ── */}
       <div id="milestones-collection" class="profile-badges-panel surface-card">
@@ -1598,6 +1629,48 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     display: flex;
     gap: 0.5rem;
   }
+
+  /* Phase F — Featured badge picker */
+  .featured-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+  }
+  .featured-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink);
+    transition: background 120ms, border-color 120ms, transform 80ms;
+    max-width: 100%;
+  }
+  .featured-option:hover { border-color: var(--brand-blue); }
+  .featured-option:active { transform: scale(0.98); }
+  .featured-option[aria-pressed="true"] {
+    border-color: var(--brand-blue);
+    background: rgba(74, 144, 217, 0.12);
+    color: var(--brand-blue);
+  }
+  .featured-option-icon { font-size: 1rem; flex-shrink: 0; }
+  .featured-option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+  }
+  .featured-status {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    min-height: 1.1rem;
+  }
 </style>
 
 <script is:inline define:vars={{ displayName: profile?.display_name || "" }}>
@@ -1622,4 +1695,58 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
       }
     })
     .catch(function(){});
+</script>
+
+<script is:inline>
+  // Phase F — featured badge picker
+  (function(){
+    var picker = document.getElementById("featured-badge-picker");
+    if (!picker) return;
+    var container = picker.querySelector(".featured-picker");
+    var status = document.getElementById("featured-badge-status");
+    if (!container) return;
+    var busy = false;
+
+    container.addEventListener("click", function(ev){
+      var btn = ev.target.closest(".featured-option");
+      if (!btn || busy) return;
+      var badge = btn.getAttribute("data-badge") || "";
+      var current = container.getAttribute("data-current") || "";
+      if (badge === current) return;
+
+      busy = true;
+      status.textContent = "…";
+      status.style.color = "var(--ink-soft)";
+
+      fetch("/api/set-featured-badge/", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ badge_type: badge || null }),
+      })
+        .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+        .then(function(res){
+          busy = false;
+          if (!res.ok || !res.j || res.j.success === false) {
+            status.textContent = (res.j && res.j.error) || "Error";
+            status.style.color = "#8f1f18";
+            return;
+          }
+          container.setAttribute("data-current", res.j.featured_badge || "");
+          var all = container.querySelectorAll(".featured-option");
+          all.forEach(function(b){
+            var bg = b.getAttribute("data-badge") || "";
+            b.setAttribute("aria-pressed", bg === (res.j.featured_badge || "") ? "true" : "false");
+          });
+          status.textContent = "✓";
+          status.style.color = "var(--brand-green, #5c9650)";
+          setTimeout(function(){ status.textContent = ""; }, 1400);
+        })
+        .catch(function(){
+          busy = false;
+          status.textContent = "Error";
+          status.style.color = "#8f1f18";
+        });
+    });
+  })();
 </script>
