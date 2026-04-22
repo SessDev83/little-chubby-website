@@ -966,6 +966,106 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
       }
     }
   })();
+
+  // ── Mobile sticky tabs: hide on scroll-down, show on scroll-up ──
+  (function(){
+    var tabs = document.querySelector(".profile-tabs");
+    if (!tabs) return;
+
+    if (window.__lcpProfileTabsCleanup) {
+      window.__lcpProfileTabsCleanup();
+    }
+
+    var mobileQuery = window.matchMedia("(max-width: 47.99rem)");
+    var lastY = window.scrollY || window.pageYOffset || 0;
+    var downDistance = 0;
+    var upDistance = 0;
+    var hidden = false;
+    var ticking = false;
+
+    function setHidden(next) {
+      if (hidden === next) return;
+      hidden = next;
+      tabs.classList.toggle("is-scroll-hidden", next);
+    }
+
+    function evaluate(currentY) {
+      if (!mobileQuery.matches) {
+        setHidden(false);
+        downDistance = 0;
+        upDistance = 0;
+        lastY = currentY;
+        return;
+      }
+
+      var delta = currentY - lastY;
+      if (Math.abs(delta) < 0.8) return;
+
+      if (currentY < 140) {
+        setHidden(false);
+        downDistance = 0;
+        upDistance = 0;
+        lastY = currentY;
+        return;
+      }
+
+      if (delta > 0) {
+        downDistance += delta;
+        upDistance = 0;
+        if (downDistance > 26) {
+          setHidden(true);
+        }
+      } else {
+        upDistance += -delta;
+        downDistance = 0;
+        if (upDistance > 12) {
+          setHidden(false);
+        }
+      }
+
+      lastY = currentY;
+    }
+
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(function() {
+        evaluate(window.scrollY || window.pageYOffset || 0);
+        ticking = false;
+      });
+    }
+
+    function onModeChange() {
+      evaluate(window.scrollY || window.pageYOffset || 0);
+    }
+
+    function onTabsTouch() {
+      if (mobileQuery.matches) {
+        setHidden(false);
+      }
+    }
+
+    onModeChange();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onModeChange);
+    if (mobileQuery.addEventListener) {
+      mobileQuery.addEventListener("change", onModeChange);
+    } else if (mobileQuery.addListener) {
+      mobileQuery.addListener(onModeChange);
+    }
+    tabs.addEventListener("touchstart", onTabsTouch, { passive: true });
+
+    window.__lcpProfileTabsCleanup = function() {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onModeChange);
+      if (mobileQuery.removeEventListener) {
+        mobileQuery.removeEventListener("change", onModeChange);
+      } else if (mobileQuery.removeListener) {
+        mobileQuery.removeListener(onModeChange);
+      }
+      tabs.removeEventListener("touchstart", onTabsTouch);
+    };
+  })();
 </script>
 
 <script is:inline define:vars={{
@@ -1052,7 +1152,20 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     z-index: 20;
     box-shadow: 0 4px 14px rgba(61, 44, 30, 0.08);
     backdrop-filter: saturate(1.1);
+    transform: translateY(0);
+    opacity: 1;
+    will-change: transform, opacity;
+    transition: transform 0.28s cubic-bezier(0.2, 0.65, 0.2, 1), opacity 0.2s ease;
   }
+
+  @media (max-width: 47.99rem) {
+    .profile-tabs.is-scroll-hidden {
+      transform: translateY(calc(-100% - 0.35rem));
+      opacity: 0.02;
+      pointer-events: none;
+    }
+  }
+
   .profile-tab {
     flex: 1;
     min-width: 0;

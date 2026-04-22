@@ -33,7 +33,9 @@ const navItems = [
 
       <div class="header-actions">
         <a href={`/${lang}/login/`} class="header-login" id="auth-login">{text.navLogin}</a>
+        <span class="header-username" id="auth-username" style="display:none;"></span>
         <span class="header-currencies header-currencies--desktop" id="auth-currencies" style="display:none;">
+          <span class="header-wallet-label">{lang === "es" ? "Monedero" : "Wallet"}</span>
           <a href={`/${lang}/lottery/`} class="header-tickets" id="auth-tickets" title={lang === "es" ? "Tus Tickets" : "Your Tickets"}>
             🎟️ <span id="tickets-count">0</span>
           </a>
@@ -41,7 +43,6 @@ const navItems = [
             🥜 <span id="peanuts-count">0</span>
           </a>
         </span>
-        <span class="header-username" id="auth-username" style="display:none;"></span>
         <button class="header-bell" id="auth-bell" style="display:none;" title={lang === "es" ? "Notificaciones" : "Notifications"} aria-label="Notifications">
           🔔 <span class="bell-badge" id="bell-badge" style="display:none;">0</span>
         </button>
@@ -77,6 +78,18 @@ const navItems = [
                 {text.navLogout}
               </a>
             </div>
+            <button
+              type="button"
+              class="settings-item settings-item--toggle"
+              id="settings-smart-header-toggle"
+              data-enabled="true"
+              data-label-on={lang === "es" ? "Header inteligente: Activado" : "Smart header: On"}
+              data-label-off={lang === "es" ? "Header inteligente: Desactivado" : "Smart header: Off"}
+              aria-pressed="true"
+            >
+              <span class="settings-toggle-dot" aria-hidden="true"></span>
+              <span class="settings-toggle-text">{lang === "es" ? "Header inteligente: Activado" : "Smart header: On"}</span>
+            </button>
             <div class="settings-lang" role="group" aria-label={text.languageToggleLabel}>
               <a
                 href={lang === "en" && alternatePath ? alternatePath : switchLangPath(pathname, "es")}
@@ -197,8 +210,9 @@ const navItems = [
     if (usernameEl) {
       usernameEl.style.display = loggedIn ? "" : "none";
       if (loggedIn) {
-        var name = localStorage.getItem("lcp-display-name") || "";
-        usernameEl.textContent = name || "";
+        var name = (localStorage.getItem("lcp-display-name") || "").trim();
+        var helloPrefix = document.documentElement.lang === "es" ? "Hola, " : "Hi, ";
+        usernameEl.textContent = name ? (helloPrefix + name) : (document.documentElement.lang === "es" ? "Hola" : "Hi");
       }
     }
     if (settingsAuthItems) settingsAuthItems.style.display = loggedIn ? "" : "none";
@@ -278,6 +292,20 @@ const navItems = [
       fetch("/api/me/", { credentials: "same-origin" })
         .then(function(r) { return r.json(); })
         .then(function(d) {
+          var resolvedName = "";
+          if (d.user && typeof d.user.display_name === "string") {
+            resolvedName = d.user.display_name.trim();
+          }
+          if (!resolvedName && d.user && typeof d.user.email === "string") {
+            resolvedName = d.user.email.split("@")[0].trim();
+          }
+          if (resolvedName) {
+            localStorage.setItem("lcp-display-name", resolvedName);
+            if (usernameEl) {
+              var helloPrefix = document.documentElement.lang === "es" ? "Hola, " : "Hi, ";
+              usernameEl.textContent = helloPrefix + resolvedName;
+            }
+          }
           if (d.balance !== undefined) {
             peanutsCount.textContent = String(d.balance);
             if (peanutsCountM) peanutsCountM.textContent = String(d.balance);
@@ -317,6 +345,17 @@ const navItems = [
       localStorage.setItem("lcp-lang", rootLang);
     }
 
+    function prefersReducedMotion() {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+
+    function smartHeaderIsEnabled() {
+      var pref = localStorage.getItem("lcp-smart-header");
+      if (pref === "on") return true;
+      if (pref === "off") return false;
+      return !prefersReducedMotion();
+    }
+
     // Lang links — clone+replace to avoid duplicate listeners
     document.querySelectorAll("[data-lang-link]").forEach(function(anchor) {
       var clone = anchor.cloneNode(true);
@@ -346,6 +385,35 @@ const navItems = [
         if (!dropdown.contains(e.target) && !settingsBtn.contains(e.target)) {
           settingsBtn.setAttribute("aria-expanded", "false");
           dropdown.classList.remove("is-open");
+        }
+      });
+    }
+
+    // Smart header preference toggle in settings
+    var oldSmartHeaderToggle = document.getElementById("settings-smart-header-toggle");
+    if (oldSmartHeaderToggle) {
+      var smartHeaderToggle = oldSmartHeaderToggle.cloneNode(true);
+      oldSmartHeaderToggle.parentNode.replaceChild(smartHeaderToggle, oldSmartHeaderToggle);
+      var smartHeaderToggleText = smartHeaderToggle.querySelector(".settings-toggle-text");
+
+      function updateSmartHeaderToggleUi() {
+        var isEnabled = smartHeaderIsEnabled();
+        var labelOn = smartHeaderToggle.getAttribute("data-label-on") || "Smart header: On";
+        var labelOff = smartHeaderToggle.getAttribute("data-label-off") || "Smart header: Off";
+        smartHeaderToggle.setAttribute("data-enabled", isEnabled ? "true" : "false");
+        smartHeaderToggle.setAttribute("aria-pressed", isEnabled ? "true" : "false");
+        if (smartHeaderToggleText) {
+          smartHeaderToggleText.textContent = isEnabled ? labelOn : labelOff;
+        }
+      }
+
+      updateSmartHeaderToggleUi();
+      smartHeaderToggle.addEventListener("click", function(e) {
+        e.preventDefault();
+        localStorage.setItem("lcp-smart-header", smartHeaderIsEnabled() ? "off" : "on");
+        updateSmartHeaderToggleUi();
+        if (window.__lcpDesktopNavRefresh) {
+          window.__lcpDesktopNavRefresh();
         }
       });
     }
@@ -383,8 +451,137 @@ const navItems = [
       function syncHeaderH() {
         document.documentElement.style.setProperty("--header-h", headerEl.offsetHeight + "px");
       }
+
+      // Keep one resize sync listener across astro:after-swap re-inits.
+      if (window.__lcpHeaderResizeSync) {
+        window.removeEventListener("resize", window.__lcpHeaderResizeSync);
+      }
+      window.__lcpHeaderResizeSync = syncHeaderH;
       syncHeaderH();
       window.addEventListener("resize", syncHeaderH);
+
+      // Desktop smart nav: smoother collapse on scroll-down, reveal on scroll-up/top hover.
+      if (window.__lcpDesktopNavCleanup) {
+        window.__lcpDesktopNavCleanup();
+      }
+
+      var desktopQuery = window.matchMedia("(min-width: 48rem)");
+      var lastScrollY = window.scrollY || window.pageYOffset || 0;
+      var scrollDownDistance = 0;
+      var scrollUpDistance = 0;
+      var scrollTicking = false;
+      var isCollapsed = headerEl.classList.contains("header-nav-collapsed");
+
+      function setHeaderNavCollapsed(next) {
+        if (next === isCollapsed) return;
+        isCollapsed = next;
+        headerEl.classList.toggle("header-nav-collapsed", next);
+        syncHeaderH();
+      }
+
+      function evaluateDesktopSmartNav(currentY) {
+        if (!desktopQuery.matches || !smartHeaderIsEnabled()) {
+          setHeaderNavCollapsed(false);
+          scrollDownDistance = 0;
+          scrollUpDistance = 0;
+          lastScrollY = currentY;
+          return;
+        }
+
+        var delta = currentY - lastScrollY;
+        if (Math.abs(delta) < 0.8) {
+          return;
+        }
+
+        if (currentY < 96) {
+          setHeaderNavCollapsed(false);
+          scrollDownDistance = 0;
+          scrollUpDistance = 0;
+          lastScrollY = currentY;
+          return;
+        }
+
+        if (delta > 0) {
+          scrollDownDistance += delta;
+          scrollUpDistance = 0;
+          if (scrollDownDistance > 30 && currentY > 170) {
+            setHeaderNavCollapsed(true);
+          }
+        } else {
+          scrollUpDistance += -delta;
+          scrollDownDistance = 0;
+          if (scrollUpDistance > 14) {
+            setHeaderNavCollapsed(false);
+          }
+        }
+
+        lastScrollY = currentY;
+      }
+
+      function onDesktopScroll() {
+        if (scrollTicking) return;
+        scrollTicking = true;
+        window.requestAnimationFrame(function() {
+          evaluateDesktopSmartNav(window.scrollY || window.pageYOffset || 0);
+          scrollTicking = false;
+        });
+      }
+
+      function onTopEdgeHover(e) {
+        if (!desktopQuery.matches || !smartHeaderIsEnabled()) return;
+        if (e.clientY <= 72) {
+          setHeaderNavCollapsed(false);
+          scrollDownDistance = 0;
+          scrollUpDistance = 0;
+        }
+      }
+
+      function onHeaderHover() {
+        if (!desktopQuery.matches || !smartHeaderIsEnabled()) return;
+        setHeaderNavCollapsed(false);
+        scrollDownDistance = 0;
+        scrollUpDistance = 0;
+      }
+
+      function refreshDesktopNavBehavior() {
+        var currentY = window.scrollY || window.pageYOffset || 0;
+        lastScrollY = currentY;
+        scrollDownDistance = 0;
+        scrollUpDistance = 0;
+        evaluateDesktopSmartNav(currentY);
+        syncHeaderH();
+      }
+
+      function onDesktopModeChange() {
+        refreshDesktopNavBehavior();
+      }
+
+      refreshDesktopNavBehavior();
+      window.addEventListener("scroll", onDesktopScroll, { passive: true });
+      window.addEventListener("mousemove", onTopEdgeHover, { passive: true });
+      headerEl.addEventListener("mouseenter", onHeaderHover);
+      window.addEventListener("resize", onDesktopModeChange);
+      if (desktopQuery.addEventListener) {
+        desktopQuery.addEventListener("change", onDesktopModeChange);
+      } else if (desktopQuery.addListener) {
+        desktopQuery.addListener(onDesktopModeChange);
+      }
+
+      window.__lcpDesktopNavRefresh = refreshDesktopNavBehavior;
+      window.__lcpDesktopNavCleanup = function() {
+        window.removeEventListener("scroll", onDesktopScroll);
+        window.removeEventListener("mousemove", onTopEdgeHover);
+        headerEl.removeEventListener("mouseenter", onHeaderHover);
+        window.removeEventListener("resize", onDesktopModeChange);
+        if (desktopQuery.removeEventListener) {
+          desktopQuery.removeEventListener("change", onDesktopModeChange);
+        } else if (desktopQuery.removeListener) {
+          desktopQuery.removeListener(onDesktopModeChange);
+        }
+        if (window.__lcpDesktopNavRefresh === refreshDesktopNavBehavior) {
+          window.__lcpDesktopNavRefresh = null;
+        }
+      };
     }
   }
   initHeader();

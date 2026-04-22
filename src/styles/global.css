@@ -220,6 +220,30 @@ main {
   gap: 0.4rem;
 }
 
+.header-currencies--desktop {
+  gap: 0.34rem;
+  padding: 0.24rem 0.34rem 0.24rem 0.5rem;
+  border: 1px solid #e2cfad;
+  border-radius: 12px;
+  background: #fff9ee;
+}
+
+.header-wallet-label {
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9f7a49;
+  white-space: nowrap;
+}
+
+.header-currencies--desktop .header-tickets,
+.header-currencies--desktop .header-peanuts {
+  font-size: 0.86rem;
+  padding: 0.24rem 0.62rem;
+}
+
 .header-tickets {
   display: inline-flex;
   align-items: center;
@@ -443,12 +467,12 @@ main {
 .header-username {
   font-family: "Baloo 2", "Trebuchet MS", sans-serif;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   color: var(--brand-brown);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 9.5rem;
+  max-width: 10.5rem;
 }
 
 /* ── Settings Button & Dropdown ─────────────── */
@@ -515,6 +539,33 @@ main {
 
 .settings-item:hover {
   background: rgba(31, 79, 134, 0.08);
+}
+
+.settings-item--toggle {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-toggle-dot {
+  width: 0.52rem;
+  height: 0.52rem;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: #b59a79;
+}
+
+.settings-item--toggle[data-enabled="true"] .settings-toggle-dot {
+  background: #5c9650;
+  box-shadow: 0 0 0 2px rgba(92, 150, 80, 0.18);
+}
+
+.settings-item--toggle[data-enabled="false"] .settings-toggle-dot {
+  background: #b59a79;
+  box-shadow: 0 0 0 2px rgba(181, 154, 121, 0.2);
 }
 
 .settings-item--logout {
@@ -608,6 +659,10 @@ main {
 }
 
 @media (max-width: 47.99rem) {
+  .settings-item--toggle {
+    display: none;
+  }
+
   .hamburger {
     display: flex;
   }
@@ -628,7 +683,7 @@ main {
   }
 
   .header-username {
-    max-width: 6.8rem;
+    max-width: 7.8rem;
     font-size: 0.88rem;
   }
 
@@ -824,6 +879,12 @@ main {
   margin-top: 0.65rem;
   border-top: 1px dashed var(--line);
   padding-top: 0.6rem;
+  max-height: 8rem;
+  opacity: 1;
+  transform: translateY(0);
+  overflow: hidden;
+  will-change: max-height, opacity, transform;
+  transition: max-height 0.36s cubic-bezier(0.2, 0.65, 0.2, 1), opacity 0.24s ease, margin-top 0.36s cubic-bezier(0.2, 0.65, 0.2, 1), padding-top 0.36s cubic-bezier(0.2, 0.65, 0.2, 1), border-top-color 0.24s ease, transform 0.32s cubic-bezier(0.2, 0.65, 0.2, 1);
 }
 
 .header-nav ul {
@@ -864,6 +925,22 @@ main {
   background: #fbf2df;
   border-color: #d9c195;
   color: var(--brand-blue);
+}
+
+@media (min-width: 48rem) {
+  .site-header.header-nav-collapsed .header-nav {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-0.22rem);
+    margin-top: 0;
+    padding-top: 0;
+    border-top-color: transparent;
+    pointer-events: none;
+  }
+
+  .site-header.header-nav-collapsed .header-nav ul {
+    padding-bottom: 0;
+  }
 }
 
 .hero {
