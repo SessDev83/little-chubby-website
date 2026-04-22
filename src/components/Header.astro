@@ -41,10 +41,10 @@ const navItems = [
             🥜 <span id="peanuts-count">0</span>
           </a>
         </span>
+        <span class="header-username" id="auth-username" style="display:none;"></span>
         <button class="header-bell" id="auth-bell" style="display:none;" title={lang === "es" ? "Notificaciones" : "Notifications"} aria-label="Notifications">
           🔔 <span class="bell-badge" id="bell-badge" style="display:none;">0</span>
         </button>
-        <span class="header-username" id="auth-username" style="display:none;"></span>
         <div class="settings-wrapper" id="settings-wrapper">
           <button
             class="settings-btn"
@@ -114,26 +114,35 @@ const navItems = [
     </div>
 
     <div class="header-currencies-mobile" id="auth-currencies-mobile" style="display:none;">
-      <button
-        type="button"
-        class="currencies-mobile-toggle"
-        id="currencies-mobile-toggle"
-        aria-expanded="false"
-        aria-controls="currencies-mobile-panel"
-      >
-        <span class="currencies-mobile-emoji" aria-hidden="true">🎟️🥜</span>
-        <span class="currencies-mobile-label">{lang === "es" ? "Mi saldo" : "My balance"}</span>
-        <svg class="currencies-mobile-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-      <div class="currencies-mobile-panel" id="currencies-mobile-panel" hidden>
-        <a href={`/${lang}/lottery/`} class="header-tickets" title={lang === "es" ? "Tus Tickets" : "Your Tickets"}>
-          🎟️ <span id="tickets-count-m">0</span>
-        </a>
-        <a href={`/${lang}/peanuts/`} class="header-peanuts" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
-          🥜 <span id="peanuts-count-m">0</span>
-        </a>
+      <div class="currencies-mobile-card">
+        <button
+          type="button"
+          class="currencies-mobile-toggle"
+          id="currencies-mobile-toggle"
+          aria-expanded="false"
+          aria-controls="currencies-mobile-panel"
+        >
+          <span class="currencies-mobile-label">My wallet</span>
+          <svg class="currencies-mobile-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="currencies-mobile-panel" id="currencies-mobile-panel" hidden>
+          <a href={`/${lang}/lottery/`} class="header-tickets header-tickets--mobile" title={lang === "es" ? "Tus Tickets" : "Your Tickets"}>
+            <span class="currency-chip-main">
+              <span class="currency-chip-emoji" aria-hidden="true">🎟️</span>
+              <span class="currency-chip-label">{lang === "es" ? "Tickets" : "Tickets"}</span>
+            </span>
+            <span class="currency-chip-count" id="tickets-count-m">0</span>
+          </a>
+          <a href={`/${lang}/peanuts/`} class="header-peanuts header-peanuts--mobile" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
+            <span class="currency-chip-main">
+              <span class="currency-chip-emoji" aria-hidden="true">🥜</span>
+              <span class="currency-chip-label">{lang === "es" ? "Peanuts" : "Peanuts"}</span>
+            </span>
+            <span class="currency-chip-count" id="peanuts-count-m">0</span>
+          </a>
+        </div>
       </div>
     </div>
 
@@ -287,6 +296,8 @@ const navItems = [
     var oldCurrenciesToggle = document.getElementById("currencies-mobile-toggle");
     var currenciesPanel = document.getElementById("currencies-mobile-panel");
     if (oldCurrenciesToggle && currenciesPanel) {
+      oldCurrenciesToggle.setAttribute("aria-expanded", "false");
+      currenciesPanel.setAttribute("hidden", "");
       var currenciesToggle = oldCurrenciesToggle.cloneNode(true);
       oldCurrenciesToggle.parentNode.replaceChild(currenciesToggle, oldCurrenciesToggle);
       currenciesToggle.addEventListener("click", function(e) {
