@@ -75,16 +75,42 @@ under the Risk Register. Short list today (April 22, 2026):
    peanuts/tickets, user content license, giveaways, suspension,
    limitation of liability, governing law, changes, contact). Footer link
    added.
-5. **Cookie banner lacks granular control** — all "essential" today. If we
-   ever add non-essential tracking, must be upgraded to categorized banner.
-6. **Retention logs for analytics** — today retained indefinitely because
-   anonymous; confirm Vercel's retention and document it here explicitly.
-7. **No DPA / Record of Processing Activities** — internal-only document, but
-   required under GDPR art. 30 once we cross 250 users or process sensitive
-   data. Stub to be added when we hit launch.
-8. **No cookie policy page separate from privacy** — some EU jurisdictions
-   (ES, FR, IT) prefer a dedicated cookie page. Low priority while we use
-   only essential cookies.
+5. **Cookie banner lacks granular control** — Current banner is single-tier
+   because we only set **essential cookies** (Supabase auth `sb-access-token`,
+   `sb-refresh-token`, `sb-logged-in`) plus localStorage keys for UI
+   preferences (`lcp-cookies`, lang). Under EU guidance, essential cookies
+   do not require opt-in, so a single "Accept" button is compliant today.
+   _Status:_ **intentional until non-essential tracking is added.** Trigger
+   to upgrade: shipping PostHog, Mixpanel, Google Analytics, Meta Pixel,
+   Sentry session replay, or any marketing/advertising cookie. At that
+   point we must split into categories (essential / analytics / marketing)
+   with per-category toggles and a "Reject all" button.
+6. **Retention logs for analytics** — We use Vercel Web Analytics
+   (cookie-free, aggregated) and Vercel Speed Insights (cookie-free, client
+   performance). Both are GDPR-compliant and **do not store personal data**.
+   Vercel's retention on the Hobby plan is **30 days rolling**; on Pro plans
+   up to 12 months. Confirm current plan in the Vercel dashboard
+   (Project → Analytics) and update this line if we upgrade. Our Supabase
+   `rate_limits` and `credit_transactions` tables hold user-scoped logs
+   indefinitely — covered by privacy §8.
+   _Status:_ **documented**. Action: on every bi-weekly review, eyeball the
+   Vercel Analytics panel and record the retention in effect here.
+7. **No DPA / Record of Processing Activities** — Required under GDPR art. 30
+   once we cross 250 users or process special-category data. Internal-only
+   document (not published to users). A stub lives at
+   [docs/TOS_RECORD_OF_PROCESSING.md](./TOS_RECORD_OF_PROCESSING.md) and
+   must be fleshed out **before** public launch or before the 250-user
+   threshold, whichever comes first.
+   _Status:_ **stub added** (this commit). Next action: fill data-flow
+   diagrams when we finalize Stripe integration.
+8. **No cookie policy page separate from privacy** — Some EU jurisdictions
+   (ES, FR, IT) prefer a dedicated cookie page. Today we fold cookies into
+   privacy §4 ("Cookies") which meets the baseline requirement. Low
+   priority while we use only essential cookies.
+   _Status:_ **intentional**. Trigger to create a standalone page: same
+   trigger as #5 (non-essential tracking added). When that happens, create
+   `src/pages/[lang]/cookies.astro`, link it from the Footer alongside
+   Privacy/Terms, and update the cookie banner "Learn more" link.
 
 ## How to update FAQ content
 
