@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { getServiceClient, supabase } from "../../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 export const prerender = false;
 
@@ -36,8 +36,10 @@ export const POST: APIRoute = async ({ cookies }) => {
       return new Response(JSON.stringify({ error: "Invalid session" }), { status: 401, headers });
     }
 
-    const svc = getServiceClient();
-    const { error: rpcErr } = await svc.rpc("confirm_parental_consent");
+    // Call the RPC with the user-scoped client so auth.uid() resolves inside
+    // the SECURITY DEFINER function. The service-role client would make
+    // auth.uid() return NULL and the RPC would raise 'unauthorized'.
+    const { error: rpcErr } = await supabase.rpc("confirm_parental_consent");
     if (rpcErr) {
       return new Response(
         JSON.stringify({ error: "save_failed", detail: rpcErr.message }),
