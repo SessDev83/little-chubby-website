@@ -1813,11 +1813,19 @@ Verified April 2026 against `gh api` and repository settings:
 | Branch protection on `main` | [Done] Enabled | Force-push blocked, deletion blocked, conversation resolution required. `enforce_admins` remains `false` for emergency owner bypass. |
 | Required status checks | [Gap] Not configured | No mandatory CI gate yet. |
 | Required PR reviews | [Gap] Not configured | Kept flexible for solo-dev workflow. |
-| Dependabot alerts | [Done] Enabled | Vulnerability alerting active. |
+| Dependabot alerts | [Done] Enabled + 0 open (verified April 23, 2026) | Vulnerability alerting active. All 3 prior alerts (1 high + 2 moderate) closed in PR #8. |
 | Automated security fixes | [Done] Enabled | Dependabot security PR automation active. |
 | Code scanning (CodeQL) | [Gap] Not enabled | Recommended next supply-chain hardening step. |
 | Secret scanning | [Partial] Not verified in this run | Check Settings -> Code security & analysis. |
 | `.gitignore` covers `.env*` | [Done] Verified | No `.env` committed. |
+| `npm overrides` for transitive CVE fixes | [Done] In use | `path-to-regexp ^6.3.0` forced via `package.json` overrides to bypass a stale `@vercel/routing-utils` pin inside `@astrojs/vercel`. Pattern documented for future use. |
+
+### Dependency update pattern (supply-chain)
+
+1. For direct dependencies: bump within caret range via `npm install <pkg>@<new> --save` and rely on semver.
+2. For transitive dependencies that upstream won't patch promptly, add an entry under `overrides` in `package.json` pinning the patched version. This is preferable to `npm audit fix --force`, which downgrades to the nearest compatible major and can introduce breaking changes.
+3. After every dependency change: `npm audit` must report `0 vulnerabilities` AND `npm run build` must succeed before merge.
+4. Dependabot PRs should be batched when possible, and the monthly operations audit (VII-H) must confirm 0 open alerts.
 
 ### Remaining hardening steps
 
