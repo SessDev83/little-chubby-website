@@ -6,7 +6,7 @@ import * as Sentry from "@sentry/astro";
 import { getServiceClient } from "./supabase";
 
 const RESEND_API_KEY = import.meta.env.RESEND_API_KEY;
-const ANALYTICS_EMAIL = import.meta.env.ANALYTICS_EMAIL || "ivan.c4u@gmail.com";
+const ANALYTICS_EMAIL = import.meta.env.ANALYTICS_EMAIL || "hello@littlechubbypress.com";
 const FROM = "Little Chubby Press <hello@littlechubbypress.com>";
 
 // ── HTML escape helper (prevents XSS in emails) ─────

@@ -44,7 +44,7 @@ const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const ANALYTICS_EMAIL = process.env.ANALYTICS_EMAIL || "ivan.c4u@gmail.com";
+const ANALYTICS_EMAIL = process.env.ANALYTICS_EMAIL || "hello@littlechubbypress.com";
 const DRY_RUN = process.argv.includes("--dry-run");
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {

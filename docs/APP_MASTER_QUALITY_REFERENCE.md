@@ -253,16 +253,24 @@ These three flags (`detectSessionInUrl`, `autoRefreshToken`, `persistSession`) a
 In `src/lib/supabase.ts`, the `isAdmin()` function checks `ADMIN_EMAILS` **first**. If the email matches, the DB `is_admin` flag lookup is skipped entirely:
 
 ```ts
-export const ADMIN_EMAILS = ["ivan.c4u@gmail.com", "hello@littlechubbypress.com"];
+// Emergency allowlist: brand mailbox always + anything set in ADMIN_EMAILS env var
+const ADMIN_EMAILS_ENV = (import.meta.env.ADMIN_EMAILS as string | undefined) ?? "";
+export const ADMIN_EMAILS = Array.from(new Set([
+  "hello@littlechubbypress.com",
+  ...ADMIN_EMAILS_ENV.split(",").map(e => e.trim().toLowerCase()),
+].filter(Boolean)));
+
 export async function isAdmin(user): Promise<boolean> {
-  if (user.email && ADMIN_EMAILS.includes(user.email)) return true; // DB check never reached
-  // DB check only runs if email not in hardcoded array
+  if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) return true;
+  // DB check only runs if email not in allowlist
 }
 ```
 
-**Risk:** If admin access needs to be revoked for one of these emails (account compromise, role change), removing the DB flag alone is insufficient — the hardcoded array still grants full access. The two sources can silently diverge.
+Personal operator emails are injected via the `ADMIN_EMAILS` environment variable (comma-separated) in Vercel + GitHub repository secrets. They are never committed to the repository.
 
-**Correct path:** The DB `is_admin` flag should be the single authoritative source. The hardcoded array should be removed or demoted to a last-resort emergency-only fallback documented explicitly.
+**Risk:** If admin access needs to be revoked for one of these emails (account compromise, role change), removing the DB flag alone is insufficient — the allowlist still grants full access. The two sources can silently diverge.
+
+**Correct path:** The DB `is_admin` flag should be the single authoritative source. The env-backed allowlist should stay as a last-resort emergency-only fallback (brand mailbox plus explicit operator list in env).
 
 **Priority:** Medium — no immediate threat (known emails, no public registration), but a future security hygiene item before team expansion.
 

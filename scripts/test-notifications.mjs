@@ -5,7 +5,7 @@
  */
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const ANALYTICS_EMAIL = process.env.ANALYTICS_EMAIL || "ivan.c4u@gmail.com";
+const ANALYTICS_EMAIL = process.env.ANALYTICS_EMAIL || "hello@littlechubbypress.com";
 
 if (!RESEND_API_KEY) {
   console.error("Missing RESEND_API_KEY env var");
