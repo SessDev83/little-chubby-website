@@ -41,16 +41,18 @@ export const POST: APIRoute = async ({ cookies }) => {
     // auth.uid() return NULL and the RPC would raise 'unauthorized'.
     const { error: rpcErr } = await supabase.rpc("confirm_parental_consent");
     if (rpcErr) {
+      console.error("[confirm-parental-consent] rpc failed:", rpcErr);
       return new Response(
-        JSON.stringify({ error: "save_failed", detail: rpcErr.message }),
+        JSON.stringify({ error: "save_failed" }),
         { status: 500, headers }
       );
     }
 
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   } catch (err: any) {
+    console.error("[confirm-parental-consent] unexpected error:", err);
     return new Response(
-      JSON.stringify({ error: "unexpected", detail: err?.message ?? String(err) }),
+      JSON.stringify({ error: "unexpected" }),
       { status: 500, headers }
     );
   }

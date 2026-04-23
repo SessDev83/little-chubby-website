@@ -10,6 +10,11 @@ on:
     - cron: "0 12 * * *"
   workflow_dispatch:
 
+# Principle of least privilege: this job only reads the repo at checkout and
+# calls out to third-party APIs via secrets. No write access to repo/issues.
+permissions:
+  contents: read
+
 jobs:
   send-report:
     runs-on: ubuntu-latest

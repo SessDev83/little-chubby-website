@@ -66,8 +66,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       p_confirm: confirm,
     });
     if (rpcErr) {
+      console.error("[delete-account] rpc delete_user_account failed:", rpcErr);
       return new Response(
-        JSON.stringify({ error: "delete_failed", detail: rpcErr.message }),
+        JSON.stringify({ error: "delete_failed" }),
         { status: 500, headers }
       );
     }
@@ -79,8 +80,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   } catch (err: any) {
+    console.error("[delete-account] unexpected error:", err);
     return new Response(
-      JSON.stringify({ error: "unexpected", detail: err?.message ?? String(err) }),
+      JSON.stringify({ error: "unexpected" }),
       { status: 500, headers }
     );
   }
