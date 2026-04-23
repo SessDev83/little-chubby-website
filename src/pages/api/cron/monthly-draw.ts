@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { getServiceClient } from "../../../lib/supabase";
 import { getMonthlyPrizeBook } from "../../../data/books";
 import { emailUserLotteryWin, notifyAdminMonthlyDraw, notifyAdminCronError, notifyAdminExpiredClaims } from "../../../lib/notifications";
+import { pingHeartbeat } from "../../../lib/monitoring";
 import crypto from "node:crypto";
 
 export const prerender = false;
@@ -260,6 +261,7 @@ export const GET: APIRoute = async ({ request }) => {
     await notifyAdminExpiredClaims(details);
   }
 
+  await pingHeartbeat("monthly-draw");
   return new Response(
     JSON.stringify({ ok: true, month: prevMonth, summary: drawSummary }),
     { status: 200, headers }

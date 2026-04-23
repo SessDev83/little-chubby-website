@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
 import { getServiceClient } from "../../../lib/supabase";
+import { notifyAdminCronError } from "../../../lib/notifications";
+import { pingHeartbeat } from "../../../lib/monitoring";
 
 export const prerender = false;
 
@@ -19,10 +21,15 @@ export const GET: APIRoute = async ({ request }) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const svc = getServiceClient();
-  const { error } = await svc.rpc("refresh_monthly_leaderboard");
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers });
+  try {
+    const svc = getServiceClient();
+    const { error } = await svc.rpc("refresh_monthly_leaderboard");
+    if (error) throw new Error(error.message);
+    await pingHeartbeat("refresh-leaderboard");
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    await notifyAdminCronError("refresh-leaderboard", message);
+    return new Response(JSON.stringify({ error: message }), { status: 500, headers });
   }
-  return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
 };

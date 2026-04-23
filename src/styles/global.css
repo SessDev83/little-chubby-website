@@ -928,6 +928,22 @@ main {
 }
 
 @media (min-width: 48rem) {
+  .site-header .header-actions {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    opacity: 1;
+    transform: translateX(0);
+    transition: max-width 0.32s cubic-bezier(0.2, 0.65, 0.2, 1), opacity 0.24s ease, transform 0.3s cubic-bezier(0.2, 0.65, 0.2, 1);
+  }
+
+  .site-header.header-nav-collapsed .header-actions {
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(0.45rem);
+    pointer-events: none;
+  }
+
   .site-header.header-nav-collapsed .header-nav {
     max-height: 0;
     opacity: 0;

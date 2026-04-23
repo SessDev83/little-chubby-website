@@ -481,6 +481,14 @@ const navItems = [
         if (next === isCollapsed) return;
         isCollapsed = next;
         headerEl.classList.toggle("header-nav-collapsed", next);
+        if (next) {
+          var settingsDropdownEl = document.getElementById("settings-dropdown");
+          if (settingsDropdownEl) settingsDropdownEl.classList.remove("is-open");
+          var settingsBtnLive = headerEl.querySelector(".settings-btn");
+          if (settingsBtnLive) settingsBtnLive.setAttribute("aria-expanded", "false");
+          var notifDropdown = document.querySelector(".notif-dropdown");
+          if (notifDropdown) notifDropdown.remove();
+        }
         syncHeaderH();
       }
 

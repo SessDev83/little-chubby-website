@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import vercel from '@astrojs/vercel';
+import sentryAstro from '@sentry/astro';
 
 const configuredSite = (process.env.PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '');
 const site = configuredSite || 'https://www.littlechubbypress.com';
@@ -13,7 +14,10 @@ export default defineConfig({
 	adapter: vercel(),
 	trailingSlash: 'always',
 	prefetch: true,
-	integrations: [sitemap({
-		filter: (page) => !page.includes('/admin/') && !page.includes('/api/')
-	})]
+	integrations: [
+		sentryAstro(),
+		sitemap({
+			filter: (page) => !page.includes('/admin/') && !page.includes('/api/')
+		})
+	]
 });

@@ -43,3 +43,8 @@ PIN_TO_COPY/
 .commit-msg.tmp
 astro-build*.log
 astro-check*.log
+
+# operator-only local artifacts
+__schema_dump.sql
+docs/*.pdf
+
