@@ -2,6 +2,8 @@ import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
 import { getServiceClient } from "../../../lib/supabase";
 import { books, getMonthlyPrizeBook } from "../../../data/books";
+import { notifyAdminCronError } from "../../../lib/notifications";
+import { pingHeartbeat } from "../../../lib/monitoring";
 
 export const prerender = false;
 
@@ -425,12 +427,14 @@ export const GET: APIRoute = async ({ request }) => {
       totalSent += batch.length;
     }
 
+    await pingHeartbeat("weekly-newsletter");
     return new Response(
       JSON.stringify({ ok: true, sent: totalSent }),
       { status: 200, headers },
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    await notifyAdminCronError("weekly-newsletter", message);
     return new Response(
       JSON.stringify({ error: message }),
       { status: 500, headers },

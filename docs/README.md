@@ -18,6 +18,9 @@
 - [SOCIAL_AGENTS_MASTER_PLAN.md](./SOCIAL_AGENTS_MASTER_PLAN.md)
 - [CHUBBY_AGENT_REFERENCE.md](./CHUBBY_AGENT_REFERENCE.md)
 
+### 🏆 Master Quality Reference
+- [APP_MASTER_QUALITY_REFERENCE.md](./APP_MASTER_QUALITY_REFERENCE.md) — **5-star audit document**: Security (NIST/OWASP), Performance (Core Web Vitals 2026), Business Logic invariants, Discoverability (GEO/AEO/llms.txt), Legal (GDPR/AEPD/COPPA), Agents. Single point of truth for quality audits and future implementation validation.
+
 ### 🛡️ Admin, ops & security
 - [ADMIN_PANEL_MASTER_PLAN.md](./ADMIN_PANEL_MASTER_PLAN.md)
 - [ADMIN_SECURITY_AUDIT.md](./ADMIN_SECURITY_AUDIT.md)

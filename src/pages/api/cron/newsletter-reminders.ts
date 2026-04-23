@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { getServiceClient } from "../../../lib/supabase";
-import { sendReminderEmail } from "../../../lib/notifications";
+import { sendReminderEmail, notifyAdminCronError } from "../../../lib/notifications";
+import { pingHeartbeat } from "../../../lib/monitoring";
 
 export const prerender = false;
 
@@ -111,12 +112,14 @@ export const GET: APIRoute = async ({ request }) => {
       }
     }
 
+    await pingHeartbeat("newsletter-reminders");
     return new Response(
       JSON.stringify({ ok: true, reminders_sent: sent, stale_deleted: deleted }),
       { status: 200, headers }
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
+    await notifyAdminCronError("newsletter-reminders", message);
     return new Response(
       JSON.stringify({ error: message }),
       { status: 500, headers }

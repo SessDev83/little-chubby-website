@@ -2,6 +2,7 @@
  * Centralized email notification system for Little Chubby Press.
  * All admin notifications go through this module.
  */
+import * as Sentry from "@sentry/astro";
 import { getServiceClient } from "./supabase";
 
 const RESEND_API_KEY = import.meta.env.RESEND_API_KEY;
@@ -656,6 +657,18 @@ export async function notifyAdminMonthlyDraw(report: MonthlyDrawReport): Promise
 
 /** Notify admin that the cron job failed */
 export async function notifyAdminCronError(job: string, errorMsg: string): Promise<void> {
+  Sentry.withScope((scope) => {
+    scope.setTag("surface", "cron");
+    scope.setTag("cron_job", job);
+    scope.setLevel("error");
+    scope.setContext("cron", {
+      job,
+      error: errorMsg.slice(0, 500),
+      timestamp: new Date().toISOString(),
+    });
+    Sentry.captureException(new Error(`[cron:${job}] ${errorMsg.slice(0, 500)}`));
+  });
+
   await send(
     `🚨 CRON FAILED: ${job}`,
     card("🚨", `Cron Job Failed: ${job}`, [
