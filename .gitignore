@@ -48,3 +48,6 @@ astro-check*.log
 __schema_dump.sql
 docs/*.pdf
 
+
+# Internal planning / operations docs (not for public repo)
+docs-internal/

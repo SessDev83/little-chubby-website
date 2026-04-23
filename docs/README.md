@@ -1,43 +1,25 @@
-# Little Chubby Press — App Reference Base
+# Little Chubby Press — Public Documentation
 
-> **Single source of truth** for product strategy, brand voice, operational playbooks, and security posture of the Little Chubby Press app. Every new feature should be aligned with the plans below before touching code.
+This folder contains the public-facing documentation for the Little Chubby Press website (www.littlechubbypress.com).
 
----
+Internal planning, operational runbooks, security audits, and strategy documents live outside the public repository.
 
 ## 📚 Index
 
-### 🎯 Vision & master plans
-- [MASTER_VISION_MUST_HAVE_APP.md](./MASTER_VISION_MUST_HAVE_APP.md) — **North Star**: becoming the must-have international app for coloring and bedtime-story families.
-- [PEANUTS_ECONOMY_MASTER_PLAN.md](./PEANUTS_ECONOMY_MASTER_PLAN.md) — Original peanut economy plan (Phases A–E, shipped).
-- [PEANUTS_SHOP_2.0_COMMUNITY_EXPANSION.md](./PEANUTS_SHOP_2.0_COMMUNITY_EXPANSION.md) — Phase F: visibility surfaces + expanded cosmetic catalog.
+### ⚖️ Legal & user-facing
+- [LEGAL_MAINTENANCE.md](./LEGAL_MAINTENANCE.md) — Bi-weekly review checklist for privacy policy, FAQ, and legal surfaces.
+- [TOS_RECORD_OF_PROCESSING.md](./TOS_RECORD_OF_PROCESSING.md) — GDPR / AEPD record of processing activities (transparency).
 
-### 📣 Growth, voice & content
-- [GROWTH_CONTENT_PLAYBOOK.md](./GROWTH_CONTENT_PLAYBOOK.md)
-- [CONTENT_CALENDAR_30_DAYS.md](./CONTENT_CALENDAR_30_DAYS.md)
-- [BRAND_VOICE_GUIDE.md](./BRAND_VOICE_GUIDE.md)
-- [SOCIAL_AGENTS_MASTER_PLAN.md](./SOCIAL_AGENTS_MASTER_PLAN.md)
-- [CHUBBY_AGENT_REFERENCE.md](./CHUBBY_AGENT_REFERENCE.md)
+### 🎨 Brand
+- [BRAND_VOICE_GUIDE.md](./BRAND_VOICE_GUIDE.md) — Tone, voice, and language conventions for the brand.
 
-### 🏆 Master Quality Reference
-- [APP_MASTER_QUALITY_REFERENCE.md](./APP_MASTER_QUALITY_REFERENCE.md) — **5-star audit document**: Security (NIST/OWASP), Performance (Core Web Vitals 2026), Business Logic invariants, Discoverability (GEO/AEO/llms.txt), Legal (GDPR/AEPD/COPPA), Agents. Single point of truth for quality audits and future implementation validation.
-
-### 🛡️ Admin, ops & security
-- [ADMIN_PANEL_MASTER_PLAN.md](./ADMIN_PANEL_MASTER_PLAN.md)
-- [ADMIN_SECURITY_AUDIT.md](./ADMIN_SECURITY_AUDIT.md)
-- [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md)
-
-### ⚖️ Legal & user-facing explainers (bi-weekly review)
-- [LEGAL_MAINTENANCE.md](./LEGAL_MAINTENANCE.md) — Bi-weekly checklist for privacy policy + FAQ + contact. Tracks gaps (age gate, self-serve deletion, ToS) against the master plan.
-
-### 📎 Also at repo root (GitHub convention)
-- `README.md` — public-facing repo readme
-- `SECURITY.md` — GitHub security policy
+### 🚀 Deploy
+- [DEPLOY_CHECKLIST.md](./DEPLOY_CHECKLIST.md) — Public-safe reference for deploying the site on Vercel.
 
 ---
 
-## 🧭 How to use this folder
+## Contributing
 
-1. **Before any new feature** — read the relevant master plan. If it's a peanut/community feature, start at `MASTER_VISION_MUST_HAVE_APP.md` → then the phase plan that matches.
-2. **When a plan ships** — update the "Shipped" section of the matching doc + the repo memory file `/memories/repo/peanuts-economy-shipped.md`.
-3. **Never delete** a master plan. Supersede it with a new dated section if the strategy changes.
-4. **Keep technical invariants** (DB migrations, API patterns, i18n parity) documented in the plan that introduces them — they become the non-negotiable baseline for the next plan.
+Bug reports and pull requests for the public site are welcome via the GitHub Issues and Pull Requests tabs.
+
+For security reports, see [../SECURITY.md](../SECURITY.md).
