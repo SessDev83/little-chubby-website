@@ -28,11 +28,14 @@
     "@supabase/supabase-js": "^2.102.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "astro": "^6.1.4",
+    "astro": "^6.1.9",
     "typescript": "^5.9.3"
   },
   "devDependencies": {
     "pdf-lib": "^1.17.1",
     "sharp": "^0.34.5"
+  },
+  "overrides": {
+    "path-to-regexp": "^6.3.0"
   }
 }
