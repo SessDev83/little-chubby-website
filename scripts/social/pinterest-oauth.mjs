@@ -153,8 +153,9 @@ const server = http.createServer(async (req, res) => {
   const error = url.searchParams.get("error");
 
   if (error) {
+    const safeError = String(error).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(`<h1>❌ Pinterest returned an error</h1><pre>${error}</pre>`);
+    res.end(`<h1>❌ Pinterest returned an error</h1><pre>${safeError}</pre>`);
     console.error("❌ Pinterest error:", error);
     server.close();
     process.exit(1);

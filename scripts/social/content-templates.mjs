@@ -16,8 +16,12 @@ const SITE_URL = "https://www.littlechubbypress.com";
  */
 export function buildUtmUrl(url, { source = "social", campaign = "organic", content } = {}) {
   // Only tag our own URLs — Amazon strips UTM params
-  if (!url.startsWith(SITE_URL)) return url;
-  const u = new URL(url);
+  let u;
+  try { u = new URL(url); } catch { return url; }
+  let siteHost;
+  try { siteHost = new URL(SITE_URL).hostname.toLowerCase(); } catch { return url; }
+  const host = u.hostname.toLowerCase();
+  if (host !== siteHost && !host.endsWith("." + siteHost)) return url;
   u.searchParams.set("utm_source", source);
   u.searchParams.set("utm_medium", "social");
   u.searchParams.set("utm_campaign", campaign);

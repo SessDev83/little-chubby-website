@@ -109,7 +109,12 @@ function extractUrls(text) {
 
 /** True if the URL is on our own domain. */
 function isSiteUrl(url) {
-  return url.startsWith(SITE_URL) || url.includes("littlechubbypress.com");
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "littlechubbypress.com" || host.endsWith(".littlechubbypress.com");
+  } catch {
+    return false;
+  }
 }
 
 /** True if the URL points to Amazon (any locale / any shortener). */
