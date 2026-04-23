@@ -1776,22 +1776,31 @@ Two separate secret stores are in use. Do not mix them.
 
 ## VII-E: Backup & Disaster Recovery
 
+*Verified April 23, 2026.*
+
 | Property | Current state |
 |---|---|
-| DB backups | Supabase Pro default (daily) |
-| Point-in-time recovery (PITR) | Not verified via CLI \u2014 check Supabase dashboard; recommended to enable on Pro |
-| Restore procedure | Not documented anywhere in the repo |
-| Last restore drill | Never performed |
-| RPO target | **UNDEFINED** (recommended: \u2264 24h) |
-| RTO target | **UNDEFINED** (recommended: \u2264 4h for full restore) |
-| Secondary region | None |
+| DB backups | **[Done]** Supabase Pro daily physical snapshots, 7-day retention. Confirmed 3 recent snapshots visible in dashboard (21-23 Apr 2026). |
+| Point-in-time recovery (PITR) | **[Deferred]** Pro add-on (~$100/mo). Not activated. Decision: defer until Peanuts Shop 2.0 ships real payments or DAU > 500. Daily snapshots cover current stage. |
+| Storage object backups | **[Gap]** Supabase DB backups do NOT include Storage objects (user uploads, gallery images). Storage buckets require separate backup if they hold unrecoverable content. Currently most Storage content is reproducible from local source assets. |
+| Restore procedure | **[Done]** Documented in [docs/RUNBOOK_DB_RESTORE.md](RUNBOOK_DB_RESTORE.md). |
+| Last restore drill | **[Pending]** Never performed. Scheduled before next monetization milestone. |
+| RPO target | **<= 24 hours** (matches Supabase daily backup cadence) |
+| RTO target | **<= 4 hours** (dashboard restore + env rotation + Vercel redeploy) |
+| Secondary region | None (single-region deployment in `us-east-1` / East US - N. Virginia) |
 
-**Action items (not urgent but non-negotiable as the user base grows):**
+**PITR re-evaluation triggers** - activate the PITR add-on when ANY of the following is true:
 
-1. Confirm PITR status on Supabase dashboard. Enable if not on.
-2. Document the restore runbook in this repo (e.g., `docs/RUNBOOK_DB_RESTORE.md`) including: how to create a new project, apply the linked migrations, restore from a specific snapshot, and rotate connection strings.
-3. Run a restore drill on a throwaway Supabase project at least once. An untested backup is not a backup.
-4. Declare RPO/RTO in this section once the runbook exists.
+- Peanuts Shop 2.0 launches with real payment transactions.
+- Daily active users consistently exceed 500.
+- We begin storing user data that cannot be reconstructed from external sources.
+
+**Action items:**
+
+1. ~~Confirm PITR status on Supabase dashboard.~~ [Done] Verified not active; deferred intentionally.
+2. ~~Document the restore runbook.~~ [Done] See [docs/RUNBOOK_DB_RESTORE.md](RUNBOOK_DB_RESTORE.md).
+3. Run a first restore drill on a throwaway Supabase project (target: before next monetization milestone).
+4. Decide whether to back up Storage buckets separately (low priority - most current content is reproducible from source assets).
 
 ---
 
