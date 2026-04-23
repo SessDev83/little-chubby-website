@@ -265,17 +265,18 @@ function todayISO() {
 }
 
 function buildFrontmatter(data, lang, postId, bookId, date, imagePath) {
+  const yamlEscape = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const lines = [
     "---",
     `postId: "${postId}"`,
-    `title: "${data.title.replace(/"/g, '\\"')}"`,
+    `title: "${yamlEscape(data.title)}"`,
     `date: "${date}"`,
-    `summary: "${data.summary.replace(/"/g, '\\"')}"`,
+    `summary: "${yamlEscape(data.summary)}"`,
     `lang: "${lang}"`,
   ];
   if (bookId) lines.push(`bookId: "${bookId}"`);
   if (imagePath) lines.push(`image: "${imagePath}"`);
-  lines.push(`tags: [${data.tags.map((t) => `"${t}"`).join(", ")}]`);
+  lines.push(`tags: [${data.tags.map((t) => `"${yamlEscape(t)}"`).join(", ")}]`);
   lines.push("---");
   return lines.join("\n");
 }

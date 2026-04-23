@@ -1,12 +1,13 @@
 const decodeHtml = (value) => {
-  return value
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .trim();
+  const entities = {
+    "&amp;": "&",
+    "&quot;": '"',
+    "&#39;": "'",
+    "&nbsp;": " ",
+    "&lt;": "<",
+    "&gt;": ">",
+  };
+  return value.replace(/&(?:amp|quot|#39|nbsp|lt|gt);/g, (m) => entities[m]).trim();
 };
 
 const normalizeSpace = (value) => value.replace(/\s+/g, " ").trim();

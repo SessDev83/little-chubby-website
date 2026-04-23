@@ -1638,12 +1638,14 @@ for (const fact of funFacts) {
   const dateStr = d.toISOString().split("T")[0];
   dateOffset++;
 
+  const yamlEscape = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
   // EN file
   const enContent = `---
 postId: "${fact.postId}"
-title: "${fact.en.title.replace(/"/g, '\\"')}"
+title: "${yamlEscape(fact.en.title)}"
 date: "${dateStr}"
-summary: "${fact.en.summary.replace(/"/g, '\\"')}"
+summary: "${yamlEscape(fact.en.summary)}"
 lang: "en"
 category: "fun-fact"
 image: ""
@@ -1656,9 +1658,9 @@ ${fact.en.body}
   // ES file
   const esContent = `---
 postId: "${fact.postId}"
-title: "${fact.es.title.replace(/"/g, '\\"')}"
+title: "${yamlEscape(fact.es.title)}"
 date: "${dateStr}"
-summary: "${fact.es.summary.replace(/"/g, '\\"')}"
+summary: "${yamlEscape(fact.es.summary)}"
 lang: "es"
 category: "fun-fact"
 image: ""
