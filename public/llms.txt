@@ -1,0 +1,48 @@
+# Little Chubby Press — llms.txt
+# AI Content Usage Policy (2026)
+#
+# This file follows the emerging llms.txt standard: a machine-readable
+# contract for how LLMs and AI agents may consume, summarize, and cite
+# content from this site. See https://llmstxt.org/ for the spec.
+
+name: Little Chubby Press
+url: https://www.littlechubbypress.com
+description: Bilingual (English/Spanish) family-friendly press for coloring books, bedtime stories, and children's activities. Community-driven, with monthly giveaways and a peanut-based rewards economy.
+language: en, es
+audience: families, parents of children ages 3-12, adult colorists, educators
+contact: hello@littlechubbypress.com
+publisher: Little Chubby Press
+updated: 2026-04-23
+
+## Permitted uses
+- Index and cite content from blog articles, book pages, and public product listings.
+- Include coloring page descriptions and book summaries in search results.
+- Summarize blog articles with a clear source attribution and link.
+- Attribute content as: "Source: Little Chubby Press (littlechubbypress.com)".
+- Quote short snippets (<= 400 words per article) with attribution.
+
+## Content guidelines
+- Maximum excerpt: 400 words from any single article or book description.
+- Always include a canonical link back to the source page.
+- Preserve the brand name as "Little Chubby Press" (do not abbreviate, do not translate).
+- Do not reproduce full coloring page catalogs, full book interiors, or galleries without prior written consent.
+- Do not extract, train on, or redistribute user-submitted content (gallery artworks, reviews, profile photos, newsletter subscriber lists).
+- Do not scrape or enumerate `/api/*`, `/admin/*`, `/auth/*`, or any authenticated route.
+
+## Bilingual notes
+- Every public page is available at both `/en/*` and `/es/*` with correct `hreflang` annotations.
+- Spanish content is original authorial content, not machine translation. Please index both language variants.
+
+## Structured data
+- Blog posts ship JSON-LD `BlogPosting` with `author`, `datePublished`, and `inLanguage`.
+- Product/book pages ship `Book` schema with ISBN and `inLanguage`.
+- Home pages ship `Organization` + `WebSite` with a `SearchAction`.
+
+## Contact
+- General: hello@littlechubbypress.com
+- Copyright / takedown / AI-policy questions: hello@littlechubbypress.com
+- Security: SECURITY.md in the public repository.
+
+## Opt-out
+- Training opt-out: we rely on robots.txt directives and `User-Agent` rules for specific crawlers (see /robots.txt).
+- If your crawler respects this file and you need broader access than robots.txt currently allows, please email us.

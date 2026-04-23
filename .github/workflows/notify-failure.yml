@@ -1,0 +1,70 @@
+name: Notify on Workflow Failure
+
+# Listens for completion of every other workflow in this repo and sends a
+# single email alert via Resend when any of them fails. This closes the
+# "GitHub Actions failure alerts" gap tracked in VII-D / VII-H of the
+# master quality reference.
+#
+# Filtered workflows (self-excluded):
+# - This workflow itself (avoid notification loops).
+# - Anything triggered via `workflow_dispatch` in "dry_run" mode should still
+#   alert, because a failed dry-run still signals a real problem.
+
+on:
+  workflow_run:
+    workflows:
+      - Daily Analytics Email
+      - Daily Blog Post
+      - Agent — Weekly Intelligence
+      - Agent — Data Collectors
+      - Social Media Auto-Post
+      - Social Media Engagement
+      - Sync Amazon Ratings
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Send Resend alert
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          TO_EMAIL: ${{ secrets.ANALYTICS_EMAIL }}
+          FROM_EMAIL: "Little Chubby Alerts <hello@littlechubbypress.com>"
+          WORKFLOW: ${{ github.event.workflow_run.name }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
+          EVENT: ${{ github.event.workflow_run.event }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$TO_EMAIL" ]; then
+            echo "::warning::Missing RESEND_API_KEY or ANALYTICS_EMAIL; cannot send failure alert."
+            exit 0
+          fi
+          PAYLOAD=$(jq -nc \
+            --arg from "$FROM_EMAIL" \
+            --arg to "$TO_EMAIL" \
+            --arg subject "[GH Actions] $WORKFLOW failed (#$RUN_NUMBER) on $REPO" \
+            --arg text "Workflow: $WORKFLOW
+Repo: $REPO
+Branch: $HEAD_BRANCH
+Commit: $HEAD_SHA
+Triggered by: $ACTOR (event: $EVENT)
+Run: $RUN_URL
+
+Check the logs and re-run or investigate." \
+            '{from:$from, to:[$to], subject:$subject, text:$text}')
+          curl -sS --fail-with-body -X POST "https://api.resend.com/emails" \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            || (echo "::error::Failed to deliver Resend alert email." && exit 1)
