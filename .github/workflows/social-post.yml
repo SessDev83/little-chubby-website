@@ -1,5 +1,5 @@
 # Automated direct-post schedule.
-# This workflow is the primary automation path (no Make relay required).
+# Posts to social platforms directly via their APIs.
 # Platforms without secrets are skipped gracefully.
 
 name: Social Media Auto-Post
