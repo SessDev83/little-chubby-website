@@ -10,6 +10,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
+    "check": "astro check",
+    "ci": "npm run check && npm run build",
     "covers:build": "node scripts/prepare-book-covers.mjs",
     "cover:one": "node scripts/prepare-book-covers.mjs",
     "social:generate": "node scripts/social/post.mjs generate",
@@ -32,6 +34,7 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.8",
     "pdf-lib": "^1.17.1",
     "sharp": "^0.34.5"
   },

@@ -17,6 +17,7 @@ on:
       - Social Media Auto-Post
       - Social Media Engagement
       - Sync Amazon Ratings
+      - Build & Typecheck
     types:
       - completed
 

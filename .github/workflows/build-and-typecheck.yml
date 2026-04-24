@@ -1,0 +1,63 @@
+name: Build & Typecheck
+
+# Runs on every pull request and on push to main to catch TypeScript/Astro
+# errors and build failures before they reach Vercel production.
+# Closes the CI gap tracked in VII-I of the master quality reference (P0-04).
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+# Cancel older runs of the same PR/branch when a new commit arrives
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'package.json'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # NOTE: typecheck is currently non-blocking because there are ~186
+      # pre-existing errors caused by `database.types.ts` drift (missing RPC
+      # signatures and new tables like `home_pins`, `touch_streak`,
+      # `set_featured_badge`, `award_monthly_top_earners`, etc.) plus a few
+      # null-check gaps. Those will be resolved in a dedicated follow-up
+      # package (`quality/ts-types-cleanup`). Once fixed, flip
+      # `continue-on-error` to false (or delete the line) so regressions block.
+      - name: Typecheck (astro check) — non-blocking for now
+        continue-on-error: true
+        run: npm run check
+
+      - name: Build (astro build)
+        env:
+          # Build-time env vars. These keys are **public** (they are already
+          # shipped in the browser bundle) — we don't fetch real data during
+          # prerender, we only need valid URL/JWT shapes so the Supabase
+          # client constructor doesn't throw when the middleware module loads.
+          # Using dummy values keeps the workflow independent from any secret.
+          PUBLIC_SITE_URL: https://www.littlechubbypress.com
+          PUBLIC_SUPABASE_URL: https://dummy-ci-build.supabase.co
+          PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkdW1teSIsInJvbGUiOiJhbm9uIn0.ci-build-placeholder
+          SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkdW1teSIsInJvbGUiOiJzZXJ2aWNlX3JvbGUifQ.ci-build-placeholder
+        run: npm run build
