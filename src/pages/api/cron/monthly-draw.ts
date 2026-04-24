@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { getServiceClient } from "../../../lib/supabase";
-import { getMonthlyPrizeBook } from "../../../data/books";
+import { resolveMonthlyPrizeBook } from "../../../data/books";
 import { emailUserLotteryWin, notifyAdminMonthlyDraw, notifyAdminCronError, notifyAdminExpiredClaims } from "../../../lib/notifications";
 import { pingHeartbeat } from "../../../lib/monitoring";
 import crypto from "node:crypto";
@@ -44,8 +44,20 @@ export const GET: APIRoute = async ({ request }) => {
   const nextFirst = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const nextDrawDate = nextFirst.toISOString().slice(0, 10);
 
-  const prizeBookPrev = getMonthlyPrizeBook(prevMonth);
-  const prizeBookCurr = getMonthlyPrizeBook(currMonth);
+  // Resolve prize books honoring optional admin override in lottery_config.prize_book_id.
+  // Falls back to deterministic rotation via getMonthlyPrizeBook when override is null.
+  const { data: prevOverride } = await svc
+    .from("lottery_config")
+    .select("prize_book_id")
+    .eq("month", prevMonth)
+    .maybeSingle();
+  const { data: currOverride } = await svc
+    .from("lottery_config")
+    .select("prize_book_id")
+    .eq("month", currMonth)
+    .maybeSingle();
+  const prizeBookPrev = resolveMonthlyPrizeBook(prevMonth, (prevOverride as any)?.prize_book_id ?? null);
+  const prizeBookCurr = resolveMonthlyPrizeBook(currMonth, (currOverride as any)?.prize_book_id ?? null);
 
   // ── Step 1: Draw for previous month ────────────────
   const { data: existCheck } = await svc
@@ -74,20 +86,16 @@ export const GET: APIRoute = async ({ request }) => {
     drawSummary = `Draw already completed for ${prevMonth}. Skipped.`;
   } else {
     // ── Gather ticket pool ───────────────────────────
-    const { data: reviews } = await svc
-      .from("book_reviews")
-      .select("user_id")
-      .eq("status", "approved");
-
+    // LOTTERY-003: Draw pool comes EXCLUSIVELY from lottery_entries (user-invested
+    // tickets). Review-approved tickets are granted via award_review_tickets RPC
+    // (admin/reviews.astro) and MUST be spent by the user via enter_giveaway()
+    // to count here. See master doc §III-D LOTTERY-003.
     const { data: paidEntries } = await svc
       .from("lottery_entries")
       .select("user_id, entry_count")
       .eq("month", prevMonth);
 
     const ticketMap = new Map<string, number>();
-    for (const r of reviews ?? []) {
-      ticketMap.set(r.user_id, (ticketMap.get(r.user_id) || 0) + 5);
-    }
     for (const pe of paidEntries ?? []) {
       ticketMap.set(pe.user_id, (ticketMap.get(pe.user_id) || 0) + pe.entry_count);
     }
