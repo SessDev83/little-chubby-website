@@ -1,0 +1,42 @@
+---
+import type { Book } from "../data/books";
+import type { Lang } from "../data/i18n";
+import { siteConfig } from "../data/site";
+
+interface Props {
+  book: Book;
+  lang: Lang;
+}
+
+const { book, lang } = Astro.props;
+
+const asinMatch = book.amazonUrl.match(/\/dp\/([A-Z0-9]{10})/i);
+const asin = asinMatch ? asinMatch[1].toUpperCase() : null;
+const coverSrc = asin
+  ? `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`
+  : book.coverSrc.startsWith("http")
+    ? book.coverSrc
+    : new URL(book.coverSrc, siteConfig.siteUrl).toString();
+
+const detailHref = `/${lang}/books/${book.id}/`;
+---
+
+<article
+  class="book-tile"
+  aria-labelledby={`tile-${book.id}`}
+  data-categories={book.ageCategories.join(",")}
+>
+  <a href={detailHref} class="book-tile-link">
+    <div class="book-tile-img">
+      <img
+        src={coverSrc}
+        alt={book.coverAlt[lang]}
+        loading="lazy"
+        decoding="async"
+        width="400"
+        height="400"
+      />
+    </div>
+    <h3 id={`tile-${book.id}`} class="book-tile-title">{book.title[lang]}</h3>
+  </a>
+</article>

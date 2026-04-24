@@ -18,6 +18,7 @@ interface Props {
 }
 
 const { book, lang, labels } = Astro.props;
+const detailHref = `/${lang}/books/${book.id}/`;
 
 const asinMatch = book.amazonUrl.match(/\/dp\/([A-Z0-9]{10})/i);
 const asin = asinMatch ? asinMatch[1].toUpperCase() : null;
@@ -48,16 +49,20 @@ const ratingSummary = hasRating
 
 <article class="book-card" aria-labelledby={`book-${book.id}`} data-categories={book.ageCategories.join(",")}>
   <div class="book-card-media">
-    <img
-      src={dynamicCoverSrc}
-      alt={book.coverAlt[lang]}
-      loading="lazy"
-      decoding="async"
-      width="600"
-      height="600"
-    />
+    <a href={detailHref} class="book-card-cover-link" tabindex="-1" aria-hidden="true">
+      <img
+        src={dynamicCoverSrc}
+        alt={book.coverAlt[lang]}
+        loading="lazy"
+        decoding="async"
+        width="600"
+        height="600"
+      />
+    </a>
   </div>
-  <h3 id={`book-${book.id}`}>{book.title[lang]}</h3>
+  <h3 id={`book-${book.id}`}>
+    <a href={detailHref} class="book-card-title-link">{book.title[lang]}</a>
+  </h3>
   <p>{book.subtitle[lang]}</p>
   <p>{book.description[lang]}</p>
   <div class="book-rating" aria-label={ratingSummary}>

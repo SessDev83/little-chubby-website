@@ -1,6 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import BookCard from "../../components/BookCard.astro";
+import BookTile from "../../components/BookTile.astro";
 import { booksByNewest } from "../../data/books";
 import { languages, getLangFromParam, ui } from "../../data/i18n";
 import { siteConfig } from "../../data/site";
@@ -16,15 +16,6 @@ const breadcrumbs = [
   { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
   { name: text.navBooks, url: pathname }
 ];
-const bookCardLabels = {
-  buy: text.ctaBuyOnAmazon,
-  leaveReview: text.ctaLeaveReview,
-  noReviews: text.ratingNoReviews,
-  outOfFive: text.ratingOutOfFive,
-  reviewSingular: text.ratingReviewSingular,
-  reviewPlural: text.ratingReviewPlural,
-  copyLink: text.copyLink
-};
 
 const booksJsonLd = JSON.stringify({
   "@context": "https://schema.org",
@@ -35,7 +26,9 @@ const booksJsonLd = JSON.stringify({
     const asin = asinMatch ? asinMatch[1].toUpperCase() : null;
     const cover = asin
       ? `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`
-      : new URL(book.coverSrc, siteConfig.siteUrl).toString();
+      : book.coverSrc.startsWith("http")
+        ? book.coverSrc
+        : new URL(book.coverSrc, siteConfig.siteUrl).toString();
 
     const item = {
       "@type": "Book",
@@ -44,7 +37,7 @@ const booksJsonLd = JSON.stringify({
       inLanguage: "en",
       numberOfPages: book.pages,
       image: cover,
-      url: book.amazonUrl
+      url: new URL(`/${lang}/books/${book.id}/`, siteConfig.siteUrl).toString()
     };
 
     if (typeof book.ratingValue === "number" && typeof book.ratingCount === "number" && book.ratingCount > 0) {
@@ -93,8 +86,8 @@ const booksJsonLd = JSON.stringify({
 
       <p class="books-empty-msg book-hidden" aria-live="polite">{text.booksEmptyCategory}</p>
 
-      <div class="grid-cards books">
-        {booksByNewest.map((book) => <BookCard book={book} lang={lang} labels={bookCardLabels} />)}
+      <div class="books-tile-grid">
+        {booksByNewest.map((book) => <BookTile book={book} lang={lang} />)}
       </div>
     </div>
   </section>
@@ -102,24 +95,21 @@ const booksJsonLd = JSON.stringify({
   <script>
     function initBookFilters() {
       const buttons = document.querySelectorAll<HTMLButtonElement>('.book-filter-btn');
-      const cards = document.querySelectorAll<HTMLElement>('.book-card');
+      const cards = document.querySelectorAll<HTMLElement>('.book-tile');
       const emptyMsg = document.querySelector<HTMLElement>('.books-empty-msg');
       if (!buttons.length || !cards.length) return;
 
       function applyFilter(category: string) {
         let visibleCount = 0;
-
         cards.forEach((card) => {
           const cats = (card.dataset.categories || '').split(',');
           const show = category === 'all' || cats.includes(category);
           card.classList.toggle('book-hidden', !show);
           if (show) visibleCount++;
         });
-
         if (emptyMsg) {
           emptyMsg.classList.toggle('book-hidden', visibleCount > 0);
         }
-
         buttons.forEach((btn) => {
           const isActive = btn.dataset.filter === category;
           btn.classList.toggle('active', isActive);
@@ -135,70 +125,89 @@ const booksJsonLd = JSON.stringify({
         });
       });
 
-      // Apply filter from URL hash on load
       const hash = location.hash.replace('#age-', '');
       if (hash && ['4-8', '8-12', '12-18+'].includes(hash)) {
         applyFilter(hash);
       }
 
-      // Sticky shadow: add .stuck class when filter bar is pinned
+      // Smart scroll: hide on scroll-down, reveal on scroll-up — mirrors site header behaviour.
       const filtersEl = document.querySelector<HTMLElement>('.book-filters');
-      const header = document.querySelector<HTMLElement>('.site-header');
-      if (filtersEl && header) {
-        const observer = new IntersectionObserver(
-          ([e]) => filtersEl.classList.toggle('stuck', e.intersectionRatio < 1),
-          { threshold: [1], rootMargin: `-${header.offsetHeight + 1}px 0px 0px 0px` }
-        );
-        observer.observe(filtersEl);
+      if (filtersEl) {
+        if ((filtersEl as any)._filterCleanup) (filtersEl as any)._filterCleanup();
+
+        const bar = filtersEl;
+        const desktopMQ = window.matchMedia('(min-width: 48rem)');
+        let lastScrollY = window.scrollY;
+        let scrollDownDist = 0;
+        let barIsHidden = false;
+        let ticking = false;
+
+        function getHeaderH() {
+          return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 0;
+        }
+
+        function updateStuck() {
+          bar.classList.toggle('stuck', Math.abs(bar.getBoundingClientRect().top - getHeaderH()) < 2);
+        }
+
+        function setBarHidden(hide: boolean) {
+          if (hide === barIsHidden) return;
+          barIsHidden = hide;
+          bar.classList.toggle('bar-hidden', hide);
+          if (!hide) updateStuck();
+        }
+
+        // Desktop: filter bar follows the site header collapse/expand state exactly.
+        // lcp:header-resize fires (via ResizeObserver) throughout the header animation,
+        // so --header-h is always current and the bar position stays accurate.
+        function onHeaderResize() {
+          if (desktopMQ.matches) {
+            const headerEl = document.querySelector<HTMLElement>('.site-header');
+            if (headerEl) setBarHidden(headerEl.classList.contains('header-nav-collapsed'));
+          }
+          if (!barIsHidden) updateStuck();
+        }
+
+        // Mobile: independent scroll detection — hide after 30 px down, show on any upward movement.
+        function onScroll() {
+          if (desktopMQ.matches || ticking) return;
+          ticking = true;
+          requestAnimationFrame(() => {
+            const currentY = window.scrollY;
+            const delta = currentY - lastScrollY;
+            lastScrollY = currentY;
+
+            if (Math.abs(delta) >= 1) {
+              if (currentY < 80) {
+                setBarHidden(false);
+                scrollDownDist = 0;
+              } else if (delta > 0) {
+                scrollDownDist += delta;
+                if (scrollDownDist > 30) { scrollDownDist = 0; setBarHidden(true); }
+              } else {
+                scrollDownDist = 0;
+                setBarHidden(false);
+              }
+            }
+
+            if (!barIsHidden) updateStuck();
+            ticking = false;
+          });
+        }
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('lcp:header-resize', onHeaderResize);
+        onHeaderResize();
+
+        (bar as any)._filterCleanup = () => {
+          window.removeEventListener('scroll', onScroll);
+          window.removeEventListener('lcp:header-resize', onHeaderResize);
+        };
       }
     }
 
-    // Run on initial load and on Astro page transitions
     initBookFilters();
     document.addEventListener('astro:after-swap', initBookFilters);
   </script>
 
-  <script>
-    function fallbackCopy(text: string): boolean {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.select();
-      let ok = false;
-      try { ok = document.execCommand("copy"); } catch {}
-      document.body.removeChild(ta);
-      return ok;
-    }
-
-    function initCopyLinks() {
-      document.querySelectorAll("[data-copy-url]").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          const url = btn.getAttribute("data-copy-url");
-          if (!url) return;
-          let copied = false;
-          try {
-            if (navigator.clipboard && window.isSecureContext) {
-              await navigator.clipboard.writeText(url);
-              copied = true;
-            } else {
-              copied = fallbackCopy(url);
-            }
-          } catch {
-            copied = fallbackCopy(url);
-          }
-          const label = btn.querySelector(".copy-label");
-          if (label) {
-            const original = label.textContent;
-            label.textContent = copied ? "✓ Copiado" : "✗ Error";
-            setTimeout(() => { label.textContent = original; }, 2000);
-          }
-        });
-      });
-    }
-
-    initCopyLinks();
-    document.addEventListener('astro:after-swap', initCopyLinks);
-  </script>
 </BaseLayout>

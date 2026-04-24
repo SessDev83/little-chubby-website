@@ -132,15 +132,23 @@ function initBlogFilters() {
     });
   });
 
-  // Add shadow when filter bar is stuck
+  // Sticky shadow — reads --header-h at check time so it stays
+  // accurate when the smart header collapses/expands.
   var filtersEl = document.querySelector(".blog-filters");
-  var headerEl = document.querySelector(".site-header");
-  if (filtersEl && headerEl) {
-    var obs = new IntersectionObserver(
-      function(entries) { filtersEl.classList.toggle("stuck", entries[0].intersectionRatio < 1); },
-      { threshold: [1], rootMargin: "-" + (headerEl.offsetHeight + 1) + "px 0px 0px 0px" }
-    );
-    obs.observe(filtersEl);
+  if (filtersEl) {
+    if (filtersEl._stuckCleanup) filtersEl._stuckCleanup();
+    function checkBlogStuck() {
+      var headerH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-h")) || 0;
+      var top = filtersEl.getBoundingClientRect().top;
+      filtersEl.classList.toggle("stuck", Math.abs(top - headerH) < 2);
+    }
+    window.addEventListener("scroll", checkBlogStuck, { passive: true });
+    window.addEventListener("lcp:header-resize", checkBlogStuck);
+    checkBlogStuck();
+    filtersEl._stuckCleanup = function() {
+      window.removeEventListener("scroll", checkBlogStuck);
+      window.removeEventListener("lcp:header-resize", checkBlogStuck);
+    };
   }
 }
 initBlogFilters();

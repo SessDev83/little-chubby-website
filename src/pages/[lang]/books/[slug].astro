@@ -1,0 +1,297 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import BookCard from "../../../components/BookCard.astro";
+import Button from "../../../components/Button.astro";
+import { books, booksByNewest } from "../../../data/books";
+import { languages, getLangFromParam, ui } from "../../../data/i18n";
+import { siteConfig } from "../../../data/site";
+
+export function getStaticPaths() {
+  return languages.flatMap((lang) =>
+    books.map((book) => ({
+      params: { lang, slug: book.id },
+      props: { book },
+    }))
+  );
+}
+
+const { book } = Astro.props;
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/books/${book.id}/`;
+
+const asinMatch = book.amazonUrl.match(/\/dp\/([A-Z0-9]{10})/i);
+const asin = asinMatch ? asinMatch[1].toUpperCase() : null;
+const coverUrl = asin
+  ? `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`
+  : book.coverSrc.startsWith("http")
+    ? book.coverSrc
+    : new URL(book.coverSrc, siteConfig.siteUrl).toString();
+
+const hasRating =
+  typeof book.ratingValue === "number" &&
+  Number.isFinite(book.ratingValue) &&
+  typeof book.ratingCount === "number" &&
+  book.ratingCount > 0;
+const normalizedRating = hasRating ? Math.max(0, Math.min(5, book.ratingValue ?? 0)) : 0;
+const ratingPercent = `${(normalizedRating / 5) * 100}%`;
+const reviewWord = (book.ratingCount ?? 0) === 1 ? text.ratingReviewSingular : text.ratingReviewPlural;
+const ratingSummary = hasRating
+  ? `${normalizedRating.toFixed(1)} ${text.ratingOutOfFive} (${book.ratingCount} ${reviewWord})`
+  : text.ratingNoReviews;
+
+// Related: same age category, different book, max 3
+const related = booksByNewest
+  .filter(
+    (b) =>
+      b.id !== book.id &&
+      b.ageCategories.some((c) => book.ageCategories.includes(c))
+  )
+  .slice(0, 3);
+
+const relatedLabels = {
+  buy: text.ctaBuyOnAmazon,
+  leaveReview: text.ctaLeaveReview,
+  noReviews: text.ratingNoReviews,
+  outOfFive: text.ratingOutOfFive,
+  reviewSingular: text.ratingReviewSingular,
+  reviewPlural: text.ratingReviewPlural,
+  copyLink: text.copyLink,
+};
+
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: text.navBooks, url: `/${lang}/books/` },
+  { name: book.title[lang], url: pathname },
+];
+
+const metaTitle = `${book.title[lang]} | Little Chubby Press`;
+const metaDescription = book.description[lang];
+
+const bookJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Book",
+  name: book.title[lang],
+  description: book.description[lang],
+  url: new URL(pathname, siteConfig.siteUrl).toString(),
+  inLanguage: lang,
+  numberOfPages: book.pages,
+  image: coverUrl,
+  author: {
+    "@type": "Organization",
+    name: siteConfig.brandName,
+    url: siteConfig.siteUrl,
+  },
+  publisher: {
+    "@type": "Organization",
+    name: siteConfig.brandName,
+    url: siteConfig.siteUrl,
+  },
+  offers: {
+    "@type": "Offer",
+    url: book.amazonUrl,
+    availability: "https://schema.org/InStock",
+    seller: { "@type": "Organization", name: "Amazon" },
+  },
+  ...(hasRating
+    ? {
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: normalizedRating,
+          reviewCount: book.ratingCount,
+          bestRating: 5,
+        },
+      }
+    : {}),
+});
+---
+
+<BaseLayout
+  lang={lang}
+  title={metaTitle}
+  description={metaDescription}
+  pathname={pathname}
+  breadcrumbs={breadcrumbs}
+  ogImage={coverUrl}
+>
+  <script type="application/ld+json" set:html={bookJsonLd}></script>
+
+  <section class="page-section book-detail-section">
+    <div class="container">
+
+      <!-- Back link -->
+      <a href={`/${lang}/books/`} class="book-detail-back">
+        {text.bookDetailBackToCatalog}
+      </a>
+
+      <!-- Hero -->
+      <div class="book-detail-hero">
+        <div class="book-detail-cover">
+          <img
+            src={coverUrl}
+            alt={book.coverAlt[lang]}
+            width="420"
+            height="420"
+            fetchpriority="high"
+            decoding="async"
+          />
+        </div>
+
+        <div class="book-detail-info">
+          <h1 class="book-detail-title">{book.title[lang]}</h1>
+          <p class="book-detail-subtitle">{book.subtitle[lang]}</p>
+          <p class="book-detail-byline">{text.bookDetailByLcp}</p>
+
+          <div class="book-detail-meta">
+            <span class="badge-age">{book.ageRange[lang]}</span>
+            <span class="book-detail-pages">{book.pages} {text.bookDetailPages}</span>
+          </div>
+
+          {hasRating && (
+            <div class="book-rating book-detail-rating" aria-label={ratingSummary}>
+              <span class="book-rating-stars" style={`--rating-percent: ${ratingPercent};`} aria-hidden="true"></span>
+              <span class="book-rating-copy">{ratingSummary}</span>
+            </div>
+          )}
+
+          <p class="book-detail-description">{book.description[lang]}</p>
+
+          <div class="book-detail-actions">
+            <Button href={book.amazonUrl} label={text.ctaBuyOnAmazon} variant="primary" external />
+            {asin && (
+              <Button
+                href={`https://www.amazon.com/review/create-review?asin=${asin}`}
+                label={text.ctaLeaveReview}
+                variant="ghost"
+                external
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <!-- Related books -->
+      {related.length > 0 && (
+        <div class="book-detail-related">
+          <h2 class="book-detail-related-title">{text.bookDetailRelatedBooks}</h2>
+          <div class="grid-cards books">
+            {related.map((b) => (
+              <BookCard book={b} lang={lang} labels={relatedLabels} />
+            ))}
+          </div>
+        </div>
+      )}
+
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+.book-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--brand-brown);
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  margin-bottom: 2rem;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+.book-detail-back:hover { opacity: 1; }
+
+.book-detail-hero {
+  display: grid;
+  gap: 2.5rem;
+  align-items: start;
+  margin-bottom: 3.5rem;
+}
+
+@media (min-width: 48rem) {
+  .book-detail-hero {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: 3.5rem;
+  }
+}
+
+.book-detail-cover img {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  border-radius: var(--radius-md, 1rem);
+  box-shadow: 0 8px 32px rgba(71, 52, 33, 0.18);
+  display: block;
+  margin-inline: auto;
+}
+
+.book-detail-title {
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  color: var(--brand-brown);
+  margin-bottom: 0.35rem;
+  line-height: 1.2;
+}
+
+.book-detail-subtitle {
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  margin-bottom: 0.2rem;
+}
+
+.book-detail-byline {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  margin-bottom: 1.1rem;
+  font-style: italic;
+}
+
+.book-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.book-detail-pages {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  background: var(--bg-paper, #f9f3e8);
+  border: 1px solid var(--line, #e2cfad);
+  border-radius: 999px;
+  padding: 0.28rem 0.75rem;
+  font-weight: 600;
+}
+
+.book-detail-rating {
+  margin-bottom: 1.1rem;
+}
+
+.book-detail-description {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--ink);
+  margin-bottom: 1.6rem;
+  max-width: 52ch;
+}
+
+.book-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.book-detail-related {
+  border-top: 1px dashed var(--line);
+  padding-top: 2.5rem;
+}
+
+.book-detail-related-title {
+  font-size: clamp(1.15rem, 3vw, 1.5rem);
+  color: var(--brand-brown);
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+</style>

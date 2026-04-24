@@ -928,26 +928,25 @@ main {
 }
 
 @media (min-width: 48rem) {
+  /* Use a concrete max-width value (not 100%) so CSS can interpolate
+     smoothly. 30rem covers any realistic header-actions content width. */
   .site-header .header-actions {
-    max-width: 100%;
-    white-space: nowrap;
+    max-width: 30rem;
     overflow: hidden;
     opacity: 1;
-    transform: translateX(0);
-    transition: max-width 0.32s cubic-bezier(0.2, 0.65, 0.2, 1), opacity 0.24s ease, transform 0.3s cubic-bezier(0.2, 0.65, 0.2, 1);
+    transition: max-width 0.3s cubic-bezier(0.2, 0.65, 0.2, 1), opacity 0.22s ease;
   }
 
   .site-header.header-nav-collapsed .header-actions {
     max-width: 0;
     opacity: 0;
-    transform: translateX(0.45rem);
     pointer-events: none;
   }
 
   .site-header.header-nav-collapsed .header-nav {
     max-height: 0;
     opacity: 0;
-    transform: translateY(-0.22rem);
+    transform: translateY(-0.3rem);
     margin-top: 0;
     padding-top: 0;
     border-top-color: transparent;
@@ -1186,16 +1185,37 @@ main {
   margin-bottom: 0.9rem;
 }
 
+.book-card-cover-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .book-card-media img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   object-position: center;
+  transition: transform 0.28s ease;
+}
+
+.book-card-cover-link:hover img {
+  transform: scale(1.04);
 }
 
 .book-card h3,
 .post-card h3 {
   color: var(--brand-brown);
+}
+
+.book-card-title-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+
+.book-card-title-link:hover {
+  color: var(--brand-blue);
 }
 
 .book-rating {
@@ -1270,6 +1290,80 @@ main {
   color: var(--brand-brown);
 }
 
+/* ── Book Tiles (catalog grid — cover + title only) ── */
+.books-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 32rem) {
+  .books-tile-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 52rem) {
+  .books-tile-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (min-width: 70rem) {
+  .books-tile-grid { grid-template-columns: repeat(5, 1fr); }
+}
+
+.book-tile {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.book-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(71, 52, 33, 0.16);
+}
+
+.book-tile.book-hidden { display: none !important; }
+
+.book-tile-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.book-tile-img {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--surface-strong);
+}
+
+.book-tile-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  transition: transform 0.28s ease;
+}
+
+.book-tile-link:hover .book-tile-img img {
+  transform: scale(1.05);
+}
+
+.book-tile-title {
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--brand-brown);
+  margin: 0.5rem 0 0;
+  line-height: 1.3;
+  text-align: center;
+  padding: 0 0.2rem;
+}
+
+.book-tile-link:hover .book-tile-title {
+  color: var(--brand-blue);
+}
+
 /* ── Book Filters ───────────────────────────── */
 .book-filters {
   display: flex;
@@ -1285,11 +1379,17 @@ main {
   padding: 0.7rem 0.5rem;
   margin-left: -1rem;
   margin-right: -1rem;
-  transition: box-shadow 0.25s ease;
+  transition: transform 0.18s cubic-bezier(0.2, 0.6, 0.2, 1), opacity 0.14s ease, box-shadow 0.25s ease;
 }
 
 .book-filters.stuck {
   box-shadow: 0 3px 12px rgba(71, 52, 33, 0.12);
+}
+
+.book-filters.bar-hidden {
+  transform: translateY(calc(-100% - var(--header-h, 64px)));
+  opacity: 0;
+  pointer-events: none;
 }
 
 .book-filter-btn {

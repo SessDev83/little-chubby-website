@@ -455,9 +455,18 @@ const navItems = [
     if (headerEl) {
       function syncHeaderH() {
         document.documentElement.style.setProperty("--header-h", headerEl.offsetHeight + "px");
+        window.dispatchEvent(new CustomEvent("lcp:header-resize"));
       }
 
-      // Keep one resize sync listener across astro:after-swap re-inits.
+      // ResizeObserver keeps --header-h accurate *during* CSS animations (nav expand/collapse).
+      if (window.__lcpHeaderResizeObserver) {
+        window.__lcpHeaderResizeObserver.disconnect();
+      }
+      var ro = new ResizeObserver(function() { syncHeaderH(); });
+      ro.observe(headerEl);
+      window.__lcpHeaderResizeObserver = ro;
+
+      // Also sync on viewport width changes (ResizeObserver covers height).
       if (window.__lcpHeaderResizeSync) {
         window.removeEventListener("resize", window.__lcpHeaderResizeSync);
       }
