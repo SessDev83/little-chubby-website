@@ -1,8 +1,9 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
-import BookCard from "../../../components/BookCard.astro";
+import BookTile from "../../../components/BookTile.astro";
 import Button from "../../../components/Button.astro";
 import { books, booksByNewest } from "../../../data/books";
+import { getBookSeo } from "../../../data/books-seo";
 import { languages, getLangFromParam, ui } from "../../../data/i18n";
 import { siteConfig } from "../../../data/site";
 
@@ -40,24 +41,17 @@ const ratingSummary = hasRating
   ? `${normalizedRating.toFixed(1)} ${text.ratingOutOfFive} (${book.ratingCount} ${reviewWord})`
   : text.ratingNoReviews;
 
-// Related: same age category, different book, max 3
+const features = book.features?.[lang] ?? [];
+const perfectFor = book.perfectFor?.[lang] ?? null;
+
+// Related: same age category, different book, max 4
 const related = booksByNewest
   .filter(
     (b) =>
       b.id !== book.id &&
       b.ageCategories.some((c) => book.ageCategories.includes(c))
   )
-  .slice(0, 3);
-
-const relatedLabels = {
-  buy: text.ctaBuyOnAmazon,
-  leaveReview: text.ctaLeaveReview,
-  noReviews: text.ratingNoReviews,
-  outOfFive: text.ratingOutOfFive,
-  reviewSingular: text.ratingReviewSingular,
-  reviewPlural: text.ratingReviewPlural,
-  copyLink: text.copyLink,
-};
+  .slice(0, 4);
 
 const breadcrumbs = [
   { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
@@ -65,10 +59,33 @@ const breadcrumbs = [
   { name: book.title[lang], url: pathname },
 ];
 
-const metaTitle = `${book.title[lang]} | Little Chubby Press`;
-const metaDescription = book.description[lang];
+// Per-book SEO + FAQ (IV-H). Falls back gracefully if entry not yet written.
+const seo = getBookSeo(book.id);
+const h1Keyword = seo?.h1Keyword?.[lang] ?? null;
+const metaTitle = seo?.seoTitle?.[lang] ?? `${book.title[lang]} | Little Chubby Press`;
+const metaDescription = (seo?.seoDescription?.[lang] ?? book.description[lang]).slice(0, 160);
 
-const bookJsonLd = JSON.stringify({
+// Unique FAQ per book if available; otherwise fall back to generic 3-entry i18n FAQ.
+const faqEntries: { q: string; a: string }[] = seo?.faq?.[lang] ?? [
+  { q: text.bookDetailFaqQ1, a: text.bookDetailFaqA1 },
+  { q: text.bookDetailFaqQ2, a: text.bookDetailFaqA2 },
+  { q: text.bookDetailFaqQ3, a: text.bookDetailFaqA3 },
+];
+
+// In-app review CTA (Master Doc invariant #17). Pre-selects book via query string.
+const inAppReviewUrl = `/${lang}/reviews/?book=${encodeURIComponent(book.id)}#book-${book.id}`;
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqEntries.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
+const bookJsonLd = {
   "@context": "https://schema.org",
   "@type": "Book",
   name: book.title[lang],
@@ -103,7 +120,7 @@ const bookJsonLd = JSON.stringify({
         },
       }
     : {}),
-});
+};
 ---
 
 <BaseLayout
@@ -114,12 +131,12 @@ const bookJsonLd = JSON.stringify({
   breadcrumbs={breadcrumbs}
   ogImage={coverUrl}
 >
-  <script type="application/ld+json" set:html={bookJsonLd}></script>
+  <script type="application/ld+json" set:html={JSON.stringify(bookJsonLd)}></script>
+  <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)}></script>
 
   <section class="page-section book-detail-section">
     <div class="container">
 
-      <!-- Back link -->
       <a href={`/${lang}/books/`} class="book-detail-back">
         {text.bookDetailBackToCatalog}
       </a>
@@ -138,7 +155,10 @@ const bookJsonLd = JSON.stringify({
         </div>
 
         <div class="book-detail-info">
-          <h1 class="book-detail-title">{book.title[lang]}</h1>
+          <h1 class="book-detail-title">
+            {book.title[lang]}
+            {h1Keyword && <span class="book-detail-h1-tail"> — {h1Keyword}</span>}
+          </h1>
           <p class="book-detail-subtitle">{book.subtitle[lang]}</p>
           <p class="book-detail-byline">{text.bookDetailByLcp}</p>
 
@@ -158,26 +178,64 @@ const bookJsonLd = JSON.stringify({
 
           <div class="book-detail-actions">
             <Button href={book.amazonUrl} label={text.ctaBuyOnAmazon} variant="primary" external />
-            {asin && (
-              <Button
-                href={`https://www.amazon.com/review/create-review?asin=${asin}`}
-                label={text.ctaLeaveReview}
-                variant="ghost"
-                external
-              />
-            )}
+            <Button
+              href={inAppReviewUrl}
+              label={text.bookDetailCtaInAppReview}
+              variant="ghost"
+            />
           </div>
         </div>
+      </div>
+
+      <!-- What's Inside -->
+      {features.length > 0 && (
+        <div class="book-detail-features">
+          <h2 class="book-detail-section-title">{text.bookDetailWhatsInside}</h2>
+          <ul class="book-features-list">
+            {features.map((f) => (
+              <li class="book-features-item">
+                <span class="book-features-icon" aria-hidden="true">✓</span>
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <!-- Perfect for -->
+      {perfectFor && (
+        <div class="book-detail-perfect">
+          <h2 class="book-detail-section-title">{text.bookDetailPerfectFor}</h2>
+          <p class="book-detail-perfect-text">{perfectFor}</p>
+        </div>
+      )}
+
+      <!-- Gift callout -->
+      <div class="book-gift-callout">
+        <p class="book-gift-title">{text.bookDetailGiftCallout}</p>
+        <p class="book-gift-sub">{text.bookDetailGiftCalloutSub}</p>
+        <Button href={book.amazonUrl} label={text.ctaBuyOnAmazon} variant="primary" external />
+      </div>
+
+      <!-- FAQ -->
+      <div class="book-detail-faq">
+        <h2 class="book-detail-section-title">{text.bookDetailFaqTitle}</h2>
+        <dl class="book-faq-list">
+          {faqEntries.map((f) => (
+            <div class="book-faq-item">
+              <dt class="book-faq-q">{f.q}</dt>
+              <dd class="book-faq-a">{f.a}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
       <!-- Related books -->
       {related.length > 0 && (
         <div class="book-detail-related">
-          <h2 class="book-detail-related-title">{text.bookDetailRelatedBooks}</h2>
-          <div class="grid-cards books">
-            {related.map((b) => (
-              <BookCard book={b} lang={lang} labels={relatedLabels} />
-            ))}
+          <h2 class="book-detail-section-title">{text.bookDetailRelatedBooks}</h2>
+          <div class="books-tile-grid books-tile-grid--related">
+            {related.map((b) => <BookTile book={b} lang={lang} />)}
           </div>
         </div>
       )}
@@ -202,13 +260,13 @@ const bookJsonLd = JSON.stringify({
 }
 .book-detail-back:hover { opacity: 1; }
 
+/* Hero */
 .book-detail-hero {
   display: grid;
   gap: 2.5rem;
   align-items: start;
-  margin-bottom: 3.5rem;
+  margin-bottom: 3rem;
 }
-
 @media (min-width: 48rem) {
   .book-detail-hero {
     grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
@@ -232,20 +290,25 @@ const bookJsonLd = JSON.stringify({
   margin-bottom: 0.35rem;
   line-height: 1.2;
 }
-
+.book-detail-h1-tail {
+  display: block;
+  font-size: 0.72em;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-top: 0.25rem;
+  line-height: 1.3;
+}
 .book-detail-subtitle {
   font-size: 1.05rem;
   color: var(--ink-soft);
   margin-bottom: 0.2rem;
 }
-
 .book-detail-byline {
   font-size: 0.88rem;
   color: var(--ink-soft);
   margin-bottom: 1.1rem;
   font-style: italic;
 }
-
 .book-detail-meta {
   display: flex;
   flex-wrap: wrap;
@@ -253,7 +316,6 @@ const bookJsonLd = JSON.stringify({
   gap: 0.6rem;
   margin-bottom: 1rem;
 }
-
 .book-detail-pages {
   font-size: 0.85rem;
   color: var(--ink-soft);
@@ -263,11 +325,7 @@ const bookJsonLd = JSON.stringify({
   padding: 0.28rem 0.75rem;
   font-weight: 600;
 }
-
-.book-detail-rating {
-  margin-bottom: 1.1rem;
-}
-
+.book-detail-rating { margin-bottom: 1.1rem; }
 .book-detail-description {
   font-size: 1.05rem;
   line-height: 1.7;
@@ -275,7 +333,6 @@ const bookJsonLd = JSON.stringify({
   margin-bottom: 1.6rem;
   max-width: 52ch;
 }
-
 .book-detail-actions {
   display: flex;
   flex-wrap: wrap;
@@ -283,15 +340,132 @@ const bookJsonLd = JSON.stringify({
   align-items: center;
 }
 
-.book-detail-related {
-  border-top: 1px dashed var(--line);
-  padding-top: 2.5rem;
+/* Shared section heading */
+.book-detail-section-title {
+  font-size: clamp(1.1rem, 2.8vw, 1.4rem);
+  color: var(--brand-brown);
+  margin-bottom: 1.1rem;
 }
 
-.book-detail-related-title {
-  font-size: clamp(1.15rem, 3vw, 1.5rem);
-  color: var(--brand-brown);
-  margin-bottom: 1.5rem;
+/* What's Inside */
+.book-detail-features {
+  border-top: 1px dashed var(--line);
+  padding-top: 2.2rem;
+  margin-bottom: 2.2rem;
+}
+.book-features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+@media (min-width: 36rem) {
+  .book-features-list { grid-template-columns: 1fr 1fr; }
+}
+.book-features-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.97rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.book-features-icon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: var(--brand-green, #4a7c59);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-top: 0.1rem;
+}
+
+/* Perfect for */
+.book-detail-perfect {
+  border-top: 1px dashed var(--line);
+  padding-top: 2.2rem;
+  margin-bottom: 2.2rem;
+}
+.book-detail-perfect-text {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--ink);
+  max-width: 64ch;
+}
+
+/* Gift callout */
+.book-gift-callout {
+  background: color-mix(in srgb, var(--brand-yellow, #f5c842) 18%, var(--bg-paper) 82%);
+  border: 1.5px solid color-mix(in srgb, var(--brand-yellow, #f5c842) 50%, transparent);
+  border-radius: var(--radius-md, 1rem);
+  padding: clamp(1.2rem, 3vw, 2rem);
   text-align: center;
+  margin-bottom: 2.5rem;
+}
+.book-gift-title {
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+  font-weight: 800;
+  color: var(--brand-brown);
+  margin-bottom: 0.4rem;
+}
+.book-gift-sub {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  margin-bottom: 1.1rem;
+  max-width: 44ch;
+  margin-inline: auto;
+}
+
+/* FAQ */
+.book-detail-faq {
+  border-top: 1px dashed var(--line);
+  padding-top: 2.2rem;
+  margin-bottom: 2.5rem;
+}
+.book-faq-list {
+  display: grid;
+  gap: 1.1rem;
+  margin: 0;
+}
+.book-faq-item {
+  background: var(--bg-paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 0.65rem);
+  padding: 1rem 1.2rem;
+}
+.book-faq-q {
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-size: 0.97rem;
+  font-weight: 700;
+  color: var(--brand-brown);
+  margin-bottom: 0.4rem;
+}
+.book-faq-a {
+  font-size: 0.93rem;
+  line-height: 1.65;
+  color: var(--ink);
+  margin: 0;
+}
+
+/* Related books */
+.book-detail-related {
+  border-top: 1px dashed var(--line);
+  padding-top: 2.2rem;
+}
+.books-tile-grid--related {
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 32rem) {
+  .books-tile-grid--related { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 52rem) {
+  .books-tile-grid--related { grid-template-columns: repeat(4, 1fr); }
 }
 </style>

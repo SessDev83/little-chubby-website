@@ -1,0 +1,471 @@
+// Per-book SEO metadata + unique bilingual FAQ.
+// Keyed by Book.id. Every entry MUST have EN + ES values for every field,
+// and faq.en.length === faq.es.length (bilingual parity — Master Doc invariant #9 + IV-H).
+// Validated at module load by assertBookSeoParity() below.
+//
+// See docs-internal/APP_MASTER_QUALITY_REFERENCE.md — Section IV-H.
+
+export type BookSeoEntry = {
+  /** Appended to the visible <h1> as a keyword tail (e.g. " — Coloring Book for Kids Ages 4-8"). */
+  h1Keyword: { en: string; es: string };
+  /** ≤ 60 chars. Used as <title>. Keyword in first 60 chars. */
+  seoTitle: { en: string; es: string };
+  /** 150-160 chars. Used as <meta name="description">. */
+  seoDescription: { en: string; es: string };
+  /** 3 unique Q/A per book. faq.en.length === faq.es.length. */
+  faq: {
+    en: { q: string; a: string }[];
+    es: { q: string; a: string }[];
+  };
+};
+
+export const bookSeo: Record<string, BookSeoEntry> = {
+  "magical-creatures": {
+    h1Keyword: {
+      en: "Fantasy Coloring Book for Kids Ages 4-8",
+      es: "Libro de Colorear Fantasía para Niños 4-8 Años",
+    },
+    seoTitle: {
+      en: "Magical Creatures Coloring Book for Kids 4-8 | 90 Pages",
+      es: "Criaturas Mágicas: Colorear Niños 4-8 | 90 Páginas",
+    },
+    seoDescription: {
+      en: "90 single-sided unicorn, mermaid & dragon coloring pages for kids 4-8. No bleed-through. Perfect birthday or rainy-day gift. See inside on Amazon.",
+      es: "90 páginas a una cara con unicornios, sirenas y dragones para niños de 4 a 8 años. Sin transpasos. Regalo ideal de cumpleaños. Ver en Amazon.",
+    },
+    faq: {
+      en: [
+        { q: "What creatures appear in this book?", a: "Unicorns, mermaids, dragons, fairies, phoenixes, and other fairy-tale scenes. Every creature is drawn in a friendly, non-scary style — even the dragons look adventurous rather than threatening." },
+        { q: "Will markers bleed through the paper?", a: "All 90 pages are single-sided, so standard markers will not ruin the design on the back. We still recommend a blotter sheet underneath if you are using very wet gel pens or alcohol markers." },
+        { q: "Is this suitable for a 4-year-old, or too detailed?", a: "The outlines are deliberately large and simple. Most 4-year-olds can color independently; 7-8 year olds will add their own details and fills. It is not a fine-detail adult book." },
+      ],
+      es: [
+        { q: "¿Qué criaturas aparecen en este libro?", a: "Unicornios, sirenas, dragones, hadas, fénix y otras escenas de cuentos de hadas. Todas las criaturas están dibujadas en estilo amigable y nada aterrador — incluso los dragones parecen aventureros, no amenazantes." },
+        { q: "¿Los marcadores traspasan el papel?", a: "Las 90 páginas son a una sola cara, así que los marcadores normales no arruinan el diseño de atrás. Igual recomendamos una hoja debajo si usas gel pens muy húmedos o marcadores de alcohol." },
+        { q: "¿Es adecuado para un niño de 4 años, o demasiado detallado?", a: "Las líneas son deliberadamente grandes y simples. La mayoría de niños de 4 años colorean solos; los de 7-8 añaden sus propios detalles. No es un libro de detalle fino para adultos." },
+      ],
+    },
+  },
+
+  "chic-styles": {
+    h1Keyword: {
+      en: "Fashion Coloring Book for Teens & Adults",
+      es: "Libro de Moda para Colorear Teens y Adultos",
+    },
+    seoTitle: {
+      en: "Chic Styles Fashion Coloring Book for Adults & Teens",
+      es: "Chic Styles: Libro de Moda para Adultos y Teens",
+    },
+    seoDescription: {
+      en: "90 fashion-focused coloring pages — modern & vintage looks for teens and adults. Single-sided, marker-friendly, perfect for creative relaxation.",
+      es: "90 páginas de moda para colorear — looks modernos y vintage para teens y adultos. Una sola cara, aptas para marcadores. Relajación creativa.",
+    },
+    faq: {
+      en: [
+        { q: "How detailed are the designs — is this for beginners or experienced colorists?", a: "Chic Styles leans toward medium-to-detailed work aimed at teens and adults. Beginners can still enjoy the simpler modern looks; the detailed vintage pieces reward patient colorists." },
+        { q: "Can I use alcohol markers like Copic or Ohuhu?", a: "Yes — every page is single-sided. Alcohol markers will not bleed onto the next design. A blotter sheet underneath is recommended for the heaviest saturation." },
+        { q: "Does it include faces, or just outfits and accessories?", a: "Most pages focus on outfits, shoes, bags, and styling details. A few pages include stylized figures with clean face outlines you can customize with any skin tone, hair color, or expression." },
+      ],
+      es: [
+        { q: "¿Qué tan detallados son los diseños — es para principiantes o experimentados?", a: "Chic Styles se inclina hacia trabajo medio-detallado pensado para teens y adultos. Los principiantes pueden disfrutar los looks modernos más simples; las piezas vintage detalladas recompensan a quienes tienen paciencia." },
+        { q: "¿Puedo usar marcadores de alcohol tipo Copic u Ohuhu?", a: "Sí — cada página es a una sola cara. Los marcadores de alcohol no traspasan al siguiente diseño. Se recomienda una hoja debajo para la saturación más intensa." },
+        { q: "¿Incluye caras, o solo outfits y accesorios?", a: "La mayoría de páginas se enfocan en outfits, zapatos, bolsos y detalles de estilismo. Algunas páginas incluyen figuras estilizadas con caras limpias que puedes personalizar con cualquier tono de piel, color de pelo o expresión." },
+      ],
+    },
+  },
+
+  "dresses-and-dolls": {
+    h1Keyword: {
+      en: "Dolls Fashion Coloring Book for Kids Ages 4-8",
+      es: "Libro de Colorear Muñecas y Vestidos Niños 4-8",
+    },
+    seoTitle: {
+      en: "Dresses and Dolls Coloring Book for Kids Ages 4-8",
+      es: "Dresses and Dolls: Colorear Muñecas Niños 4-8",
+    },
+    seoDescription: {
+      en: "90 mix-and-match doll outfits and dress designs for kids 4-8. Encourages creativity and imaginative play. Single-sided, marker-safe, gift-ready.",
+      es: "90 vestidos y muñecas para combinar, para niños de 4 a 8 años. Fomenta la creatividad y el juego imaginativo. Una cara, apto marcadores.",
+    },
+    faq: {
+      en: [
+        { q: "Can kids design their own outfits?", a: "Yes — several pages have blank or simplified dress templates and mix-and-match sections, so kids can invent their own combinations, patterns, and accessories instead of just filling in a finished design." },
+        { q: "Are the dolls diverse?", a: "The collection includes dolls with different hairstyles, skin-tone-neutral outlines (kids choose), expressions, and outfit styles. We deliberately avoid stereotyped or overly mature fashion designs." },
+        { q: "Is it suitable as a first coloring book?", a: "Yes — the doll outlines are big and friendly. Most 4-year-olds can color them independently. Great for kids just developing hand control." },
+      ],
+      es: [
+        { q: "¿Los niños pueden diseñar sus propios outfits?", a: "Sí — varias páginas tienen plantillas de vestidos en blanco o simplificadas y secciones para combinar, para que los niños inventen sus propias combinaciones, patrones y accesorios en vez de solo rellenar un diseño terminado." },
+        { q: "¿Las muñecas son diversas?", a: "La colección incluye muñecas con distintos peinados, líneas de tono de piel neutras (el niño elige), expresiones y estilos de ropa. Evitamos deliberadamente diseños estereotipados o demasiado maduros." },
+        { q: "¿Es apto como primer libro de colorear?", a: "Sí — las muñecas tienen líneas grandes y amigables. La mayoría de niños de 4 años las colorean solos. Ideal para niños que están desarrollando el control de la mano." },
+      ],
+    },
+  },
+
+  "style-time-machine": {
+    h1Keyword: {
+      en: "Family Fashion Coloring Book for All Ages",
+      es: "Libro de Colorear Moda Toda la Familia",
+    },
+    seoTitle: {
+      en: "Style Time Machine Coloring Book | All Ages Family Fashion",
+      es: "Style Time Machine: Colorear Moda Toda la Familia",
+    },
+    seoDescription: {
+      en: "90 fashion pages spanning kids, teen and adult styles — modern and classic looks from multiple decades. A coloring book the whole family shares.",
+      es: "90 páginas de moda para niños, teens y adultos — looks modernos y clásicos de varias décadas. Un libro para colorear en familia.",
+    },
+    faq: {
+      en: [
+        { q: "Is this really for all ages, or mostly adults?", a: "Genuinely all ages. The book is organized by difficulty: simpler modern outfits at the start work for kids 4-8, detailed vintage and mixed-era pieces later are aimed at teens and adults." },
+        { q: "What eras and styles are included?", a: "A mix of modern streetwear, classic looks from the 1950s through the 2000s, and some whimsical mixed-era outfits. It is a fashion-history tour without being a textbook." },
+        { q: "Can I tear out pages to share with different family members?", a: "Yes. Every page is single-sided, so you can remove a page and hand it to another family member without ruining the design on the back." },
+      ],
+      es: [
+        { q: "¿De verdad es para todas las edades, o sobre todo adultos?", a: "Para todas las edades de verdad. El libro está organizado por dificultad: los outfits modernos más simples al inicio funcionan para niños de 4-8, y las piezas detalladas vintage y de épocas mezcladas son para teens y adultos." },
+        { q: "¿Qué épocas y estilos incluye?", a: "Una mezcla de streetwear moderno, looks clásicos de los años 50 hasta los 2000, y algunos outfits de épocas mezcladas con un toque fantasioso. Un recorrido por la historia de la moda sin ser un libro de texto." },
+        { q: "¿Puedo arrancar páginas para repartir entre la familia?", a: "Sí. Cada página es a una sola cara, así que puedes sacar una página y dársela a otro miembro de la familia sin arruinar el diseño de atrás." },
+      ],
+    },
+  },
+
+  "cozy-kids-club": {
+    h1Keyword: {
+      en: "Cute Coloring Book for Kids Ages 4-8",
+      es: "Libro de Colorear Cute para Niños 4-8 Años",
+    },
+    seoTitle: {
+      en: "The Cozy Kids' Club Coloring Book for Kids Ages 4-8",
+      es: "The Cozy Kids' Club: Colorear Cute Niños 4-8",
+    },
+    seoDescription: {
+      en: "90 cute, easy coloring pages for kids 4-8. Calm designs perfect for quiet time, screen-free afternoons, or gentle classroom activities.",
+      es: "90 páginas adorables y fáciles para niños de 4 a 8 años. Diseños tranquilos ideales para momentos sin pantallas o actividades de aula.",
+    },
+    faq: {
+      en: [
+        { q: "Is it calm enough for bedtime wind-down?", a: "Yes — Cozy Kids' Club was specifically designed with soft, low-stimulation themes: gentle animals, cozy scenes, soft activities. Many parents use it as part of a bedtime or after-dinner wind-down." },
+        { q: "Can very young kids (3-4 years old) use this book?", a: "The designs are simple enough for most 3-year-olds with a little help, and ideal for 4-6 year olds to color independently. We recommend it as a great first coloring book." },
+        { q: "How is it different from Awesome Girls or Pizza & Sweet Treats?", a: "Cozy Kids' Club is the calmest of the three — soft themes, no action. Awesome Girls is more adventurous and empowering. Pizza & Sweet Treats is playful and food-themed. All three share the same paper quality." },
+      ],
+      es: [
+        { q: "¿Es suficientemente tranquilo para la hora de dormir?", a: "Sí — Cozy Kids' Club fue diseñado específicamente con temas suaves y de baja estimulación: animales tiernos, escenas acogedoras, actividades suaves. Muchos padres lo usan como parte de la rutina nocturna o después de cenar." },
+        { q: "¿Niños muy pequeños (3-4 años) pueden usarlo?", a: "Los diseños son suficientemente simples para la mayoría de niños de 3 años con un poco de ayuda, e ideales para los de 4-6 coloreando solos. Lo recomendamos como un excelente primer libro de colorear." },
+        { q: "¿En qué se diferencia de Awesome Girls o Pizza & Sweet Treats?", a: "Cozy Kids' Club es el más tranquilo de los tres — temas suaves, sin acción. Awesome Girls es más aventurero e inspirador. Pizza & Sweet Treats es juguetón y temático de comida. Los tres comparten la misma calidad de papel." },
+      ],
+    },
+  },
+
+  "awesome-boys": {
+    h1Keyword: {
+      en: "Boys Coloring Book for Kids Ages 4-8",
+      es: "Libro de Colorear para Niños 4-8 Años",
+    },
+    seoTitle: {
+      en: "Awesome Boys Coloring Book for Kids Ages 4-8 | Big Pages",
+      es: "Awesome Boys: Libro de Colorear Niños 4-8",
+    },
+    seoDescription: {
+      en: "90 bold, energetic single-sided coloring pages for boys 4-8. Action scenes and fun characters with big, clear outlines. A gift that actually gets used.",
+      es: "90 páginas dinámicas a una cara para niños de 4 a 8 años. Escenas de acción y personajes divertidos con líneas grandes y claras. Un regalo que se usa.",
+    },
+    faq: {
+      en: [
+        { q: "What themes are inside?", a: "A mix of dinosaurs, space, vehicles, sports, adventure scenes, and playful creatures — deliberately varied to keep active kids engaged instead of bored with a single-theme book." },
+        { q: "Is the book only for boys?", a: "The scenes lean into action and energetic themes often loved by boys, but any child who enjoys bold art and adventure will love it. We avoid gender stereotypes in the illustrations themselves." },
+        { q: "Are the outlines thick enough for crayons?", a: "Yes — the outlines are deliberately thick and bold, which works well for crayons, colored pencils, and markers. Young kids stay inside the lines easily." },
+      ],
+      es: [
+        { q: "¿Qué temas hay dentro?", a: "Una mezcla de dinosaurios, espacio, vehículos, deportes, escenas de aventura y criaturas divertidas — deliberadamente variada para mantener a los niños activos interesados en vez de aburridos con un libro de un solo tema." },
+        { q: "¿El libro es solo para niños varones?", a: "Las escenas se inclinan hacia la acción y temas enérgicos que suelen gustar a los niños, pero cualquier niño o niña que disfrute el arte llamativo y la aventura lo amará. Evitamos estereotipos de género en las ilustraciones." },
+        { q: "¿Las líneas son suficientemente gruesas para crayones?", a: "Sí — las líneas son deliberadamente gruesas y marcadas, ideal para crayones, lápices de colores y marcadores. Los niños pequeños se mantienen dentro de las líneas fácilmente." },
+      ],
+    },
+  },
+
+  "enchanted-easter": {
+    h1Keyword: {
+      en: "Easter Coloring Book for Kids Ages 4-8",
+      es: "Libro de Colorear Pascua Niños 4-8 Años",
+    },
+    seoTitle: {
+      en: "Enchanted Easter Coloring Book for Kids Ages 4-8",
+      es: "Enchanted Easter: Colorear Pascua Niños 4-8",
+    },
+    seoDescription: {
+      en: "90 Easter-themed coloring pages for kids 4-8 — bunnies, eggs, spring flowers, and family scenes. The perfect basket stuffer that kids actually use.",
+      es: "90 páginas de Pascua para niños de 4 a 8 años — conejitos, huevos, flores de primavera y escenas en familia. Relleno de cesta ideal.",
+    },
+    faq: {
+      en: [
+        { q: "Will this book still be useful after Easter?", a: "Yes — most pages celebrate spring, bunnies, flowers, and gentle outdoor scenes that stay relevant year-round. It is not strictly a seasonal book." },
+        { q: "Is the imagery religious or secular?", a: "The book focuses on secular, family-friendly spring and bunny scenes — decorated eggs, flowers, springtime animals. No specific religious symbols, so it suits any family tradition." },
+        { q: "Is it suitable as an Easter-basket gift for a 4-year-old?", a: "Yes — that is one of its main use cases. The paper is thick enough for crayons and colored pencils, outlines are large, and the book is lightweight enough to fit in a basket." },
+      ],
+      es: [
+        { q: "¿El libro seguirá siendo útil después de Pascua?", a: "Sí — la mayoría de páginas celebran la primavera, conejitos, flores y escenas al aire libre que son relevantes todo el año. No es estrictamente un libro de temporada." },
+        { q: "¿Las imágenes son religiosas o laicas?", a: "El libro se enfoca en escenas laicas de primavera y conejitos — huevos decorados, flores, animales primaverales. Sin símbolos religiosos específicos, apto para cualquier tradición familiar." },
+        { q: "¿Es adecuado como regalo de cesta de Pascua para un niño de 4 años?", a: "Sí — ese es uno de sus usos principales. El papel es suficientemente grueso para crayones y lápices de colores, las líneas son grandes, y el libro es ligero como para entrar en una cesta." },
+      ],
+    },
+  },
+
+  "coloring-emotions": {
+    h1Keyword: {
+      en: "Emotions Coloring Book for Social-Emotional Learning",
+      es: "Libro de Colorear Emociones para Aprendizaje Socioemocional",
+    },
+    seoTitle: {
+      en: "Coloring Emotions Book for Kids | Feelings & SEL Ages 4-8",
+      es: "Coloring Emotions: Libro de Emociones Niños 4-8",
+    },
+    seoDescription: {
+      en: "90 coloring pages that help kids 4-8 name and process feelings. Used by parents, teachers, and therapists for gentle social-emotional learning.",
+      es: "90 páginas que ayudan a niños de 4 a 8 años a nombrar y procesar emociones. Usado por padres, maestros y terapeutas para aprendizaje socioemocional.",
+    },
+    faq: {
+      en: [
+        { q: "Can therapists or school counselors use this book?", a: "Yes — many child therapists and school counselors use it as a low-pressure conversation starter. Each page pairs a feeling (happy, angry, nervous, proud, and more) with a scene the child colors while talking about the emotion." },
+        { q: "The book is in English — does it still work if the child's first language is not English?", a: "Yes. The illustrations carry most of the meaning and the feeling words on each page are simple and often cognates (happy, calm, angry). Bilingual families frequently use it as a conversation starter in either language, pointing at the scene rather than reading the label." },
+        { q: "What age range works best?", a: "Best for ages 4-8. Younger kids (3-4) can color while a grown-up names the feeling. Older kids (9+) may prefer more text-heavy SEL workbooks, but still benefit from the coloring ritual itself." },
+      ],
+      es: [
+        { q: "¿Terapeutas infantiles u orientadores escolares pueden usar este libro?", a: "Sí — muchos terapeutas infantiles y orientadores escolares lo usan como punto de partida de baja presión. Cada página empareja una emoción (feliz, enojado, nervioso, orgulloso, y más) con una escena que el niño colorea mientras habla de la emoción." },
+        { q: "El libro está en inglés — ¿funciona si el primer idioma del niño no es inglés?", a: "Sí. Las ilustraciones transmiten la mayor parte del significado y las palabras de emoción en cada página son simples y a menudo cognados (happy, calm, angry). Las familias bilingües lo usan como punto de partida en cualquier idioma, señalando la escena más que leyendo la etiqueta." },
+        { q: "¿Qué edad es la ideal?", a: "Ideal para 4 a 8 años. Los más pequeños (3-4) colorean mientras un adulto nombra la emoción. Los mayores (9+) pueden preferir libros SEL con más texto, pero aún así se benefician del ritual de colorear." },
+      ],
+    },
+  },
+
+  "pizza-sweet-treats": {
+    h1Keyword: {
+      en: "Food Coloring Book for Kids Ages 4-8",
+      es: "Libro de Colorear Comida Divertida Niños 4-8",
+    },
+    seoTitle: {
+      en: "Pizza & Sweet Treats Food Coloring Book for Kids 4-8",
+      es: "Pizza & Sweet Treats: Colorear Comida Niños 4-8",
+    },
+    seoDescription: {
+      en: "90 playful food-themed coloring pages for kids 4-8 — smiling pizzas, cupcakes, ice cream, donuts. Fun lunchbox surprise or party activity.",
+      es: "90 páginas temáticas de comida para niños 4-8 — pizzas sonrientes, cupcakes, helados, donuts. Sorpresa de lonchera o actividad de fiesta.",
+    },
+    faq: {
+      en: [
+        { q: "Is the food illustrated realistically or cartoon-style?", a: "All food is in a playful cartoon style with smiling faces and friendly details — not photorealistic. It is designed to make kids giggle and imagine, not to trigger cravings." },
+        { q: "Is there only junk food, or healthy food too?", a: "Both. Pizza, fruit scenes, sandwiches, and vegetables appear alongside cupcakes, ice cream, and donuts. It is not a sweets-only book." },
+        { q: "Is it a good party or birthday activity?", a: "Yes — single-sided pages make it easy to tear out one page per child for a table activity or party favor without ruining the book." },
+      ],
+      es: [
+        { q: "¿La comida está ilustrada realista o en caricatura?", a: "Toda la comida está en estilo caricaturesco juguetón con caras sonrientes y detalles amigables — no fotorrealista. Está diseñado para hacer reír e imaginar a los niños, no para provocar antojos." },
+        { q: "¿Solo hay comida chatarra o también saludable?", a: "Ambas. Pizzas, frutas, sándwiches y verduras aparecen junto a cupcakes, helados y donuts. No es un libro solo de dulces." },
+        { q: "¿Es una buena actividad de fiesta o cumpleaños?", a: "Sí — las páginas a una cara facilitan arrancar una página por niño como actividad de mesa o recuerdo de fiesta sin arruinar el libro." },
+      ],
+    },
+  },
+
+  "awesome-girls": {
+    h1Keyword: {
+      en: "Girls Coloring Book for Kids Ages 4-8",
+      es: "Libro de Colorear para Niñas 4-8 Años",
+    },
+    seoTitle: {
+      en: "Awesome Girls Coloring Book for Kids Ages 4-8 | Empowering",
+      es: "Awesome Girls: Libro de Colorear Niñas 4-8",
+    },
+    seoDescription: {
+      en: "90 cute, empowering coloring pages for girls 4-8 — magical themes, cute animals, confidence-building scenes. A feel-good gift kids ask for again.",
+      es: "90 páginas adorables e inspiradoras para niñas de 4 a 8 años — temas mágicos, animales tiernos, escenas de confianza. Regalo que piden de nuevo.",
+    },
+    faq: {
+      en: [
+        { q: "Is this just princesses and pink things?", a: "No — Awesome Girls deliberately avoids the pink-princess cliché. Pages include adventure, animals, magical scenes, sports, creative professions, and everyday moments. It is empowering without being preachy." },
+        { q: "Can boys enjoy this book too?", a: "Absolutely. The title reflects the primary audience, but any child who likes cute art and positive scenes will enjoy it. We encourage mixed sibling sharing." },
+        { q: "Are the characters diverse?", a: "Yes — we deliberately include a variety of hairstyles, skin-tone-neutral outlines (the child chooses), expressions, and interests so every child can see themselves somewhere in the book." },
+      ],
+      es: [
+        { q: "¿Solo son princesas y cosas rosas?", a: "No — Awesome Girls evita deliberadamente el cliché rosa-princesa. Las páginas incluyen aventura, animales, escenas mágicas, deportes, profesiones creativas y momentos cotidianos. Inspirador sin ser sermoneador." },
+        { q: "¿Los niños también pueden disfrutarlo?", a: "Claro que sí. El título refleja el público principal, pero cualquier niño o niña que ame el arte tierno y las escenas positivas lo disfrutará. Fomentamos que los hermanos compartan." },
+        { q: "¿Los personajes son diversos?", a: "Sí — incluimos deliberadamente una variedad de peinados, líneas de tono de piel neutras (el niño elige), expresiones e intereses para que cada niña o niño pueda reconocerse en alguna parte del libro." },
+      ],
+    },
+  },
+
+  "blast-off-space": {
+    h1Keyword: {
+      en: "Space Coloring Book for Kids Ages 4-8",
+      es: "Libro de Colorear Espacio Niños 4-8 Años",
+    },
+    seoTitle: {
+      en: "Blast Off! Space Coloring Book for Kids Ages 4-8",
+      es: "Blast Off! Colorear Espacio Niños 4-8",
+    },
+    seoDescription: {
+      en: "90 space-themed coloring pages for kids 4-8 — rockets, planets, astronauts, friendly aliens. Sparks curiosity about science, astronomy, and STEM.",
+      es: "90 páginas del espacio para niños de 4 a 8 años — cohetes, planetas, astronautas, aliens amigables. Despierta curiosidad por ciencia y astronomía.",
+    },
+    faq: {
+      en: [
+        { q: "Is it real astronomy or pure fantasy?", a: "A blend. Real planets, rockets, and astronauts appear alongside friendly alien characters and imaginative space scenes. Kids get a gentle intro to astronomy without the feel of a textbook." },
+        { q: "Too scientific for young kids?", a: "Not at all. Outlines are big and playful. Any 'learning' happens through conversation while coloring, not through text on the pages." },
+        { q: "Does it pair well with Mighty Machines?", a: "Yes — many parents buy both for vehicle-loving kids. Blast Off covers space vehicles; Mighty Machines covers construction and ground vehicles. Together they cover most vehicle interests for ages 4-8." },
+      ],
+      es: [
+        { q: "¿Es astronomía real o pura fantasía?", a: "Una mezcla. Planetas reales, cohetes y astronautas aparecen junto a aliens amigables y escenas espaciales imaginativas. Los niños reciben una introducción suave a la astronomía sin sentirse en un libro de texto." },
+        { q: "¿Demasiado científico para niños pequeños?", a: "Para nada. Las líneas son grandes y divertidas. El 'aprendizaje' ocurre en la conversación mientras colorean, no en el texto de las páginas." },
+        { q: "¿Combina bien con Mighty Machines?", a: "Sí — muchos padres compran ambos para niños que aman los vehículos. Blast Off cubre vehículos espaciales; Mighty Machines cubre construcción y vehículos terrestres. Juntos cubren la mayoría de intereses en vehículos para 4-8 años." },
+      ],
+    },
+  },
+
+  "mighty-machines": {
+    h1Keyword: {
+      en: "Construction Vehicles Coloring Book for Kids 3-8",
+      es: "Libro de Colorear Maquinaria Construcción Niños 3-8",
+    },
+    seoTitle: {
+      en: "Mighty Machines Construction Coloring Book for Kids 3-8",
+      es: "Mighty Machines: Colorear Construcción Niños 3-8",
+    },
+    seoDescription: {
+      en: "100 heavy-machinery coloring pages for kids 3-8 — excavators, cranes, dump trucks, bulldozers. Big, bold illustrations for little builders.",
+      es: "100 páginas de maquinaria pesada para niños de 3 a 8 años — excavadoras, grúas, volquetes, bulldozers. Ilustraciones grandes para pequeños constructores.",
+    },
+    faq: {
+      en: [
+        { q: "Are the machines realistic or cartoon-style?", a: "Realistic enough that a truck-obsessed kid will recognize every model (excavators, loaders, dump trucks, cranes, bulldozers, cement mixers), but stylized with friendly proportions. No anthropomorphic faces on the machines." },
+        { q: "Is 100 pages too many?", a: "Not for the target audience. Kids obsessed with machines will return to this book for months. Many parents report it outlasts every other coloring book in the house." },
+        { q: "Does it include farm equipment?", a: "The focus is construction and worksite machinery. A few farm-adjacent vehicles like tractors may appear, but it is not primarily a farm book." },
+      ],
+      es: [
+        { q: "¿Las máquinas son realistas o estilo caricatura?", a: "Suficientemente realistas como para que un niño obsesionado con camiones reconozca cada modelo (excavadoras, cargadoras, volquetes, grúas, bulldozers, mezcladoras de cemento), pero estilizadas con proporciones amigables. Sin caras antropomórficas en las máquinas." },
+        { q: "¿100 páginas no son demasiadas?", a: "No para el público objetivo. Los niños obsesionados con las máquinas vuelven a este libro durante meses. Muchos padres reportan que dura más que cualquier otro libro de colorear en casa." },
+        { q: "¿Incluye maquinaria agrícola?", a: "El enfoque es construcción y maquinaria de obra. Algunos vehículos cercanos al mundo agrícola como tractores pueden aparecer, pero no es principalmente un libro de granja." },
+      ],
+    },
+  },
+
+  "easy-animals": {
+    h1Keyword: {
+      en: "Animals Coloring Book for Kids Ages 4-8 Beginners",
+      es: "Libro de Colorear Animales Niños 4-8 Principiantes",
+    },
+    seoTitle: {
+      en: "Easy Animals Coloring Book for Kids 4-8 | 110 Pages",
+      es: "Easy Animals: Colorear Animales Niños 4-8 | 110 Páginas",
+    },
+    seoDescription: {
+      en: "110 pages, 50+ adorable animal coloring designs for beginners ages 4-8. Simple lines, single-sided pages — the ideal first coloring book.",
+      es: "110 páginas con más de 50 animales adorables para principiantes de 4 a 8 años. Líneas simples, una sola cara — el libro de colorear ideal para empezar.",
+    },
+    faq: {
+      en: [
+        { q: "Is it really suitable as a first coloring book?", a: "Yes — that is exactly what it is designed for. Outlines are thick, shapes are simple, and animals are familiar (farm, ocean, jungle, forest) so kids recognize them instantly. Great for kids 3-4 with help, and 4-8 solo." },
+        { q: "Why 110 pages instead of 90 like most LCP books?", a: "Because it is a beginner book, we packed in extra practice pages at a lower price per page. Kids who color daily will happily work through the whole book." },
+        { q: "Are the animals anatomically accurate?", a: "Recognizable and proportionally correct, but gently stylized — not photorealistic. Good for learning to identify animals without being clinical or scientific." },
+      ],
+      es: [
+        { q: "¿Es realmente apto como primer libro de colorear?", a: "Sí — para eso está diseñado exactamente. Las líneas son gruesas, las formas son simples, y los animales son familiares (granja, océano, jungla, bosque) para que los niños los reconozcan al instante. Ideal para 3-4 con ayuda y 4-8 solos." },
+        { q: "¿Por qué 110 páginas en vez de 90 como la mayoría de libros LCP?", a: "Porque es un libro para principiantes, metimos páginas extra de práctica a un precio por página más bajo. Los niños que colorean a diario trabajarán felices todo el libro." },
+        { q: "¿Los animales son anatómicamente exactos?", a: "Reconocibles y proporcionalmente correctos, pero suavemente estilizados — no fotorrealistas. Útiles para aprender a identificar animales sin ser clínicos ni científicos." },
+      ],
+    },
+  },
+
+  "awesome-airplanes": {
+    h1Keyword: {
+      en: "Airplane Coloring Book for Kids Ages 4-8 Aviation",
+      es: "Libro de Colorear Aviones Niños 4-8 Aviación",
+    },
+    seoTitle: {
+      en: "Awesome Airplanes Coloring Book for Kids 4-8 | 40 Planes",
+      es: "Awesome Airplanes: Colorear Aviones Niños 4-8",
+    },
+    seoDescription: {
+      en: "90 pages, 40 unique airplane and helicopter designs for kids 4-8 who love aviation. Jets, fighters, biplanes, choppers. A dream gift for little pilots.",
+      es: "90 páginas con 40 diseños únicos de aviones y helicópteros para niños de 4 a 8 años apasionados por volar. Jets, cazas, biplanos. Regalo soñado.",
+    },
+    faq: {
+      en: [
+        { q: "Are the planes real models or made up?", a: "A mix — recognizable real-world designs (commercial jets, fighter planes, classic biplanes, helicopters) alongside some playful hybrid aircraft. On military planes, weapons are not highlighted or emphasized." },
+        { q: "Is it OK for kids who are scared of flying?", a: "Yes — illustrations are friendly and grounded. Many planes are shown on the tarmac or in calm skies, rather than mid-flight drama. Several parents have told us it helped demystify flying for an anxious child before a family trip." },
+        { q: "How does it compare with Mighty Machines?", a: "Awesome Airplanes focuses on flight: planes, helicopters, aviation scenes. Mighty Machines focuses on ground and construction vehicles. They pair well for a vehicle-obsessed kid who wants everything that moves." },
+      ],
+      es: [
+        { q: "¿Los aviones son modelos reales o inventados?", a: "Una mezcla — diseños reconocibles del mundo real (jets comerciales, cazas, biplanos clásicos, helicópteros) junto a algunos híbridos juguetones. En los aviones militares, las armas no se resaltan ni enfatizan." },
+        { q: "¿Es apto para niños que tienen miedo a volar?", a: "Sí — las ilustraciones son amigables y tranquilas. Muchos aviones aparecen en pista o en cielos calmos, en vez de drama en pleno vuelo. Varios padres nos han dicho que ayudó a desmitificar volar antes de un viaje en familia." },
+        { q: "¿Cómo se compara con Mighty Machines?", a: "Awesome Airplanes se enfoca en vuelo: aviones, helicópteros, escenas de aviación. Mighty Machines se enfoca en vehículos de tierra y construcción. Combinan bien para un niño obsesionado con todo lo que se mueve." },
+      ],
+    },
+  },
+
+  "alphabet-coloring-book": {
+    h1Keyword: {
+      en: "ABC Alphabet Coloring Book for Kids Ages 4-8",
+      es: "Libro de Colorear Alfabeto ABC Niños 4-8",
+    },
+    seoTitle: {
+      en: "Alphabet Coloring Book for Kids Ages 4-8 | ABC Learning",
+      es: "Alphabet Coloring Book: Colorear ABC Niños 4-8",
+    },
+    seoDescription: {
+      en: "90 ABC coloring pages for kids 4-8 — every letter paired with fun illustrations. Supports pre-reading skills while keeping creativity fun, not a chore.",
+      es: "90 páginas del alfabeto para niños de 4 a 8 años — cada letra con ilustraciones divertidas. Apoya la pre-lectura haciendo el aprendizaje divertido.",
+    },
+    faq: {
+      en: [
+        { q: "Does it include uppercase and lowercase letters?", a: "Both — each letter is presented in uppercase with the lowercase form visible nearby. This supports letter recognition in the two forms kids will actually encounter in books, signs, and school materials." },
+        { q: "Is it an English alphabet book? Can Spanish-speaking kids still use it?", a: "Yes, it covers the 26-letter English alphabet (A is for Apple, B is for Ball, etc.). Spanish-speaking families often use it to introduce English letters and vocabulary alongside their own language — the illustrations are universal, and parents can name each object in either language while the child colors." },
+        { q: "Can preschoolers use it independently?", a: "Most 4-5 year olds need a grown-up to name the letter the first time, then start recognizing letters on their own after a few sessions. It is a coloring book, not a workbook, so no writing exercises are required." },
+      ],
+      es: [
+        { q: "¿Incluye letras mayúsculas y minúsculas?", a: "Ambas — cada letra se presenta en mayúscula con la minúscula visible cerca. Esto apoya el reconocimiento de letras en las dos formas que los niños encontrarán en libros, carteles y materiales escolares." },
+        { q: "¿Es un libro del alfabeto inglés? ¿Los niños hispanohablantes pueden usarlo?", a: "Sí, cubre el alfabeto inglés de 26 letras (A is for Apple, B is for Ball, etc.). Las familias hispanohablantes lo usan a menudo para introducir letras y vocabulario en inglés junto a su propio idioma — las ilustraciones son universales, y los padres pueden nombrar cada objeto en cualquier idioma mientras el niño colorea." },
+        { q: "¿Los niños en edad preescolar pueden usarlo solos?", a: "La mayoría de niños de 4-5 años necesitan que un adulto nombre la letra la primera vez, luego empiezan a reconocer letras solos después de unas cuantas sesiones. Es un libro para colorear, no un cuaderno, así que no hay ejercicios de escritura obligatorios." },
+      ],
+    },
+  },
+};
+
+/**
+ * Build-time parity check.
+ * Run this once at module load — throws loudly if any entry breaks the bilingual contract.
+ * Aligns with Master Doc invariant #9.
+ */
+function assertBookSeoParity(): void {
+  for (const [id, entry] of Object.entries(bookSeo)) {
+    const checks: [string, string | undefined][] = [
+      ["h1Keyword.en", entry.h1Keyword?.en],
+      ["h1Keyword.es", entry.h1Keyword?.es],
+      ["seoTitle.en", entry.seoTitle?.en],
+      ["seoTitle.es", entry.seoTitle?.es],
+      ["seoDescription.en", entry.seoDescription?.en],
+      ["seoDescription.es", entry.seoDescription?.es],
+    ];
+    for (const [label, value] of checks) {
+      if (!value || value.trim().length === 0) {
+        throw new Error(`[books-seo] Missing ${label} for book "${id}"`);
+      }
+    }
+    const enLen = entry.faq?.en?.length ?? 0;
+    const esLen = entry.faq?.es?.length ?? 0;
+    if (enLen === 0 || esLen === 0) {
+      throw new Error(`[books-seo] FAQ missing for book "${id}" (en=${enLen}, es=${esLen})`);
+    }
+    if (enLen !== esLen) {
+      throw new Error(`[books-seo] FAQ length mismatch for book "${id}" (en=${enLen}, es=${esLen})`);
+    }
+    for (let i = 0; i < enLen; i++) {
+      const en = entry.faq.en[i];
+      const es = entry.faq.es[i];
+      if (!en?.q || !en?.a || !es?.q || !es?.a) {
+        throw new Error(`[books-seo] FAQ[${i}] for "${id}" has empty q or a in one language`);
+      }
+    }
+  }
+}
+
+assertBookSeoParity();
+
+export function getBookSeo(bookId: string): BookSeoEntry | null {
+  return bookSeo[bookId] ?? null;
+}

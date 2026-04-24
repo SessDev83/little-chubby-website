@@ -929,10 +929,12 @@ main {
 
 @media (min-width: 48rem) {
   /* Use a concrete max-width value (not 100%) so CSS can interpolate
-     smoothly. 30rem covers any realistic header-actions content width. */
+     smoothly. 30rem covers any realistic header-actions content width.
+     Note: overflow stays `visible` so the settings dropdown can expand
+     downward past the header-actions box. During collapse we rely on
+     `opacity: 0` + `pointer-events: none` to hide content visually. */
   .site-header .header-actions {
     max-width: 30rem;
-    overflow: hidden;
     opacity: 1;
     transition: max-width 0.3s cubic-bezier(0.2, 0.65, 0.2, 1), opacity 0.22s ease;
   }
@@ -940,6 +942,7 @@ main {
   .site-header.header-nav-collapsed .header-actions {
     max-width: 0;
     opacity: 0;
+    overflow: hidden;
     pointer-events: none;
   }
 
