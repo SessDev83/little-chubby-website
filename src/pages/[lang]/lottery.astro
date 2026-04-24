@@ -6,7 +6,7 @@ import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase, getServiceClient } from "../../lib/supabase";
 import { validateOrigin } from "../../lib/csrf";
-import { books, getMonthlyPrizeBook } from "../../data/books";
+import { books, getMonthlyPrizeBook, resolveMonthlyPrizeBook } from "../../data/books";
 import { notifyLotteryClaim } from "../../lib/notifications";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
@@ -21,6 +21,7 @@ const sc = getServiceClient();
 let myReviewCount = 0;
 let approvedCount = 0;
 let pendingClaim: any = null;
+let winPrizeBook: any = null;
 let claimMsg = "";
 let purchasedEntries = 0;
 let ticketBalance = 0;
@@ -31,7 +32,7 @@ let isPending = false;
 const currentMonth = new Date().toISOString().slice(0, 7);
 let { data: giveawayConfig } = await sc
   .from("lottery_config")
-  .select("draw_date, prize_description, participant_boost")
+  .select("draw_date, prize_description, participant_boost, prize_book_id")
   .eq("month", currentMonth)
   .maybeSingle();
 
@@ -45,7 +46,7 @@ if (!giveawayConfig) {
   });
   const { data: fresh } = await sc
     .from("lottery_config")
-    .select("draw_date, prize_description, participant_boost")
+    .select("draw_date, prize_description, participant_boost, prize_book_id")
     .eq("month", currentMonth)
     .single();
   giveawayConfig = fresh;
@@ -62,7 +63,10 @@ const drawDate = new Date(rawDrawDate + "T00:00:00").toLocaleDateString(
   { month: "long", day: "numeric", year: "numeric" }
 );
 const prizeDescription = giveawayConfig?.prize_description ?? "";
-const prizeBook = getMonthlyPrizeBook(currentMonth);
+const prizeBook = resolveMonthlyPrizeBook(
+  currentMonth,
+  (giveawayConfig as any)?.prize_book_id ?? null,
+);
 
 // Count unique participants for this month + optional boost
 const { data: participantData } = await sc
@@ -133,6 +137,20 @@ if (user) {
     .maybeSingle();
   pendingClaim = winData;
 
+  // Resolve the prize book for the WINNER's month (may differ from current month
+  // if the win is from a prior draw). Respects lottery_config.prize_book_id override.
+  if (pendingClaim) {
+    const { data: winConfig } = await sc
+      .from("lottery_config")
+      .select("prize_book_id")
+      .eq("month", pendingClaim.month)
+      .maybeSingle();
+    winPrizeBook = resolveMonthlyPrizeBook(
+      pendingClaim.month,
+      (winConfig as any)?.prize_book_id ?? null,
+    );
+  }
+
   // ── Handle POST actions ──────────────────────────
   if (Astro.request.method === "POST") {
     if (!validateOrigin(Astro.request, Astro.url)) {
@@ -159,20 +177,26 @@ if (user) {
         const shippingName = (formData.get("shipping_name")?.toString().trim() || "").slice(0, 200);
         const shippingAddress = (formData.get("shipping_address")?.toString().trim() || "").slice(0, 500);
 
-        if (bookChosen && shippingName && shippingAddress) {
-          await sc
-            .from("lottery_winners")
-            .update({
-              book_chosen: bookChosen,
-              shipping_name: shippingName,
-              shipping_address: shippingAddress,
-              claimed: true,
-            })
-            .eq("id", pendingClaim.id);
+        if (bookChosen && shippingName && shippingAddress && winPrizeBook) {
+          // LOTTERY-001: enforce that book_chosen matches the resolved prize book
+          // for the winner's month. Prevents tampered POSTs from claiming other titles.
+          if (bookChosen !== winPrizeBook.id) {
+            claimMsg = text.claimError;
+          } else {
+            await sc
+              .from("lottery_winners")
+              .update({
+                book_chosen: bookChosen,
+                shipping_name: shippingName,
+                shipping_address: shippingAddress,
+                claimed: true,
+              })
+              .eq("id", pendingClaim.id);
 
-          claimMsg = text.claimSuccess;
-          pendingClaim = null;
-          await notifyLotteryClaim(user.email || "unknown", bookChosen, shippingName, shippingAddress);
+            claimMsg = text.claimSuccess;
+            pendingClaim = null;
+            await notifyLotteryClaim(user.email || "unknown", bookChosen, shippingName, shippingAddress);
+          }
         }
       }
     }
@@ -284,46 +308,55 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
         </div>
       ) : (
         <Fragment>
-          {/* ── Pending claim banner ── */}
-          {pendingClaim && !claimMsg && (
-            <div class="surface-card claim-card">
-              <div class="claim-header">
-                <span class="claim-confetti">🎉</span>
-                <h2>{text.claimCongrats} {text.claimTitle}</h2>
-                <span class="claim-confetti">🎉</span>
-              </div>
-              <p>{text.claimInstructions}</p>
-              <p class="claim-countdown" data-deadline={pendingClaim.claim_deadline}>
-                <span class="claim-days" id="claimDays"></span> {text.claimDaysLeft}
-              </p>
-              <form method="POST" class="form-grid">
-                <input type="hidden" name="action" value="claim" />
-                <div class="form-group">
-                  <label for="book_chosen">{text.claimBookChoice}</label>
-                  <div class="claim-book-grid">
-                    {bookOptions.map(b => {
-                      const book = books.find(bk => bk.id === b.id);
-                      return (
-                        <label class="claim-book-option">
-                          <input type="radio" name="book_chosen" value={b.id} required />
-                          {book?.coverSrc && <img src={book.coverSrc} alt={b.title} class="claim-book-cover" loading="lazy" width="80" height="100" />}
-                          <span class="claim-book-title">{b.title}</span>
-                        </label>
-                      );
-                    })}
+          {/* ── Pending claim banner (compact + expandable) ── */}
+          {pendingClaim && !claimMsg && winPrizeBook && (
+            <details class="surface-card claim-card-compact" id="claimBanner">
+              <summary class="claim-summary-compact">
+                <span class="claim-trophy">🏆</span>
+                <span class="claim-summary-text">
+                  <strong>{text.claimCompactTitle}</strong>
+                  <span class="claim-days-inline" data-deadline={pendingClaim.claim_deadline}>
+                    {" — "}<span class="claim-days" id="claimDays"></span> {text.claimDaysLeft}
+                  </span>
+                </span>
+                <span class="claim-summary-cta">{text.claimExpandCta}</span>
+              </summary>
+
+              <div class="claim-expanded">
+                <p>{text.claimInstructions}</p>
+                <form method="POST" class="form-grid">
+                  <input type="hidden" name="action" value="claim" />
+
+                  {/* Single book — no choice allowed, per master doc §III-D LOTTERY-001 */}
+                  <div class="form-group">
+                    <label>{text.claimBookLabel}</label>
+                    <div class="claim-book-fixed">
+                      {winPrizeBook.coverSrc && (
+                        <img
+                          src={winPrizeBook.coverSrc}
+                          alt={winPrizeBook.title[lang]}
+                          width="80"
+                          height="100"
+                          loading="lazy"
+                        />
+                      )}
+                      <span class="claim-book-title">{winPrizeBook.title[lang]}</span>
+                    </div>
+                    <input type="hidden" name="book_chosen" value={winPrizeBook.id} />
                   </div>
-                </div>
-                <div class="form-group">
-                  <label for="shipping_name">{text.claimShippingName}</label>
-                  <input type="text" id="shipping_name" name="shipping_name" required />
-                </div>
-                <div class="form-group">
-                  <label for="shipping_address">{text.claimShippingAddress}</label>
-                  <textarea id="shipping_address" name="shipping_address" rows="3" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width:100%;">{text.claimSubmit}</button>
-              </form>
-            </div>
+
+                  <div class="form-group">
+                    <label for="shipping_name">{text.claimShippingName}</label>
+                    <input type="text" id="shipping_name" name="shipping_name" required maxlength="200" />
+                  </div>
+                  <div class="form-group">
+                    <label for="shipping_address">{text.claimShippingAddress}</label>
+                    <textarea id="shipping_address" name="shipping_address" rows="3" required maxlength="500"></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-primary" style="width:100%;">{text.claimSubmit}</button>
+                </form>
+              </div>
+            </details>
           )}
 
           {claimMsg && (
@@ -1200,5 +1233,62 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
   .gift-ticket-input:focus {
     outline: 2px solid #f3b86b;
     outline-offset: 1px;
+  }
+
+  /* ── LOTTERY-002: compact + expandable claim banner ── */
+  .claim-card-compact {
+    padding: 0;
+    margin-bottom: 1.5rem;
+    border: 2px solid var(--brand-green, #2d7a3c);
+    border-radius: var(--radius-lg, 12px);
+    overflow: hidden;
+  }
+  .claim-summary-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    cursor: pointer;
+    list-style: none;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--brand-green, #2d7a3c) 8%, transparent);
+  }
+  .claim-summary-compact::-webkit-details-marker { display: none; }
+  .claim-trophy { font-size: 1.4rem; flex-shrink: 0; }
+  .claim-summary-text { flex: 1; min-width: 0; }
+  .claim-days-inline {
+    font-weight: 400;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+  }
+  .claim-summary-cta {
+    background: var(--brand-green, #2d7a3c);
+    color: white;
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-md, 8px);
+    font-size: 0.88rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .claim-expanded { padding: 1.25rem 1rem 1.5rem; }
+  .claim-book-fixed {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.75rem;
+    background: color-mix(in srgb, var(--brand-green, #2d7a3c) 5%, transparent);
+    border-radius: var(--radius-md, 8px);
+    margin-top: 0.5rem;
+  }
+  .claim-book-fixed img { border-radius: 4px; flex-shrink: 0; }
+  .claim-book-fixed .claim-book-title { font-weight: 600; }
+  @media (prefers-reduced-motion: no-preference) {
+    details[open] .claim-expanded {
+      animation: claimExpand 0.25s ease-out;
+    }
+    @keyframes claimExpand {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   }
 </style>
