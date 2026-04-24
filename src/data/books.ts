@@ -598,3 +598,20 @@ export function getMonthlyPrizeBook(month: string): Book {
   const idx = (y * 12 + m + 4) % books.length;
   return books[idx];
 }
+
+/**
+ * Resolve the monthly prize book, respecting an optional admin override
+ * stored in `lottery_config.prize_book_id` (migration 053). Falls back to
+ * auto-rotation if the override is null or points to a stale/unknown id.
+ *
+ * @param month      format "YYYY-MM"
+ * @param overrideId optional book.id from lottery_config.prize_book_id
+ */
+export function resolveMonthlyPrizeBook(month: string, overrideId?: string | null): Book {
+  if (overrideId) {
+    const match = books.find((b) => b.id === overrideId);
+    if (match) return match;
+    // overrideId set but invalid (typo or stale book.id) → fall back safely
+  }
+  return getMonthlyPrizeBook(month);
+}
