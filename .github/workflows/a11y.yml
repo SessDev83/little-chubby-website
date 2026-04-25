@@ -59,12 +59,26 @@ jobs:
             echo "target=${{ github.event.deployment_status.target_url }}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Sync ChromeDriver with installed Chrome (axe-core)
+        # @axe-core/cli ships a ChromeDriver that may not match the runner's
+        # Chrome. browser-driver-manager installs a matching pair before axe.
+        continue-on-error: true
+        run: npx --yes browser-driver-manager@latest install chrome
+
       - name: Run axe-core (home EN + ES)
         continue-on-error: true
         env:
           A11Y_TARGET_URL: ${{ steps.url.outputs.target }}
         run: |
+          # browser-driver-manager writes the chromedriver path here on Linux.
+          CHROMEDRIVER_BIN="$HOME/.browser-driver-manager/chromedriver"
+          if [ -x "$CHROMEDRIVER_BIN" ]; then
+            CHROMEDRIVER_FLAG="--chromedriver-path $CHROMEDRIVER_BIN"
+          else
+            CHROMEDRIVER_FLAG=""
+          fi
           npx @axe-core/cli "$A11Y_TARGET_URL/en/" "$A11Y_TARGET_URL/es/" \
+            $CHROMEDRIVER_FLAG \
             --exit \
             --tags wcag2a,wcag2aa \
             --save axe-report.json \
