@@ -178,7 +178,9 @@ function benefitsBox(lang: string): string {
 async function countRows(table: string, extra?: string): Promise<number> {
   try {
     const svc = getServiceClient();
-    let query = svc.from(table).select("id", { count: "exact", head: true });
+    // Generic helper accepts arbitrary table names; cast through `any` because
+    // PostgREST typing requires literal table-name unions.
+    let query = (svc.from as any)(table).select("id", { count: "exact", head: true });
     if (extra === "confirmed") {
       query = query.eq("confirmed", true);
     }

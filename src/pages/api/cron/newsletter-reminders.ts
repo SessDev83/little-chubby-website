@@ -73,6 +73,7 @@ export const GET: APIRoute = async ({ request }) => {
 
     if (unconfirmed) {
       for (const sub of unconfirmed) {
+        if (!sub.created_at || !sub.confirm_token) continue;
         const createdAt = new Date(sub.created_at);
         const daysSinceSignup = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
         const nextReminder = (sub.reminder_count || 0) + 1;
