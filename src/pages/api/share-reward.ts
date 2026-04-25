@@ -33,7 +33,10 @@ export const POST: APIRoute = async ({ cookies, request }) => {
 
   const sc = getServiceClient();
 
-  // Rate limit: max shares per day (UTC-based)
+  // Rate limit: max 3 shares per day (UTC-based).
+  // NOTE: uses manual count instead of check_rate_limit RPC because the RPC
+  // enforces a 1-hour window; this endpoint needs daily semantics. Both approaches
+  // read from credit_transactions, so they stay consistent. See master doc I-C.4.
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
 
