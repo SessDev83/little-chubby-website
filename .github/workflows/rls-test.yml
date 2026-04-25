@@ -1,0 +1,51 @@
+name: RLS Smoke Tests
+
+# Runs `supabase test db` against a fresh local Supabase stack to verify
+# Row-Level Security policies on the most security-critical tables.
+# Triggered only when files that can affect RLS change, to keep CI minutes
+# under control (full Supabase spin-up takes ~3 min).
+#
+# Failure = real security regression. Gate is hard. Pkg P2-11.2.
+
+on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/tests/**"
+      - "supabase/config.toml"
+      - ".github/workflows/rls-test.yml"
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/tests/**"
+      - "supabase/config.toml"
+      - ".github/workflows/rls-test.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rls-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Run RLS smoke tests
+        run: supabase test db
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop
