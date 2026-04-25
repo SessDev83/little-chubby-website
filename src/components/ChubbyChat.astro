@@ -378,9 +378,14 @@ const text = t[lang] || t.es;
   }
 
   /* ── Explicit open / close (no ambiguous toggle) ────────── */
+  // Track which element had focus before the panel opened so we can restore
+  // it when the panel closes (a11y: WAI-ARIA Authoring Practices for dialogs).
+  var lastFocusedBeforeOpen = null;
+
   function openChat() {
     if (isOpen) return;
     isOpen = true;
+    lastFocusedBeforeOpen = document.activeElement;
     chat.setAttribute("aria-hidden", "false");
     chat.classList.add("chubby-chat--open");
     toggle.classList.add("chubby-toggle--open");
@@ -390,12 +395,21 @@ const text = t[lang] || t.es;
     }
   }
 
-  function closeChat() {
+  function closeChat(opts) {
     if (!isOpen) return;
     isOpen = false;
     chat.setAttribute("aria-hidden", "true");
     chat.classList.remove("chubby-chat--open");
     toggle.classList.remove("chubby-toggle--open");
+    // Restore focus to whatever had it before the panel opened (or to the
+    // toggle as a sensible fallback) so keyboard users don't get stranded.
+    if (opts && opts.restoreFocus) {
+      var target = (lastFocusedBeforeOpen && document.contains(lastFocusedBeforeOpen))
+        ? lastFocusedBeforeOpen
+        : toggle;
+      try { target.focus(); } catch (_e) { /* noop */ }
+    }
+    lastFocusedBeforeOpen = null;
   }
 
   function handleSend(text) {
@@ -420,12 +434,12 @@ const text = t[lang] || t.es;
   /* ── Events ─────────────────────────────────────────────────── */
   toggle.addEventListener("click", function(e) {
     e.stopPropagation();
-    if (isOpen) { closeChat(); } else { openChat(); }
+    if (isOpen) { closeChat({ restoreFocus: false }); } else { openChat(); }
   }, { signal: ac.signal });
 
   closeBtn.addEventListener("click", function(e) {
     e.stopPropagation();
-    closeChat();
+    closeChat({ restoreFocus: true });
   }, { signal: ac.signal });
 
   form.addEventListener("submit", function(e) {
@@ -447,11 +461,11 @@ const text = t[lang] || t.es;
   }, { signal: ac.signal });
 
   document.addEventListener("keydown", function(e) {
-    if (e.key === "Escape" && isOpen) closeChat();
+    if (e.key === "Escape" && isOpen) closeChat({ restoreFocus: true });
   }, { signal: ac.signal });
 
   document.addEventListener("click", function(e) {
-    if (isOpen && !chat.contains(e.target)) closeChat();
+    if (isOpen && !chat.contains(e.target)) closeChat({ restoreFocus: false });
   }, { signal: ac.signal });
 })();
 </script>
@@ -779,8 +793,15 @@ const text = t[lang] || t.es;
     font-family: "Lora", Georgia, serif;
     background: var(--surface, #fffdf8);
     color: var(--ink, #2f261f);
+    /* a11y: outline stripped only on mouse focus; keyboard users
+       (focus-visible) still get the global ring (3px brand-blue). */
     outline: none;
     transition: border-color 0.2s;
+  }
+  .chubby-input-field:focus-visible {
+    outline: 3px solid var(--brand-blue, #1f4f86);
+    outline-offset: 2px;
+    border-color: var(--brand-blue, #1f4f86);
   }
   .chubby-input-field:focus {
     border-color: var(--brand-blue, #1f4f86);
