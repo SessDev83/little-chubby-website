@@ -39,20 +39,60 @@ export const ADMIN_EMAILS = Array.from(
   ),
 );
 
-/** Check admin access: DB is_admin flag OR hardcoded email list */
+/**
+ * Check admin access.
+ *
+ * Policy (decided 24 abr 2026, docs-internal/implementation-packages/P1-05):
+ * 1. DB `profiles.is_admin` is the single source of truth.
+ * 2. `ADMIN_EMAILS` env var is an **emergency fallback only** — it grants
+ *    access **exclusively** when the DB query throws (timeout, connection
+ *    refused, etc.). If the DB returns a valid response with `is_admin=false`,
+ *    that is respected; the env var is NOT consulted.
+ * 3. If the DB returns a row with `is_admin=true`, grant access immediately.
+ * 4. If the DB returns no row, deny access.
+ *
+ * This ensures that revoking admin in DB is always effective, while still
+ * keeping a break-glass path if Supabase is unreachable.
+ */
 export async function isAdmin(user: { id: string; email?: string }): Promise<boolean> {
-  // Fast path: env-backed allowlist (case-insensitive)
-  if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) return true;
-  // DB check: profiles.is_admin
   try {
     const sc = getServiceClient();
-    const { data } = await sc
+    const { data, error } = await sc
       .from("profiles")
       .select("is_admin")
       .eq("id", user.id)
       .single();
-    return data?.is_admin === true;
-  } catch {
+
+    // DB responded cleanly — its answer is authoritative.
+    if (!error) {
+      return data?.is_admin === true;
+    }
+
+    // DB responded with an error code that is NOT a connectivity failure
+    // (e.g. row-not-found PGRST116). Treat as "not admin", do NOT fallback.
+    // Only real infrastructure failures fall through to the catch block below.
+    if (error.code && error.code !== "PGRST116") {
+      // Log but don't fallback — this is a real query error, not DB down.
+      console.warn("[isAdmin] DB query error (no fallback):", error.code, error.message);
+      return false;
+    }
+
+    // Row not found (PGRST116): user has no profile row. Deny.
+    return false;
+  } catch (err) {
+    // Real infrastructure failure (network, timeout, client init). Activate
+    // emergency fallback. Logged loudly so Sentry/monitoring catches this.
+    console.error(
+      "[isAdmin] DB unreachable, falling back to ADMIN_EMAILS allowlist:",
+      err instanceof Error ? err.message : err,
+    );
+    if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+      console.error(
+        "[isAdmin] Emergency fallback GRANTED access to:",
+        user.email.toLowerCase(),
+      );
+      return true;
+    }
     return false;
   }
 }
