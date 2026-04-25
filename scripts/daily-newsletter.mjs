@@ -14,6 +14,12 @@
  * Required env vars:
  *   PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY
  *
+ * Optional env vars:
+ *   BRAND_POSTAL_ADDRESS — CAN-SPAM-compliant postal address rendered in the
+ *     footer. Single line, e.g. "Little Chubby Press, PO Box 1234, City, ST
+ *     12345, USA". When unset, the footer omits the address line and the
+ *     script logs a warning. Must be set once the brand PO Box is live.
+ *
  * Runs best as a daily cron job (e.g. Vercel Cron or GitHub Actions).
  */
 
@@ -27,6 +33,21 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = "Little Chubby Press <hello@littlechubbypress.com>";
 const SITE_URL = "https://www.littlechubbypress.com";
 const DRY_RUN = process.argv.includes("--dry-run");
+
+// CAN-SPAM Act (15 U.S.C. § 7704(a)(5)) requires every commercial email to
+// include a valid physical postal address of the sender. Populate this env
+// var in Vercel and in the GitHub Actions environment once the brand PO Box
+// is provisioned (see docs-internal/implementation-packages/00-BLOCKERS
+// BLOCKER-B). Expected format, single line:
+//   "Little Chubby Press, PO Box 1234, City, ST 12345, USA"
+const BRAND_POSTAL_ADDRESS = (process.env.BRAND_POSTAL_ADDRESS || "").trim();
+if (!BRAND_POSTAL_ADDRESS) {
+  console.warn(
+    "⚠ BRAND_POSTAL_ADDRESS env var not set — newsletter footer will omit " +
+    "the CAN-SPAM-required postal address. Set it in Vercel once the brand " +
+    "PO Box is active.",
+  );
+}
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("Missing PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
@@ -274,6 +295,10 @@ function buildEmail(lang, { funFact, joke, latestArticle, book, unsubscribeUrl }
       <p style="margin:0 0 0.5rem;">
         Little Chubby Press &bull; <a href="${SITE_URL}" style="color:#1f4f86;">littlechubbypress.com</a>
       </p>
+      ${BRAND_POSTAL_ADDRESS ? `
+      <p style="margin:0 0 0.5rem;color:#8a7e6f;">
+        ${BRAND_POSTAL_ADDRESS}
+      </p>` : ""}
       <p style="margin:0;">
         <a href="${unsubscribeUrl}" style="color:#999;text-decoration:underline;">
           ${isEs ? "Cancelar suscripción" : "Unsubscribe"}
