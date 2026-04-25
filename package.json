@@ -11,6 +11,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "check": "astro check",
+    "check:i18n": "node scripts/check-i18n-parity.mjs",
     "ci": "npm run check && npm run build",
     "covers:build": "node scripts/prepare-book-covers.mjs",
     "cover:one": "node scripts/prepare-book-covers.mjs",

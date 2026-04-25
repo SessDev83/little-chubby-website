@@ -51,3 +51,6 @@ docs/*.pdf
 
 # Internal planning / operations docs (not for public repo)
 docs-internal/
+
+i18n.log
+check.log
