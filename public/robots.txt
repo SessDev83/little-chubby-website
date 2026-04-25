@@ -1,5 +1,77 @@
+# Little Chubby Press - robots.txt
+# Policy: open to all well-behaved crawlers and AI training agents.
+# See /llms.txt for detailed AI content usage policy.
+
+# --- Default policy for all crawlers ---
 User-agent: *
 Allow: /
 Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /*?*token=
+Disallow: /*?*magic=
 
+# --- AI crawlers: explicitly allowed (see /llms.txt for usage terms) ---
+# Operator decision (2026-04): allow citation and summarization with attribution.
+User-agent: GPTBot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: Claude-Web
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: Bytespider
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: CCBot
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+# --- Sitemap ---
 Sitemap: https://www.littlechubbypress.com/sitemap-index.xml

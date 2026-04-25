@@ -14,12 +14,14 @@ const { lang, pathname, alternatePath, hideNav = false } = Astro.props;
 const text = ui[lang];
 const homeHref = `/${lang}/`;
 
-const navItems = [
+// SSR flag disables hover-prefetch to avoid wasteful serverless + DB work
+// on users who only hover (invariant #15). See P1-06 in implementation docs.
+const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
   { href: `/${lang}/`, label: text.navHome },
   { href: `/${lang}/books/`, label: text.navBooks },
   { href: `/${lang}/blog/`, label: text.navBlog },
   { href: `/${lang}/coloring-corner/`, label: text.navColoringCorner },
-  { href: `/${lang}/lottery/`, label: text.navLottery },
+  { href: `/${lang}/lottery/`, label: text.navLottery, ssr: true },
   { href: `/${lang}/contact/`, label: text.navContact },
 ];
 ---
@@ -33,14 +35,14 @@ const navItems = [
       </a>
 
       <div class="header-actions">
-        <a href={`/${lang}/login/`} class="header-login" id="auth-login">{text.navLogin}</a>
+        <a href={`/${lang}/login/`} class="header-login" id="auth-login" data-astro-prefetch="false">{text.navLogin}</a>
         <span class="header-username" id="auth-username" style="display:none;"></span>
         <span class="header-currencies header-currencies--desktop" id="auth-currencies" style="display:none;">
           <span class="header-wallet-label">{lang === "es" ? "Monedero" : "Wallet"}</span>
-          <a href={`/${lang}/lottery/`} class="header-tickets" id="auth-tickets" title={lang === "es" ? "Tus Tickets" : "Your Tickets"}>
+          <a href={`/${lang}/lottery/`} class="header-tickets" id="auth-tickets" title={lang === "es" ? "Tus Tickets" : "Your Tickets"} data-astro-prefetch="false">
             🎟️ <span id="tickets-count">0</span>
           </a>
-          <a href={`/${lang}/peanuts/`} class="header-peanuts" id="auth-peanuts" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
+          <a href={`/${lang}/peanuts/`} class="header-peanuts" id="auth-peanuts" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"} data-astro-prefetch="false">
             🥜 <span id="peanuts-count">0</span>
           </a>
         </span>
@@ -61,20 +63,20 @@ const navItems = [
             </svg>
           </button>
           <div class="settings-dropdown" id="settings-dropdown">
-            <a href={`/${lang}/login/`} class="settings-item settings-login-hint" id="settings-login-hint">
+            <a href={`/${lang}/login/`} class="settings-item settings-login-hint" id="settings-login-hint" data-astro-prefetch="false">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 2h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-3M7 11l-3-3 3-3M4 8h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
               {text.settingsLoginHint}
             </a>
             <div class="settings-auth-items" id="settings-auth-items" style="display:none;">
-              <a href={`/${lang}/profile/`} class="settings-item">
+              <a href={`/${lang}/profile/`} class="settings-item" data-astro-prefetch="false">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
                 {text.navProfile}
               </a>
-              <a href={`/${lang}/reviews/`} class="settings-item">
+              <a href={`/${lang}/reviews/`} class="settings-item" data-astro-prefetch="false">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5l1.76 3.57 3.94.57-2.85 2.78.67 3.93L8 10.67l-3.52 1.68.67-3.93L2.3 5.64l3.94-.57L8 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 {text.navReviews}
               </a>
-              <a href={`/${lang}/logout/`} class="settings-item settings-item--logout">
+              <a href={`/${lang}/logout/`} class="settings-item settings-item--logout" data-astro-prefetch="false">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 {text.navLogout}
               </a>
@@ -144,14 +146,14 @@ const navItems = [
           </svg>
         </button>
         <div class="currencies-mobile-panel" id="currencies-mobile-panel" hidden>
-          <a href={`/${lang}/lottery/`} class="header-tickets header-tickets--mobile" title={lang === "es" ? "Tus Tickets" : "Your Tickets"}>
+          <a href={`/${lang}/lottery/`} class="header-tickets header-tickets--mobile" title={lang === "es" ? "Tus Tickets" : "Your Tickets"} data-astro-prefetch="false">
             <span class="currency-chip-main">
               <span class="currency-chip-emoji" aria-hidden="true">🎟️</span>
               <span class="currency-chip-label">{lang === "es" ? "Tickets" : "Tickets"}</span>
             </span>
             <span class="currency-chip-count" id="tickets-count-m">0</span>
           </a>
-          <a href={`/${lang}/peanuts/`} class="header-peanuts header-peanuts--mobile" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"}>
+          <a href={`/${lang}/peanuts/`} class="header-peanuts header-peanuts--mobile" title={lang === "es" ? "Tus Peanuts" : "Your Peanuts"} data-astro-prefetch="false">
             <span class="currency-chip-main">
               <span class="currency-chip-emoji" aria-hidden="true">🥜</span>
               <span class="currency-chip-label">{lang === "es" ? "Peanuts" : "Peanuts"}</span>
@@ -173,7 +175,11 @@ const navItems = [
                 : pathname === item.href || pathname.startsWith(item.href);
               return (
                 <li>
-                  <a href={item.href} aria-current={isCurrent ? "page" : undefined}>
+                  <a
+                    href={item.href}
+                    aria-current={isCurrent ? "page" : undefined}
+                    data-astro-prefetch={item.ssr ? "false" : undefined}
+                  >
                     {item.label}
                   </a>
                 </li>
