@@ -2059,6 +2059,17 @@ main {
   flex-shrink: 0;
 }
 
+.footer-small-link {
+  font-size: 0.82rem;
+  color: var(--ink-soft, #6b6258);
+  margin-top: 0.4rem;
+  display: inline-block;
+}
+.footer-small-link:hover,
+.footer-small-link:focus-visible {
+  color: var(--brand-blue, #1f4f86);
+}
+
 /* ── Social Share Buttons (Blog) ────────────── */
 .social-share-row {
   display: flex;
