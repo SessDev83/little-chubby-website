@@ -29,6 +29,7 @@ on:
       - Sync Amazon Ratings
       - Build & Typecheck
       - i18n Parity
+      - RLS Smoke Tests
     types:
       - completed
 
