@@ -693,3 +693,36 @@ export async function notifyAdminExpiredClaims(
     ], "These winners did not submit shipping info in time. Consider re-drawing or carrying the prize forward.")
   );
 }
+
+/**
+ * GDPR Art. 17 signal: notify admin that a user deleted their own account.
+ *
+ * IMPORTANT: The user and all their rows are already deleted by the time this
+ * runs (RPC public.delete_user_account cascaded). We intentionally store NO
+ * PII in the outbound email — only a SHA-256 prefix of the email and user_id,
+ * which lets the operator correlate repeated events from the same user
+ * without retaining identifiable data (which would contradict Art. 17).
+ *
+ * This is fire-and-forget: failure to email must never block the delete
+ * response to the (now ex-)user.
+ */
+export async function notifyAdminAccountDeleted(
+  emailHash: string,
+  userIdHash: string,
+  context: { deletedAt: string; lang?: string | null }
+): Promise<void> {
+  try {
+    await send(
+      `🗑️ Account deleted (GDPR Art. 17)`,
+      card("🗑️", "Account Deletion Completed", [
+        ["Email hash (SHA-256/12)", emailHash],
+        ["User ID hash (SHA-256/12)", userIdHash],
+        ["Language pref", context.lang || "unknown"],
+        ["Deleted at (UTC)", context.deletedAt],
+      ], "Record of Processing (GDPR Art. 30): user invoked right to erasure. All rows cascaded from auth.users. No PII retained in this notification.")
+    );
+  } catch (err) {
+    // Absolutely must not bubble — the user's delete already succeeded.
+    console.error("[notifyAdminAccountDeleted] send failed:", err);
+  }
+}
