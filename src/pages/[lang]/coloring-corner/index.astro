@@ -125,6 +125,23 @@ function initColoringCorner() {
       return;
     }
     renderArtworks(allArtworks);
+    // Deep-link support (P3-14 — IV-H.2 sec 7): if URL has ?category=<slug>,
+    // pre-apply that filter by simulating a click on the matching filter button.
+    try {
+      var urlParams = new URLSearchParams(window.location.search);
+      var deepCat = urlParams.get("category");
+      if (deepCat) {
+        var sel = '[data-artwork-category="' + (window.CSS && CSS.escape ? CSS.escape(deepCat) : deepCat) + '"]';
+        var deepBtn = document.querySelector(sel);
+        if (deepBtn && typeof deepBtn.click === "function") {
+          deepBtn.click();
+          var galleryEl = document.querySelector(".blog-filters");
+          if (galleryEl && galleryEl.scrollIntoView) {
+            galleryEl.scrollIntoView({ behavior: "auto", block: "start" });
+          }
+        }
+      }
+    } catch (e) { /* deep-link is non-critical; ignore failures */ }
     // If logged in, fetch user info from server-side API (httpOnly cookies)
     if (isLoggedIn) fetchUserInfo();
   })

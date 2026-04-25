@@ -53,6 +53,30 @@ const related = booksByNewest
   )
   .slice(0, 4);
 
+// Prev / Next book navigation (IV-H.2 sec 11). Order = booksByNewest (same as home/catalog).
+const currentIdx = booksByNewest.findIndex((b) => b.id === book.id);
+const prevBook = currentIdx > 0 ? booksByNewest[currentIdx - 1] : null;
+const nextBook =
+  currentIdx >= 0 && currentIdx < booksByNewest.length - 1
+    ? booksByNewest[currentIdx + 1]
+    : null;
+
+// JSON-LD audience age inference (IV-H.8 P2 schema enrichment).
+const minAge = book.ageCategories.includes("4-8")
+  ? 4
+  : book.ageCategories.includes("8-12")
+    ? 8
+    : book.ageCategories.includes("12-18+")
+      ? 12
+      : 4;
+const maxAge = book.ageCategories.includes("12-18+")
+  ? 18
+  : book.ageCategories.includes("8-12")
+    ? 12
+    : book.ageCategories.includes("4-8")
+      ? 8
+      : 8;
+
 const breadcrumbs = [
   { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
   { name: text.navBooks, url: `/${lang}/books/` },
@@ -126,6 +150,13 @@ const bookJsonLd = {
         },
       }
     : {}),
+  ...(book.bookFormat ? { bookFormat: `https://schema.org/${book.bookFormat}` } : {}),
+  ...(book.datePublished ? { datePublished: book.datePublished } : {}),
+  audience: {
+    "@type": "PeopleAudience",
+    suggestedMinAge: minAge,
+    suggestedMaxAge: maxAge,
+  },
 };
 ---
 
@@ -312,6 +343,27 @@ const bookJsonLd = {
         </p>
       </div>
 
+      <!-- Try Before You Buy (IV-H.2 sec 7) — deep-link to coloring corner with category filter. -->
+      {book.coloringCornerCategory && (
+        <div class="book-try-samples" aria-labelledby="try-samples-heading">
+          <h2 id="try-samples-heading" class="book-detail-section-title">
+            {lang === "es" ? "Prueba antes de comprar" : "Try before you buy"}
+          </h2>
+          <p class="book-try-samples__lead">
+            {lang === "es"
+              ? `¿Te gusta el estilo? Obtén 3 muestras gratis en el mismo tema (${book.title.es}).`
+              : `Like the style? Grab 3 free coloring pages in the same theme (${book.title.en}).`}
+          </p>
+          <a
+            href={`/${lang}/coloring-corner/?category=${encodeURIComponent(book.coloringCornerCategory)}`}
+            class="book-try-samples__cta"
+            rel="prefetch"
+          >
+            {lang === "es" ? "Ver muestras gratis →" : "See free samples →"}
+          </a>
+        </div>
+      )}
+
       <!-- Gift callout -->
       <div class="book-gift-callout">
         <p class="book-gift-title">{text.bookDetailGiftCallout}</p>
@@ -340,6 +392,43 @@ const bookJsonLd = {
             {related.map((b) => <BookTile book={b} lang={lang} />)}
           </div>
         </div>
+      )}
+
+      <!-- Prev / Next book navigation (IV-H.2 sec 11). Order = booksByNewest. -->
+      {(prevBook || nextBook) && (
+        <nav
+          class="book-pager"
+          aria-label={lang === "es" ? "Navegación entre libros" : "Book navigation"}
+        >
+          <div class="book-pager__slot">
+            {prevBook && (
+              <a
+                href={`/${lang}/books/${prevBook.id}/`}
+                class="book-pager__link book-pager__link--prev"
+                rel="prev"
+              >
+                <span class="book-pager__label">
+                  {lang === "es" ? "← Libro anterior" : "← Previous book"}
+                </span>
+                <span class="book-pager__title">{prevBook.title[lang]}</span>
+              </a>
+            )}
+          </div>
+          <div class="book-pager__slot">
+            {nextBook && (
+              <a
+                href={`/${lang}/books/${nextBook.id}/`}
+                class="book-pager__link book-pager__link--next"
+                rel="next"
+              >
+                <span class="book-pager__label">
+                  {lang === "es" ? "Siguiente libro →" : "Next book →"}
+                </span>
+                <span class="book-pager__title">{nextBook.title[lang]}</span>
+              </a>
+            )}
+          </div>
+        </nav>
       )}
 
     </div>
@@ -680,5 +769,86 @@ const bookJsonLd = {
 .book-why-lcp__cta a:hover,
 .book-why-lcp__cta a:focus-visible {
   text-decoration: underline;
+}
+
+/* ── Try Before You Buy (IV-H.2 sec 7) ─────────────────────────────── */
+.book-try-samples {
+  margin: 2.5rem 0;
+  padding: 1.5rem 1.75rem;
+  background: var(--bg-cool, #f1f6fb);
+  border-radius: 12px;
+  text-align: center;
+}
+.book-try-samples__lead {
+  margin: 0.6rem auto 1.2rem;
+  color: var(--ink-soft, #6b6258);
+  max-width: 60ch;
+}
+.book-try-samples__cta {
+  display: inline-block;
+  padding: 0.7rem 1.4rem;
+  border-radius: 999px;
+  border: 2px solid var(--brand-blue, #1f4f86);
+  color: var(--brand-blue, #1f4f86);
+  font-weight: 700;
+  text-decoration: none;
+  background: #fff;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.book-try-samples__cta:hover,
+.book-try-samples__cta:focus-visible {
+  background: var(--brand-blue, #1f4f86);
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-try-samples__cta { transition: none; }
+}
+
+/* ── Prev / Next pager (IV-H.2 sec 11) ─────────────────────────────── */
+.book-pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 2.5rem 0 1rem;
+}
+.book-pager__slot {
+  min-height: 1px;
+}
+.book-pager__link {
+  display: block;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line, #e8e0d3);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  background: #fff;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+.book-pager__link:hover,
+.book-pager__link:focus-visible {
+  border-color: var(--brand-blue, #1f4f86);
+  transform: translateY(-1px);
+}
+.book-pager__link--next {
+  text-align: right;
+}
+.book-pager__label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--ink-soft, #6b6258);
+  margin-bottom: 0.3rem;
+}
+.book-pager__title {
+  display: block;
+  font-weight: 600;
+  color: var(--brand-blue, #1f4f86);
+}
+@media (prefers-reduced-motion: reduce) {
+  .book-pager__link { transition: none; }
+  .book-pager__link:hover { transform: none; }
+}
+@media (max-width: 520px) {
+  .book-pager { grid-template-columns: 1fr; }
+  .book-pager__link--next { text-align: left; }
 }
 </style>
