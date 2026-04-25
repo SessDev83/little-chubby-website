@@ -12,6 +12,8 @@
     "astro": "astro",
     "check": "astro check",
     "check:i18n": "node scripts/check-i18n-parity.mjs",
+    "lhci": "lhci autorun",
+    "lhci:collect": "lhci collect",
     "ci": "npm run check && npm run build",
     "covers:build": "node scripts/prepare-book-covers.mjs",
     "cover:one": "node scripts/prepare-book-covers.mjs",
@@ -37,6 +39,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.8",
+    "@lhci/cli": "^0.14.0",
     "pdf-lib": "^1.17.1"
   },
   "overrides": {

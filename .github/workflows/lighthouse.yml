@@ -1,0 +1,69 @@
+name: Lighthouse CI
+
+# Runs Lighthouse against the Vercel preview URL after each preview deploy
+# completes. Master doc invariant #10. Pkg P2-11.3.
+#
+# Initial mode: WARN-only (assertions in .lighthouserc.cjs use "warn" not
+# "error"). Promote to fail-hard via a follow-up PR after observing 3
+# consecutive green baselines on main.
+#
+# Trigger: deployment_status (Vercel emits this when a preview is ready).
+# Manual: workflow_dispatch with target_url input for ad-hoc runs against
+# any URL (e.g., production).
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "URL to audit (defaults to production)"
+        default: "https://www.littlechubbypress.com"
+        required: false
+
+permissions:
+  contents: read
+  deployments: read
+  pull-requests: write
+
+concurrency:
+  group: lighthouse-${{ github.ref }}-${{ github.event.deployment.environment || 'manual' }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    # On deployment_status, only run for successful Vercel preview deploys.
+    # On workflow_dispatch, always run.
+    if: >
+      github.event_name == 'workflow_dispatch'
+      || (
+        github.event_name == 'deployment_status'
+        && github.event.deployment_status.state == 'success'
+        && github.event.deployment.environment == 'Preview'
+        && startsWith(github.event.deployment_status.target_url, 'https://')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - preset: mobile
+            preset_flag: ""
+          - preset: desktop
+            preset_flag: "--collect.settings.preset=desktop"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Run Lighthouse CI (${{ matrix.preset }})
+        env:
+          LHCI_TARGET_URL: ${{ github.event.deployment_status.target_url || inputs.target_url }}
+        run: |
+          npx lhci autorun ${{ matrix.preset_flag }} \
+            || echo "::warning::Lighthouse gate in warn-only mode (see .lighthouserc.cjs assertions)"
