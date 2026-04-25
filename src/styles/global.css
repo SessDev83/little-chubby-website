@@ -1139,6 +1139,21 @@ main {
   -webkit-background-clip: content-box;
 }
 
+/* A11y: respect prefers-reduced-motion on the home hero carousel.
+   Disables opacity cross-fade, hover scale, and dot color transitions.
+   The auto-rotate timer is also skipped in HeroCarousel.astro JS. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-carousel-slide,
+  .hero-carousel-cover,
+  .hero-carousel-title,
+  .hero-carousel-dot {
+    transition: none !important;
+  }
+  .hero-carousel-slide:hover .hero-carousel-cover {
+    transform: none !important;
+  }
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
