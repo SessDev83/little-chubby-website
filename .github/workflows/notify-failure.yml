@@ -28,6 +28,7 @@ on:
       - Social Media Engagement
       - Sync Amazon Ratings
       - Build & Typecheck
+      - i18n Parity
     types:
       - completed
 
