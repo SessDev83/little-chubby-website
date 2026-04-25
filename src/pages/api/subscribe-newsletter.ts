@@ -8,8 +8,9 @@ export const POST: APIRoute = async ({ request }) => {
   const headers = { "Content-Type": "application/json" };
 
   try {
-    // ── IP-based rate limit: max 5 subscribes per hour ──
-    const clientIP = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    // ── Global throttle: max 30 new subs per hour across all IPs ──
+    // Per-IP tracking would require a separate table; this prevents bulk abuse
+    // without storing IPs (GDPR-friendly). Upgrade path: dedicated rate_limits table.
     const svc = getServiceClient();
 
     const { count } = await svc

@@ -31,12 +31,12 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "astro": "^6.1.9",
+    "sharp": "^0.34.5",
     "typescript": "^5.9.3"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.8",
-    "pdf-lib": "^1.17.1",
-    "sharp": "^0.34.5"
+    "pdf-lib": "^1.17.1"
   },
   "overrides": {
     "path-to-regexp": "^6.3.0"
