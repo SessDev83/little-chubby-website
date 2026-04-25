@@ -9,6 +9,16 @@ name: Notify on Workflow Failure
 
 on:
   workflow_run:
+    # MAINTENANCE POLICY (pkg P1-09):
+    # - Every scheduled workflow MUST be listed here by its `name:` value.
+    # - Every build-gating workflow (CI / typecheck / lint) MUST be listed here.
+    # - Manual-only (workflow_dispatch) workflows are optional — operator is
+    #   already watching when running them interactively.
+    # - `Notify on Workflow Failure` is intentionally NOT listed (would create
+    #   alert loops).
+    #
+    # When adding a new scheduled or CI workflow: append its `name:` value
+    # (exact match, including em-dashes or unicode) to the list below.
     workflows:
       - Daily Analytics Email
       - Daily Blog Post
