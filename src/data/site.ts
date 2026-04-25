@@ -60,8 +60,22 @@ export const siteConfig = {
       es: "/es/thanks/?form=contact",
       en: "/en/thanks/?form=contact"
     }
+  },
+  /**
+   * Voluntary support platforms (IX-B Pilar 5).
+   * Leave a field as empty string "" to hide that link everywhere.
+   * Populated only once the operator has created the account on the platform.
+   */
+  support: {
+    buyMeACoffee: "",
+    kofi: ""
   }
 } as const;
+
+/** True if at least one voluntary-support platform is configured. */
+export const hasSupportLinks =
+  Boolean(siteConfig.support.buyMeACoffee) ||
+  Boolean(siteConfig.support.kofi);
 
 export const quickAdjustments = [
   "src/data/site.ts -> penName, bio, email, redes, provider URLs",

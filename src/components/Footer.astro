@@ -1,5 +1,5 @@
 ---
-import { siteConfig } from "../data/site";
+import { siteConfig, hasSupportLinks } from "../data/site";
 import type { Lang } from "../data/i18n";
 import { ui } from "../data/i18n";
 
@@ -54,6 +54,36 @@ const year = new Date().getFullYear();
           Bluesky
         </a>
       </div>
+      {hasSupportLinks && (
+        <div class="footer-col">
+          <h3 class="footer-col-title">
+            {lang === "es" ? "Apoya el proyecto" : "Support the project"}
+          </h3>
+          {siteConfig.support.buyMeACoffee && (
+            <a
+              href={siteConfig.support.buyMeACoffee}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="footer-social-link"
+            >
+              ☕ Buy Me a Coffee
+            </a>
+          )}
+          {siteConfig.support.kofi && (
+            <a
+              href={siteConfig.support.kofi}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="footer-social-link"
+            >
+              🧋 Ko-fi
+            </a>
+          )}
+          <a href={`/${lang}/about/#support`} class="footer-small-link">
+            {lang === "es" ? "¿Por qué? →" : "Why? →"}
+          </a>
+        </div>
+      )}
     </nav>
   </div>
 

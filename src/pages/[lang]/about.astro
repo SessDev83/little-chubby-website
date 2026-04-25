@@ -2,7 +2,7 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import Button from "../../components/Button.astro";
 import { languages, getLangFromParam, ui } from "../../data/i18n";
-import { siteConfig } from "../../data/site";
+import { siteConfig, hasSupportLinks } from "../../data/site";
 
 export function getStaticPaths() {
   return languages.map((lang) => ({ params: { lang } }));
@@ -87,6 +87,93 @@ const pageDescription = lang === "es"
           <Button href={`/${lang}/contact/`} label={text.navContact} variant="secondary" />
         </div>
       </article>
+      {hasSupportLinks && (
+        <section id="support" class="about-support" aria-labelledby="support-heading">
+          <h2 id="support-heading">
+            {lang === "es" ? "Apoya el proyecto" : "Support the project"}
+          </h2>
+          <p>
+            {lang === "es"
+              ? "Little Chubby Press es un proyecto independiente y gratuito. Si el contenido te resulta útil y quieres ayudarnos a cubrir los costos de hosting, sorteos y nuevas páginas para colorear, puedes hacerlo con una contribución voluntaria:"
+              : "Little Chubby Press is an independent, free project. If you find the content useful and want to help us cover hosting costs, giveaways, and new coloring pages, you can chip in with a voluntary contribution:"}
+          </p>
+          <div class="about-support__buttons">
+            {siteConfig.support.buyMeACoffee && (
+              <Button
+                href={siteConfig.support.buyMeACoffee}
+                label="☕ Buy Me a Coffee"
+                variant="primary"
+                external
+              />
+            )}
+            {siteConfig.support.kofi && (
+              <Button
+                href={siteConfig.support.kofi}
+                label="🧋 Ko-fi"
+                variant="secondary"
+                external
+              />
+            )}
+          </div>
+          <div class="about-support__disclosure">
+            <h3>{lang === "es" ? "Qué no cambia con una donación" : "What a donation does NOT change"}</h3>
+            <ul>
+              <li>{lang === "es"
+                ? "No otorga tickets de sorteo ni 🥜 peanuts extra."
+                : "It does not grant giveaway tickets or extra 🥜 peanuts."}</li>
+              <li>{lang === "es"
+                ? "No da ventaja en reviews, gallery ni ranking."
+                : "It gives no advantage in reviews, gallery, or ranking."}</li>
+              <li>{lang === "es"
+                ? "Todo el contenido sigue siendo gratis para todos — con o sin donación."
+                : "All content remains free for everyone — with or without a donation."}</li>
+            </ul>
+            <p class="about-support__note">
+              {lang === "es"
+                ? "Los pagos son procesados por la plataforma externa (Buy Me a Coffee / Ko-fi). Little Chubby Press no recibe ni almacena datos de tarjeta."
+                : "Payments are processed by the external platform (Buy Me a Coffee / Ko-fi). Little Chubby Press never receives or stores card details."}
+            </p>
+          </div>
+        </section>
+      )}
     </div>
   </section>
 </BaseLayout>
+
+<style>
+.about-support {
+  margin: 3rem 0 1rem;
+  padding: 2rem;
+  background: var(--bg-paper, #fffaf2);
+  border-radius: 14px;
+}
+.about-support__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 1.5rem;
+}
+.about-support__disclosure {
+  border-top: 1px solid var(--line, #e8e0d3);
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+.about-support__disclosure h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+  color: var(--ink-soft, #6b6258);
+}
+.about-support__disclosure ul {
+  margin: 0 0 0.8rem;
+  padding-left: 1.2rem;
+}
+.about-support__disclosure li {
+  margin-bottom: 0.3rem;
+}
+.about-support__note {
+  font-size: 0.88rem;
+  color: var(--ink-soft, #6b6258);
+  font-style: italic;
+  margin: 0;
+}
+</style>
