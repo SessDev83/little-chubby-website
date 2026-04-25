@@ -46,7 +46,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [mobile, desktop]
+        include:
+          - preset: mobile
+            preset_flag: ""
+          - preset: desktop
+            preset_flag: "--collect.settings.preset=desktop"
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +65,5 @@ jobs:
         env:
           LHCI_TARGET_URL: ${{ github.event.deployment_status.target_url || inputs.target_url }}
         run: |
-          npx lhci autorun \
-            --collect.settings.preset=${{ matrix.preset }} \
+          npx lhci autorun ${{ matrix.preset_flag }} \
             || echo "::warning::Lighthouse gate in warn-only mode (see .lighthouserc.cjs assertions)"
