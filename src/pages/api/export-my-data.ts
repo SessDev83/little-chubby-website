@@ -20,6 +20,16 @@ export const prerender = false;
  * (which is tied to credit_transactions.reason allowlist) because exporting
  * your own data is idempotent and the user already holds the underlying
  * information — abuse surface is negligible.
+ *
+ * Tables NOT included (by design):
+ *  - books, blog_posts, artworks, coloring_pages — public catalog, not
+ *    personal data.
+ *  - lottery_config, lottery_draws — operational config/aggregates.
+ *  - site_analytics, page_views — aggregated, not linkable to identity.
+ *  - rate_limits — infrastructure, not user-owned content.
+ *
+ * TODO (P2-10): once shipping_addresses table ships, add it to the pick()
+ * list below keyed by `user_id`.
  */
 export const GET: APIRoute = async ({ cookies }) => {
   const headers = {
@@ -174,8 +184,19 @@ export const GET: APIRoute = async ({ cookies }) => {
 
     const today = new Date().toISOString().slice(0, 10);
     const filename = `little-chubby-press-data-${today}.json`;
+    const body = JSON.stringify(payload, null, 2);
 
-    return new Response(JSON.stringify(payload, null, 2), {
+    // GDPR Art. 30 (Record of Processing) signal: one log line per export.
+    // No PII — only user_id (opaque UUID already internal) and payload size.
+    // Query Vercel logs to count exports in a reporting period.
+    console.info(
+      "[export-my-data] served user=%s bytes=%d tables=%d",
+      user_id,
+      body.length,
+      Object.keys(payload).length - 1 // minus _meta
+    );
+
+    return new Response(body, {
       status: 200,
       headers: {
         ...headers,

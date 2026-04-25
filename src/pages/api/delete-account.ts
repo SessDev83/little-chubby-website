@@ -1,7 +1,21 @@
 import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
+import { notifyAdminAccountDeleted } from "../../lib/notifications";
 
 export const prerender = false;
+
+/**
+ * SHA-256 hex of input, truncated to first 12 chars. Used to produce
+ * non-reversible identifiers for post-deletion audit logs (GDPR-safe).
+ */
+async function shortHash(input: string): Promise<string> {
+  const enc = new TextEncoder().encode(input);
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 12);
+}
 
 /**
  * GDPR Article 17 — Right to erasure (self-serve account deletion).
@@ -60,6 +74,22 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       return new Response(JSON.stringify({ error: "confirm_mismatch" }), { status: 400, headers });
     }
 
+    // Capture lang_pref BEFORE the RPC cascades profiles. Non-critical —
+    // if this query fails we still proceed (we only want lang for the
+    // admin notification, not for the delete itself).
+    let langPref: string | null = null;
+    try {
+      const svcRead = getServiceClient();
+      const { data: profileRow } = await svcRead
+        .from("profiles")
+        .select("lang_pref")
+        .eq("id", user_id)
+        .maybeSingle();
+      langPref = (profileRow?.lang_pref as string | null) ?? null;
+    } catch {
+      langPref = null;
+    }
+
     const svc = getServiceClient();
     const { error: rpcErr } = await svc.rpc("delete_user_account", {
       p_user_id: user_id,
@@ -77,6 +107,17 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     cookies.delete("sb-access-token", { path: "/" });
     cookies.delete("sb-refresh-token", { path: "/" });
     cookies.delete("sb-logged-in", { path: "/" });
+
+    // GDPR Art. 17 audit signal (fire-and-forget; hashes only, no PII).
+    // MUST not block the response.
+    const [emailHash, userIdHash] = await Promise.all([
+      shortHash(email.toLowerCase()),
+      shortHash(user_id),
+    ]);
+    void notifyAdminAccountDeleted(emailHash, userIdHash, {
+      deletedAt: new Date().toISOString(),
+      lang: langPref,
+    });
 
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
   } catch (err: any) {
