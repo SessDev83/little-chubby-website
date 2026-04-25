@@ -55,7 +55,9 @@ export const GET: APIRoute = async ({ cookies }) => {
       select: string
     ): Promise<Record<string, unknown>[]> => {
       try {
-        const { data } = await svc.from(table).select(select).eq(column, user_id);
+        // Generic helper: arbitrary table name forces an `any` cast through
+        // PostgREST's strict literal-union typing.
+        const { data } = await (svc.from as any)(table).select(select).eq(column, user_id);
         return Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
       } catch {
         return [];
@@ -82,15 +84,20 @@ export const GET: APIRoute = async ({ cookies }) => {
       notificationPrefs,
     ] = await Promise.all([
       // Profile (single row)
-      svc
-        .from("profiles")
-        .select(
-          "id, email, display_name, lang_pref, avatar_url, address_line1, address_line2, city, state, zip_code, country, phone, show_in_leaderboards, featured_badge, created_at"
-        )
-        .eq("id", user_id)
-        .maybeSingle()
-        .then((r) => r.data || null)
-        .catch(() => null),
+      (async () => {
+        try {
+          const { data } = await svc
+            .from("profiles")
+            .select(
+              "id, email, display_name, lang_pref, avatar_url, address_line1, address_line2, city, state, zip_code, country, phone, show_in_leaderboards, featured_badge, created_at"
+            )
+            .eq("id", user_id)
+            .maybeSingle();
+          return data || null;
+        } catch {
+          return null;
+        }
+      })(),
 
       pick(
         "book_reviews",
@@ -124,7 +131,7 @@ export const GET: APIRoute = async ({ cookies }) => {
       try {
         const { data } = await svc
           .from("newsletter_subscribers")
-          .select("email, name, lang, source, confirmed, subscribed_at, unsubscribed_at")
+          .select("email, name, lang_pref, source, confirmed, created_at")
           .eq("email", email)
           .maybeSingle();
         newsletter = (data as Record<string, unknown>) || null;

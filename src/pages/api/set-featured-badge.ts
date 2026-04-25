@@ -51,9 +51,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       return new Response(JSON.stringify({ error: "rate_limited" }), { status: 429, headers });
     }
 
+    // SQL function treats empty string the same as NULL → clears the featured badge.
     const { data: result, error: rpcErr } = await svc.rpc("set_featured_badge", {
       p_user_id: user_id,
-      p_badge_type: badge_type,
+      p_badge_type: badge_type ?? "",
     });
     if (rpcErr) {
       return new Response(JSON.stringify({ error: rpcErr.message }), { status: 500, headers });

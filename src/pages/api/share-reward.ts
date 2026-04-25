@@ -69,7 +69,7 @@ export const POST: APIRoute = async ({ cookies, request }) => {
   }
 
   // Get new balance via RPC
-  const { data: bal } = await sc.rpc("get_user_credits", { uid: user.id });
+  const { data: bal } = await sc.rpc("get_user_credits", { p_user_id: user.id });
   const balance = typeof bal === "number" ? bal : 0;
 
   return new Response(JSON.stringify({ credited: true, balance }), {

@@ -87,7 +87,7 @@ if (Astro.request.method === "POST") {
         }
       }
     } else if (action === "reject") {
-      const { data: r } = await sc.rpc("refund_shoutout", { p_order_id: orderId, p_admin_note: note || null });
+      const { data: r } = await sc.rpc("refund_shoutout", { p_order_id: orderId, p_admin_note: note || "" });
       const res = (r || {}) as { ok?: boolean; error?: string; already_refunded?: boolean };
       if (res.ok) { flash = res.already_refunded ? "Already refunded." : "Rejected + refunded."; await auditLog("reject_refund", orderId, { note }); }
       else flashErr = res.error || "Refund failed.";

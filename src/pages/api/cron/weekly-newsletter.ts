@@ -396,7 +396,7 @@ export const GET: APIRoute = async ({ request }) => {
     for (const sub of subscribers) {
       const lang = sub.lang_pref === "es" ? "es" : "en";
       const content = contentByLang[lang] || contentByLang.en;
-      const unsubscribeUrl = `${SITE}/api/unsubscribe/?token=${encodeURIComponent(sub.confirm_token)}`;
+      const unsubscribeUrl = `${SITE}/api/unsubscribe/?token=${encodeURIComponent(sub.confirm_token || "")}`;
       const { subject, html } = buildEmail(
         lang,
         sub.name || "",

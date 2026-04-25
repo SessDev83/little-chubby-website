@@ -45,14 +45,14 @@ jobs:
       # null-check gaps. Those will be resolved in a dedicated follow-up
       # package (`quality/ts-types-cleanup`). Once fixed, flip
       # `continue-on-error` to false (or delete the line) so regressions block.
-      - name: Typecheck (astro check) — non-blocking for now
+      - name: Typecheck (astro check) â€” non-blocking for now
         continue-on-error: true
         run: npm run check
 
       - name: Build (astro build)
         env:
           # Build-time env vars. These keys are **public** (they are already
-          # shipped in the browser bundle) — we don't fetch real data during
+          # shipped in the browser bundle) â€” we don't fetch real data during
           # prerender, we only need valid URL/JWT shapes so the Supabase
           # client constructor doesn't throw when the middleware module loads.
           # Using dummy values keeps the workflow independent from any secret.
