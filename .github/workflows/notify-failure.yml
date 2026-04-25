@@ -30,6 +30,7 @@ on:
       - Build & Typecheck
       - i18n Parity
       - RLS Smoke Tests
+      - Lighthouse CI
     types:
       - completed
 
