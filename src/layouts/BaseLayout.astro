@@ -204,6 +204,9 @@ const articleJsonLd = articleSchema ? JSON.stringify({
   </head>
   <body>
     <a class="skip-link" href="#contenido-principal">{skipLabel}</a>
+    <!-- SPA route-change announcer for screen readers (a11y). Updated by
+         astro:after-swap hook below; aria-live=polite avoids interrupting AT. -->
+    <div id="a11y-route-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
     <ParentalConsentBanner lang={lang} />
     <Header lang={lang} pathname={pathname} alternatePath={alternatePath} hideNav={hideHeaderNav} />
     <main id="contenido-principal">
@@ -251,6 +254,27 @@ const articleJsonLd = articleSchema ? JSON.stringify({
       }
       _showMsgToast();
       document.addEventListener("astro:after-swap", _showMsgToast);
+    </script>
+
+    <!-- SPA a11y: announce route change (document.title) to screen readers
+         after Astro view transitions. Master doc VIII-C.3. -->
+    <script is:inline>
+      (function () {
+        var node = document.getElementById("a11y-route-announcer");
+        if (!node) return;
+        function announce() {
+          var t = (document.title || "").trim();
+          if (!t) return;
+          // Clear then set on next frame so AT re-announces identical titles.
+          node.textContent = "";
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              node.textContent = t;
+            });
+          });
+        }
+        document.addEventListener("astro:after-swap", announce);
+      })();
     </script>
 
     <!-- Lightweight pageview tracker → Supabase (for daily email report) -->
