@@ -19,6 +19,8 @@
     "ci": "npm run check && npm run build",
     "covers:build": "node scripts/prepare-book-covers.mjs",
     "cover:one": "node scripts/prepare-book-covers.mjs",
+    "books:og": "node scripts/generate-book-og-images.mjs",
+    "books:og:force": "node scripts/generate-book-og-images.mjs --force",
     "social:generate": "node scripts/social/post.mjs generate",
     "social:post": "node scripts/social/post.mjs post",
     "social:calendar": "node scripts/social/post.mjs calendar",
