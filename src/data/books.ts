@@ -17,6 +17,16 @@ export type Book = {
   pages: number;
   ratingValue?: number;
   ratingCount?: number;
+  /** Schema.org book format. Optional; falls back to omitted JSON-LD field. */
+  bookFormat?: "Paperback" | "Hardcover" | "EBook";
+  /** ISO 8601 date, e.g. "2025-11-15". Used in JSON-LD datePublished. Optional. */
+  datePublished?: string;
+  /**
+   * Coloring-corner category slug for cross-link deep-filter (IV-H.2 sec 7).
+   * Must match a `data-artwork-category` button in `/[lang]/coloring-corner/`.
+   * When absent, the "Try Before You Buy" section is skipped (graceful fallback).
+   */
+  coloringCornerCategory?: string;
 };
 
 export const books: Book[] = [
