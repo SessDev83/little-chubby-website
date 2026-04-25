@@ -70,10 +70,9 @@ jobs:
         env:
           A11Y_TARGET_URL: ${{ steps.url.outputs.target }}
         run: |
-          # browser-driver-manager writes the chromedriver path here on Linux.
-          CHROMEDRIVER_BIN="$HOME/.browser-driver-manager/chromedriver"
-          if [ -x "$CHROMEDRIVER_BIN" ]; then
-            CHROMEDRIVER_FLAG="--chromedriver-path $CHROMEDRIVER_BIN"
+          # browser-driver-manager exports CHROMEDRIVER_TEST_PATH to GITHUB_ENV.
+          if [ -n "$CHROMEDRIVER_TEST_PATH" ] && [ -x "$CHROMEDRIVER_TEST_PATH" ]; then
+            CHROMEDRIVER_FLAG="--chromedriver-path $CHROMEDRIVER_TEST_PATH"
           else
             CHROMEDRIVER_FLAG=""
           fi
