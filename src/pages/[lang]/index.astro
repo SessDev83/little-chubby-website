@@ -125,7 +125,7 @@ const bookCardLabels = {
           const photo = p.photo_url ? esc(p.photo_url) : "";
           const bookHref = `/${lang}/books/${encodeURIComponent(p.book_id)}/`;
           const photoBlock = photo
-            ? `<a href="${bookHref}" class="home-pin-photo" aria-hidden="true"><img src="${photo}" alt="" loading="lazy" decoding="async" /></a>`
+            ? `<a href="${bookHref}" class="home-pin-photo" aria-hidden="true"><img src="${photo}" alt="" loading="lazy" decoding="async" width="400" height="300" /></a>`
             : "";
           return `<article class="home-pin-card">
             ${photoBlock}
