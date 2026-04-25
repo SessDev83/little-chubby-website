@@ -1,0 +1,24 @@
+{
+  "defaults": {
+    "standard": "WCAG2AA",
+    "timeout": 30000,
+    "wait": 1500,
+    "reporter": "cli",
+    "chromeLaunchConfig": {
+      "args": ["--no-sandbox", "--disable-setuid-sandbox"]
+    },
+    "threshold": 0
+  },
+  "urls": [
+    "$A11Y_TARGET_URL/en/",
+    "$A11Y_TARGET_URL/es/",
+    "$A11Y_TARGET_URL/en/coloring-corner/",
+    "$A11Y_TARGET_URL/es/coloring-corner/",
+    "$A11Y_TARGET_URL/en/books/",
+    "$A11Y_TARGET_URL/es/books/",
+    "$A11Y_TARGET_URL/en/about/",
+    "$A11Y_TARGET_URL/es/about/",
+    "$A11Y_TARGET_URL/en/faq/",
+    "$A11Y_TARGET_URL/es/faq/"
+  ]
+}
