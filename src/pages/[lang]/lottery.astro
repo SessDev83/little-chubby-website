@@ -301,10 +301,14 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
       </div>
 
       {!user ? (
-        <!-- Not logged in -->
+        <!-- Not logged in — Pkg P4-A2: dual CTA (Register primary, Login secondary)
+             so first-time visitors aren't pushed to a login form they don't yet have. -->
         <div class="surface-card" style="padding:2rem 1.6rem; text-align:center;">
           <p>{text.lotteryNotLoggedIn}</p>
-          <a href={`/${lang}/login/`} class="btn btn-primary">{text.navLogin}</a>
+          <div style="display:flex; gap:0.6rem; justify-content:center; flex-wrap:wrap;">
+            <a href={`/${lang}/register/`} class="btn btn-primary">{text.registerSubmit}</a>
+            <a href={`/${lang}/login/`} class="btn btn-secondary">{text.navLogin}</a>
+          </div>
         </div>
       ) : (
         <Fragment>
