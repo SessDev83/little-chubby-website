@@ -227,6 +227,29 @@ main {
   background: rgba(31, 79, 134, 0.1);
 }
 
+/* Pkg P4-A7: Register CTA gets primary-color emphasis next to Login. */
+.header-register {
+  text-decoration: none;
+  font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #fff;
+  background: var(--brand-coral, #e76f51);
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--brand-coral, #e76f51);
+  transition: filter 0.2s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.header-register:hover {
+  filter: brightness(1.07);
+}
+
+.header-register:active {
+  transform: translateY(1px);
+}
+
 /* ── Username Display ───────────────────────── */
 .header-currencies {
   display: inline-flex;
@@ -1986,7 +2009,8 @@ main {
   .giveaway-banner,
   .btn,
   .hamburger,
-  .header-login {
+  .header-login,
+  .header-register {
     display: none !important;
   }
 
