@@ -75,11 +75,40 @@ function initLeadMagnet() {
   _lmAC = typeof AbortController !== "undefined" ? new AbortController() : null;
   var signal = _lmAC ? _lmAC.signal : undefined;
 
-  // Show popup after 5 seconds
-  _lmTimer = setTimeout(function() {
+  // Show popup on first of: 50% scroll depth, exit-intent (desktop), or 30s dwell.
+  // Less aggressive than the previous 5s timer; respects users who haven't engaged.
+  var _lmShown = false;
+  function showPopup(reason) {
+    if (_lmShown) return;
+    _lmShown = true;
     overlay.style.display = "";
     document.body.style.overflow = "hidden";
-  }, 5000);
+    if (typeof window.lcpTrack === "function") {
+      window.lcpTrack("lead_magnet_shown", { trigger: reason || "unknown" });
+    }
+  }
+  function onScrollCheck() {
+    var doc = document.documentElement;
+    var scrolled = (window.scrollY || doc.scrollTop || 0) + window.innerHeight;
+    var total = doc.scrollHeight || document.body.scrollHeight || 0;
+    if (total > 0 && scrolled / total >= 0.5) {
+      showPopup("scroll-50");
+      window.removeEventListener("scroll", onScrollCheck);
+    }
+  }
+  function onExitIntent(e) {
+    if (e.clientY <= 0) {
+      showPopup("exit-intent");
+      document.removeEventListener("mouseout", onExitIntent);
+    }
+  }
+  window.addEventListener("scroll", onScrollCheck, { passive: true });
+  // Exit-intent only on devices with a real cursor (skip touch).
+  if (window.matchMedia && window.matchMedia("(pointer:fine)").matches) {
+    document.addEventListener("mouseout", onExitIntent);
+  }
+  // Fallback: 30s dwell so we never miss a slow reader.
+  _lmTimer = setTimeout(function () { showPopup("dwell-30s"); }, 30000);
 
   function closePopup() {
     overlay.style.display = "none";
@@ -147,49 +176,97 @@ function initLeadMagnet() {
         lang_pref: lang,
       })
     }).then(function(res) {
-      return res.json().then(function(data) {
-        localStorage.setItem("lcp-lead-magnet", "registered");
+      return res.json().then(function(data) { return { res: res, data: data || {} }; });
+    }).then(function(payload) {
+      var res = payload.res;
+      var data = payload.data;
+      var ok = res && res.ok && data && data.ok === true;
 
-        var currentLang = document.documentElement.lang === "en" ? "en" : "es";
-        var thankYouEl = successSection.querySelector(".lead-magnet-thankyou");
-        var checkInboxEl = successSection.querySelector(".lead-magnet-check-inbox");
+      var currentLang = document.documentElement.lang === "en" ? "en" : "es";
+      var thankYouEl = successSection.querySelector(".lead-magnet-thankyou");
+      var checkInboxEl = successSection.querySelector(".lead-magnet-check-inbox");
 
-        if (data.existing && data.confirmed) {
-          // Already confirmed subscriber
-          if (thankYouEl) thankYouEl.textContent = currentLang === "en" ? "You're already subscribed!" : "¡Ya estás suscrito/a!";
-          if (checkInboxEl) checkInboxEl.textContent = "";
-        } else if (data.existing) {
-          // Re-sent confirmation
-          if (thankYouEl) thankYouEl.textContent = currentLang === "en" ? "Thanks for subscribing!" : "¡Gracias por suscribirte!";
-          if (checkInboxEl) checkInboxEl.textContent = currentLang === "en"
-            ? "We re-sent the confirmation email — check your inbox!"
-            : "¡Reenviamos el email de confirmación — revisa tu correo!";
+      if (!ok) {
+        // Server error / 429 throttle / validation failure: do NOT mark as registered.
+        // Re-enable the form so user can retry. Show inline error.
+        if (btn) { btn.disabled = false; btn.textContent = "🎨 " + (currentLang === "en" ? "Try again" : "Reintentar"); }
+        var emailEl = form.querySelector("[name='email']");
+        if (emailEl) emailEl.style.borderColor = "var(--accent-coral)";
+        var existingErr = formSection.querySelector(".lead-magnet-error");
+        if (!existingErr) {
+          var errEl = document.createElement("p");
+          errEl.className = "lead-magnet-error";
+          errEl.setAttribute("role", "alert");
+          errEl.style.cssText = "color:var(--accent-coral);font-size:0.9rem;margin:0.5rem 0 0;";
+          errEl.textContent = currentLang === "en"
+            ? "Couldn't subscribe right now. Please try again in a moment."
+            : "No pudimos suscribirte ahora mismo. Intenta de nuevo en un momento.";
+          formSection.appendChild(errEl);
         }
-        // else: new subscriber — uses default HTML text
+        if (typeof window.lcpTrack === "function") {
+          window.lcpTrack("lead_magnet_submit_error", { status: res ? res.status : 0 });
+        }
+        return;
+      }
 
-        formSection.style.display = "none";
-        successSection.style.display = "";
-
-        // Trigger download of the PDF directly
-        var downloadLink = document.createElement("a");
-        downloadLink.href = "/downloads/mini-coloring-book.pdf";
-        downloadLink.download = "Little-Chubby-Press-Mini-Coloring-Book.pdf";
-        downloadLink.style.display = "none";
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        document.body.removeChild(downloadLink);
-
-        // Close popup after 4 seconds
-        setTimeout(function() {
-          overlay.style.display = "none";
-          document.body.style.overflow = "";
-        }, 4000);
-      });
-    }).catch(function() {
-      // On error, still give the download (generous approach)
+      // Success: now we can safely mark as registered.
       localStorage.setItem("lcp-lead-magnet", "registered");
+
+      if (data.existing && data.confirmed) {
+        // Already confirmed subscriber
+        if (thankYouEl) thankYouEl.textContent = currentLang === "en" ? "You're already subscribed!" : "¡Ya estás suscrito/a!";
+        if (checkInboxEl) checkInboxEl.textContent = "";
+      } else if (data.existing) {
+        // Re-sent confirmation
+        if (thankYouEl) thankYouEl.textContent = currentLang === "en" ? "Thanks for subscribing!" : "¡Gracias por suscribirte!";
+        if (checkInboxEl) checkInboxEl.textContent = currentLang === "en"
+          ? "We re-sent the confirmation email — check your inbox!"
+          : "¡Reenviamos el email de confirmación — revisa tu correo!";
+      }
+      // else: new subscriber — uses default HTML text
+
       formSection.style.display = "none";
       successSection.style.display = "";
+
+      if (typeof window.lcpTrack === "function") {
+        window.lcpTrack("lead_magnet_submit_success", {
+          existing: !!data.existing,
+          confirmed: !!data.confirmed
+        });
+      }
+
+      // Trigger download of the PDF directly
+      var downloadLink = document.createElement("a");
+      downloadLink.href = "/downloads/mini-coloring-book.pdf";
+      downloadLink.download = "Little-Chubby-Press-Mini-Coloring-Book.pdf";
+      downloadLink.style.display = "none";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+
+      // Close popup after 4 seconds
+      setTimeout(function() {
+        overlay.style.display = "none";
+        document.body.style.overflow = "";
+      }, 4000);
+    }).catch(function() {
+      // Network error: do NOT mark as registered, re-enable form, show error.
+      var currentLang = document.documentElement.lang === "en" ? "en" : "es";
+      if (btn) { btn.disabled = false; btn.textContent = "🎨 " + (currentLang === "en" ? "Try again" : "Reintentar"); }
+      var existingErr = formSection.querySelector(".lead-magnet-error");
+      if (!existingErr) {
+        var errEl = document.createElement("p");
+        errEl.className = "lead-magnet-error";
+        errEl.setAttribute("role", "alert");
+        errEl.style.cssText = "color:var(--accent-coral);font-size:0.9rem;margin:0.5rem 0 0;";
+        errEl.textContent = currentLang === "en"
+          ? "Network error. Please check your connection and try again."
+          : "Error de red. Comprueba tu conexión e intenta de nuevo.";
+        formSection.appendChild(errEl);
+      }
+      if (typeof window.lcpTrack === "function") {
+        window.lcpTrack("lead_magnet_submit_error", { status: 0, network: true });
+      }
     });
   });
 }

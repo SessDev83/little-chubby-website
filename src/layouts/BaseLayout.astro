@@ -321,5 +321,68 @@ const articleJsonLd = articleSchema ? JSON.stringify({
         }).catch(function(){});
       })();
     </script>
+
+    <!--
+      Lightweight event tracker → Supabase conversion_events.
+      Exposes window.lcpTrack(event_name, props) for funnel instrumentation.
+      Same anon-key + RLS pattern as pageviews. Pkg P4-B1.
+    -->
+    <script is:inline>
+      (function () {
+        if (navigator.webdriver) { window.lcpTrack = function () {}; return; }
+        var sb = document.querySelector('meta[name="x-sb-url"]');
+        var sk = document.querySelector('meta[name="x-sb-key"]');
+        if (!sb || !sk) { window.lcpTrack = function () {}; return; }
+        function getVisitorHash() {
+          try {
+            var sid = sessionStorage.getItem("_pvs");
+            if (!sid) {
+              sid = Math.random().toString(36).slice(2);
+              sessionStorage.setItem("_pvs", sid);
+            }
+            return sid + "_" + new Date().toISOString().slice(0, 10);
+          } catch (e) { return null; }
+        }
+        window.lcpTrack = function (eventName, props) {
+          try {
+            if (!eventName || typeof eventName !== "string") return;
+            if (eventName.length > 64) eventName = eventName.slice(0, 64);
+            var safeProps = {};
+            if (props && typeof props === "object") {
+              // Whitelist primitive values, cap string length, max 8 keys
+              var keys = Object.keys(props).slice(0, 8);
+              for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                var v = props[k];
+                if (v === null || v === undefined) continue;
+                if (typeof v === "string") {
+                  safeProps[k] = v.length > 200 ? v.slice(0, 200) : v;
+                } else if (typeof v === "number" || typeof v === "boolean") {
+                  safeProps[k] = v;
+                }
+              }
+            }
+            var body = {
+              event_name: eventName,
+              path: location.pathname,
+              visitor_hash: getVisitorHash(),
+              props: safeProps,
+              lang: document.documentElement.lang || null
+            };
+            fetch(sb.content + "/rest/v1/conversion_events", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: sk.content,
+                Authorization: "Bearer " + sk.content,
+                Prefer: "return=minimal"
+              },
+              body: JSON.stringify(body),
+              keepalive: true
+            }).catch(function () {});
+          } catch (e) { /* never throw from tracker */ }
+        };
+      })();
+    </script>
   </body>
 </html>
