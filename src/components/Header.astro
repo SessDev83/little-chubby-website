@@ -35,6 +35,7 @@ const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
       </a>
 
       <div class="header-actions">
+        <a href={`/${lang}/register/`} class="header-register" id="auth-register" data-astro-prefetch="false">{text.registerSubmit}</a>
         <a href={`/${lang}/login/`} class="header-login" id="auth-login" data-astro-prefetch="false">{text.navLogin}</a>
         <span class="header-username" id="auth-username" style="display:none;"></span>
         <span class="header-currencies header-currencies--desktop" id="auth-currencies" style="display:none;">
@@ -205,6 +206,7 @@ const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
     // Auth state: toggle login vs username/settings
     var loggedIn = document.cookie.indexOf("sb-logged-in=") !== -1;
     var loginEl = document.getElementById("auth-login");
+    var registerEl = document.getElementById("auth-register");
     var usernameEl = document.getElementById("auth-username");
     var settingsAuthItems = document.getElementById("settings-auth-items");
     var settingsLoginHint = document.getElementById("settings-login-hint");
@@ -218,6 +220,7 @@ const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
     var ticketsCountM = document.getElementById("tickets-count-m");
 
     if (loginEl) loginEl.style.display = loggedIn ? "none" : "";
+    if (registerEl) registerEl.style.display = loggedIn ? "none" : "";
     if (usernameEl) {
       usernameEl.style.display = loggedIn ? "" : "none";
       if (loggedIn) {
