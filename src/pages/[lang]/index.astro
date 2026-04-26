@@ -56,6 +56,18 @@ const bookCardLabels = {
     </div>
   </section>
 
+  <!-- Pkg P4-A4: newsletter moved above-the-fold (right after hero) for higher
+       conversion. Single source — no duplicate section further down. -->
+  <section class="page-section">
+    <div class="container">
+      <div class="section-head">
+        <h2>{text.newsletterSectionTitle}</h2>
+        <p>{text.newsletterDisclaimer}</p>
+      </div>
+      <NewsletterForm lang={lang} />
+    </div>
+  </section>
+
   <section class="page-section">
     <div class="container">
       <a href={`/${lang}/lottery/`} class="giveaway-banner">
@@ -199,16 +211,6 @@ const bookCardLabels = {
     .home-pin-author { font-weight: 600; }
     .home-pin-booklink { color: var(--link, #1f4f86); text-decoration: underline; }
   </style>
-
-  <section class="page-section">
-    <div class="container">
-      <div class="section-head">
-        <h2>{text.newsletterSectionTitle}</h2>
-        <p>{text.newsletterDisclaimer}</p>
-      </div>
-      <NewsletterForm lang={lang} />
-    </div>
-  </section>
 
   <section class="page-section">
     <div class="container">
