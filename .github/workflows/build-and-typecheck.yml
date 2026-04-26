@@ -11,6 +11,10 @@ on:
   push:
     branches:
       - main
+  # Allow other workflows to dispatch this on auto-* branches.
+  # workflow_dispatch is the documented exception that DOES trigger downstream
+  # runs when invoked from another workflow with GITHUB_TOKEN.
+  workflow_dispatch:
 
 # Cancel older runs of the same PR/branch when a new commit arrives
 concurrency:

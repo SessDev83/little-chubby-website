@@ -93,4 +93,8 @@ jobs:
             --title "$COMMIT_MSG" \
             --body "Automated daily blog post. Auto-merges once \`build-and-typecheck\` passes.")
           echo "PR opened: $PR_URL"
+          # Trigger build-and-typecheck on the new branch. workflow_dispatch is the
+          # documented exception that DOES trigger downstream workflows when invoked
+          # with GITHUB_TOKEN, so the required status check will appear on the PR.
+          gh workflow run build-and-typecheck.yml --ref "$BRANCH"
           gh pr merge "$PR_URL" --auto --squash --delete-branch
