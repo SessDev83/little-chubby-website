@@ -32,7 +32,6 @@ if (Astro.request.method === "POST") {
   const formData = await Astro.request.formData();
   const email = formData.get("email")?.toString().trim() || "";
   const password = formData.get("password")?.toString() || "";
-  const confirmPassword = formData.get("confirm_password")?.toString() || "";
   const parentConsent = formData.get("parent_consent")?.toString() === "on";
 
   if (!parentConsent) {
@@ -40,9 +39,6 @@ if (Astro.request.method === "POST") {
     messageType = "error";
   } else if (password.length < 6) {
     message = text.registerPasswordTooShort;
-    messageType = "error";
-  } else if (password !== confirmPassword) {
-    message = text.registerPasswordMismatch;
     messageType = "error";
   } else if (email) {
     const consentTimestamp = new Date().toISOString();
@@ -112,26 +108,26 @@ if (Astro.request.method === "POST") {
 
           <div class="form-group">
             <label for="password">{text.loginPasswordLabel}</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              required
-              autocomplete="new-password"
-              minlength="6"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="confirm_password">{text.registerPasswordConfirm}</label>
-            <input
-              type="password"
-              id="confirm_password"
-              name="confirm_password"
-              required
-              autocomplete="new-password"
-              minlength="6"
-            />
+            <div class="password-wrapper">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                autocomplete="new-password"
+                minlength="6"
+              />
+              <button
+                type="button"
+                class="password-toggle"
+                id="password-toggle"
+                aria-label={lang === "es" ? "Mostrar u ocultar contraseña" : "Show or hide password"}
+                aria-pressed="false"
+              >
+                <span data-show>{lang === "es" ? "Mostrar" : "Show"}</span>
+                <span data-hide hidden>{lang === "es" ? "Ocultar" : "Hide"}</span>
+              </button>
+            </div>
           </div>
 
           <label class="consent-row">
@@ -205,4 +201,51 @@ if (Astro.request.method === "POST") {
     flex: 1 1 auto;
     color: var(--text-soft, #444);
   }
+
+  /* Pkg P4-A3: show-password toggle. Wrapper positions the button inside
+     the input row without altering the existing input layout. */
+  .password-wrapper {
+    position: relative;
+    display: block;
+  }
+  .password-wrapper input {
+    width: 100%;
+    padding-right: 4.5rem;
+  }
+  .password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+    background: transparent;
+    border: 0;
+    color: var(--brand-blue);
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.4rem;
+  }
+  .password-toggle:hover { background: rgba(31, 79, 134, 0.08); }
+  .password-toggle:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
 </style>
+
+<script is:inline>
+  (function () {
+    var btn = document.getElementById("password-toggle");
+    var input = document.getElementById("password");
+    if (!btn || !input) return;
+    var showLabel = btn.querySelector("[data-show]");
+    var hideLabel = btn.querySelector("[data-hide]");
+    btn.addEventListener("click", function () {
+      var revealed = input.getAttribute("type") === "text";
+      input.setAttribute("type", revealed ? "password" : "text");
+      btn.setAttribute("aria-pressed", revealed ? "false" : "true");
+      if (showLabel && hideLabel) {
+        if (revealed) { showLabel.hidden = false; hideLabel.hidden = true; }
+        else { showLabel.hidden = true; hideLabel.hidden = false; }
+      }
+    });
+  })();
+</script>
