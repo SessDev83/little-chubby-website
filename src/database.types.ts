@@ -823,6 +823,7 @@ export type Database = {
           created_at: string | null
           email: string
           id: string
+          ip_hash: string | null
           lang_pref: string | null
           last_reminder_at: string | null
           name: string | null
@@ -835,6 +836,7 @@ export type Database = {
           created_at?: string | null
           email: string
           id?: string
+          ip_hash?: string | null
           lang_pref?: string | null
           last_reminder_at?: string | null
           name?: string | null
@@ -847,6 +849,7 @@ export type Database = {
           created_at?: string | null
           email?: string
           id?: string
+          ip_hash?: string | null
           lang_pref?: string | null
           last_reminder_at?: string | null
           name?: string | null

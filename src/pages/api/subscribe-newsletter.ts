@@ -1,26 +1,59 @@
 import type { APIRoute } from "astro";
+import { createHash } from "node:crypto";
 import { getServiceClient } from "../../lib/supabase";
 import { notifyNewSubscriber, sendConfirmationEmail } from "../../lib/notifications";
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ request }) => {
+// Rate-limit constants. Pkg P4-A6.
+//   - Per-IP: 5 new subscriptions / hour. Stops bot bursts from a single host.
+//   - Global: 500 new subscriptions / hour. Circuit-breaker only; high enough
+//     that a legitimate viral spike (Pinterest pin trending) is not throttled.
+const PER_IP_LIMIT = 5;
+const GLOBAL_LIMIT = 500;
+const WINDOW_MS = 60 * 60 * 1000;
+
+function getClientIpHash(request: Request, clientAddress: string | null): string | null {
+  // Vercel forwards real client IP via x-forwarded-for; first entry is origin.
+  const xff = request.headers.get("x-forwarded-for");
+  const ip = (xff ? xff.split(",")[0].trim() : "") || clientAddress || "";
+  if (!ip) return null;
+  // Salt with the service-role key so the hash cannot be rainbow-table'd from
+  // a leaked db dump alone. Never stored or transmitted in plain.
+  const salt = process.env.SUPABASE_SERVICE_ROLE_KEY || "lcp-fallback-salt";
+  return createHash("sha256").update(ip + "|" + salt).digest("hex").slice(0, 32);
+}
+
+export const POST: APIRoute = async ({ request, clientAddress }) => {
   const headers = { "Content-Type": "application/json" };
 
   try {
-    // ── Global throttle: max 30 new subs per hour across all IPs ──
-    // Per-IP tracking would require a separate table; this prevents bulk abuse
-    // without storing IPs (GDPR-friendly). Upgrade path: dedicated rate_limits table.
     const svc = getServiceClient();
+    const ipHash = getClientIpHash(request, clientAddress ?? null);
+    const sinceIso = new Date(Date.now() - WINDOW_MS).toISOString();
 
-    const { count } = await svc
+    // ── Per-IP throttle (only when we could derive an IP hash) ──
+    if (ipHash) {
+      const { count: ipCount } = await svc
+        .from("newsletter_subscribers")
+        .select("id", { count: "exact", head: true })
+        .eq("ip_hash", ipHash)
+        .gte("created_at", sinceIso);
+      if ((ipCount ?? 0) >= PER_IP_LIMIT) {
+        return new Response(JSON.stringify({ error: "Too many requests" }), {
+          status: 429,
+          headers,
+        });
+      }
+    }
+
+    // ── Global circuit-breaker (raised from 30 → 500) ──
+    const { count: globalCount } = await svc
       .from("newsletter_subscribers")
       .select("id", { count: "exact", head: true })
-      .gte("created_at", new Date(Date.now() - 3600000).toISOString());
+      .gte("created_at", sinceIso);
 
-    // Simple global throttle: if more than 30 new subs per hour, rate limit
-    // (per-IP tracking would require a separate table; this prevents bulk abuse)
-    if ((count ?? 0) > 30) {
+    if ((globalCount ?? 0) >= GLOBAL_LIMIT) {
       return new Response(JSON.stringify({ error: "Too many requests" }), {
         status: 429,
         headers,
@@ -55,6 +88,7 @@ export const POST: APIRoute = async ({ request }) => {
       source: source || "popup",
       lang_pref: lang,
       confirmed: false,
+      ip_hash: ipHash,
     }).select("confirm_token").single();
 
     if (error) {
