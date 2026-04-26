@@ -42,6 +42,11 @@ const text = ui[lang];
   var newsletterForm = document.querySelector(".js-validate-newsletter");
   var newsletterStatus = document.getElementById("newsletter-status");
 
+  // P5-T1: track inline newsletter view (fires once per page-load when the form is on the page)
+  if (newsletterForm && typeof window.lcpTrack === "function") {
+    window.lcpTrack("newsletter_inline_view");
+  }
+
   if (newsletterForm && newsletterStatus) {
     newsletterForm.addEventListener("submit", function(event) {
       event.preventDefault();
@@ -120,6 +125,19 @@ const text = ui[lang];
           } else {
             newsletterStatus.textContent = errorMsg;
           }
+          // P5-T1: track outcome
+          if (typeof window.lcpTrack === "function") {
+            if (showThankYou) {
+              window.lcpTrack("newsletter_inline_submit_success", {
+                existing: !!data.existing,
+                confirmed: !!data.confirmed,
+              });
+            } else {
+              window.lcpTrack("newsletter_inline_submit_error", {
+                status: (typeof res !== "undefined" && res) ? res.status : 0,
+              });
+            }
+          }
           if (showThankYou) {
             // Show thank-you heading and hide form fields
             var formGrid = newsletterForm.querySelector('.form-grid');
@@ -136,6 +154,9 @@ const text = ui[lang];
       }).catch(function() {
         if (submitBtn) { submitBtn.classList.remove('is-loading'); submitBtn.disabled = false; }
         newsletterStatus.textContent = errorMsg;
+        if (typeof window.lcpTrack === "function") {
+          window.lcpTrack("newsletter_inline_submit_error", { status: 0, network: true });
+        }
       });
     });
   }

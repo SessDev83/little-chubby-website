@@ -152,7 +152,35 @@ if (Astro.request.method === "POST") {
       </p>
     </div>
   </section>
+
+  {/* P5-T2: hidden sentinel carrying server-rendered outcome for client tracker */}
+  <div id="register-track" data-msg-type={messageType} hidden></div>
 </BaseLayout>
+
+<script is:inline>
+  // P5-T2: register-funnel tracking
+  (function () {
+    if (typeof window.lcpTrack !== "function") return;
+
+    var sentinel = document.getElementById("register-track");
+    var msgType = sentinel ? sentinel.getAttribute("data-msg-type") : "";
+
+    window.lcpTrack("register_view");
+
+    if (msgType === "success") {
+      window.lcpTrack("register_submit_success");
+    } else if (msgType === "error") {
+      window.lcpTrack("register_submit_error");
+    }
+
+    var form = document.querySelector("form.form-grid");
+    if (form) {
+      form.addEventListener("submit", function () {
+        try { window.lcpTrack("register_submit_attempt"); } catch (e) {}
+      });
+    }
+  })();
+</script>
 
 <style>
   .auth-card {

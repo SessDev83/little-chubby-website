@@ -27,7 +27,9 @@
     "social:monitor": "node scripts/social/engage.mjs monitor",
     "social:outreach": "node scripts/social/engage.mjs outreach",
     "ratings:sync": "node scripts/sync-amazon-ratings.mjs",
-    "ratings:preview": "node scripts/sync-amazon-ratings.mjs --dry-run"
+    "ratings:preview": "node scripts/sync-amazon-ratings.mjs --dry-run",
+    "funnel:report": "node --env-file=.env scripts/funnel-report.mjs",
+    "funnel:report:30d": "node --env-file=.env scripts/funnel-report.mjs --days 30"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.18",
