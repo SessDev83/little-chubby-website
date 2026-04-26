@@ -75,6 +75,14 @@ const pathname = `/${lang}/welcome/`;
   </section>
 </BaseLayout>
 
+<script is:inline>
+  // P5-T5: newsletter double-opt-in confirmation event (this page is the
+  // landing after the confirm-subscription endpoint succeeds).
+  if (typeof window.lcpTrack === "function") {
+    window.lcpTrack("newsletter_confirmed", { source: "double_opt_in" });
+  }
+</script>
+
 <style>
   .welcome-card {
     max-width: 36rem;

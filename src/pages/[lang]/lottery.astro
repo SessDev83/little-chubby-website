@@ -522,7 +522,41 @@ const coverMap = Object.fromEntries(books.map(b => [b.id, b.coverSrc]));
       </div>
     )}
   </section>
+
+  {/* P5-T4: hidden sentinel carrying server outcome + state for client tracker */}
+  <div
+    id="lottery-track"
+    data-claim-msg={claimMsg || ""}
+    data-claim-success={claimMsg && claimMsg === text.claimSuccess ? "1" : "0"}
+    data-logged-in={user ? "1" : "0"}
+    data-has-pending-claim={pendingClaim ? "1" : "0"}
+    hidden
+  ></div>
 </BaseLayout>
+
+<script is:inline>
+  // P5-T4: lottery-funnel tracking (page view + claim outcome + claim attempt)
+  (function () {
+    if (typeof window.lcpTrack !== "function") return;
+    var s = document.getElementById("lottery-track");
+    if (!s) return;
+    window.lcpTrack("lottery_view", {
+      logged_in: s.getAttribute("data-logged-in") === "1",
+      has_pending_claim: s.getAttribute("data-has-pending-claim") === "1",
+    });
+    if (s.getAttribute("data-claim-success") === "1") {
+      window.lcpTrack("lottery_claim_success");
+    } else if (s.getAttribute("data-claim-msg")) {
+      window.lcpTrack("lottery_claim_error");
+    }
+    var claimForm = document.querySelector(".claim-expanded form[method=\"POST\"]");
+    if (claimForm) {
+      claimForm.addEventListener("submit", function () {
+        try { window.lcpTrack("lottery_claim_attempt"); } catch (e) {}
+      });
+    }
+  })();
+</script>
 
 <script is:inline>
   document.addEventListener("astro:page-load", () => {
