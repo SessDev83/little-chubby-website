@@ -533,8 +533,9 @@ async function publishPost(post, platform, imageData, data, lang, postType) {
             break;
           }
           if (!imageData?.url) {
-            console.log(`  ⚠️  Instagram: skipped (requires a public image URL)`);
-            results.push({ platform: "instagram", success: false, error: "No image URL" });
+            console.log(`  ⏭️  Instagram: skipped (requires a public image URL)`);
+            // Treat as a real skip (not a failure) so CI doesn't flag a successful
+            // multi-platform run as failed when only IG is missing an image.
             break;
           }
 
