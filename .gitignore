@@ -38,6 +38,9 @@ Raw awesome girls revie muestra/
 
 # operator-only temp files (auto-generated helpers — not part of repo)
 _APPLY_*.sql
+
+# local-only PowerShell helpers (contain env-specific refs / credential interop)
+scripts/_*.ps1
 _PIN_POSTS_*.txt
 PIN_TO_COPY/
 .commit-msg.tmp
