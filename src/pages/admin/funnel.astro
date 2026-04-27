@@ -101,15 +101,15 @@ function userHash(event: any) {
             {sourceStageRows.length === 0 && <tr><td colspan="10" class="empty-cell">No source data in this window.</td></tr>}
             {sourceStageRows.map((row: any) => (
               <tr>
-                <td title={row.label}><code>{shortText(row.label, 24)}</code></td>
-                <td>{stageCount(row, "Visit")}</td>
-                <td>{stageCount(row, "Lead")}</td>
-                <td>{stageCount(row, "Registered")}</td>
-                <td>{stageCount(row, "Activated")}</td>
-                <td>{stageCount(row, "Engaged")}</td>
-                <td>{stageCount(row, "Community")}</td>
-                <td>{stageCount(row, "Book Intent")}</td>
-                <td>{stageCount(row, "Amazon Click")}</td>
+                <td class="admin-wrap" title={row.label}><code>{shortText(row.label, 24)}</code></td>
+                <td class="admin-number">{stageCount(row, "Visit")}</td>
+                <td class="admin-number">{stageCount(row, "Lead")}</td>
+                <td class="admin-number">{stageCount(row, "Registered")}</td>
+                <td class="admin-number">{stageCount(row, "Activated")}</td>
+                <td class="admin-number">{stageCount(row, "Engaged")}</td>
+                <td class="admin-number">{stageCount(row, "Community")}</td>
+                <td class="admin-number">{stageCount(row, "Book Intent")}</td>
+                <td class="admin-number">{stageCount(row, "Amazon Click")}</td>
                 <td>{row.deepestStage}</td>
               </tr>
             ))}
@@ -127,14 +127,14 @@ function userHash(event: any) {
             {languageStageRows.map((row: any) => (
               <tr>
                 <td><code>{row.label}</code></td>
-                <td>{stageCount(row, "Visit")}</td>
-                <td>{stageCount(row, "Lead")}</td>
-                <td>{stageCount(row, "Registered")}</td>
-                <td>{stageCount(row, "Activated")}</td>
-                <td>{stageCount(row, "Engaged")}</td>
-                <td>{stageCount(row, "Community")}</td>
-                <td>{stageCount(row, "Book Intent")}</td>
-                <td>{stageCount(row, "Amazon Click")}</td>
+                <td class="admin-number">{stageCount(row, "Visit")}</td>
+                <td class="admin-number">{stageCount(row, "Lead")}</td>
+                <td class="admin-number">{stageCount(row, "Registered")}</td>
+                <td class="admin-number">{stageCount(row, "Activated")}</td>
+                <td class="admin-number">{stageCount(row, "Engaged")}</td>
+                <td class="admin-number">{stageCount(row, "Community")}</td>
+                <td class="admin-number">{stageCount(row, "Book Intent")}</td>
+                <td class="admin-number">{stageCount(row, "Amazon Click")}</td>
                 <td>{row.deepestStage}</td>
               </tr>
             ))}
@@ -153,11 +153,11 @@ function userHash(event: any) {
           <tbody>
             {landingStageRows.map((row: any) => (
               <tr>
-                <td title={row.label}><code>{shortText(row.label, 44)}</code></td>
-                <td>{stageCount(row, "Visit")}</td>
-                <td>{stageCount(row, "Lead")}</td>
-                <td>{stageCount(row, "Activated")}</td>
-                <td>{stageCount(row, "Book Intent")}</td>
+                <td class="admin-wrap" title={row.label}><code>{shortText(row.label, 44)}</code></td>
+                <td class="admin-number">{stageCount(row, "Visit")}</td>
+                <td class="admin-number">{stageCount(row, "Lead")}</td>
+                <td class="admin-number">{stageCount(row, "Activated")}</td>
+                <td class="admin-number">{stageCount(row, "Book Intent")}</td>
                 <td>{row.deepestStage}</td>
               </tr>
             ))}
@@ -179,7 +179,7 @@ function userHash(event: any) {
                 <td><code>{event.event_name}</code></td>
                 <td><code>{userHash(event)}</code></td>
                 <td>{event.lang || "-"}</td>
-                <td title={event.path || ""}><code>{shortText(event.path, 34)}</code></td>
+                <td class="admin-wrap" title={event.path || ""}><code>{shortText(event.path, 34)}</code></td>
               </tr>
             ))}
           </tbody>
