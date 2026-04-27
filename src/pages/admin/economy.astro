@@ -3,6 +3,7 @@ export const prerender = false;
 
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildEconomyHealth } from "../../lib/admin-economy-health.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -18,6 +19,7 @@ const [
   { data: artworkRevenue },
   { data: boostPurchases },
   { data: allCredits },
+  { data: ticketRows },
 ] = await Promise.all([
   sc.from("profiles").select("id, display_name, email").limit(200),
   sc.from("credit_transactions")
@@ -26,7 +28,8 @@ const [
     .limit(100),
   sc.from("artwork_downloads").select("artwork_id, user_id, downloaded_at").limit(1000),
   sc.from("gallery_boosts").select("id, user_id, boost_type, purchased_at").limit(500),
-  sc.from("credit_transactions").select("user_id, amount").limit(10000),
+  sc.from("credit_transactions").select("user_id, amount, reason, ref_id, created_at").limit(10000),
+  sc.from("ticket_transactions").select("user_id, amount, reason, ref_id, created_at").limit(10000),
 ]);
 
 // ── Computed stats ────────────────────────────────────
@@ -42,6 +45,13 @@ for (const c of allCredits ?? []) {
 const totalPeanuts = Object.values(peanutMap).reduce((s, v) => s + v, 0);
 const totalUsers = profiles.length;
 const usersWithPeanuts = Object.values(peanutMap).filter(v => v > 0).length;
+const economyHealth = buildEconomyHealth({
+  credits: allCredits ?? [],
+  tickets: ticketRows ?? [],
+  downloads: artworkRevenue ?? [],
+  boosts: boostPurchases ?? [],
+});
+const healthSummary = economyHealth.summary;
 
 // Top earners (by current balance)
 const topEarners = profiles
@@ -110,6 +120,49 @@ const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("en", { mon
       <div class="stat-label">Boost Purchases</div>
     </div>
   </div>
+
+  <section class="health-panel">
+    <div class="health-head">
+      <h2>Peanuts Economy Health</h2>
+      <span>{healthSummary.usersTracked.toLocaleString()} tracked wallets</span>
+    </div>
+    <div class="health-grid">
+      <div class="health-card"><span>Earned</span><strong>{healthSummary.totalEarned.toLocaleString()}</strong></div>
+      <div class="health-card"><span>Spent</span><strong>{healthSummary.totalSpent.toLocaleString()}</strong><small>{healthSummary.spendToEarnRate} of earned</small></div>
+      <div class="health-card"><span>Repeat earners</span><strong>{healthSummary.repeatEarners.toLocaleString()}</strong><small>{healthSummary.repeatEarnRate}</small></div>
+      <div class="health-card"><span>Repeat spenders</span><strong>{healthSummary.repeatSpenders.toLocaleString()}</strong><small>{healthSummary.repeatSpendRate}</small></div>
+      <div class="health-card"><span>Dormant Peanuts</span><strong>{healthSummary.dormantPeanuts.toLocaleString()}</strong><small>{healthSummary.dormantUsers.toLocaleString()} wallet(s)</small></div>
+      <div class="health-card"><span>Ticket net</span><strong>{healthSummary.ticketNet.toLocaleString()}</strong><small>{healthSummary.ticketUsers.toLocaleString()} user(s)</small></div>
+    </div>
+    <div class="signal-grid">
+      {economyHealth.signals.map((signal: any) => (
+        <article class={`signal-card tone-${signal.tone}`}>
+          <strong>{signal.label}</strong>
+          <p>{signal.detail}</p>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="health-panel compact-health">
+    <div class="health-head"><h2>Economy Flow By Reason</h2></div>
+    <table class="admin-table">
+      <thead><tr><th>Reason</th><th>Count</th><th>Earned</th><th>Spent</th><th>Net</th><th>Users</th></tr></thead>
+      <tbody>
+        {economyHealth.reasonRows.length === 0 && <tr><td colspan="6" style="text-align:center;color:var(--ink-soft);">No Peanut transactions yet.</td></tr>}
+        {economyHealth.reasonRows.map((row: any) => (
+          <tr>
+            <td><code>{row.reason}</code></td>
+            <td>{row.count.toLocaleString()}</td>
+            <td class="text-green">+{row.earned.toLocaleString()}</td>
+            <td class="text-red">{row.spent > 0 ? `-${row.spent.toLocaleString()}` : "0"}</td>
+            <td class={row.net >= 0 ? "text-green" : "text-red"}>{row.net >= 0 ? "+" : ""}{row.net.toLocaleString()}</td>
+            <td>{row.uniqueUsers.toLocaleString()}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
 
   {/* ── Credit Breakdown by Reason ── */}
   <h2>Credit Flow by Reason</h2>
@@ -213,6 +266,54 @@ const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("en", { mon
   }
   .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--brand-blue); }
   .stat-label { font-size: 0.82rem; color: var(--ink-soft); margin-top: 0.2rem; }
+
+  .health-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 1rem;
+    margin: 1.2rem 0;
+  }
+  .health-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.85rem;
+  }
+  .health-head h2 { margin: 0; }
+  .health-head span { color: var(--ink-soft); font-size: 0.82rem; font-weight: 700; }
+  .health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+  }
+  .health-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-strong, #f8f8f8);
+    padding: 0.8rem;
+  }
+  .health-card span { display: block; color: var(--ink-soft); font-size: 0.76rem; font-weight: 700; }
+  .health-card strong { display: block; margin-top: 0.18rem; color: var(--brand-blue); font-size: 1.18rem; }
+  .health-card small { color: var(--ink-soft); font-weight: 700; }
+  .signal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.8rem;
+  }
+  .signal-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-strong, #f8f8f8);
+    padding: 0.75rem;
+  }
+  .signal-card p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.86rem; }
+  .tone-good { border-color: rgba(92,150,80,0.35); }
+  .tone-warn { border-color: rgba(220,150,50,0.45); background: rgba(220,150,50,0.07); }
+  .tone-quiet { color: var(--ink-soft); }
+  .compact-health .admin-table { margin-bottom: 0; }
 
   .two-col {
     display: grid;

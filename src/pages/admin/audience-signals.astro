@@ -1,0 +1,177 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildAudienceSignalModel } from "../../lib/admin-audience-signals.mjs";
+import { fetchAdminKpiWindow, formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d");
+const rangeParam = range.rangeKey;
+const sc = getServiceClient() as any;
+const kpiWindow = await fetchAdminKpiWindow(sc, { rangeParam, limit: 10000 });
+const model = buildAudienceSignalModel({ events: kpiWindow.events, pageviews: kpiWindow.pageviews });
+const summary = model.summary;
+const short = shortText;
+---
+
+<AdminLayout title="Audience Signals" current="audience-signals">
+  <div class="admin-page-head">
+    <div>
+      <h1>Audience Signal Model</h1>
+      <p>Window: last {range.label} - generated {formatKpiTime(range.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Audience signal range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card"><span>Signal actors</span><strong>{summary.actors.toLocaleString()}</strong><small>{summary.sampleWarning}</small></div>
+    <div class="stat-card"><span>Top segment</span><strong>{short(summary.topSegment, 22)}</strong><small>directional only</small></div>
+    <div class="stat-card"><span>High confidence</span><strong>{summary.highConfidenceActors.toLocaleString()}</strong><small>4+ actions with repeated signal</small></div>
+    <div class="stat-card"><span>First value</span><strong>{summary.firstValueActors.toLocaleString()}</strong><small>first meaningful action seen</small></div>
+    <div class="stat-card"><span>Book intent actors</span><strong>{summary.bookIntentActors.toLocaleString()}</strong><small>{summary.amazonClickActors.toLocaleString()} Amazon click actors</small></div>
+    <div class="stat-card"><span>Returning actors</span><strong>{summary.returningActors.toLocaleString()}</strong><small>return_session observed</small></div>
+  </section>
+
+  <section class="surface-card audience-panel notice-panel">
+    <strong>Privacy boundary</strong>
+    <p>{model.note}</p>
+  </section>
+
+  <section class="surface-card audience-panel">
+    <div class="panel-head"><h2>Segment Signal Matrix</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Segment</th><th>Actors</th><th>Confidence</th><th>Activated</th><th>Community</th><th>Book</th><th>Amazon</th><th>Return</th><th>Top first value</th><th>Top source</th><th>Next action</th></tr></thead>
+        <tbody>
+          {model.segmentRows.length === 0 && <tr><td colspan="11" class="empty-cell">No audience signals in this window.</td></tr>}
+          {model.segmentRows.map((row: any) => (
+            <tr>
+              <td><strong>{row.segment}</strong><small>{row.sampleWarning}</small></td>
+              <td>{row.actors.toLocaleString()}</td>
+              <td>{row.confidenceLabel}<small>H {row.confidence.High} / M {row.confidence.Medium} / L {row.confidence.Low}</small></td>
+              <td>{(row.stages.Activated || 0).toLocaleString()}</td>
+              <td>{(row.stages.Community || 0).toLocaleString()}</td>
+              <td>{(row.stages["Book Intent"] || 0).toLocaleString()}</td>
+              <td>{(row.stages["Amazon Click"] || 0).toLocaleString()}</td>
+              <td>{(row.stages.Return || 0).toLocaleString()}</td>
+              <td><code>{row.topFirstValue}</code></td>
+              <td>{short(row.topSource, 28)}</td>
+              <td>{row.nextAction}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="audience-grid">
+    <div class="surface-card audience-panel">
+      <div class="panel-head"><h2>Source To Segment</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Source</th><th>Segment</th><th>Actors</th><th>Activated</th><th>Book</th><th>Amazon</th></tr></thead>
+        <tbody>
+          {model.sourceRows.length === 0 && <tr><td colspan="6" class="empty-cell">No source-linked segment rows yet.</td></tr>}
+          {model.sourceRows.map((row: any) => (
+            <tr>
+              <td>{short(row.source, 28)}</td>
+              <td>{row.segment}</td>
+              <td>{row.actors.toLocaleString()}</td>
+              <td>{row.activations.toLocaleString()}</td>
+              <td>{row.bookIntent.toLocaleString()}</td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card audience-panel">
+      <div class="panel-head"><h2>Anonymous Signal Examples</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Actor</th><th>Segment</th><th>Confidence</th><th>Stage</th><th>First value</th><th>Source</th></tr></thead>
+        <tbody>
+          {model.actorRows.length === 0 && <tr><td colspan="6" class="empty-cell">No actor-level signal examples in this window.</td></tr>}
+          {model.actorRows.map((row: any) => (
+            <tr>
+              <td><code>{short(row.id, 12)}</code></td>
+              <td>{row.primarySegment}</td>
+              <td>{row.confidence}</td>
+              <td>{row.highestFunnelStage}</td>
+              <td><code>{row.firstValueAction}</code></td>
+              <td>{short(row.topSource, 24)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card, .audience-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.2rem; }
+  .stat-card small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .notice-panel { margin-bottom: 1rem; border-color: rgba(37,99,235,0.25); background: rgba(37,99,235,0.06); }
+  .notice-panel p { margin: 0.25rem 0 0; color: var(--ink-soft); }
+  .audience-panel { margin-bottom: 1rem; }
+  .audience-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.85rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .admin-table code { font-size: 0.76rem; }
+  .empty-cell { color: var(--ink-soft); text-align: center; }
+  @media (max-width: 1080px) {
+    .audience-grid { grid-template-columns: 1fr; }
+  }
+</style>

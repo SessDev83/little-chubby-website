@@ -1,0 +1,203 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildAdminIntelligenceBrief } from "../../lib/admin-intelligence-brief.mjs";
+import { buildLearningLedgerEntry, renderLearningLedgerMarkdown } from "../../lib/admin-learning-ledger.mjs";
+import { buildFunnelCommandCenter, buildTrafficQualitySummary, fetchAdminKpiWindow, formatKpiTime, resolveAdminRange } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const requestedRange = resolveAdminRange(Astro.url.searchParams.get("range") || "7d");
+const rangeParam = requestedRange.rangeKey;
+const now = new Date();
+const previousNow = new Date(now.getTime() - requestedRange.days * 24 * 60 * 60 * 1000);
+const sc = getServiceClient();
+
+const [currentWindow, previousWindow] = await Promise.all([
+  fetchAdminKpiWindow(sc, { rangeParam, now }),
+  fetchAdminKpiWindow(sc, { rangeParam, now: previousNow, untilIso: previousNow.toISOString() }),
+]);
+
+const funnel = buildFunnelCommandCenter({ events: currentWindow.events, pageviews: currentWindow.pageviews, summary: currentWindow });
+const trafficQuality = buildTrafficQualitySummary({ events: currentWindow.events, pageviews: currentWindow.pageviews });
+const brief = buildAdminIntelligenceBrief({ current: currentWindow, previous: previousWindow, funnel, trafficQuality });
+const ledgerEntry = buildLearningLedgerEntry({ brief, current: currentWindow, previous: previousWindow, trafficQuality });
+const ledgerMarkdown = renderLearningLedgerMarkdown(ledgerEntry);
+---
+
+<AdminLayout title="Learning Ledger" current="learning-ledger">
+  <div class="admin-page-head">
+    <div>
+      <h1>Operational Learning Ledger</h1>
+      <p>{ledgerEntry.entryId} - {ledgerEntry.periodCovered} - generated {formatKpiTime(brief.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Ledger range">
+      {(["24h", "7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="ledger-summary">
+    <div class={`summary-card quality-${ledgerEntry.dataQuality}`}>
+      <span>Data quality</span>
+      <strong>{ledgerEntry.dataQuality}</strong>
+    </div>
+    <div class="summary-card">
+      <span>Confidence</span>
+      <strong>{ledgerEntry.confidence}</strong>
+    </div>
+    <div class="summary-card">
+      <span>Affected packages</span>
+      <strong>{ledgerEntry.affectedPackages.length}</strong>
+    </div>
+    <div class="summary-card">
+      <span>Next review</span>
+      <strong>weekly</strong>
+    </div>
+  </section>
+
+  <section class="surface-card ledger-panel action-panel">
+    <div>
+      <span class="kicker">Recommended Experiment</span>
+      <h2>{ledgerEntry.recommendedExperiment}</h2>
+      <p>{ledgerEntry.ownerDecisionNeeded}</p>
+    </div>
+  </section>
+
+  <section class="ledger-grid">
+    <div class="surface-card ledger-panel">
+      <div class="panel-head"><h2>Top Metrics</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>
+          {ledgerEntry.topMetrics.map(([label, value]: [string, string]) => (
+            <tr><td>{label}</td><td>{value}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card ledger-panel">
+      <div class="panel-head"><h2>Strategy Mapping</h2></div>
+      <div class="tag-section">
+        <span>Phases</span>
+        <div>{ledgerEntry.affectedPhases.map((item: string) => <code>{item}</code>)}</div>
+      </div>
+      <div class="tag-section">
+        <span>Decisions</span>
+        <div>{ledgerEntry.affectedDecisions.map((item: string) => <code>{item}</code>)}</div>
+      </div>
+      <div class="tag-section">
+        <span>Packages</span>
+        <div>{ledgerEntry.affectedPackages.map((item: string) => <code>{item}</code>)}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="surface-card ledger-panel">
+    <div class="panel-head"><h2>Evidence Notes</h2></div>
+    <div class="note-grid">
+      <article>
+        <span>What happened</span>
+        {ledgerEntry.whatHappened.map((item: string) => <p>{item}</p>)}
+      </article>
+      <article>
+        <span>What changed</span>
+        {ledgerEntry.whatChanged.map((item: string) => <p>{item}</p>)}
+      </article>
+      <article>
+        <span>Hypotheses</span>
+        {ledgerEntry.hypotheses.map((item: string) => <p>{item}</p>)}
+      </article>
+      <article>
+        <span>Data quality issues</span>
+        {ledgerEntry.dataQualityIssues.length === 0 && <p>None flagged in this window.</p>}
+        {ledgerEntry.dataQualityIssues.map((item: string) => <p>{item}</p>)}
+      </article>
+    </div>
+  </section>
+
+  <section class="surface-card ledger-panel">
+    <div class="panel-head"><h2>Markdown Entry</h2></div>
+    <pre>{ledgerMarkdown}</pre>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .ledger-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .summary-card, .ledger-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .summary-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .summary-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.25rem; text-transform: capitalize; }
+  .quality-red { border-color: rgba(190,55,55,0.45); background: rgba(190,55,55,0.06); }
+  .quality-yellow { border-color: rgba(220,150,50,0.45); background: rgba(220,150,50,0.08); }
+  .quality-green { border-color: rgba(92,150,80,0.45); background: rgba(92,150,80,0.07); }
+  .action-panel { margin-bottom: 1rem; }
+  .action-panel h2 { margin-top: 0.2rem; font-size: 1.15rem; }
+  .action-panel p { margin: 0.4rem 0 0; color: var(--ink-soft); }
+  .kicker { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0; }
+  .ledger-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 0.85rem; margin-bottom: 1rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .tag-section { margin-bottom: 0.85rem; }
+  .tag-section span, .note-grid span { display: block; margin-bottom: 0.35rem; color: var(--ink-soft); font-size: 0.72rem; font-weight: 800; text-transform: uppercase; }
+  .tag-section div { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .tag-section code { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.15rem 0.35rem; background: var(--surface-strong, #f8f8f8); }
+  .note-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; }
+  .note-grid article { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.8rem; background: var(--surface-strong, #f8f8f8); }
+  .note-grid p { margin: 0.35rem 0; color: var(--ink-soft); font-size: 0.88rem; }
+  pre {
+    margin: 0;
+    max-height: 32rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+  @media (max-width: 860px) {
+    .ledger-grid { grid-template-columns: 1fr; }
+  }
+</style>

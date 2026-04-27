@@ -1,0 +1,214 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { books } from "../../data/books";
+import { buildAgentKpiInputContract } from "../../lib/admin-agent-contract.mjs";
+import { buildAmazonAttribution } from "../../lib/admin-amazon-attribution.mjs";
+import { buildBookScorecard } from "../../lib/admin-book-scorecard.mjs";
+import { buildChannelScorecard } from "../../lib/admin-channel-scorecard.mjs";
+import { buildConversionFunnelAgentReport } from "../../lib/admin-conversion-agent.mjs";
+import { buildFirstValueAnalysis } from "../../lib/admin-first-value-analysis.mjs";
+import { buildAdminIntelligenceBrief } from "../../lib/admin-intelligence-brief.mjs";
+import { buildFunnelCommandCenter, buildTrafficQualitySummary, fetchAdminKpiWindow, formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+import { buildLanguageMarketReport } from "../../lib/admin-language-market.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const now = new Date();
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d", now);
+const rangeParam = range.rangeKey;
+const previousNow = new Date(now.getTime() - range.days * 24 * 60 * 60 * 1000);
+const sc = getServiceClient() as any;
+
+const [currentWindow, previousWindow] = await Promise.all([
+  fetchAdminKpiWindow(sc, { rangeParam, now, limit: 10000 }),
+  fetchAdminKpiWindow(sc, { rangeParam, now: previousNow, untilIso: previousNow.toISOString(), limit: 10000 }),
+]);
+
+const [{ data: subscriberRows }, { data: profileRows }, { data: reviewRows }] = await Promise.all([
+  sc.from("newsletter_subscribers").select("confirmed,source,lang_pref,created_at").limit(10000),
+  sc.from("profiles").select("id,created_at,lang_pref").limit(10000),
+  sc.from("book_reviews").select("book_id,rating,status,featured,submitted_at").gte("submitted_at", range.sinceIso).order("submitted_at", { ascending: false }).limit(10000),
+]);
+
+const events = currentWindow.events;
+const pageviews = currentWindow.pageviews;
+const funnel = buildFunnelCommandCenter({ events, pageviews, summary: currentWindow });
+const trafficQuality = buildTrafficQualitySummary({ events, pageviews });
+const brief = buildAdminIntelligenceBrief({ current: currentWindow, previous: previousWindow, funnel, trafficQuality });
+const firstValue = buildFirstValueAnalysis({ events, pageviews });
+const channelScorecard = buildChannelScorecard({ events, pageviews });
+const languageMarket = buildLanguageMarketReport({ events, pageviews, subscribers: subscriberRows ?? [], profiles: profileRows ?? [] });
+const amazonAttribution = buildAmazonAttribution({ events, books });
+const bookScorecard = buildBookScorecard({ events, reviews: reviewRows ?? [], books });
+const contract = buildAgentKpiInputContract({ range, current: currentWindow, previous: previousWindow, funnel, trafficQuality, brief, firstValue, channelScorecard, languageMarket, amazonAttribution, bookScorecard });
+const report = buildConversionFunnelAgentReport({ contract, funnel, trafficQuality, firstValue, channelScorecard, languageMarket, amazonAttribution, bookScorecard });
+const summary = report.summary;
+const short = shortText;
+---
+
+<AdminLayout title="Conversion Agent" current="conversion-agent">
+  <div class="admin-page-head">
+    <div>
+      <h1>Conversion Funnel Agent</h1>
+      <p>Window: last {range.label} - generated {formatKpiTime(contract.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Conversion agent range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card"><span>Status</span><strong>{summary.status}</strong><small>{summary.confidence} confidence</small></div>
+    <div class="stat-card"><span>Focus items</span><strong>{summary.focusItems.toLocaleString()}</strong><small>{summary.highPriority.toLocaleString()} high priority</small></div>
+    <div class="stat-card"><span>Book intent</span><strong>{summary.bookIntent.toLocaleString()}</strong><small>{summary.amazonRate} to Amazon</small></div>
+    <div class="stat-card"><span>Amazon clicks</span><strong>{summary.amazonClicks.toLocaleString()}</strong><small>buyer intent only</small></div>
+    <div class="stat-card"><span>Top focus</span><strong>{short(summary.topFocus, 28)}</strong><small>owner review</small></div>
+  </section>
+
+  <section class="surface-card agent-panel notice-panel">
+    <strong>Scope boundary</strong>
+    <p>{report.note}</p>
+  </section>
+
+  <section class="agent-grid">
+    <div class="surface-card agent-panel">
+      <div class="panel-head"><h2>Owner Review Packets</h2></div>
+      <div class="packet-stack">
+        {report.packetRows.length === 0 && <p class="empty-note">No dominant conversion packet in this window.</p>}
+        {report.packetRows.map((packet: any) => (
+          <article class="packet-card">
+            <div class="packet-top"><strong>{packet.area}</strong><span class:list={["priority-pill", packet.severity]}>{packet.severity}</span></div>
+            <p>{packet.finding}</p>
+            <small>{packet.recommended_action}</small>
+          </article>
+        ))}
+      </div>
+    </div>
+
+    <div class="surface-card agent-panel">
+      <div class="panel-head"><h2>Guardrails</h2></div>
+      <ul class="guardrail-list">
+        {report.guardrails.map((item: string) => <li>{item}</li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="surface-card agent-panel">
+    <div class="panel-head"><h2>Conversion Focus</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Priority</th><th>Area</th><th>Focus</th><th>Finding</th><th>Evidence</th><th>Recommended action</th><th>Blocked by</th></tr></thead>
+        <tbody>
+          {report.focusRows.length === 0 && <tr><td colspan="7" class="empty-cell">No conversion focus available yet.</td></tr>}
+          {report.focusRows.map((row: any) => (
+            <tr>
+              <td><span class:list={["priority-pill", row.priority.toLowerCase()]}>{row.priority}</span></td>
+              <td>{row.area}</td>
+              <td><strong>{short(row.title, 34)}</strong></td>
+              <td>{row.finding}</td>
+              <td><code>{row.evidence}</code></td>
+              <td>{row.recommendedAction}</td>
+              <td>{row.blockedBy.join(", ") || "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="surface-card agent-panel">
+    <div class="panel-head"><h2>Book Path Review</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Book</th><th>Intent</th><th>Amazon</th><th>Sample</th><th>Reviews</th><th>Source</th><th>Lang</th><th>Action</th></tr></thead>
+        <tbody>
+          {report.bookPathRows.length === 0 && <tr><td colspan="8" class="empty-cell">No book-path rows in this window.</td></tr>}
+          {report.bookPathRows.map((row: any) => (
+            <tr>
+              <td title={row.title}><strong>{short(row.title, 34)}</strong><small>{row.id}</small></td>
+              <td>{row.bookIntent.toLocaleString()}</td>
+              <td>{row.amazonClicks.toLocaleString()}<small>{row.amazonRate}</small></td>
+              <td>{row.sampleRate}</td>
+              <td>{row.reviews.toLocaleString()} approved<small>{row.pendingReviews.toLocaleString()} pending</small></td>
+              <td>{short(row.topSource, 24)}</td>
+              <td>{row.topLang}</td>
+              <td>{row.recommendedAction}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="split-grid">
+    <div class="surface-card agent-panel">
+      <div class="panel-head"><h2>Source To Book</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Source</th><th>Book intent</th><th>Amazon</th><th>Top book</th><th>Action</th></tr></thead>
+        <tbody>
+          {report.sourcePathRows.map((row: any) => (
+            <tr><td>{short(row.source, 24)}</td><td>{row.bookIntent.toLocaleString()}</td><td>{row.amazonClicks.toLocaleString()} <small>{row.amazonRate}</small></td><td>{short(row.topBook, 24)}</td><td>{row.action}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card agent-panel">
+      <div class="panel-head"><h2>First Value To Book</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>First value</th><th>Actors</th><th>Return</th><th>Book</th><th>Amazon</th><th>Action</th></tr></thead>
+        <tbody>
+          {report.firstValueRows.map((row: any) => (
+            <tr><td><code>{row.firstValue}</code></td><td>{row.actors.toLocaleString()}</td><td>{row.returnRate}</td><td>{row.bookIntentRate}</td><td>{row.amazonRate}</td><td>{row.recommendation}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn { display: inline-flex; align-items: center; min-height: 2rem; padding: 0.35rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--ink-soft); text-decoration: none; font-size: 0.85rem; font-weight: 700; background: var(--surface); }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; margin-bottom: 1rem; }
+  .stat-card, .agent-panel { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); padding: 0.95rem; }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.15rem; overflow-wrap: anywhere; }
+  .stat-card small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .notice-panel { margin-bottom: 1rem; border-color: rgba(37,99,235,0.25); background: rgba(37,99,235,0.06); }
+  .notice-panel p { margin: 0.25rem 0 0; color: var(--ink-soft); }
+  .agent-panel { margin-bottom: 1rem; }
+  .agent-grid, .split-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .packet-stack { display: grid; gap: 0.7rem; }
+  .packet-card { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.75rem; background: rgba(255,255,255,0.55); }
+  .packet-top { display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; }
+  .packet-card p { margin: 0.55rem 0 0; color: var(--ink); font-size: 0.86rem; }
+  .packet-card small { display: block; margin-top: 0.45rem; color: var(--ink-soft); font-size: 0.78rem; }
+  .guardrail-list { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: 0.88rem; }
+  .guardrail-list li + li { margin-top: 0.35rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .priority-pill { display: inline-flex; align-items: center; padding: 0.18rem 0.45rem; border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.7rem; font-weight: 800; }
+  .priority-pill.high, .priority-pill.yellow { color: #92400e; background: rgba(146,64,14,0.08); border-color: rgba(146,64,14,0.22); }
+  .priority-pill.medium, .priority-pill.green { color: #166534; background: rgba(22,101,52,0.08); border-color: rgba(22,101,52,0.22); }
+  .priority-pill.low, .priority-pill.neutral { color: #475569; background: rgba(71,85,105,0.08); border-color: rgba(71,85,105,0.22); }
+  .empty-note, .empty-cell { color: var(--ink-soft); }
+  @media (max-width: 900px) { .agent-grid, .split-grid { grid-template-columns: 1fr; } }
+</style>

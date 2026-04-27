@@ -4,29 +4,27 @@
  * { text, hashtags, cta } for a given language.
  */
 
-const SITE_URL = "https://www.littlechubbypress.com";
+import {
+  DEFAULT_SITE_URL,
+  buildSocialCampaign,
+  buildUtmContent,
+  buildUtmUrl as buildCampaignUtmUrl,
+} from "../../src/lib/campaign-utm.mjs";
+
+const SITE_URL = DEFAULT_SITE_URL;
+
+export { buildSocialCampaign, buildUtmContent };
 
 // ─── UTM helpers ────────────────────────────────────────────────────────────
 
 /**
  * Append UTM query params to a site URL (skips Amazon / external links).
  * @param {string} url
- * @param {{ source?: string, campaign?: string, content?: string }} utm
+ * @param {{ source?: string, medium?: string, campaign?: string, content?: string, siteUrl?: string }} utm
  * @returns {string}
  */
-export function buildUtmUrl(url, { source = "social", campaign = "organic", content } = {}) {
-  // Only tag our own URLs — Amazon strips UTM params
-  let u;
-  try { u = new URL(url); } catch { return url; }
-  let siteHost;
-  try { siteHost = new URL(SITE_URL).hostname.toLowerCase(); } catch { return url; }
-  const host = u.hostname.toLowerCase();
-  if (host !== siteHost && !host.endsWith("." + siteHost)) return url;
-  u.searchParams.set("utm_source", source);
-  u.searchParams.set("utm_medium", "social");
-  u.searchParams.set("utm_campaign", campaign);
-  if (content) u.searchParams.set("utm_content", content);
-  return u.toString();
+export function buildUtmUrl(url, utm = {}) {
+  return buildCampaignUtmUrl(url, utm);
 }
 
 // Internal: wrap a site URL at template-render time (platform + campaign set later)
@@ -335,7 +333,11 @@ const shareEarnTemplates = {
  */
 export function generatePost(type, lang, data, utmOpts = {}) {
   // Set UTM context so siteUrl() embeds tracking params in every CTA
-  _utmCtx = { source: utmOpts.source || "social", campaign: type };
+  _utmCtx = {
+    source: utmOpts.source || "social",
+    campaign: utmOpts.campaign || buildSocialCampaign(type),
+    content: utmOpts.content,
+  };
 
   let templates;
   switch (type) {

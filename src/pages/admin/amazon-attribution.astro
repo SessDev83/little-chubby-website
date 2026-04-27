@@ -1,0 +1,179 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { books } from "../../data/books";
+import { buildAmazonAttribution } from "../../lib/admin-amazon-attribution.mjs";
+import { formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d");
+const rangeParam = range.rangeKey;
+const sc = getServiceClient();
+
+const { data: eventRows } = await (sc as any)
+  .from("conversion_events")
+  .select("event_name,path,props,lang,created_at")
+  .gte("created_at", range.sinceIso)
+  .in("event_name", ["book_page_viewed", "sample_viewed", "sample_cta_click", "amazon_click"])
+  .order("created_at", { ascending: false })
+  .limit(10000);
+
+const attribution = buildAmazonAttribution({ events: eventRows ?? [], books });
+const summary = attribution.summary;
+const short = shortText;
+---
+
+<AdminLayout title="Amazon Attribution" current="amazon-attribution">
+  <div class="admin-page-head">
+    <div>
+      <h1>Amazon Intent Attribution</h1>
+      <p>Window: last {range.label} - generated {formatKpiTime(range.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Amazon attribution range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card"><span>Book views</span><strong>{summary.bookViews.toLocaleString()}</strong></div>
+    <div class="stat-card"><span>Sample views</span><strong>{summary.sampleViews.toLocaleString()}</strong></div>
+    <div class="stat-card"><span>Sample CTAs</span><strong>{summary.sampleClicks.toLocaleString()}</strong></div>
+    <div class="stat-card"><span>Amazon clicks</span><strong>{summary.amazonClicks.toLocaleString()}</strong></div>
+    <div class="stat-card"><span>Intent to Amazon</span><strong>{summary.amazonRate}</strong></div>
+    <div class="stat-card"><span>Tracked books</span><strong>{summary.trackedBooks.toLocaleString()}</strong></div>
+  </section>
+
+  <section class="surface-card attribution-panel notice-panel">
+    <strong>Attribution boundary</strong>
+    <p>{attribution.note}</p>
+  </section>
+
+  <section class="surface-card attribution-panel">
+    <div class="panel-head"><h2>Book Intent Scorecard</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Book</th><th>ASIN</th><th>Views</th><th>Samples</th><th>Sample CTA</th><th>Amazon</th><th>Rate</th><th>Top source</th><th>Top content</th></tr></thead>
+        <tbody>
+          {attribution.bookRows.length === 0 && <tr><td colspan="9" class="empty-cell">No book-intent events in this window.</td></tr>}
+          {attribution.bookRows.map((row: any) => (
+            <tr>
+              <td title={row.title}><strong>{short(row.title, 34)}</strong></td>
+              <td><code>{row.asin || "-"}</code></td>
+              <td>{row.bookViews.toLocaleString()}</td>
+              <td>{row.sampleViews.toLocaleString()}</td>
+              <td>{row.sampleClicks.toLocaleString()}</td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+              <td>{row.amazonRate}</td>
+              <td>{short(row.topSource, 28)}</td>
+              <td><code>{short(row.topContent, 32)}</code></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="attribution-grid">
+    <div class="surface-card attribution-panel">
+      <div class="panel-head"><h2>Source To Amazon</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Source</th><th>Intent</th><th>Amazon</th><th>Rate</th><th>Top book</th></tr></thead>
+        <tbody>
+          {attribution.sourceRows.length === 0 && <tr><td colspan="5" class="empty-cell">No source attribution yet.</td></tr>}
+          {attribution.sourceRows.map((row: any) => (
+            <tr>
+              <td>{short(row.source, 30)}</td>
+              <td>{row.bookIntent.toLocaleString()}</td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+              <td>{row.amazonRate}</td>
+              <td><code>{short(row.topBook, 30)}</code></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card attribution-panel">
+      <div class="panel-head"><h2>Content To Amazon</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Content</th><th>Amazon</th><th>Top ASIN</th><th>Top source</th></tr></thead>
+        <tbody>
+          {attribution.contentRows.length === 0 && <tr><td colspan="4" class="empty-cell">No content-linked Amazon clicks yet.</td></tr>}
+          {attribution.contentRows.map((row: any) => (
+            <tr>
+              <td><code>{short(row.contentId, 34)}</code></td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+              <td><code>{row.topAsin}</code></td>
+              <td>{short(row.topSource, 28)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card, .attribution-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.25rem; }
+  .notice-panel { margin-bottom: 1rem; border-color: rgba(220,150,50,0.35); background: rgba(220,150,50,0.07); }
+  .notice-panel p { margin: 0.25rem 0 0; color: var(--ink-soft); }
+  .attribution-panel { margin-bottom: 1rem; }
+  .attribution-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.85rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table code { font-size: 0.76rem; }
+  .empty-cell { color: var(--ink-soft); text-align: center; }
+  @media (max-width: 900px) {
+    .attribution-grid { grid-template-columns: 1fr; }
+  }
+</style>

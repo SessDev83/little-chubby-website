@@ -35,9 +35,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { buildUtmUrl } from "./content-templates.mjs";
-
-const SITE_URL = "https://www.littlechubbypress.com";
+import { buildSocialCampaign, buildUtmContent, buildUtmUrl } from "./content-templates.mjs";
 
 // ─── Banned / watch phrases ────────────────────────────────────────────────
 
@@ -171,16 +169,15 @@ function openingSimilarity(a, b, firstWords = 8) {
 export function injectUtms(post, ctx = {}) {
   if (!post?.platforms) return post;
   const { type = "organic", lang = "en" } = ctx;
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const campaign = `sprint-${type}`;
+  const campaign = ctx.campaign || buildSocialCampaign(type);
+  const creativeId = post.creativeId || ctx.creativeId || post.concept || type;
 
   for (const platform of Object.keys(post.platforms)) {
     const variant = post.platforms[platform];
     if (!variant?.text) continue;
     variant.text = variant.text.replace(/https?:\/\/\S+/gi, (url) => {
       if (!isSiteUrl(url)) return url; // leave Amazon / external alone
-      if (/utm_source=/i.test(url)) return url; // already tagged
-      const content = `${type}-${today}-${platform[0]}-${lang}`;
+      const content = buildUtmContent({ type, source: platform, lang, creativeId, date: ctx.date });
       return buildUtmUrl(url, { source: platform, campaign, content });
     });
   }
@@ -343,11 +340,12 @@ function checkV11_utmsMissing(platform, variant) {
     const hasAll =
       /[?&]utm_source=/i.test(url) &&
       /[?&]utm_medium=/i.test(url) &&
-      /[?&]utm_campaign=/i.test(url);
+      /[?&]utm_campaign=/i.test(url) &&
+      /[?&]utm_content=/i.test(url);
     if (!hasAll) {
       violations.push({
         id: "V11", platform, severity: "block",
-        message: `Site URL missing utm_source/utm_medium/utm_campaign: ${url}. Run injectUtms() before validation.`,
+        message: `Site URL missing utm_source/utm_medium/utm_campaign/utm_content: ${url}. Run injectUtms() before validation.`,
       });
     }
   }

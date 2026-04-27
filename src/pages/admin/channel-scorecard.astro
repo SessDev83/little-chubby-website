@@ -1,0 +1,165 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildChannelScorecard } from "../../lib/admin-channel-scorecard.mjs";
+import { fetchAdminKpiWindow, formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d");
+const rangeParam = range.rangeKey;
+const sc = getServiceClient() as any;
+const kpiWindow = await fetchAdminKpiWindow(sc, { rangeParam, limit: 10000 });
+const scorecard = buildChannelScorecard({ events: kpiWindow.events, pageviews: kpiWindow.pageviews });
+const summary = scorecard.summary;
+const short = shortText;
+---
+
+<AdminLayout title="Channel Scorecard" current="channel-scorecard">
+  <div class="admin-page-head">
+    <div>
+      <h1>Channel Scorecard</h1>
+      <p>Window: last {range.label} - generated {formatKpiTime(range.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Channel scorecard range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card"><span>Channels</span><strong>{summary.channels.toLocaleString()}</strong><small>{summary.investChannels.toLocaleString()} invest / {summary.watchChannels.toLocaleString()} watch</small></div>
+    <div class="stat-card"><span>Top channel</span><strong>{short(summary.topChannel, 24)}</strong><small>{summary.topPriority}</small></div>
+    <div class="stat-card"><span>Pageviews</span><strong>{summary.totalPageviews.toLocaleString()}</strong><small>loaded in window</small></div>
+    <div class="stat-card"><span>Meaningful actions</span><strong>{summary.totalMeaningfulActions.toLocaleString()}</strong><small>downstream actions</small></div>
+    <div class="stat-card"><span>Amazon clicks</span><strong>{summary.totalAmazonClicks.toLocaleString()}</strong><small>buyer intent only</small></div>
+  </section>
+
+  <section class="surface-card channel-panel notice-panel">
+    <strong>Decision boundary</strong>
+    <p>{scorecard.note}</p>
+  </section>
+
+  <section class="surface-card channel-panel">
+    <div class="panel-head"><h2>Channel Priority Rows</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Channel</th><th>Priority</th><th>Pageviews</th><th>Actions</th><th>Activation</th><th>Return</th><th>Book</th><th>Amazon</th><th>Top first value</th><th>Top landing</th><th>Action</th></tr></thead>
+        <tbody>
+          {scorecard.channelRows.length === 0 && <tr><td colspan="11" class="empty-cell">No channel rows in this window.</td></tr>}
+          {scorecard.channelRows.map((row: any) => (
+            <tr>
+              <td><strong>{short(row.channel, 28)}</strong><small>{row.role}</small></td>
+              <td><span class:list={["priority-pill", row.priority.toLowerCase()]}>{row.priority}</span></td>
+              <td>{row.pageviews.toLocaleString()}<small>{row.uniqueVisitors.toLocaleString()} visitors</small></td>
+              <td>{row.meaningfulActions.toLocaleString()}<small>{row.actionRate}</small></td>
+              <td>{row.activations.toLocaleString()}<small>{row.activationRate}</small></td>
+              <td>{row.returns.toLocaleString()}<small>{row.returnRate}</small></td>
+              <td>{row.bookIntent.toLocaleString()}<small>{row.bookIntentRate}</small></td>
+              <td>{row.amazonClicks.toLocaleString()}<small>{row.amazonRate}</small></td>
+              <td><code>{row.topFirstValue}</code></td>
+              <td title={row.topLanding}>{short(row.topLanding, 34)}</td>
+              <td>{row.recommendedAction}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="surface-card channel-panel">
+    <div class="panel-head"><h2>Channel Family Mix</h2></div>
+    <div class="table-wrap narrow-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Family</th><th>Role</th><th>Channels</th><th>Pageviews</th><th>Actions</th><th>Amazon</th></tr></thead>
+        <tbody>
+          {scorecard.familyRows.length === 0 && <tr><td colspan="6" class="empty-cell">No channel families in this window.</td></tr>}
+          {scorecard.familyRows.map((row: any) => (
+            <tr>
+              <td>{row.category}</td>
+              <td>{row.role}</td>
+              <td>{row.channels.toLocaleString()}</td>
+              <td>{row.pageviews.toLocaleString()}</td>
+              <td>{row.meaningfulActions.toLocaleString()}<small>{row.actionRate}</small></td>
+              <td>{row.amazonClicks.toLocaleString()}<small>{row.amazonRate}</small></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card, .channel-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.2rem; }
+  .stat-card small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .notice-panel { margin-bottom: 1rem; border-color: rgba(37,99,235,0.25); background: rgba(37,99,235,0.06); }
+  .notice-panel p { margin: 0.25rem 0 0; color: var(--ink-soft); }
+  .channel-panel { margin-bottom: 1rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .table-wrap { overflow-x: auto; }
+  .narrow-wrap { max-width: 860px; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .admin-table code { font-size: 0.76rem; }
+  .priority-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.18rem 0.45rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+  .priority-pill.invest { color: #166534; background: rgba(22,101,52,0.08); border-color: rgba(22,101,52,0.22); }
+  .priority-pill.watch { color: #92400e; background: rgba(146,64,14,0.08); border-color: rgba(146,64,14,0.22); }
+  .priority-pill.hold { color: #475569; background: rgba(71,85,105,0.08); border-color: rgba(71,85,105,0.22); }
+  .empty-cell { color: var(--ink-soft); text-align: center; }
+</style>

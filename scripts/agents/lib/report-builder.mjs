@@ -11,7 +11,13 @@
  *   - Per-post attribution uses utm_content when available (migration 031)
  */
 
-const SITE_HOST = "littlechubbypress.com";
+import { summarizeLinkableAssetPerformance, formatPercent } from "../../../src/lib/linkable-assets.mjs";
+import { classifyAdminSource } from "../../../src/lib/admin-kpis.mjs";
+
+function classifySource(row) {
+  const source = classifyAdminSource(row);
+  return { category: source.category, detail: source.detail };
+}
 
 export async function queryTable(SUPABASE_URL, SUPABASE_KEY, table, params) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?${params}`;
@@ -40,31 +46,6 @@ async function fetchAllPageviews(env, startISO, endISO) {
   return rows;
 }
 
-function classifySource(row) {
-  if (row.utm_source) {
-    const s = row.utm_source.toLowerCase();
-    const m = (row.utm_medium || "").toLowerCase();
-    if (m === "email" || s === "newsletter") return { category: "email", detail: s };
-    if (["bluesky", "facebook", "instagram", "pinterest", "twitter", "x", "tiktok", "reddit", "linkedin"].includes(s))
-      return { category: "social", detail: s };
-    if (m === "social") return { category: "social", detail: s };
-    return { category: "referral", detail: s };
-  }
-  if (!row.referrer) return { category: "direct", detail: "(none)" };
-  let h;
-  try { h = new URL(row.referrer).hostname.replace(/^www\./, ""); }
-  catch { return { category: "referral", detail: row.referrer }; }
-  if (h.includes(SITE_HOST)) return { category: "internal", detail: h };
-  if (/google|bing|duckduckgo|yahoo|yandex|ecosia|brave/.test(h)) return { category: "organic", detail: h };
-  if (/bsky|bluesky/.test(h)) return { category: "social", detail: "bluesky" };
-  if (/facebook|fb\./.test(h)) return { category: "social", detail: "facebook" };
-  if (/instagram/.test(h)) return { category: "social", detail: "instagram" };
-  if (/pinterest/.test(h)) return { category: "social", detail: "pinterest" };
-  if (/t\.co|twitter|x\.com/.test(h)) return { category: "social", detail: "twitter/x" };
-  if (/reddit/.test(h)) return { category: "social", detail: "reddit" };
-  return { category: "referral", detail: h };
-}
-
 /**
  * Build a structured report payload for the given [startISO, endISO] window.
  * @returns {Promise<object>} shape matches weekly_reports / monthly_reports columns.
@@ -85,6 +66,11 @@ export async function buildReport(env, startISO, endISO) {
     env.SUPABASE_URL, env.SUPABASE_KEY,
     "newsletter_subscribers",
     `select=id,created_at&created_at=gte.${startISO}&created_at=lte.${endISO}&limit=1000`
+  );
+  const conversionEvents = await queryTable(
+    env.SUPABASE_URL, env.SUPABASE_KEY,
+    "conversion_events",
+    `select=event_name,path,visitor_hash,props,created_at&created_at=gte.${startISO}&created_at=lte.${endISO}&limit=5000`
   );
 
   // ── Pageview KPIs ──────────────────────────────────────────────────────
@@ -139,6 +125,8 @@ export async function buildReport(env, startISO, endISO) {
     .map((u) => ({ ...u, unique_clicks: u.unique_clicks.size }))
     .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 30);
+
+  const linkableAssets = summarizeLinkableAssetPerformance(pageviews, conversionEvents).slice(0, 10);
 
   // ── Content performance — top/worst, by type, by hour ─────────────────
   const postsScored = contentPerf.map((p) => {
@@ -242,6 +230,7 @@ export async function buildReport(env, startISO, endISO) {
     source_breakdown: sourceBreakdown,
     blog_performance: blogPerformance,
     utm_attribution: utmAttribution,
+    linkable_assets: linkableAssets,
   };
 }
 
@@ -362,6 +351,11 @@ export function renderReportText(label, startISO, endISO, report, recs) {
     lines.push(`   ${u.utm_source.padEnd(12)} ${(u.utm_campaign || "").padEnd(22)} ${(u.utm_content || "").padEnd(40)} ${u.clicks}clk (${u.unique_clicks}uq)`);
   }
   lines.push("");
+  lines.push("── Linkable asset pilot ──");
+  for (const asset of (report.linkable_assets || []).slice(0, 5)) {
+    lines.push(`   ${asset.id.padEnd(34)} ${String(asset.pageviews).padStart(4)}pv · ${asset.qualifiedPageviews} organic/ref · ${asset.actionEvents} actions (${formatPercent(asset.actionRate)})`);
+  }
+  lines.push("");
   lines.push("── Recommendations ──");
   for (const r of recs) {
     lines.push(`   [${r.priority.toUpperCase()}] ${r.action}`);
@@ -401,6 +395,10 @@ export function renderReportHtml(label, startISO, endISO, report, recs) {
     esc(u.utm_source), esc(u.utm_campaign || ""), esc(u.utm_content || ""), u.clicks, u.unique_clicks,
   ])).join("");
 
+  const linkableRows = (report.linkable_assets || []).slice(0, 5).map((asset) => row([
+    esc(asset.id), asset.pageviews, `${asset.qualifiedPageviews} (${formatPercent(asset.qualifiedShare)})`, asset.actionEvents, formatPercent(asset.actionRate),
+  ])).join("");
+
   const recRows = recs.map((r) =>
     `<div style="margin:8px 0;padding:10px;background:${r.priority === "high" ? "#fff3cd" : "#e7f1ff"};border-left:4px solid ${r.priority === "high" ? "#f0ad4e" : "#4a6fa5"};border-radius:4px">
       <b>[${esc(r.priority.toUpperCase())}]</b> ${esc(r.action)}<br/>
@@ -434,6 +432,9 @@ export function renderReportHtml(label, startISO, endISO, report, recs) {
 
     ${h2("UTM attribution (per creative-id)")}
     <table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f0f3f7"><th style="padding:6px 10px;text-align:left;font-size:12px">Source</th><th style="padding:6px 10px;text-align:left;font-size:12px">Campaign</th><th style="padding:6px 10px;text-align:left;font-size:12px">Content</th><th style="padding:6px 10px;text-align:right;font-size:12px">Clicks</th><th style="padding:6px 10px;text-align:right;font-size:12px">Uniq</th></tr></thead><tbody>${utmRows || row(["—", "", "", "0", "0"])}</tbody></table>
+
+    ${h2("Linkable asset pilot")}
+    <table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f0f3f7"><th style="padding:6px 10px;text-align:left;font-size:12px">Asset</th><th style="padding:6px 10px;text-align:right;font-size:12px">PV</th><th style="padding:6px 10px;text-align:right;font-size:12px">Organic/referral</th><th style="padding:6px 10px;text-align:right;font-size:12px">Actions</th><th style="padding:6px 10px;text-align:right;font-size:12px">Rate</th></tr></thead><tbody>${linkableRows || row(["—", "0", "0", "0", "0.0%"])}</tbody></table>
 
     ${h2("Recommendations")}
     ${recRows || '<p style="color:#888">No recommendations generated.</p>'}

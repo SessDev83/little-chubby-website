@@ -5,12 +5,9 @@
 // Playbook §9 + §16.
 
 import { siteConfig } from "../data/site";
+import { buildUtmUrl } from "../lib/campaign-utm.mjs";
 
 const canonical = new URL("/bio/", siteConfig.siteUrl).toString();
-
-const UTM_SOURCE = "instagram-bio";
-const UTM_MEDIUM = "social";
-const UTM_CAMPAIGN = "bio";
 
 type LinkItem = {
   slug: string;
@@ -22,19 +19,14 @@ type LinkItem = {
   external?: boolean;
 };
 
-/**
- * Build a destination URL with instagram-bio UTMs.
- * Internal links get a path + ?utm params; external (Amazon) keep their own params.
- */
 function withUtms(href: string, slug: string, lang: "es" | "en") {
-  const params = new URLSearchParams({
-    utm_source: UTM_SOURCE,
-    utm_medium: UTM_MEDIUM,
-    utm_campaign: UTM_CAMPAIGN,
-    utm_content: `${slug}-${lang}`
-  });
-  const sep = href.includes("?") ? "&" : "?";
-  return `${href}${sep}${params.toString()}`;
+  const utm = {
+    source: "instagram-bio",
+    campaign: "bio",
+    content: `bio-${slug}-${lang}`,
+    siteUrl: siteConfig.siteUrl,
+  };
+  return buildUtmUrl(href, utm);
 }
 
 // Canonical destinations — keep ≤5 per playbook §9.

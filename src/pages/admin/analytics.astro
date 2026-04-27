@@ -3,166 +3,50 @@ export const prerender = false;
 
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { summarizeLinkableAssetPerformance, formatPercent } from "../../lib/linkable-assets.mjs";
+import { fetchAdminKpiWindow, formatKpiTime, pct, shortText, sourceForEvent } from "../../lib/admin-kpis.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
   return Astro.redirect("/es/login/");
 }
 
-const rangeParam = (Astro.url.searchParams.get("range") || "7d").toLowerCase();
-const RANGES: Record<string, number> = { "24h": 1, "7d": 7, "30d": 30, "90d": 90 };
-const days = RANGES[rangeParam] ?? 7;
-const sinceIso = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-
-type ConversionEvent = {
-  event_name: string | null;
-  path: string | null;
-  visitor_hash: string | null;
-  props: Record<string, unknown> | null;
-  lang: string | null;
-  created_at: string | null;
-};
-
-type PageviewRow = {
-  path: string | null;
-  visitor_hash: string | null;
-  utm_source: string | null;
-  referrer: string | null;
-  created_at: string | null;
-};
-
+const requestedRangeParam = (Astro.url.searchParams.get("range") || "7d").toLowerCase();
 const sc = getServiceClient() as any;
+const {
+  rangeKey: rangeParam,
+  days,
+  generatedAtIso,
+  events,
+  pageviews,
+  totalEvents,
+  totalPageviews,
+  uniqueVisitors,
+  downloadSuccess,
+  downloadBlocked,
+  bookViews,
+  sampleViews,
+  sampleClicks,
+  amazonClicks,
+  shareClicks,
+  shareCredits,
+  bookIntent,
+  funnelRows,
+  stageBreakdown,
+  sourceRows,
+  bookRows,
+} = await fetchAdminKpiWindow(sc, { rangeParam: requestedRangeParam });
 
-const [
-  { data: eventRows, count: totalEventCount },
-  { data: pageviewRows, count: totalPageviewCount },
-] = await Promise.all([
-  sc
-    .from("conversion_events")
-    .select("event_name,path,visitor_hash,props,lang,created_at", { count: "exact" })
-    .gte("created_at", sinceIso)
-    .order("created_at", { ascending: false })
-    .limit(5000),
-  sc
-    .from("pageviews")
-    .select("path,visitor_hash,utm_source,referrer,created_at", { count: "exact" })
-    .gte("created_at", sinceIso)
-    .order("created_at", { ascending: false })
-    .limit(5000),
-]);
+const short = shortText;
+const fmtTime = formatKpiTime;
+const sourceFor = sourceForEvent;
 
-const events = (eventRows ?? []) as ConversionEvent[];
-const pageviews = (pageviewRows ?? []) as PageviewRow[];
-const totalEvents = totalEventCount ?? events.length;
-const totalPageviews = totalPageviewCount ?? pageviews.length;
-const uniqueVisitors = new Set(pageviews.map((row) => row.visitor_hash).filter(Boolean)).size;
+const linkableAssetRows = summarizeLinkableAssetPerformance(pageviews, events).slice(0, 3);
 
-function eventCount(name: string) {
-  return events.filter((event) => event.event_name === name).length;
+function hostSummary(row: any) {
+  if (!row.referralHosts?.length) return "-";
+  return row.referralHosts.map((host: { host: string; count: number }) => `${host.host} (${host.count})`).join(", ");
 }
-
-function pct(value: number, total: number) {
-  if (!total) return "0.0%";
-  return `${((value / total) * 100).toFixed(1)}%`;
-}
-
-function prop(event: ConversionEvent, key: string) {
-  const value = event.props?.[key];
-  return typeof value === "string" && value.trim() ? value.trim() : "";
-}
-
-function fallbackStage(eventName: string | null) {
-  const name = eventName || "";
-  if (name === "amazon_click") return "amazon_click";
-  if (/book_page|sample/.test(name)) return "book_intent";
-  if (/lead_magnet|newsletter/.test(name)) return "lead";
-  if (/register_submit_success|login_submit_success/.test(name)) return "registered";
-  if (/download/.test(name)) return "activated";
-  if (/lottery|review|share|art_|reaction/.test(name)) return "community";
-  if (/return_session/.test(name)) return "return";
-  return "other";
-}
-
-function sourceFor(event: ConversionEvent) {
-  return prop(event, "utm_source") || prop(event, "source") || "unknown";
-}
-
-function short(value: string | null | undefined, max = 46) {
-  const text = value || "-";
-  if (text.length <= max) return text;
-  return `${text.slice(0, max - 1)}...`;
-}
-
-function fmtTime(iso: string | null) {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-const leadEvents = eventCount("lead_magnet_submit_success") + eventCount("newsletter_inline_submit_success") + eventCount("newsletter_confirmed");
-const registerSuccess = eventCount("register_submit_success");
-const downloadSuccess = eventCount("download_success");
-const downloadBlocked = eventCount("download_blocked");
-const bookViews = eventCount("book_page_viewed");
-const sampleViews = eventCount("sample_viewed");
-const sampleClicks = eventCount("sample_cta_click");
-const amazonClicks = eventCount("amazon_click");
-const shareClicks = eventCount("share_click");
-const shareCredits = eventCount("share_credit_success");
-const bookIntent = bookViews + sampleViews + sampleClicks + amazonClicks;
-
-const funnelRows = [
-  { stage: "Visit", count: totalPageviews, rateFromPrior: "-" },
-  { stage: "Lead", count: leadEvents, rateFromPrior: pct(leadEvents, totalPageviews) },
-  { stage: "Registered", count: registerSuccess, rateFromPrior: pct(registerSuccess, Math.max(leadEvents, 1)) },
-  { stage: "Activated", count: downloadSuccess, rateFromPrior: pct(downloadSuccess, Math.max(registerSuccess || leadEvents, 1)) },
-  { stage: "Community", count: shareCredits, rateFromPrior: pct(shareCredits, Math.max(downloadSuccess || shareClicks, 1)) },
-  { stage: "Book Intent", count: bookIntent, rateFromPrior: pct(bookIntent, totalPageviews) },
-  { stage: "Amazon Click", count: amazonClicks, rateFromPrior: pct(amazonClicks, Math.max(bookIntent, 1)) },
-];
-
-const stageMap = new Map<string, number>();
-for (const event of events) {
-  const stage = prop(event, "funnel_stage") || fallbackStage(event.event_name);
-  stageMap.set(stage, (stageMap.get(stage) ?? 0) + 1);
-}
-const stageBreakdown = [...stageMap.entries()]
-  .map(([stage, count]) => ({ stage, count }))
-  .sort((a, b) => b.count - a.count);
-
-const sourceMap = new Map<string, { events: number; activated: number; amazon: number; book: number }>();
-for (const event of events) {
-  const source = sourceFor(event);
-  const current = sourceMap.get(source) ?? { events: 0, activated: 0, amazon: 0, book: 0 };
-  current.events += 1;
-  if (event.event_name === "download_success") current.activated += 1;
-  if (event.event_name === "amazon_click") current.amazon += 1;
-  if (event.event_name === "book_page_viewed") current.book += 1;
-  sourceMap.set(source, current);
-}
-const sourceRows = [...sourceMap.entries()]
-  .map(([source, values]) => ({ source, ...values }))
-  .sort((a, b) => b.events - a.events)
-  .slice(0, 12);
-
-const bookMap = new Map<string, { views: number; samples: number; amazon: number; asins: Set<string> }>();
-for (const event of events) {
-  const bookId = prop(event, "book_id");
-  const asin = prop(event, "asin");
-  if (!bookId && !asin) continue;
-  const key = bookId || asin;
-  const current = bookMap.get(key) ?? { views: 0, samples: 0, amazon: 0, asins: new Set<string>() };
-  if (event.event_name === "book_page_viewed") current.views += 1;
-  if (event.event_name === "sample_viewed" || event.event_name === "sample_cta_click") current.samples += 1;
-  if (event.event_name === "amazon_click") current.amazon += 1;
-  if (asin) current.asins.add(asin);
-  bookMap.set(key, current);
-}
-const bookRows = [...bookMap.entries()]
-  .map(([book, values]) => ({ book, ...values, asinList: [...values.asins].join(", ") || "-" }))
-  .sort((a, b) => (b.amazon + b.views + b.samples) - (a.amazon + a.views + a.samples))
-  .slice(0, 10);
 
 const recentEvents = events.slice(0, 30);
 ---
@@ -171,7 +55,7 @@ const recentEvents = events.slice(0, 30);
   <div class="admin-page-head">
     <div>
       <h1>Analytics Dashboard</h1>
-      <p>Window: last {days === 1 ? "24 hours" : `${days} days`} · generated {new Date().toLocaleString()}</p>
+      <p>Window: last {days === 1 ? "24 hours" : `${days} days`} · generated {new Date(generatedAtIso).toLocaleString()}</p>
     </div>
     <div class="range-actions" aria-label="Analytics range">
       {(["24h", "7d", "30d", "90d"] as const).map((range) => (
@@ -289,12 +173,39 @@ const recentEvents = events.slice(0, 30);
     </section>
 
     <section class="surface-card admin-panel">
+      <h2>Linkable Asset Pilot</h2>
+      <div class="table-wrap compact-table">
+        <table class="admin-table">
+          <thead><tr><th>Asset</th><th>PV</th><th>Organic/referral</th><th>Actions</th><th>Top hosts</th></tr></thead>
+          <tbody>
+            {linkableAssetRows.map((row) => (
+              <tr>
+                <td title={row.audience}><code>{short(row.id, 34)}</code></td>
+                <td>{row.pageviews.toLocaleString()}</td>
+                <td>{row.qualifiedPageviews.toLocaleString()} · {formatPercent(row.qualifiedShare)}</td>
+                <td>{row.actionEvents.toLocaleString()} · {formatPercent(row.actionRate)}</td>
+                <td title={hostSummary(row)}>{short(hostSummary(row), 32)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ul class="note-list compact-notes">
+        <li>Measures useful existing assets before creating new resource surfaces.</li>
+        <li>Success is qualified organic/referral behavior, not Domain Authority as a primary target.</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <section class="surface-card admin-panel">
       <h2>Data Quality Notes</h2>
       <ul class="note-list">
         <li>{events.length.toLocaleString()} events loaded from `conversion_events` for this window.</li>
         <li>{pageviews.length.toLocaleString()} pageview rows loaded for visitor/source context.</li>
         <li>Amazon clicks are buyer-intent signals, not confirmed KDP sales.</li>
         <li>Rates are directional until P5-01 has a full 7-30 day data window.</li>
+        <li>Linkable asset reporting is a pilot for `P5-GRW-02`; outreach should stay manual and quality-first.</li>
       </ul>
     </section>
   </div>
@@ -306,7 +217,7 @@ const recentEvents = events.slice(0, 30);
         <thead><tr><th>When</th><th>Event</th><th>Source</th><th>Lang</th><th>Path</th></tr></thead>
         <tbody>
           {recentEvents.length === 0 && <tr><td colspan="5" class="empty-cell">No conversion events in this window.</td></tr>}
-          {recentEvents.map((event) => (
+          {recentEvents.map((event: any) => (
             <tr>
               <td class="nowrap">{fmtTime(event.created_at)}</td>
               <td><code>{event.event_name || "unknown"}</code></td>
@@ -396,6 +307,7 @@ const recentEvents = events.slice(0, 30);
   .book-metrics span, .mini-grid span { display: block; color: var(--ink-soft); font-size: 0.78rem; margin-top: 0.2rem; }
   .compact-table { margin-top: 0.8rem; }
   .note-list { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: 0.9rem; }
+  .compact-notes { margin-top: 0.8rem; font-size: 0.84rem; }
   .note-list li { margin-bottom: 0.45rem; }
   .nowrap { white-space: nowrap; }
   @media (max-width: 820px) {

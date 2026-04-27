@@ -1,0 +1,307 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildFunnelCommandCenter, fetchAdminKpiWindow, formatKpiTime, shortText } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const requestedRangeParam = Astro.url.searchParams.get("range") || "7d";
+const sc = getServiceClient() as any;
+const kpiWindow = await fetchAdminKpiWindow(sc, { rangeParam: requestedRangeParam });
+const funnel = buildFunnelCommandCenter({ events: kpiWindow.events, pageviews: kpiWindow.pageviews, summary: kpiWindow });
+const { rangeKey: rangeParam, days, generatedAtIso, events, pageviews, stageRows, topLeak, sourceStageRows, languageStageRows, landingStageRows } = funnel;
+const maxStageCount = Math.max(1, ...stageRows.map((row: any) => row.count));
+const recentFunnelEvents = events
+  .filter((event: any) => event.event_name && event.event_name !== "page_viewed")
+  .slice(0, 25);
+
+function stageTone(row: any) {
+  if (!row.priorStage) return "neutral";
+  if (!row.priorCount) return "quiet";
+  if ((row.conversion ?? 0) < 0.05) return "danger";
+  if ((row.conversion ?? 0) < 0.25) return "warn";
+  return "good";
+}
+
+function stageCount(row: any, stage: string) {
+  return row.stages?.[stage] ?? 0;
+}
+
+function userHash(event: any) {
+  return shortText(event.visitor_hash || "-", 12);
+}
+---
+
+<AdminLayout title="Funnel Command Center" current="funnel">
+  <div class="admin-page-head">
+    <div>
+      <h1>Funnel Command Center</h1>
+      <p>Window: last {days === 1 ? "24 hours" : `${days} days`} · generated {new Date(generatedAtIso).toLocaleString()}</p>
+    </div>
+    <div class="head-actions">
+      <div class="range-actions" aria-label="Funnel range">
+        {(["24h", "7d", "30d", "90d"] as const).map((range) => (
+          <a href={`?range=${range}`} class:list={["range-btn", { active: rangeParam === range }]}>{range}</a>
+        ))}
+      </div>
+      <a class="secondary-link" href={`/admin/analytics/?range=${rangeParam}`}>Open analytics</a>
+    </div>
+  </div>
+
+  <section class="surface-card command-strip">
+    <div>
+      <span class="eyebrow">Primary leak</span>
+      {topLeak ? (
+        <h2>{topLeak.from} -> {topLeak.to}</h2>
+      ) : (
+        <h2>No measured leak yet</h2>
+      )}
+    </div>
+    <div class="leak-metrics">
+      <div><strong>{topLeak ? topLeak.conversionLabel : "-"}</strong><span>Conversion</span></div>
+      <div><strong>{topLeak ? topLeak.lost.toLocaleString() : "0"}</strong><span>Estimated drop</span></div>
+      <div><strong>{pageviews.length.toLocaleString()}</strong><span>Rows loaded</span></div>
+      <div><strong>{events.length.toLocaleString()}</strong><span>Events loaded</span></div>
+    </div>
+  </section>
+
+  <section class="stage-grid" aria-label="Funnel stages">
+    {stageRows.map((row: any) => {
+      const width = Math.max(3, (row.count / maxStageCount) * 100);
+      return (
+        <article class:list={["stage-card", stageTone(row)]}>
+          <div class="stage-topline">
+            <h2>{row.stage}</h2>
+            <strong>{row.count.toLocaleString()}</strong>
+          </div>
+          <div class="stage-bar"><span style={`width:${width}%`}></span></div>
+          <dl>
+            <div><dt>From prior</dt><dd>{row.conversionLabel}</dd></div>
+            <div><dt>Top source</dt><dd title={row.topSource}>{shortText(row.topSource, 24)}</dd></div>
+            <div><dt>Lang</dt><dd>{row.topLang}</dd></div>
+            <div><dt>Landing</dt><dd title={row.topLandingPage}>{shortText(row.topLandingPage, 28)}</dd></div>
+          </dl>
+        </article>
+      );
+    })}
+  </section>
+
+  <div class="grid-2">
+    <section class="surface-card admin-panel">
+      <h2>Stage By Source</h2>
+      <div class="table-wrap">
+        <table class="admin-table stage-table">
+          <thead><tr><th>Source</th><th>Visit</th><th>Lead</th><th>Reg</th><th>Act</th><th>Eng</th><th>Com</th><th>Book</th><th>Amazon</th><th>Deepest</th></tr></thead>
+          <tbody>
+            {sourceStageRows.length === 0 && <tr><td colspan="10" class="empty-cell">No source data in this window.</td></tr>}
+            {sourceStageRows.map((row: any) => (
+              <tr>
+                <td title={row.label}><code>{shortText(row.label, 24)}</code></td>
+                <td>{stageCount(row, "Visit")}</td>
+                <td>{stageCount(row, "Lead")}</td>
+                <td>{stageCount(row, "Registered")}</td>
+                <td>{stageCount(row, "Activated")}</td>
+                <td>{stageCount(row, "Engaged")}</td>
+                <td>{stageCount(row, "Community")}</td>
+                <td>{stageCount(row, "Book Intent")}</td>
+                <td>{stageCount(row, "Amazon Click")}</td>
+                <td>{row.deepestStage}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="surface-card admin-panel">
+      <h2>Stage By Language</h2>
+      <div class="table-wrap">
+        <table class="admin-table stage-table">
+          <thead><tr><th>Lang</th><th>Visit</th><th>Lead</th><th>Reg</th><th>Act</th><th>Eng</th><th>Com</th><th>Book</th><th>Amazon</th><th>Deepest</th></tr></thead>
+          <tbody>
+            {languageStageRows.map((row: any) => (
+              <tr>
+                <td><code>{row.label}</code></td>
+                <td>{stageCount(row, "Visit")}</td>
+                <td>{stageCount(row, "Lead")}</td>
+                <td>{stageCount(row, "Registered")}</td>
+                <td>{stageCount(row, "Activated")}</td>
+                <td>{stageCount(row, "Engaged")}</td>
+                <td>{stageCount(row, "Community")}</td>
+                <td>{stageCount(row, "Book Intent")}</td>
+                <td>{stageCount(row, "Amazon Click")}</td>
+                <td>{row.deepestStage}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <section class="surface-card admin-panel">
+      <h2>Landing Page Movement</h2>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Landing / path</th><th>Visit</th><th>Lead</th><th>Act</th><th>Book</th><th>Deepest</th></tr></thead>
+          <tbody>
+            {landingStageRows.map((row: any) => (
+              <tr>
+                <td title={row.label}><code>{shortText(row.label, 44)}</code></td>
+                <td>{stageCount(row, "Visit")}</td>
+                <td>{stageCount(row, "Lead")}</td>
+                <td>{stageCount(row, "Activated")}</td>
+                <td>{stageCount(row, "Book Intent")}</td>
+                <td>{row.deepestStage}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="surface-card admin-panel">
+      <h2>Recent Funnel Events</h2>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>When</th><th>Event</th><th>Visitor</th><th>Lang</th><th>Path</th></tr></thead>
+          <tbody>
+            {recentFunnelEvents.length === 0 && <tr><td colspan="5" class="empty-cell">No meaningful events in this window.</td></tr>}
+            {recentFunnelEvents.map((event: any) => (
+              <tr>
+                <td class="nowrap">{formatKpiTime(event.created_at)}</td>
+                <td><code>{event.event_name}</code></td>
+                <td><code>{userHash(event)}</code></td>
+                <td>{event.lang || "-"}</td>
+                <td title={event.path || ""}><code>{shortText(event.path, 34)}</code></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <section class="surface-card admin-panel data-notes">
+    <h2>Data Quality</h2>
+    <ul>
+      <li>Source: service-role KPI layer over <code>conversion_events</code> and <code>pageviews</code>.</li>
+      <li>Amazon clicks are buyer-intent signals, not confirmed KDP sales.</li>
+      <li>Rates are directional while event coverage grows across lifecycle and community actions.</li>
+    </ul>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.4rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0 0 0.8rem; font-size: 1.04rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .head-actions { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+  .range-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .range-btn, .secondary-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .secondary-link { background: var(--surface); }
+  .command-strip {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 2fr);
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem;
+    margin-bottom: 1.2rem;
+  }
+  .eyebrow {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+  .command-strip h2 { margin: 0; font-size: 1.25rem; color: var(--brand-blue); }
+  .leak-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.7rem;
+  }
+  .leak-metrics div {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.7rem;
+    background: var(--surface, #fff);
+  }
+  .leak-metrics strong { display: block; font-size: 1.18rem; color: var(--brand-green); }
+  .leak-metrics span { color: var(--ink-soft); font-size: 0.78rem; }
+  .stage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1.3rem;
+  }
+  .stage-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.9rem;
+    min-height: 11.2rem;
+  }
+  .stage-card.good { border-color: rgba(16, 185, 129, 0.35); }
+  .stage-card.warn { border-color: rgba(245, 158, 11, 0.45); }
+  .stage-card.danger { border-color: rgba(220, 38, 38, 0.4); }
+  .stage-card.quiet { opacity: 0.82; }
+  .stage-topline { display: flex; justify-content: space-between; gap: 0.8rem; align-items: baseline; }
+  .stage-topline h2 { margin: 0; font-size: 0.98rem; }
+  .stage-topline strong { color: var(--brand-blue); font-size: 1.25rem; }
+  .stage-bar { height: 0.45rem; background: var(--border-soft, #e8e2d8); border-radius: 999px; overflow: hidden; margin: 0.65rem 0 0.8rem; }
+  .stage-bar span { display: block; height: 100%; background: var(--brand-blue); border-radius: 999px; }
+  .stage-card dl { display: grid; gap: 0.45rem; margin: 0; }
+  .stage-card dl div { display: flex; justify-content: space-between; gap: 0.8rem; }
+  .stage-card dt { color: var(--ink-soft); font-size: 0.76rem; }
+  .stage-card dd { margin: 0; font-size: 0.8rem; font-weight: 700; text-align: right; min-width: 0; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.3rem; margin-bottom: 1.3rem; }
+  .admin-panel { padding: 1.1rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .admin-table th, .admin-table td { padding: 0.52rem 0.6rem; text-align: left; border-bottom: 1px solid var(--line); }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table code { font-size: 0.76rem; }
+  .stage-table td:not(:first-child), .stage-table th:not(:first-child) { text-align: right; }
+  .stage-table td:last-child, .stage-table th:last-child { text-align: left; }
+  .empty-cell { text-align: center; color: var(--ink-soft); }
+  .nowrap { white-space: nowrap; }
+  .data-notes ul { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: 0.88rem; }
+  .data-notes li { margin-bottom: 0.35rem; }
+  @media (max-width: 920px) {
+    .command-strip, .grid-2 { grid-template-columns: 1fr; }
+    .leak-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 520px) {
+    .leak-metrics { grid-template-columns: 1fr; }
+    .stage-grid { grid-template-columns: 1fr; }
+  }
+</style>

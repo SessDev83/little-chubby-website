@@ -1,0 +1,237 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildOpsFeed, formatOpsFeedTime } from "../../lib/admin-ops-feed.mjs";
+import { resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "24h");
+const rangeParam = range.rangeKey;
+const sc = getServiceClient();
+
+const [{ data: eventRows }, { data: pageviewRows }] = await Promise.all([
+  (sc as any)
+    .from("conversion_events")
+    .select("id,event_name,path,visitor_hash,props,lang,created_at")
+    .gte("created_at", range.sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(80),
+  sc
+    .from("pageviews")
+    .select("id,path,visitor_hash,utm_source,utm_medium,referrer,created_at")
+    .gte("created_at", range.sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(40),
+]);
+
+const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? [], limit: 50 });
+---
+
+<AdminLayout title="Ops Feed" current="ops-feed">
+  <div class="admin-page-head">
+    <div>
+      <h1>Real-Time Ops Feed</h1>
+      <p>Window: last {range.label} - generated {new Date(range.generatedAtIso).toLocaleString()}</p>
+    </div>
+    <div class="head-actions">
+      <div class="range-actions" aria-label="Ops feed range">
+        {(["24h", "7d", "30d", "90d"] as const).map((item) => (
+          <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+        ))}
+      </div>
+      <label class="poll-toggle">
+        <input type="checkbox" id="ops-auto-refresh" />
+        Auto-refresh
+      </label>
+    </div>
+  </div>
+
+  <section class="stat-grid" id="ops-stats">
+    <div class="stat-card"><strong data-stat="total">{feed.stats.total}</strong><span>Feed rows</span></div>
+    <div class="stat-card"><strong data-stat="events">{feed.stats.events}</strong><span>Events</span></div>
+    <div class="stat-card"><strong data-stat="visits">{feed.stats.visits}</strong><span>Visits</span></div>
+    <div class="stat-card"><strong data-stat="highValue">{feed.stats.highValue}</strong><span>High-value</span></div>
+    <div class="stat-card"><strong data-stat="warnings">{feed.stats.warnings}</strong><span>Warnings</span></div>
+  </section>
+
+  <section class="surface-card feed-panel">
+    <div class="feed-head">
+      <h2>Recent Activity</h2>
+      <span id="ops-last-refresh">just now</span>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>When</th><th>Type</th><th>Activity</th><th>Stage</th><th>Source</th><th>Lang</th><th>Visitor</th><th>Path</th></tr>
+        </thead>
+        <tbody id="ops-feed-body">
+          {feed.items.length === 0 && <tr><td colspan="8" class="empty-cell">No ops activity in this window.</td></tr>}
+          {feed.items.map((item: any) => (
+            <tr class={`tone-${item.tone}`}>
+              <td class="nowrap">{formatOpsFeedTime(item.at)}</td>
+              <td><code>{item.kind}</code></td>
+              <td>{item.title}</td>
+              <td>{item.stage}</td>
+              <td title={item.source}>{shortText(item.source, 24)}</td>
+              <td>{item.lang}</td>
+              <td><code>{item.visitor}</code></td>
+              <td title={item.path || ""}><code>{shortText(item.path, 42)}</code></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  const checkbox = document.getElementById("ops-auto-refresh") as HTMLInputElement | null;
+  const body = document.getElementById("ops-feed-body");
+  const lastRefresh = document.getElementById("ops-last-refresh");
+  const range = new URLSearchParams(window.location.search).get("range") || "24h";
+  let timer: number | null = null;
+
+  function setStat(name: string, value: number) {
+    const el = document.querySelector(`[data-stat="${name}"]`);
+    if (el) el.textContent = Number(value || 0).toLocaleString();
+  }
+
+  function addCell(row: HTMLTableRowElement, value: string, code = false, className = "") {
+    const cell = document.createElement("td");
+    if (className) cell.className = className;
+    if (code) {
+      const node = document.createElement("code");
+      node.textContent = value || "-";
+      cell.appendChild(node);
+    } else {
+      cell.textContent = value || "-";
+    }
+    row.appendChild(cell);
+  }
+
+  function renderItems(items: any[]) {
+    if (!body) return;
+    body.textContent = "";
+    if (!items.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 8;
+      cell.className = "empty-cell";
+      cell.textContent = "No ops activity in this window.";
+      row.appendChild(cell);
+      body.appendChild(row);
+      return;
+    }
+    for (const item of items) {
+      const row = document.createElement("tr");
+      row.className = `tone-${item.tone || "quiet"}`;
+      addCell(row, item.timeLabel, false, "nowrap");
+      addCell(row, item.kind, true);
+      addCell(row, item.title);
+      addCell(row, item.stage);
+      addCell(row, item.source);
+      addCell(row, item.lang);
+      addCell(row, item.visitor, true);
+      addCell(row, item.path, true);
+      body.appendChild(row);
+    }
+  }
+
+  async function refreshFeed() {
+    if (document.hidden) return;
+    const response = await fetch(`/api/admin/ops-feed?range=${encodeURIComponent(range)}`, { credentials: "include" });
+    if (!response.ok) return;
+    const data = await response.json();
+    setStat("total", data.stats?.total || 0);
+    setStat("events", data.stats?.events || 0);
+    setStat("visits", data.stats?.visits || 0);
+    setStat("highValue", data.stats?.highValue || 0);
+    setStat("warnings", data.stats?.warnings || 0);
+    renderItems(data.items || []);
+    if (lastRefresh) lastRefresh.textContent = `updated ${new Date().toLocaleTimeString()}`;
+  }
+
+  function start() {
+    stop();
+    refreshFeed();
+    timer = window.setInterval(refreshFeed, 30_000);
+  }
+
+  function stop() {
+    if (timer !== null) window.clearInterval(timer);
+    timer = null;
+  }
+
+  checkbox?.addEventListener("change", () => {
+    if (checkbox.checked) start(); else stop();
+  });
+</script>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.4rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .head-actions, .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn, .poll-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .poll-toggle { gap: 0.4rem; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+  }
+  .stat-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.9rem;
+  }
+  .stat-card strong { display: block; color: var(--brand-blue); font-size: 1.35rem; }
+  .stat-card span { color: var(--ink-soft); font-size: 0.8rem; }
+  .feed-panel { padding: 1.1rem; }
+  .feed-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.9rem;
+  }
+  .feed-head span { color: var(--ink-soft); font-size: 0.82rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .admin-table th, .admin-table td { padding: 0.52rem 0.6rem; text-align: left; border-bottom: 1px solid var(--line); }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table code { font-size: 0.76rem; }
+  .tone-good { background: rgba(92,150,80,0.06); }
+  .tone-warn { background: rgba(220,150,50,0.08); }
+  .tone-quiet { color: var(--ink-soft); }
+  .nowrap { white-space: nowrap; }
+  .empty-cell { text-align: center; color: var(--ink-soft); }
+</style>

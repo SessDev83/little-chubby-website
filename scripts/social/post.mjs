@@ -30,7 +30,7 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generatePost, generateWeeklyCalendar, buildUtmUrl } from "./content-templates.mjs";
+import { generatePost, generateWeeklyCalendar, buildSocialCampaign, buildUtmContent, buildUtmUrl } from "./content-templates.mjs";
 import { generateAIPost } from "./ai-generate.mjs";
 import { validatePost, injectUtms, formatReport } from "./validate-post.mjs";
 import { generateImage, downloadImage } from "./image-generate.mjs";
@@ -443,6 +443,23 @@ function buildFullText(platformContent) {
   return hashtags ? `${text}\n\n${hashtags}` : text;
 }
 
+function creativeKey(post, fallbackType) {
+  return post?.creativeId || post?.concept || fallbackType || "organic";
+}
+
+function trackedSiteUrl(url, source, post, lang, postType) {
+  return buildUtmUrl(url, {
+    source,
+    campaign: buildSocialCampaign(postType || "organic"),
+    content: buildUtmContent({
+      type: postType || "organic",
+      source,
+      lang,
+      creativeId: creativeKey(post, postType),
+    }),
+  });
+}
+
 // ─── Publish to platforms ───────────────────────────────────────────────────
 
 async function publishPost(post, platform, imageData, data, lang, postType) {
@@ -487,7 +504,7 @@ async function publishPost(post, platform, imageData, data, lang, postType) {
             // Extract any URL from Facebook text as link card source
             const urlMatch = post.platforms.facebook.text.match(/https?:\/\/[^\s]+/);
             if (urlMatch) {
-              bskyOpts.linkUrl = buildUtmUrl(urlMatch[0], { source: "bluesky", campaign: data?._postType || "organic" });
+              bskyOpts.linkUrl = trackedSiteUrl(urlMatch[0], "bluesky", post, lang, postType);
               bskyOpts.linkTitle = "Little Chubby Press";
               bskyOpts.linkDescription = "";
             }
@@ -517,7 +534,7 @@ async function publishPost(post, platform, imageData, data, lang, postType) {
           else {
             // Tag any site link in text with Facebook-specific UTM
             const fbUrlMatch = fullText.match(/https?:\/\/[^\s]+/);
-            if (fbUrlMatch) fbOpts.link = buildUtmUrl(fbUrlMatch[0], { source: "facebook", campaign: data?._postType || "organic" });
+            if (fbUrlMatch) fbOpts.link = trackedSiteUrl(fbUrlMatch[0], "facebook", post, lang, postType);
           }
           if (imageData?.url) fbOpts.imageUrl = imageData.url;
 
@@ -582,8 +599,8 @@ async function publishPost(post, platform, imageData, data, lang, postType) {
             const path = pageByType[postType] || `/${lang}/`;
             destinationUrl = buildUtmUrl(`${SITE_URL}${path}`, {
               source: "pinterest",
-              campaign: postType,
-              content: `auto_${new Date().toISOString().slice(0, 10)}`,
+              campaign: buildSocialCampaign(postType),
+              content: buildUtmContent({ type: postType, source: "pinterest", lang, creativeId: creativeKey(post, postType) }),
             });
           }
 
@@ -809,13 +826,13 @@ async function main() {
     post = adaptToPlatforms(staticPost, data, opts.lang);
   }
 
+  const validationHistory = buildValidationHistory();
+  const validationCtx = { type: opts.type, lang: opts.lang, history: validationHistory, creativeId: creativeKey(post, opts.type) };
+  injectUtms(post, validationCtx);
+
   // ─── Growth Playbook QA Gate (§11) ────────────────────────────────────
   // Only runs when we actually used AI; static templates are trusted.
   if (aiUsed && post && !opts.skipValidator) {
-    const validationHistory = buildValidationHistory();
-    const validationCtx = { type: opts.type, lang: opts.lang, history: validationHistory };
-
-    injectUtms(post, validationCtx);
     let result = validatePost(post, validationCtx);
 
     if (!result.ok) {

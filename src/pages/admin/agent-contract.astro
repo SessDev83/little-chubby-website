@@ -1,0 +1,298 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { books } from "../../data/books";
+import { buildAgentKpiInputContract } from "../../lib/admin-agent-contract.mjs";
+import { buildAmazonAttribution } from "../../lib/admin-amazon-attribution.mjs";
+import { buildAudienceSignalModel } from "../../lib/admin-audience-signals.mjs";
+import { buildBookScorecard } from "../../lib/admin-book-scorecard.mjs";
+import { buildChannelScorecard } from "../../lib/admin-channel-scorecard.mjs";
+import { buildEconomyHealth } from "../../lib/admin-economy-health.mjs";
+import { buildFirstValueAnalysis } from "../../lib/admin-first-value-analysis.mjs";
+import { buildAdminIntelligenceBrief } from "../../lib/admin-intelligence-brief.mjs";
+import { buildFunnelCommandCenter, buildTrafficQualitySummary, fetchAdminKpiWindow, formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+import { buildLanguageMarketReport } from "../../lib/admin-language-market.mjs";
+import { buildResilienceReport } from "../../lib/admin-resilience-report.mjs";
+import { buildRetentionCohorts } from "../../lib/admin-retention-cohorts.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const now = new Date();
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d", now);
+const rangeParam = range.rangeKey;
+const previousNow = new Date(now.getTime() - range.days * 24 * 60 * 60 * 1000);
+const sc = getServiceClient() as any;
+
+const [currentWindow, previousWindow] = await Promise.all([
+  fetchAdminKpiWindow(sc, { rangeParam, now, limit: 10000 }),
+  fetchAdminKpiWindow(sc, { rangeParam, now: previousNow, untilIso: previousNow.toISOString(), limit: 10000 }),
+]);
+
+const [
+  { data: subscriberRows },
+  { data: profileRows },
+  { data: reviewRows },
+  { data: creditRows },
+  { data: ticketRows },
+  { data: downloadRows },
+  { data: boostRows },
+] = await Promise.all([
+  sc.from("newsletter_subscribers").select("confirmed,source,lang_pref,created_at").limit(10000),
+  sc.from("profiles").select("id,created_at,lang_pref").limit(10000),
+  sc.from("book_reviews").select("book_id,rating,status,featured,submitted_at").gte("submitted_at", range.sinceIso).order("submitted_at", { ascending: false }).limit(10000),
+  sc.from("credit_transactions").select("user_id,amount,reason,ref_id,created_at").limit(10000),
+  sc.from("ticket_transactions").select("user_id,amount,reason,ref_id,created_at").limit(10000),
+  sc.from("artwork_downloads").select("artwork_id,user_id,downloaded_at").limit(10000),
+  sc.from("gallery_boosts").select("id,user_id,boost_type,purchased_at").limit(10000),
+]);
+
+const events = currentWindow.events;
+const pageviews = currentWindow.pageviews;
+const funnel = buildFunnelCommandCenter({ events, pageviews, summary: currentWindow });
+const trafficQuality = buildTrafficQualitySummary({ events, pageviews });
+const brief = buildAdminIntelligenceBrief({ current: currentWindow, previous: previousWindow, funnel, trafficQuality });
+const audienceSignals = buildAudienceSignalModel({ events, pageviews });
+const firstValue = buildFirstValueAnalysis({ events, pageviews });
+const channelScorecard = buildChannelScorecard({ events, pageviews });
+const languageMarket = buildLanguageMarketReport({ events, pageviews, subscribers: subscriberRows ?? [], profiles: profileRows ?? [] });
+const amazonAttribution = buildAmazonAttribution({ events, books });
+const bookScorecard = buildBookScorecard({ events, reviews: reviewRows ?? [], books });
+const retention = buildRetentionCohorts({ profiles: profileRows ?? [], events, now });
+const economy = buildEconomyHealth({ credits: creditRows ?? [], tickets: ticketRows ?? [], downloads: downloadRows ?? [], boosts: boostRows ?? [] });
+const resilience = buildResilienceReport({ events, pageviews, subscribers: subscriberRows ?? [], profiles: profileRows ?? [], reviews: reviewRows ?? [], books });
+
+const contract = buildAgentKpiInputContract({
+  range,
+  current: currentWindow,
+  previous: previousWindow,
+  funnel,
+  trafficQuality,
+  brief,
+  audienceSignals,
+  firstValue,
+  channelScorecard,
+  languageMarket,
+  amazonAttribution,
+  bookScorecard,
+  retention,
+  economy,
+  resilience,
+});
+
+const jsonPreview = JSON.stringify(contract, null, 2);
+const short = shortText;
+---
+
+<AdminLayout title="Agent KPI Contract" current="agent-contract">
+  <div class="admin-page-head">
+    <div>
+      <h1>Agent KPI Input Contract</h1>
+      <p>Window: last {range.label} - generated {formatKpiTime(contract.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Agent contract range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card"><span>Contract</span><strong>{contract.contractVersion}</strong><small>{contract.status} quality</small></div>
+    <div class="stat-card"><span>Pageviews</span><strong>{contract.metrics.pageviews.toLocaleString()}</strong><small>{contract.metrics.uniqueVisitors.toLocaleString()} visitors</small></div>
+    <div class="stat-card"><span>Events</span><strong>{contract.metrics.events.toLocaleString()}</strong><small>{contract.dataQuality.confidence} confidence</small></div>
+    <div class="stat-card"><span>Inputs ready</span><strong>{contract.reportRows.filter((row: any) => row.status === "Ready").length.toLocaleString()}</strong><small>{contract.reportRows.length.toLocaleString()} total</small></div>
+    <div class="stat-card"><span>Agent packets</span><strong>{contract.recommendationPackets.length.toLocaleString()}</strong><small>read-only</small></div>
+  </section>
+
+  <section class="surface-card contract-panel notice-panel">
+    <strong>Scope boundary</strong>
+    <p>{contract.note}</p>
+  </section>
+
+  <section class="contract-grid">
+    <div class="surface-card contract-panel">
+      <div class="panel-head"><h2>Data Quality</h2></div>
+      <div class="quality-stack">
+        <div><span>Status</span><strong class:list={["status-text", contract.status]}>{contract.status}</strong></div>
+        <div><span>Evidence</span><strong>{contract.dataQuality.evidence}</strong></div>
+        <div><span>Metric definitions</span><strong>{contract.dataQuality.metricDefinitionStatus}</strong></div>
+        <div><span>Missing fields</span><strong>{contract.dataQuality.missingFields.join(", ") || "none"}</strong></div>
+      </div>
+    </div>
+
+    <div class="surface-card contract-panel">
+      <div class="panel-head"><h2>Guardrails</h2></div>
+      <ul class="guardrail-list">
+        {contract.guardrails.map((item: string) => <li>{item}</li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="surface-card contract-panel">
+    <div class="panel-head"><h2>Agent Readiness</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Agent</th><th>Mode</th><th>Readiness</th><th>Inputs</th><th>Output</th><th>Approval boundary</th></tr></thead>
+        <tbody>
+          {contract.agentRows.map((row: any) => (
+            <tr>
+              <td><strong>{row.agent}</strong></td>
+              <td><code>{row.autonomy}</code></td>
+              <td><span class:list={["status-pill", row.readiness.toLowerCase()]}>{row.readiness}</span></td>
+              <td>{row.inputs.join(", ")}</td>
+              <td>{row.output}</td>
+              <td>{row.approval}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="surface-card contract-panel">
+    <div class="panel-head"><h2>Contract Inputs</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Input</th><th>Status</th><th>Source</th><th>Summary</th></tr></thead>
+        <tbody>
+          {contract.reportRows.map((row: any) => (
+            <tr>
+              <td><strong>{row.label}</strong><small>{row.key}</small></td>
+              <td><span class:list={["status-pill", row.status.toLowerCase()]}>{row.status}</span></td>
+              <td><code>{row.source}</code></td>
+              <td>{short(JSON.stringify(row.summary), 120)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="surface-card contract-panel">
+    <div class="panel-head"><h2>Recommendation Packets</h2></div>
+    <div class="packet-grid">
+      {contract.recommendationPackets.map((packet: any) => (
+        <article class="packet-card">
+          <div class="packet-top"><strong>{packet.agent_name}</strong><span class:list={["status-pill", packet.severity]}>{packet.severity}</span></div>
+          <p>{packet.finding}</p>
+          <small>{packet.recommended_action}</small>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="surface-card contract-panel json-panel">
+    <div class="panel-head"><h2>JSON Preview</h2></div>
+    <pre>{jsonPreview}</pre>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card, .contract-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1rem; overflow-wrap: anywhere; }
+  .stat-card small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .notice-panel { margin-bottom: 1rem; border-color: rgba(37,99,235,0.25); background: rgba(37,99,235,0.06); }
+  .notice-panel p { margin: 0.25rem 0 0; color: var(--ink-soft); }
+  .contract-grid {
+    display: grid;
+    grid-template-columns: minmax(240px, 0.8fr) minmax(280px, 1.2fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .contract-panel { margin-bottom: 1rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .quality-stack { display: grid; gap: 0.55rem; }
+  .quality-stack div { display: flex; justify-content: space-between; gap: 0.75rem; border-bottom: 1px solid var(--line); padding-bottom: 0.45rem; }
+  .quality-stack span { color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .quality-stack strong { text-align: right; overflow-wrap: anywhere; }
+  .status-text.green { color: #166534; }
+  .status-text.yellow { color: #92400e; }
+  .status-text.red { color: #991b1b; }
+  .guardrail-list { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: 0.88rem; }
+  .guardrail-list li + li { margin-top: 0.35rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.18rem 0.45rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+  .status-pill.ready, .status-pill.green { color: #166534; background: rgba(22,101,52,0.08); border-color: rgba(22,101,52,0.22); }
+  .status-pill.partial, .status-pill.yellow { color: #92400e; background: rgba(146,64,14,0.08); border-color: rgba(146,64,14,0.22); }
+  .status-pill.missing, .status-pill.red { color: #991b1b; background: rgba(153,27,27,0.08); border-color: rgba(153,27,27,0.22); }
+  .status-pill.neutral { color: #475569; background: rgba(71,85,105,0.08); border-color: rgba(71,85,105,0.22); }
+  .packet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+  }
+  .packet-card { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.75rem; background: rgba(255,255,255,0.55); }
+  .packet-top { display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; }
+  .packet-card p { margin: 0.55rem 0 0; color: var(--ink); font-size: 0.86rem; }
+  .packet-card small { display: block; margin-top: 0.45rem; color: var(--ink-soft); font-size: 0.78rem; }
+  .json-panel pre {
+    max-height: 520px;
+    overflow: auto;
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 0.76rem;
+    line-height: 1.45;
+  }
+  @media (max-width: 760px) {
+    .contract-grid { grid-template-columns: 1fr; }
+  }
+</style>

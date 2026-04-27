@@ -2,10 +2,11 @@
 export const prerender = false;
 
 import AdminLayout from "../../../layouts/AdminLayout.astro";
-import { isAdmin, getServiceClient, ADMIN_EMAILS } from "../../../lib/supabase";
+import { isAdmin, getServiceClient } from "../../../lib/supabase";
 import { validateOrigin } from "../../../lib/csrf";
 import { sendToUser } from "../../../lib/notifications";
 import { books } from "../../../data/books";
+import { buildAdminUserJourney, formatUserJourneyTime } from "../../../lib/admin-user-journey.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -164,10 +165,22 @@ const [
   sc.from("newsletter_subscribers").select("id, confirmed, created_at, source").eq("email", userEmail).maybeSingle(),
 ]);
 
-const peanutBalance = (credits ?? []).reduce((sum, c) => sum + c.amount, 0);
-const ticketBalance = (tickets ?? []).reduce((sum, t) => sum + t.amount, 0);
+const { data: conversionEvents } = await (sc as any)
+  .from("conversion_events")
+  .select("event_name,path,visitor_hash,props,lang,created_at")
+  .filter("props->>user_id", "eq", userId!)
+  .order("created_at", { ascending: false })
+  .limit(30);
+
+const peanutBalance = (credits ?? []).reduce((sum: number, c: any) => sum + c.amount, 0);
+const ticketBalance = (tickets ?? []).reduce((sum: number, t: any) => sum + t.amount, 0);
 const bookMap = Object.fromEntries(books.map(b => [b.id, b.title.en]));
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
+const journey = buildAdminUserJourney({ profile, newsletterSub, reviews, credits, tickets, badges, lotteryEntries, downloads, conversionEvents });
+const short = (value: string | null | undefined, max = 42) => {
+  const text = value || "—";
+  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+};
 ---
 
 <AdminLayout title={profile.display_name || userEmail} current="users">
@@ -182,6 +195,38 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 
   {actionMsg && <p class="msg-ok">{actionMsg}</p>}
   {actionErr && <p class="msg-err">{actionErr}</p>}
+
+  <div class="surface-card detail-section journey-section" style="margin-top:1.5rem;">
+    <div class="journey-head">
+      <div>
+        <h2>User Journey</h2>
+        <p>{journey.acquisitionSource} · {journey.acquisitionLanding}</p>
+      </div>
+      <span class={`journey-chip tone-${journey.retention.tone}`}>{journey.lifecycleStage} · {journey.retention.label}</span>
+    </div>
+    <div class="journey-grid">
+      <div><span>First value</span><strong>{journey.firstValueAt ? formatUserJourneyTime(journey.firstValueAt) : "—"}</strong></div>
+      <div><span>Last action</span><strong>{journey.lastActionAt ? formatUserJourneyTime(journey.lastActionAt) : "—"}</strong></div>
+      <div><span>Next action</span><strong>{journey.nextBestAction}</strong></div>
+      <div><span>Tracked events</span><strong>{journey.counts.conversionEvents}</strong></div>
+    </div>
+    <div class="journey-timeline">
+      <table class="admin-table compact-table">
+        <thead><tr><th>When</th><th>Type</th><th>Activity</th><th>Detail</th></tr></thead>
+        <tbody>
+          {journey.timeline.length === 0 && <tr><td colspan="4" style="text-align:center; color:var(--ink-soft);">No timeline activity yet.</td></tr>}
+          {journey.timeline.slice(0, 12).map((item: any) => (
+            <tr>
+              <td style="white-space:nowrap; color:var(--ink-soft); font-size:0.8rem;">{formatUserJourneyTime(item.at)}</td>
+              <td><code>{item.type}</code></td>
+              <td>{item.label}</td>
+              <td title={item.detail || ""}>{short(item.detail, 38)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
   {/* ── Profile Overview ── */}
   <div class="detail-grid">
@@ -293,7 +338,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       <table class="admin-table">
         <thead><tr><th>Book</th><th>Rating</th><th>Status</th><th>Featured</th><th>Date</th></tr></thead>
         <tbody>
-          {reviews.map((r) => (
+          {reviews.map((r: any) => (
             <tr>
               <td>{bookMap[r.book_id] || r.book_id}</td>
               <td style="color:var(--accent-gold);">{stars(r.rating)}</td>
@@ -318,7 +363,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       <table class="admin-table">
         <thead><tr><th>Amount</th><th>Reason</th><th>Ref</th><th>Date</th></tr></thead>
         <tbody>
-          {credits.map((c) => (
+          {credits.map((c: any) => (
             <tr>
               <td style={`font-weight:700; color:${c.amount >= 0 ? "var(--brand-green)" : "#8f1f18"};`}>
                 {c.amount >= 0 ? "+" : ""}{c.amount}
@@ -340,7 +385,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       <table class="admin-table">
         <thead><tr><th>Amount</th><th>Reason</th><th>Ref</th><th>Date</th></tr></thead>
         <tbody>
-          {tickets.map((t) => (
+          {tickets.map((t: any) => (
             <tr>
               <td style={`font-weight:700; color:${t.amount >= 0 ? "var(--brand-blue)" : "#8f1f18"};`}>
                 {t.amount >= 0 ? "+" : ""}{t.amount}
@@ -360,7 +405,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     <div class="surface-card detail-section" style="margin-top:1.5rem;">
       <h2>🏅 Badges ({badges.length})</h2>
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-        {badges.map((b) => (
+        {badges.map((b: any) => (
           <span class="badge badge-blue" style="font-size:0.85rem; padding:0.3rem 0.6rem;">
             {b.badge_type} {b.active ? "" : "(inactive)"}
           </span>
@@ -376,7 +421,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       <table class="admin-table">
         <thead><tr><th>Month</th><th>Entries</th><th>Purchased</th></tr></thead>
         <tbody>
-          {lotteryEntries.map((e) => (
+          {lotteryEntries.map((e: any) => (
             <tr>
               <td style="font-weight:600;">{e.month}</td>
               <td style="text-align:center; font-weight:700; color:var(--brand-blue);">{e.entry_count}</td>
@@ -395,7 +440,7 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
       <table class="admin-table">
         <thead><tr><th>Artwork ID</th><th>Downloaded</th></tr></thead>
         <tbody>
-          {downloads.map((d) => (
+          {downloads.map((d: any) => (
             <tr>
               <td style="font-size:0.85rem;">{d.artwork_id}</td>
               <td style="font-size:0.82rem;">{d.downloaded_at ? new Date(d.downloaded_at).toLocaleDateString() : "—"}</td>
@@ -451,6 +496,66 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
   .mini-label {
     font-size: 0.82rem;
     color: var(--ink-soft);
+  }
+  .journey-section h2 {
+    margin: 0;
+  }
+  .journey-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .journey-head p {
+    margin: 0.25rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.86rem;
+  }
+  .journey-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.9rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+  .journey-chip.tone-good { color: var(--brand-green); background: rgba(92,150,80,0.12); border-color: rgba(92,150,80,0.26); }
+  .journey-chip.tone-warn { color: #8a6d00; background: rgba(220,180,50,0.14); border-color: rgba(220,180,50,0.3); }
+  .journey-chip.tone-danger { color: #8f1f18; background: rgba(220,50,50,0.08); border-color: rgba(220,50,50,0.24); }
+  .journey-chip.tone-quiet { color: var(--ink-soft); background: var(--surface); }
+  .journey-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .journey-grid div {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface, #fff);
+    padding: 0.75rem;
+    min-height: 4.5rem;
+  }
+  .journey-grid span {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    margin-bottom: 0.25rem;
+  }
+  .journey-grid strong {
+    display: block;
+    font-size: 0.9rem;
+    line-height: 1.25;
+  }
+  .journey-timeline {
+    overflow-x: auto;
+  }
+  .compact-table {
+    font-size: 0.84rem;
   }
   .action-grid {
     display: grid;
@@ -511,5 +616,18 @@ const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
     font-weight: 600;
     font-size: 0.85rem;
     margin-bottom: 0.3rem;
+  }
+  @media (max-width: 760px) {
+    .journey-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (max-width: 480px) {
+    .detail-list {
+      grid-template-columns: 1fr;
+    }
+    .journey-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

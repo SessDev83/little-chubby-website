@@ -1,0 +1,187 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildAudienceSignalModel } from "../../lib/admin-audience-signals.mjs";
+import { buildCommunityEngagementAgentReport } from "../../lib/admin-community-agent.mjs";
+import { buildEconomyHealth } from "../../lib/admin-economy-health.mjs";
+import { fetchAdminKpiWindow, formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+import { buildRetentionCohorts } from "../../lib/admin-retention-cohorts.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const now = new Date();
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d", now);
+const rangeParam = range.rangeKey;
+const sc = getServiceClient() as any;
+const kpiWindow = await fetchAdminKpiWindow(sc, { rangeParam, now, limit: 10000 });
+const [
+  { data: profileRows },
+  { data: creditRows },
+  { data: ticketRows },
+  { data: downloadRows },
+  { data: boostRows },
+] = await Promise.all([
+  sc.from("profiles").select("id,created_at,lang_pref,notification_prefs").limit(10000),
+  sc.from("credit_transactions").select("user_id,amount,reason,ref_id,created_at").limit(10000),
+  sc.from("ticket_transactions").select("user_id,amount,reason,ref_id,created_at").limit(10000),
+  sc.from("artwork_downloads").select("artwork_id,user_id,downloaded_at").limit(10000),
+  sc.from("gallery_boosts").select("id,user_id,boost_type,purchased_at").limit(10000),
+]);
+
+const profiles = profileRows ?? [];
+const events = kpiWindow.events;
+const pageviews = kpiWindow.pageviews;
+const retention = buildRetentionCohorts({ profiles, events, now });
+const economy = buildEconomyHealth({ credits: creditRows ?? [], tickets: ticketRows ?? [], downloads: downloadRows ?? [], boosts: boostRows ?? [], now });
+const audienceSignals = buildAudienceSignalModel({ events, pageviews });
+const report = buildCommunityEngagementAgentReport({ profiles, events, retention, economy, audienceSignals });
+const summary = report.summary;
+const short = shortText;
+---
+
+<AdminLayout title="Community Agent" current="community-agent">
+  <div class="admin-page-head">
+    <div>
+      <h1>Community Engagement Agent</h1>
+      <p>Window: last {range.label} - generated {formatKpiTime(range.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Community agent range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card"><span>Status</span><strong>{summary.status}</strong><small>{summary.ownerDecisionRequired ? "owner review" : "baseline"}</small></div>
+    <div class="stat-card"><span>Profiles</span><strong>{summary.profiles.toLocaleString()}</strong><small>{summary.communityOptInRate} community opt-in</small></div>
+    <div class="stat-card"><span>Community events</span><strong>{summary.communityEvents.toLocaleString()}</strong><small>aggregate only</small></div>
+    <div class="stat-card"><span>Dormant wallets</span><strong>{summary.dormantUsers.toLocaleString()}</strong><small>no nudges sent</small></div>
+    <div class="stat-card"><span>Top segment</span><strong>{short(summary.topSegment, 28)}</strong><small>context only</small></div>
+  </section>
+
+  <section class="surface-card community-panel notice-panel">
+    <strong>Scope boundary</strong>
+    <p>{report.note}</p>
+  </section>
+
+  <section class="community-grid">
+    <div class="surface-card community-panel">
+      <div class="panel-head"><h2>Community Packets</h2></div>
+      <div class="packet-stack">
+        {report.packetRows.length === 0 && <p class="empty-note">No community packets in this window.</p>}
+        {report.packetRows.map((packet: any) => (
+          <article class="packet-card">
+            <div class="packet-top"><strong>{packet.metric}</strong><span class:list={["status-pill", packet.severity]}>{packet.severity}</span></div>
+            <p>{packet.finding}</p>
+            <small>{packet.recommended_action}</small>
+          </article>
+        ))}
+      </div>
+    </div>
+    <div class="surface-card community-panel">
+      <div class="panel-head"><h2>Guardrails</h2></div>
+      <ul class="guardrail-list">
+        {report.guardrails.map((item: string) => <li>{item}</li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="surface-card community-panel">
+    <div class="panel-head"><h2>Readiness Health</h2></div>
+    <div class="health-grid">
+      {report.healthRows.map((row: any) => (
+        <article class="health-card">
+          <div><strong>{row.label}</strong><span class:list={["status-pill", row.status.toLowerCase()]}>{row.status}</span></div>
+          <p>{row.detail}</p>
+          <small>{row.evidence}</small>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="split-grid">
+    <div class="surface-card community-panel">
+      <div class="panel-head"><h2>Preference Readiness</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Preference</th><th>Status</th><th>On</th><th>Off</th><th>Unknown</th><th>Opt-in</th></tr></thead>
+        <tbody>
+          {report.preferenceRows.map((row: any) => (
+            <tr><td><code>{row.key}</code></td><td><span class:list={["status-pill", row.status.toLowerCase()]}>{row.status}</span></td><td>{row.on.toLocaleString()}</td><td>{row.off.toLocaleString()}</td><td>{row.unknown.toLocaleString()}</td><td>{row.optInRate}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card community-panel">
+      <div class="panel-head"><h2>Community Event Mix</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Event</th><th>Category</th><th>Count</th></tr></thead>
+        <tbody>
+          {report.eventRows.map((row: any) => (
+            <tr><td><code>{row.eventName}</code></td><td>{row.category}</td><td>{row.count.toLocaleString()}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="surface-card community-panel">
+    <div class="panel-head"><h2>Owner Review Focus</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Priority</th><th>Area</th><th>Focus</th><th>Finding</th><th>Recommended action</th><th>Blocked by</th></tr></thead>
+        <tbody>
+          {report.focusRows.length === 0 && <tr><td colspan="6" class="empty-cell">No community focus rows in this window.</td></tr>}
+          {report.focusRows.map((row: any) => (
+            <tr><td><span class:list={["status-pill", row.priority.toLowerCase()]}>{row.priority}</span></td><td>{row.area}</td><td><strong>{short(row.title, 34)}</strong></td><td>{row.finding}</td><td>{row.recommendedAction}</td><td>{row.blockedBy.join(", ") || "-"}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn { display: inline-flex; align-items: center; min-height: 2rem; padding: 0.35rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--ink-soft); text-decoration: none; font-size: 0.85rem; font-weight: 700; background: var(--surface); }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; margin-bottom: 1rem; }
+  .stat-card, .community-panel { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); padding: 0.95rem; }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.15rem; overflow-wrap: anywhere; }
+  .stat-card small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .notice-panel { margin-bottom: 1rem; border-color: rgba(37,99,235,0.25); background: rgba(37,99,235,0.06); }
+  .notice-panel p { margin: 0.25rem 0 0; color: var(--ink-soft); }
+  .community-panel { margin-bottom: 1rem; }
+  .community-grid, .split-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .packet-stack { display: grid; gap: 0.7rem; }
+  .packet-card, .health-card { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.75rem; background: rgba(255,255,255,0.55); }
+  .packet-top, .health-card div { display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; }
+  .packet-card p, .health-card p { margin: 0.55rem 0 0; color: var(--ink); font-size: 0.86rem; }
+  .packet-card small, .health-card small { display: block; margin-top: 0.45rem; color: var(--ink-soft); font-size: 0.78rem; }
+  .guardrail-list { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: 0.88rem; }
+  .guardrail-list li + li { margin-top: 0.35rem; }
+  .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.75rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .status-pill { display: inline-flex; align-items: center; padding: 0.18rem 0.45rem; border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.7rem; font-weight: 800; }
+  .status-pill.readable, .status-pill.green, .status-pill.medium { color: #166534; background: rgba(22,101,52,0.08); border-color: rgba(22,101,52,0.22); }
+  .status-pill.watch, .status-pill.yellow, .status-pill.low { color: #92400e; background: rgba(146,64,14,0.08); border-color: rgba(146,64,14,0.22); }
+  .status-pill.blocked, .status-pill.high { color: #991b1b; background: rgba(153,27,27,0.08); border-color: rgba(153,27,27,0.22); }
+  .status-pill.baseline, .status-pill.neutral { color: #475569; background: rgba(71,85,105,0.08); border-color: rgba(71,85,105,0.22); }
+  .empty-note, .empty-cell { color: var(--ink-soft); }
+  @media (max-width: 900px) { .community-grid, .split-grid { grid-template-columns: 1fr; } }
+</style>

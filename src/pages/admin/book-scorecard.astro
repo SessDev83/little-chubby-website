@@ -1,0 +1,217 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { books } from "../../data/books";
+import { buildBookScorecard } from "../../lib/admin-book-scorecard.mjs";
+import { formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d");
+const rangeParam = range.rangeKey;
+const sc = getServiceClient();
+
+const [{ data: eventRows }, { data: reviewRows }] = await Promise.all([
+  (sc as any)
+    .from("conversion_events")
+    .select("event_name,path,props,lang,created_at")
+    .gte("created_at", range.sinceIso)
+    .in("event_name", ["book_page_viewed", "sample_viewed", "sample_cta_click", "amazon_click"])
+    .order("created_at", { ascending: false })
+    .limit(10000),
+  sc
+    .from("book_reviews")
+    .select("book_id,rating,status,featured,submitted_at")
+    .gte("submitted_at", range.sinceIso)
+    .order("submitted_at", { ascending: false })
+    .limit(10000),
+]);
+
+const scorecard = buildBookScorecard({ events: eventRows ?? [], reviews: reviewRows ?? [], books });
+const summary = scorecard.summary;
+const short = shortText;
+---
+
+<AdminLayout title="Book Scorecard" current="book-scorecard">
+  <div class="admin-page-head">
+    <div>
+      <h1>Book Scorecard</h1>
+      <p>Window: last {range.label} - generated {formatKpiTime(range.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Book scorecard range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card"><span>Catalog books</span><strong>{summary.catalogBooks.toLocaleString()}</strong></div>
+    <div class="stat-card"><span>Active books</span><strong>{summary.activeBooks.toLocaleString()}</strong></div>
+    <div class="stat-card"><span>Book intent</span><strong>{summary.bookIntent.toLocaleString()}</strong></div>
+    <div class="stat-card"><span>Amazon clicks</span><strong>{summary.amazonClicks.toLocaleString()}</strong></div>
+    <div class="stat-card"><span>Intent to Amazon</span><strong>{summary.amazonRate}</strong></div>
+    <div class="stat-card"><span>Avg approved rating</span><strong>{summary.ratingLabel}</strong></div>
+  </section>
+
+  <section class="surface-card scorecard-panel notice-panel">
+    <strong>Attribution boundary</strong>
+    <p>{scorecard.note}</p>
+  </section>
+
+  <section class="surface-card scorecard-panel">
+    <div class="panel-head">
+      <h2>Per-Title Scorecard</h2>
+      <span>{summary.totalReviews.toLocaleString()} reviews in window, {summary.pendingReviews.toLocaleString()} pending</span>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Book</th><th>ASIN</th><th>Intent</th><th>Amazon</th><th>Rate</th><th>Reviews</th><th>Rating</th><th>Top source</th><th>Lang</th><th>Action</th><th>KDP signal</th></tr></thead>
+        <tbody>
+          {scorecard.scoreRows.length === 0 && <tr><td colspan="11" class="empty-cell">No book catalog rows available.</td></tr>}
+          {scorecard.scoreRows.map((row: any) => (
+            <tr>
+              <td title={row.title}><strong>{short(row.title, 34)}</strong><small>{row.ageRange}</small></td>
+              <td><code>{row.asin || "-"}</code></td>
+              <td>{row.bookIntent.toLocaleString()}<small>{row.bookViews.toLocaleString()} views / {(row.sampleViews + row.sampleClicks).toLocaleString()} samples</small></td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+              <td>{row.amazonRate}</td>
+              <td>{row.approvedReviews.toLocaleString()} approved<small>{row.pendingReviews.toLocaleString()} pending</small></td>
+              <td>{row.ratingLabel}</td>
+              <td>{short(row.topSource, 26)}</td>
+              <td>{row.topLang}</td>
+              <td>{row.recommendedAction}</td>
+              <td>{short(row.kdpSignal, 34)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="scorecard-grid">
+    <div class="surface-card scorecard-panel">
+      <div class="panel-head"><h2>Conversion Opportunities</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Book</th><th>Action</th><th>Intent</th><th>Amazon</th><th>Reviews</th></tr></thead>
+        <tbody>
+          {scorecard.opportunityRows.length === 0 && <tr><td colspan="5" class="empty-cell">No immediate scorecard actions in this window.</td></tr>}
+          {scorecard.opportunityRows.map((row: any) => (
+            <tr>
+              <td title={row.title}>{short(row.title, 34)}</td>
+              <td>{row.recommendedAction}</td>
+              <td>{row.bookIntent.toLocaleString()}</td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+              <td>{row.approvedReviews.toLocaleString()} / {row.pendingReviews.toLocaleString()} pending</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card scorecard-panel">
+      <div class="panel-head"><h2>Source Context</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Source</th><th>Intent</th><th>Amazon</th><th>Rate</th><th>Top book</th></tr></thead>
+        <tbody>
+          {scorecard.sourceRows.length === 0 && <tr><td colspan="5" class="empty-cell">No source-linked book intent yet.</td></tr>}
+          {scorecard.sourceRows.map((row: any) => (
+            <tr>
+              <td>{short(row.source, 30)}</td>
+              <td>{row.bookIntent.toLocaleString()}</td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+              <td>{row.amazonRate}</td>
+              <td><code>{short(row.topBook, 28)}</code></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="surface-card scorecard-panel">
+    <div class="panel-head"><h2>Language Context</h2></div>
+    <div class="table-wrap narrow-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Language</th><th>Intent</th><th>Amazon</th><th>Rate</th><th>Top book</th></tr></thead>
+        <tbody>
+          {scorecard.languageRows.length === 0 && <tr><td colspan="5" class="empty-cell">No language-linked book intent yet.</td></tr>}
+          {scorecard.languageRows.map((row: any) => (
+            <tr>
+              <td>{row.lang}</td>
+              <td>{row.bookIntent.toLocaleString()}</td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+              <td>{row.amazonRate}</td>
+              <td><code>{short(row.topBook, 34)}</code></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card, .scorecard-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.25rem; }
+  .notice-panel { margin-bottom: 1rem; border-color: rgba(220,150,50,0.35); background: rgba(220,150,50,0.07); }
+  .notice-panel p { margin: 0.25rem 0 0; color: var(--ink-soft); }
+  .scorecard-panel { margin-bottom: 1rem; }
+  .scorecard-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0.85rem; }
+  .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
+  .panel-head span { color: var(--ink-soft); font-size: 0.82rem; font-weight: 700; }
+  .table-wrap { overflow-x: auto; }
+  .narrow-wrap { max-width: 760px; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table td small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .admin-table code { font-size: 0.76rem; }
+  .empty-cell { color: var(--ink-soft); text-align: center; }
+  @media (max-width: 980px) {
+    .scorecard-grid { grid-template-columns: 1fr; }
+  }
+</style>

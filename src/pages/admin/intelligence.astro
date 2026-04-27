@@ -1,0 +1,251 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildAdminIntelligenceBrief } from "../../lib/admin-intelligence-brief.mjs";
+import { buildFunnelCommandCenter, buildTrafficQualitySummary, fetchAdminKpiWindow, formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const requestedRange = resolveAdminRange(Astro.url.searchParams.get("range") || "7d");
+const rangeParam = requestedRange.rangeKey;
+const now = new Date();
+const previousNow = new Date(now.getTime() - requestedRange.days * 24 * 60 * 60 * 1000);
+const sc = getServiceClient();
+
+const [currentWindow, previousWindow] = await Promise.all([
+  fetchAdminKpiWindow(sc, { rangeParam, now }),
+  fetchAdminKpiWindow(sc, { rangeParam, now: previousNow, untilIso: previousNow.toISOString() }),
+]);
+
+const funnel = buildFunnelCommandCenter({ events: currentWindow.events, pageviews: currentWindow.pageviews, summary: currentWindow });
+const trafficQuality = buildTrafficQualitySummary({ events: currentWindow.events, pageviews: currentWindow.pageviews });
+const brief = buildAdminIntelligenceBrief({ current: currentWindow, previous: previousWindow, funnel, trafficQuality });
+---
+
+<AdminLayout title="Admin Intelligence" current="intelligence">
+  <div class="admin-page-head">
+    <div>
+      <h1>Admin Intelligence Brief</h1>
+      <p>{brief.periodLabel} - generated {formatKpiTime(brief.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Brief range">
+      {(["24h", "7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class={`action-card severity-${brief.recommendedAction.severity}`}>
+    <div>
+      <span class="kicker">Recommended Action</span>
+      <h2>{brief.recommendedAction.action}</h2>
+      <p>{brief.recommendedAction.reason}</p>
+    </div>
+    <strong>{brief.recommendedAction.area}</strong>
+  </section>
+
+  <section class="brief-grid metrics-grid">
+    {brief.metrics.map((item: any) => (
+      <div class="metric-card">
+        <span>{item.label}</span>
+        <strong>{item.valueLabel}</strong>
+        <small class={`trend-${item.trend.tone}`}>{item.trend.label}</small>
+      </div>
+    ))}
+  </section>
+
+  <section class="surface-card brief-panel">
+    <div class="panel-head">
+      <h2>Executive Read</h2>
+      {brief.sampleSizeWarning && <span class="sample-warning">small sample</span>}
+    </div>
+    <div class="read-lines">
+      {brief.executiveLines.map((line: string) => <p>{line}</p>)}
+    </div>
+  </section>
+
+  <section class="brief-grid two-col">
+    <div class="surface-card brief-panel">
+      <div class="panel-head"><h2>Health</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Area</th><th>Status</th><th>Detail</th><th>Evidence</th></tr></thead>
+        <tbody>
+          {brief.healthRows.map((row: any) => (
+            <tr>
+              <td>{row.label}</td>
+              <td><span class={`status-pill status-${row.status}`}>{row.status}</span></td>
+              <td>{row.detail}</td>
+              <td>{row.evidence}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card brief-panel">
+      <div class="panel-head"><h2>Risks</h2></div>
+      <div class="finding-stack">
+        {brief.risks.length === 0 && <p class="empty-note">No priority risk in this window.</p>}
+        {brief.risks.map((row: any) => (
+          <article class={`finding tone-${row.tone}`}>
+            <span>{row.area}</span>
+            <strong>{row.title}</strong>
+            <p>{row.detail}</p>
+            <code>{shortText(row.evidence, 72)}</code>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="surface-card brief-panel">
+    <div class="panel-head"><h2>Opportunities</h2></div>
+    <div class="finding-grid">
+      {brief.opportunities.length === 0 && <p class="empty-note">No strong opportunity signal yet.</p>}
+      {brief.opportunities.map((row: any) => (
+        <article class={`finding tone-${row.tone}`}>
+          <span>{row.area}</span>
+          <strong>{row.title}</strong>
+          <p>{row.detail}</p>
+          <code>{shortText(row.evidence, 72)}</code>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="surface-card brief-panel">
+    <div class="panel-head"><h2>Funnel Snapshot</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Stage</th><th>Count</th><th>From Prior</th><th>Top Source</th><th>Top Lang</th><th>Top Landing</th></tr></thead>
+        <tbody>
+          {funnel.stageRows.map((row: any) => (
+            <tr>
+              <td>{row.stage}</td>
+              <td>{row.count.toLocaleString()}</td>
+              <td>{row.conversionLabel}</td>
+              <td>{shortText(row.topSource, 28)}</td>
+              <td>{row.topLang}</td>
+              <td><code>{shortText(row.topLandingPage, 42)}</code></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .action-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 1.1rem;
+    margin-bottom: 1rem;
+  }
+  .action-card h2 { margin-top: 0.2rem; font-size: 1.15rem; }
+  .action-card p { margin: 0.4rem 0 0; color: var(--ink-soft); }
+  .action-card > strong { white-space: nowrap; color: var(--brand-blue); }
+  .severity-red { border-color: rgba(190,55,55,0.45); background: rgba(190,55,55,0.06); }
+  .severity-yellow { border-color: rgba(220,150,50,0.45); background: rgba(220,150,50,0.08); }
+  .severity-green { border-color: rgba(92,150,80,0.45); background: rgba(92,150,80,0.07); }
+  .kicker { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0; }
+  .brief-grid { display: grid; gap: 0.85rem; margin-bottom: 1rem; }
+  .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .two-col { grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.9fr); }
+  .metric-card, .brief-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .metric-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .metric-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.35rem; }
+  .metric-card small { display: block; margin-top: 0.15rem; font-weight: 800; }
+  .trend-up { color: var(--brand-green); }
+  .trend-down { color: #b84a3d; }
+  .trend-flat { color: var(--ink-soft); }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.8rem;
+  }
+  .sample-warning, .status-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    padding: 0.18rem 0.45rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+  .sample-warning, .status-yellow { background: rgba(220,150,50,0.12); color: #94611c; }
+  .status-green { background: rgba(92,150,80,0.12); color: #3f763a; }
+  .status-red { background: rgba(190,55,55,0.12); color: #9f3333; }
+  .read-lines p { margin: 0.35rem 0; color: var(--ink-soft); }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .compact-table code { font-size: 0.76rem; }
+  .finding-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; }
+  .finding-stack { display: grid; gap: 0.75rem; }
+  .finding {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.8rem;
+    background: var(--surface-strong, #f8f8f8);
+  }
+  .finding span { color: var(--ink-soft); font-size: 0.72rem; font-weight: 800; text-transform: uppercase; }
+  .finding strong { display: block; margin-top: 0.2rem; }
+  .finding p { margin: 0.3rem 0; color: var(--ink-soft); font-size: 0.85rem; }
+  .finding code { font-size: 0.75rem; white-space: normal; }
+  .tone-red { border-color: rgba(190,55,55,0.35); }
+  .tone-yellow { border-color: rgba(220,150,50,0.35); }
+  .tone-green { border-color: rgba(92,150,80,0.35); }
+  .empty-note { margin: 0; color: var(--ink-soft); }
+  .table-wrap { overflow-x: auto; }
+  @media (max-width: 860px) {
+    .two-col { grid-template-columns: 1fr; }
+    .action-card { display: block; }
+    .action-card > strong { display: inline-block; margin-top: 0.75rem; }
+  }
+</style>

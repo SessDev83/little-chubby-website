@@ -3,6 +3,7 @@ export const prerender = false;
 
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildTrafficQualitySummary, classifyAdminSource, pct as formatRate, resolveAdminRange } from "../../lib/admin-kpis.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -10,10 +11,10 @@ if (!user || !(await isAdmin(user))) {
 }
 
 // ── Range parsing ─────────────────────────────────
-const rangeParam = (Astro.url.searchParams.get("range") || "7d").toLowerCase();
-const RANGES: Record<string, number> = { "24h": 1, "7d": 7, "30d": 30, "90d": 90 };
-const days = RANGES[rangeParam] ?? 7;
-const sinceIso = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "7d");
+const rangeParam = range.rangeKey;
+const days = range.days;
+const sinceIso = range.sinceIso;
 const todayIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
 const sc = getServiceClient();
@@ -21,7 +22,7 @@ const sc = getServiceClient();
 // ── Parallel queries ─────────────────────────────
 const [
   { data: pvRows, count: totalPv },
-  { data: pvToday, count: todayPv },
+  { count: todayPv },
   { data: utmClicks },
   { data: weekly },
 ] = await Promise.all([
@@ -52,6 +53,18 @@ const rows = pvRows ?? [];
 const utmRows = utmClicks ?? [];
 const latestWeekly = weekly?.[0] ?? null;
 
+const { data: conversionEvents } = await (sc as any)
+  .from("conversion_events")
+  .select("event_name,path,visitor_hash,props,lang,created_at")
+  .gte("created_at", sinceIso)
+  .order("created_at", { ascending: false })
+  .limit(5000);
+
+const { sourceQualityRows, landingQualityRows, utmQualityRows } = buildTrafficQualitySummary({
+  pageviews: rows,
+  events: conversionEvents ?? [],
+});
+
 // ── Derived metrics ──────────────────────────────
 const uniqueVisitors = new Set(rows.map((r) => r.visitor_hash).filter(Boolean)).size;
 const totalPageviews = totalPv ?? rows.length;
@@ -60,24 +73,8 @@ const avgPvPerVisitor = uniqueVisitors ? (rows.length / uniqueVisitors).toFixed(
 
 // Source classification
 function classifySource(row: any): { cat: string; label: string } {
-  if (row.utm_source) return { cat: "utm", label: `utm/${row.utm_source}` };
-  const ref = row.referrer || "";
-  if (!ref) return { cat: "direct", label: "direct" };
-  try {
-    const host = new URL(ref).hostname.replace(/^www\./, "");
-    if (host.includes("facebook") || host === "fb.me" || host === "m.facebook.com") return { cat: "social", label: "facebook" };
-    if (host.includes("bsky") || host.includes("bluesky")) return { cat: "social", label: "bluesky" };
-    if (host.includes("instagram")) return { cat: "social", label: "instagram" };
-    if (host.includes("pinterest")) return { cat: "social", label: "pinterest" };
-    if (host.includes("twitter") || host === "t.co" || host === "x.com") return { cat: "social", label: "twitter/x" };
-    if (host.includes("reddit")) return { cat: "social", label: "reddit" };
-    if (host.includes("tiktok")) return { cat: "social", label: "tiktok" };
-    if (host.includes("google") || host.includes("bing") || host.includes("duckduckgo") || host.includes("yahoo")) return { cat: "organic", label: host };
-    if (host.includes("littlechubbypress.com")) return { cat: "internal", label: "internal" };
-    return { cat: "referral", label: host };
-  } catch {
-    return { cat: "referral", label: "unknown" };
-  }
+  const source = classifyAdminSource(row);
+  return { cat: source.category, label: source.label };
 }
 
 const sourceMap = new Map<string, { count: number; cat: string }>();
@@ -158,6 +155,7 @@ const liveFeed = rows.slice(0, 20).map((r) => ({
 const catColour: Record<string, string> = {
   utm: "#8b5cf6",
   social: "#2563eb",
+  email: "#14b8a6",
   organic: "#10b981",
   direct: "#6b7280",
   internal: "#fbbf24",
@@ -231,6 +229,88 @@ function fmtTime(iso: string) {
     <div class="stat-card">
       <div class="stat-number" style="color:#8b5cf6;">{topSources[0]?.label ?? "—"}</div>
       <div class="stat-label">Top source</div>
+    </div>
+  </div>
+
+  <section class="surface-card traffic-quality" style="padding:1.4rem; margin-top:1.5rem;">
+    <div class="quality-head">
+      <div>
+        <h2 style="margin:0;">Traffic Quality</h2>
+        <p>Source, landing, and creative outcomes from pageviews plus conversion events.</p>
+      </div>
+      <a class="quality-link" href={`/admin/funnel/?range=${rangeParam}`}>Open funnel</a>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="admin-table quality-table" style="width:100%;">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>PV</th>
+            <th>Leads</th>
+            <th>Activations</th>
+            <th>Book intent</th>
+            <th>Amazon</th>
+            <th>Action rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sourceQualityRows.length === 0 && <tr><td colspan="7" style="text-align:center; color:var(--ink-soft);">No source quality data in this window.</td></tr>}
+          {sourceQualityRows.map((row: any) => (
+            <tr>
+              <td title={row.label}><code>{short(row.label)}</code></td>
+              <td>{row.pageviews.toLocaleString()}</td>
+              <td>{row.leads.toLocaleString()}</td>
+              <td>{row.activations.toLocaleString()}</td>
+              <td>{row.bookIntent.toLocaleString()}</td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+              <td>{formatRate(row.meaningfulActions, row.pageviews)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; margin-top:1.5rem;" class="grid-2">
+    <div class="surface-card" style="padding:1.4rem;">
+      <h2 style="margin-top:0; margin-bottom:0.8rem;">Landing page quality</h2>
+      <div style="overflow-x:auto;">
+        <table class="admin-table quality-table" style="width:100%;">
+          <thead><tr><th>Landing</th><th>PV</th><th>Actions</th><th>Book</th><th>Amazon</th></tr></thead>
+          <tbody>
+            {landingQualityRows.length === 0 && <tr><td colspan="5" style="text-align:center; color:var(--ink-soft);">No landing page quality data.</td></tr>}
+            {landingQualityRows.map((row: any) => (
+              <tr>
+                <td title={row.label}><code>{short(row.label)}</code></td>
+                <td>{row.pageviews.toLocaleString()}</td>
+                <td>{row.meaningfulActions.toLocaleString()} · {formatRate(row.meaningfulActions, row.pageviews)}</td>
+                <td>{row.bookIntent.toLocaleString()}</td>
+                <td>{row.amazonClicks.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="surface-card" style="padding:1.4rem;">
+      <h2 style="margin-top:0; margin-bottom:0.8rem;">UTM creative quality</h2>
+      <div style="overflow-x:auto;">
+        <table class="admin-table quality-table" style="width:100%;">
+          <thead><tr><th>Creative / Campaign</th><th>PV</th><th>Actions</th><th>Amazon rate</th></tr></thead>
+          <tbody>
+            {utmQualityRows.length === 0 && <tr><td colspan="4" style="text-align:center; color:var(--ink-soft);">No UTM outcome data in this window.</td></tr>}
+            {utmQualityRows.map((row: any) => (
+              <tr>
+                <td title={row.label}><code>{short(row.label)}</code></td>
+                <td>{row.pageviews.toLocaleString()}</td>
+                <td>{row.meaningfulActions.toLocaleString()} · {formatRate(row.meaningfulActions, row.pageviews)}</td>
+                <td>{formatRate(row.amazonClicks, Math.max(row.bookIntent, 1))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -647,6 +727,40 @@ function fmtTime(iso: string) {
     background: var(--brand-blue);
     color: white;
     border-color: var(--brand-blue);
+  }
+  .quality-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.9rem;
+  }
+  .quality-head p {
+    margin: 0.25rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.88rem;
+  }
+  .quality-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--border-soft);
+    border-radius: 0.5rem;
+    background: var(--surface-card);
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .quality-table code {
+    font-size: 0.76rem;
+  }
+  .quality-table th:not(:first-child),
+  .quality-table td:not(:first-child) {
+    text-align: right;
+    white-space: nowrap;
   }
   .prio {
     display: inline-block;
