@@ -17,11 +17,18 @@ function normalizePath(value) {
 
 function referrerHost(referrer) {
   if (!referrer) return "";
+  const value = String(referrer).trim();
+  if (!value) return "";
   try {
-    return new URL(referrer).hostname.toLowerCase().replace(/^www\./, "");
+    const parsed = new URL(value.includes("://") ? value : `https://${value}`);
+    return parsed.hostname.toLowerCase().replace(/^www\./, "");
   } catch {
-    return String(referrer).toLowerCase();
+    return "";
   }
+}
+
+function isHostOrSubdomain(host, domain) {
+  return host === domain || host.endsWith(`.${domain}`);
 }
 
 export function classifyGrowthSource(row = {}) {
@@ -35,7 +42,7 @@ export function classifyGrowthSource(row = {}) {
   const host = referrerHost(row.referrer);
   if (!host) return { category: "direct", detail: "(none)" };
   if (
-    host.includes("littlechubbypress.com") ||
+    isHostOrSubdomain(host, "littlechubbypress.com") ||
     host === "localhost" ||
     host === "127.0.0.1" ||
     host === "vercel.com" ||
