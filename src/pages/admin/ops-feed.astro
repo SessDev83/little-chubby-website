@@ -145,7 +145,7 @@ const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? 
 
   async function refreshFeed() {
     if (document.hidden) return;
-    const response = await fetch(`/api/admin/ops-feed?range=${encodeURIComponent(range)}`, { credentials: "include" });
+    const response = await fetch(`/api/admin/ops-feed/?range=${encodeURIComponent(range)}`, { credentials: "include" });
     if (!response.ok) return;
     const data = await response.json();
     setStat("total", data.stats?.total || 0);

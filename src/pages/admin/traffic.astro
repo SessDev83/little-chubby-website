@@ -657,7 +657,7 @@ function fmtTime(iso: string) {
     if (document.hidden) return;
     try {
       const params = new URLSearchParams(window.location.search);
-      const r = await fetch(`/api/admin/traffic-stats?range=${params.get("range") || "7d"}`, { credentials: "include" });
+      const r = await fetch(`/api/admin/traffic-stats/?range=${params.get("range") || "7d"}`, { credentials: "include" });
       if (!r.ok) return;
       const data = await r.json();
       const tag = (id: string, val: string | number) => {
