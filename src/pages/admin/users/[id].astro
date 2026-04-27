@@ -4,7 +4,7 @@ export const prerender = false;
 import AdminLayout from "../../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../../lib/supabase";
 import { validateOrigin } from "../../../lib/csrf";
-import { sendToUser } from "../../../lib/notifications";
+import { escapeHtml, sendToUser } from "../../../lib/notifications";
 import { books } from "../../../data/books";
 import { buildAdminUserJourney, formatUserJourneyTime } from "../../../lib/admin-user-journey.mjs";
 
@@ -127,10 +127,12 @@ if (Astro.request.method === "POST") {
       if (!subject || !body) {
         actionErr = "Subject and body are required.";
       } else {
+        const safeSubject = escapeHtml(subject);
+        const safeBody = escapeHtml(body).replace(/\n/g, "<br>");
         const html = `<div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
           <img src="https://www.littlechubbypress.com/images/brand/logo-lockup.png" alt="Little Chubby Press" style="height:48px;margin-bottom:16px;" />
-          <h2 style="color:#2b6cb0;margin:0 0 12px;">${subject.replace(/</g, "&lt;")}</h2>
-          <div style="color:#333;line-height:1.6;">${body.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</div>
+          <h2 style="color:#2b6cb0;margin:0 0 12px;">${safeSubject}</h2>
+          <div style="color:#333;line-height:1.6;">${safeBody}</div>
           <hr style="border:none;border-top:1px solid #eee;margin:24px 0;" />
           <p style="font-size:12px;color:#999;">This message was sent by an administrator of Little Chubby Press.</p>
         </div>`;
