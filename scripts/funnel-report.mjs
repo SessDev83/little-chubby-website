@@ -67,6 +67,18 @@ const FUNNEL = [
   { label: "lottery_view", kind: "event", name: "lottery_view" },
   { label: "lottery_claim_attempt", kind: "event", name: "lottery_claim_attempt", parent: "lottery_view" },
   { label: "lottery_claim_success", kind: "event", name: "lottery_claim_success", parent: "lottery_claim_attempt" },
+  { label: "book_page_viewed", kind: "event", name: "book_page_viewed" },
+  { label: "sample_viewed", kind: "event", name: "sample_viewed", parent: "book_page_viewed" },
+  { label: "sample_cta_click", kind: "event", name: "sample_cta_click", parent: "book_page_viewed" },
+  { label: "amazon_click", kind: "event", name: "amazon_click", parent: "book_page_viewed" },
+  { label: "download_link_clicked", kind: "event", name: "download_link_clicked" },
+  { label: "download_attempt", kind: "event", name: "download_attempt" },
+  { label: "download_success", kind: "event", name: "download_success", parent: "download_attempt" },
+  { label: "download_blocked", kind: "event", name: "download_blocked", parent: "download_attempt" },
+  { label: "download_error", kind: "event", name: "download_error", parent: "download_attempt" },
+  { label: "share_click", kind: "event", name: "share_click" },
+  { label: "share_credit_success", kind: "event", name: "share_credit_success", parent: "share_click" },
+  { label: "share_credit_error", kind: "event", name: "share_credit_error", parent: "share_click" },
 ];
 
 function pad(s, n) { s = String(s); return s + " ".repeat(Math.max(0, n - s.length)); }

@@ -323,9 +323,9 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     </script>
 
     <!--
-      Lightweight event tracker → Supabase conversion_events.
+      Lightweight event tracker -> Supabase conversion_events.
       Exposes window.lcpTrack(event_name, props) for funnel instrumentation.
-      Same anon-key + RLS pattern as pageviews. Pkg P4-B1.
+      Same anon-key + RLS pattern as pageviews. Pkg P5-01.
     -->
     <script is:inline>
       (function () {
@@ -333,6 +333,33 @@ const articleJsonLd = articleSchema ? JSON.stringify({
         var sb = document.querySelector('meta[name="x-sb-url"]');
         var sk = document.querySelector('meta[name="x-sb-key"]');
         if (!sb || !sk) { window.lcpTrack = function () {}; return; }
+        function makeId(prefix) {
+          try {
+            if (window.crypto && window.crypto.getRandomValues) {
+              var bytes = new Uint8Array(8);
+              window.crypto.getRandomValues(bytes);
+              var hex = Array.prototype.map.call(bytes, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+              return prefix + "_" + hex;
+            }
+          } catch (e) {}
+          return prefix + "_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        }
+        function getStoredId(storage, key, prefix) {
+          try {
+            var id = storage.getItem(key);
+            if (!id) {
+              id = makeId(prefix);
+              storage.setItem(key, id);
+            }
+            return id;
+          } catch (e) { return null; }
+        }
+        function getSessionId() {
+          return getStoredId(sessionStorage, "_lcp_session_id", "sess");
+        }
+        function getAnonymousId() {
+          return getStoredId(localStorage, "_lcp_anonymous_id", "anon");
+        }
         function getVisitorHash() {
           try {
             var sid = sessionStorage.getItem("_pvs");
@@ -343,30 +370,91 @@ const articleJsonLd = articleSchema ? JSON.stringify({
             return sid + "_" + new Date().toISOString().slice(0, 10);
           } catch (e) { return null; }
         }
+        function getUtmState() {
+          try {
+            var qs = new URLSearchParams(location.search);
+            var current = {
+              utm_source: qs.get("utm_source") || "",
+              utm_medium: qs.get("utm_medium") || "",
+              utm_campaign: qs.get("utm_campaign") || "",
+              utm_content: qs.get("utm_content") || "",
+              landing_page: location.pathname + location.search
+            };
+            if (current.utm_source) {
+              sessionStorage.setItem("_lcp_utm", JSON.stringify(current));
+              return current;
+            }
+            var saved = sessionStorage.getItem("_lcp_utm");
+            return saved ? JSON.parse(saved) : current;
+          } catch (e) { return {}; }
+        }
+        function getSource(utm) {
+          if (utm && utm.utm_source) return utm.utm_source;
+          try {
+            if (!document.referrer) return "direct";
+            var host = new URL(document.referrer).hostname.replace(/^www\./, "");
+            if (host.indexOf(location.hostname.replace(/^www\./, "")) >= 0) return "internal";
+            return host;
+          } catch (e) { return "unknown"; }
+        }
+        function getDeviceClass() {
+          try {
+            var w = window.innerWidth || document.documentElement.clientWidth || 0;
+            if (w < 640) return "mobile";
+            if (w < 1024) return "tablet";
+            return "desktop";
+          } catch (e) { return "unknown"; }
+        }
+        function getFunnelStage(eventName) {
+          if (eventName === "amazon_click") return "amazon_click";
+          if (/book_page|sample/.test(eventName)) return "book_intent";
+          if (/lead_magnet|newsletter/.test(eventName)) return "lead";
+          if (/register_submit_success|login_submit_success/.test(eventName)) return "registered";
+          if (/download/.test(eventName)) return "activated";
+          if (/lottery|review|share|art_|reaction/.test(eventName)) return "community";
+          if (/return_session/.test(eventName)) return "return";
+          return null;
+        }
+        function safeProps(props) {
+          var out = {};
+          if (!props || typeof props !== "object") return out;
+          var keys = Object.keys(props).slice(0, 24);
+          for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            var v = props[k];
+            if (v === null || v === undefined || v === "") continue;
+            if (typeof v === "string") {
+              out[k] = v.length > 200 ? v.slice(0, 200) : v;
+            } else if (typeof v === "number" || typeof v === "boolean") {
+              out[k] = v;
+            }
+          }
+          return out;
+        }
         window.lcpTrack = function (eventName, props) {
           try {
             if (!eventName || typeof eventName !== "string") return;
             if (eventName.length > 64) eventName = eventName.slice(0, 64);
-            var safeProps = {};
-            if (props && typeof props === "object") {
-              // Whitelist primitive values, cap string length, max 8 keys
-              var keys = Object.keys(props).slice(0, 8);
-              for (var i = 0; i < keys.length; i++) {
-                var k = keys[i];
-                var v = props[k];
-                if (v === null || v === undefined) continue;
-                if (typeof v === "string") {
-                  safeProps[k] = v.length > 200 ? v.slice(0, 200) : v;
-                } else if (typeof v === "number" || typeof v === "boolean") {
-                  safeProps[k] = v;
-                }
-              }
-            }
+            var utm = getUtmState();
+            var mergedProps = safeProps({
+              session_id: getSessionId(),
+              anonymous_id: getAnonymousId(),
+              source: getSource(utm),
+              utm_source: utm.utm_source,
+              utm_medium: utm.utm_medium,
+              utm_campaign: utm.utm_campaign,
+              utm_content: utm.utm_content,
+              landing_page: utm.landing_page,
+              device_class: getDeviceClass(),
+              funnel_stage: getFunnelStage(eventName)
+            });
+            var eventProps = safeProps(props);
+            for (var propName in eventProps) mergedProps[propName] = eventProps[propName];
             var body = {
               event_name: eventName,
               path: location.pathname,
               visitor_hash: getVisitorHash(),
-              props: safeProps,
+              props: mergedProps,
               lang: document.documentElement.lang || null
             };
             fetch(sb.content + "/rest/v1/conversion_events", {
@@ -382,6 +470,66 @@ const articleJsonLd = articleSchema ? JSON.stringify({
             }).catch(function () {});
           } catch (e) { /* never throw from tracker */ }
         };
+
+        function slugFromPath(pattern) {
+          var match = location.pathname.match(pattern);
+          return match ? decodeURIComponent(match[2] || match[1]) : null;
+        }
+        function asinFromUrl(url) {
+          var match = String(url || "").match(/\/dp\/([A-Z0-9]{10})/i);
+          return match ? match[1].toUpperCase() : null;
+        }
+        function linkText(el) {
+          return (el && el.textContent ? el.textContent.trim().replace(/\s+/g, " ").slice(0, 80) : "");
+        }
+        document.addEventListener("click", function (event) {
+          try {
+            var rawTarget = event.target;
+            var target = rawTarget && rawTarget.closest ? rawTarget.closest("a,button,[data-lcp-event]") : null;
+            if (!target) return;
+            var explicitEvent = target.getAttribute("data-lcp-event");
+            if (explicitEvent) {
+              window.lcpTrack(explicitEvent, {
+                book_id: target.getAttribute("data-lcp-book-id") || "",
+                content_id: target.getAttribute("data-lcp-content-id") || "",
+                artwork_id: target.getAttribute("data-lcp-artwork-id") || "",
+                link_text: linkText(target)
+              });
+            }
+            var anchor = target.tagName === "A" ? target : (target.closest ? target.closest("a") : null);
+            if (!anchor || !anchor.href) return;
+            if (/amazon\./i.test(anchor.href)) {
+              window.lcpTrack("amazon_click", {
+                asin: asinFromUrl(anchor.href) || "",
+                book_id: slugFromPath(/^\/(?:en|es)\/books\/([^/]+)\/?$/) || "",
+                content_id: slugFromPath(/^\/(?:en|es)\/blog\/([^/]+)\/?$/) || "",
+                link_text: linkText(anchor)
+              });
+            }
+            if (anchor.hasAttribute("download")) {
+              window.lcpTrack("download_link_clicked", {
+                content_id: anchor.getAttribute("href") || "",
+                link_text: linkText(anchor)
+              });
+            }
+            if (anchor.classList && anchor.classList.contains("book-look-inside__item")) {
+              window.lcpTrack("sample_viewed", {
+                book_id: slugFromPath(/^\/(?:en|es)\/books\/([^/]+)\/?$/) || "",
+                content_id: anchor.getAttribute("href") || ""
+              });
+            }
+            if (anchor.classList && anchor.classList.contains("book-try-samples__cta")) {
+              window.lcpTrack("sample_cta_click", {
+                book_id: slugFromPath(/^\/(?:en|es)\/books\/([^/]+)\/?$/) || ""
+              });
+            }
+          } catch (e) {}
+        }, true);
+
+        try {
+          var bookId = slugFromPath(/^\/(?:en|es)\/books\/([^/]+)\/?$/);
+          if (bookId) window.lcpTrack("book_page_viewed", { book_id: bookId });
+        } catch (e) {}
       })();
     </script>
   </body>
