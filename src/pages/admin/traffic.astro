@@ -257,13 +257,13 @@ function fmtTime(iso: string) {
           {sourceQualityRows.length === 0 && <tr><td colspan="7" style="text-align:center; color:var(--ink-soft);">No source quality data in this window.</td></tr>}
           {sourceQualityRows.map((row: any) => (
             <tr>
-              <td title={row.label}><code>{short(row.label)}</code></td>
-              <td>{row.pageviews.toLocaleString()}</td>
-              <td>{row.leads.toLocaleString()}</td>
-              <td>{row.activations.toLocaleString()}</td>
-              <td>{row.bookIntent.toLocaleString()}</td>
-              <td>{row.amazonClicks.toLocaleString()}</td>
-              <td>{formatRate(row.meaningfulActions, row.pageviews)}</td>
+              <td class="admin-wrap" title={row.label}><code>{short(row.label)}</code></td>
+              <td class="admin-number">{row.pageviews.toLocaleString()}</td>
+              <td class="admin-number">{row.leads.toLocaleString()}</td>
+              <td class="admin-number">{row.activations.toLocaleString()}</td>
+              <td class="admin-number">{row.bookIntent.toLocaleString()}</td>
+              <td class="admin-number">{row.amazonClicks.toLocaleString()}</td>
+              <td class="admin-number">{formatRate(row.meaningfulActions, row.pageviews)}</td>
             </tr>
           ))}
         </tbody>
@@ -281,11 +281,11 @@ function fmtTime(iso: string) {
             {landingQualityRows.length === 0 && <tr><td colspan="5" style="text-align:center; color:var(--ink-soft);">No landing page quality data.</td></tr>}
             {landingQualityRows.map((row: any) => (
               <tr>
-                <td title={row.label}><code>{short(row.label)}</code></td>
-                <td>{row.pageviews.toLocaleString()}</td>
-                <td>{row.meaningfulActions.toLocaleString()} · {formatRate(row.meaningfulActions, row.pageviews)}</td>
-                <td>{row.bookIntent.toLocaleString()}</td>
-                <td>{row.amazonClicks.toLocaleString()}</td>
+                <td class="admin-wrap" title={row.label}><code>{short(row.label)}</code></td>
+                <td class="admin-number">{row.pageviews.toLocaleString()}</td>
+                <td class="admin-number">{row.meaningfulActions.toLocaleString()} · {formatRate(row.meaningfulActions, row.pageviews)}</td>
+                <td class="admin-number">{row.bookIntent.toLocaleString()}</td>
+                <td class="admin-number">{row.amazonClicks.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -302,10 +302,10 @@ function fmtTime(iso: string) {
             {utmQualityRows.length === 0 && <tr><td colspan="4" style="text-align:center; color:var(--ink-soft);">No UTM outcome data in this window.</td></tr>}
             {utmQualityRows.map((row: any) => (
               <tr>
-                <td title={row.label}><code>{short(row.label)}</code></td>
-                <td>{row.pageviews.toLocaleString()}</td>
-                <td>{row.meaningfulActions.toLocaleString()} · {formatRate(row.meaningfulActions, row.pageviews)}</td>
-                <td>{formatRate(row.amazonClicks, Math.max(row.bookIntent, 1))}</td>
+                <td class="admin-wrap" title={row.label}><code>{short(row.label)}</code></td>
+                <td class="admin-number">{row.pageviews.toLocaleString()}</td>
+                <td class="admin-number">{row.meaningfulActions.toLocaleString()} · {formatRate(row.meaningfulActions, row.pageviews)}</td>
+                <td class="admin-number">{formatRate(row.amazonClicks, Math.max(row.bookIntent, 1))}</td>
               </tr>
             ))}
           </tbody>
@@ -433,7 +433,7 @@ function fmtTime(iso: string) {
             <tbody>
               {topPaths.map((p) => (
                 <tr>
-                  <td style="font-family:monospace; font-size:0.8rem; max-width:28rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title={p.path}>{short(p.path)}</td>
+                  <td class="admin-wrap admin-code-cell" title={p.path}>{short(p.path)}</td>
                   <td style="text-align:right;">{p.count.toLocaleString()}</td>
                   <td style="text-align:right; color:var(--ink-soft);">{p.unique.toLocaleString()}</td>
                 </tr>
@@ -463,7 +463,7 @@ function fmtTime(iso: string) {
             <tbody>
               {topUtm.map((u) => (
                 <tr>
-                  <td style="font-family:monospace; font-size:0.78rem; max-width:18rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title={u.key}>{u.key}</td>
+                  <td class="admin-wrap admin-code-cell" title={u.key}>{u.key}</td>
                   <td style="font-size:0.82rem;">{u.source}</td>
                   <td style="text-align:right;"><strong>{u.clicks}</strong></td>
                 </tr>
@@ -495,10 +495,10 @@ function fmtTime(iso: string) {
             <tbody id="live-feed">
               {liveFeed.map((v) => (
                 <tr>
-                  <td class="local-time" data-iso={v.when || ""} style="font-size:0.78rem; white-space:nowrap; color:var(--ink-soft);">{fmtTime(v.when || "")}</td>
+                  <td class="local-time admin-nowrap" data-iso={v.when || ""} style="font-size:0.78rem; color:var(--ink-soft);">{fmtTime(v.when || "")}</td>
                   <td style="font-size:0.82rem;">{v.source}</td>
                   <td style="font-size:0.82rem;">{v.country}</td>
-                  <td style="font-family:monospace; font-size:0.78rem; max-width:18rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title={v.path || ""}>{short(v.path || "/")}</td>
+                  <td class="admin-wrap admin-code-cell" title={v.path || ""}>{short(v.path || "/")}</td>
                 </tr>
               ))}
             </tbody>

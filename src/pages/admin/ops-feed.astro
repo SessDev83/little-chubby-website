@@ -76,12 +76,12 @@ const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? 
             <tr class={`tone-${item.tone}`}>
               <td class="nowrap">{formatOpsFeedTime(item.at)}</td>
               <td><code>{item.kind}</code></td>
-              <td>{item.title}</td>
+              <td class="admin-wrap" title={item.title}>{item.title}</td>
               <td>{item.stage}</td>
-              <td title={item.source}>{shortText(item.source, 24)}</td>
+              <td class="admin-wrap" title={item.source}>{shortText(item.source, 24)}</td>
               <td>{item.lang}</td>
               <td><code>{item.visitor}</code></td>
-              <td title={item.path || ""}><code>{shortText(item.path, 42)}</code></td>
+              <td class="admin-wrap" title={item.path || ""}><code>{shortText(item.path, 42)}</code></td>
             </tr>
           ))}
         </tbody>
@@ -105,6 +105,7 @@ const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? 
   function addCell(row: HTMLTableRowElement, value: string, code = false, className = "") {
     const cell = document.createElement("td");
     if (className) cell.className = className;
+    cell.title = value || "";
     if (code) {
       const node = document.createElement("code");
       node.textContent = value || "-";
@@ -133,12 +134,12 @@ const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? 
       row.className = `tone-${item.tone || "quiet"}`;
       addCell(row, item.timeLabel, false, "nowrap");
       addCell(row, item.kind, true);
-      addCell(row, item.title);
+      addCell(row, item.title, false, "admin-wrap");
       addCell(row, item.stage);
-      addCell(row, item.source);
+      addCell(row, item.source, false, "admin-wrap");
       addCell(row, item.lang);
       addCell(row, item.visitor, true);
-      addCell(row, item.path, true);
+      addCell(row, item.path, true, "admin-wrap");
       body.appendChild(row);
     }
   }

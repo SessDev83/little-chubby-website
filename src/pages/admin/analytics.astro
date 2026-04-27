@@ -122,11 +122,11 @@ const recentEvents = events.slice(0, 30);
             {sourceRows.length === 0 && <tr><td colspan="5" class="empty-cell">No event sources yet.</td></tr>}
             {sourceRows.map((row) => (
               <tr>
-                <td><code>{short(row.source, 28)}</code></td>
-                <td>{row.events.toLocaleString()}</td>
-                <td>{row.activated.toLocaleString()}</td>
-                <td>{row.book.toLocaleString()}</td>
-                <td>{row.amazon.toLocaleString()}</td>
+                <td class="admin-wrap" title={row.source}><code>{short(row.source, 28)}</code></td>
+                <td class="admin-number">{row.events.toLocaleString()}</td>
+                <td class="admin-number">{row.activated.toLocaleString()}</td>
+                <td class="admin-number">{row.book.toLocaleString()}</td>
+                <td class="admin-number">{row.amazon.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -149,10 +149,10 @@ const recentEvents = events.slice(0, 30);
             {bookRows.length === 0 && <tr><td colspan="4" class="empty-cell">No book-intent events yet.</td></tr>}
             {bookRows.map((row) => (
               <tr>
-                <td title={row.asinList}><code>{short(row.book, 30)}</code></td>
-                <td>{row.views.toLocaleString()}</td>
-                <td>{row.samples.toLocaleString()}</td>
-                <td>{row.amazon.toLocaleString()}</td>
+                <td class="admin-wrap" title={row.asinList}><code>{short(row.book, 30)}</code></td>
+                <td class="admin-number">{row.views.toLocaleString()}</td>
+                <td class="admin-number">{row.samples.toLocaleString()}</td>
+                <td class="admin-number">{row.amazon.toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -180,11 +180,11 @@ const recentEvents = events.slice(0, 30);
           <tbody>
             {linkableAssetRows.map((row) => (
               <tr>
-                <td title={row.audience}><code>{short(row.id, 34)}</code></td>
-                <td>{row.pageviews.toLocaleString()}</td>
-                <td>{row.qualifiedPageviews.toLocaleString()} · {formatPercent(row.qualifiedShare)}</td>
-                <td>{row.actionEvents.toLocaleString()} · {formatPercent(row.actionRate)}</td>
-                <td title={hostSummary(row)}>{short(hostSummary(row), 32)}</td>
+                <td class="admin-wrap" title={row.audience}><code>{short(row.id, 34)}</code></td>
+                <td class="admin-number">{row.pageviews.toLocaleString()}</td>
+                <td class="admin-number">{row.qualifiedPageviews.toLocaleString()} · {formatPercent(row.qualifiedShare)}</td>
+                <td class="admin-number">{row.actionEvents.toLocaleString()} · {formatPercent(row.actionRate)}</td>
+                <td class="admin-wrap" title={hostSummary(row)}>{short(hostSummary(row), 32)}</td>
               </tr>
             ))}
           </tbody>
@@ -221,9 +221,9 @@ const recentEvents = events.slice(0, 30);
             <tr>
               <td class="nowrap">{fmtTime(event.created_at)}</td>
               <td><code>{event.event_name || "unknown"}</code></td>
-              <td>{short(sourceFor(event), 28)}</td>
+              <td class="admin-wrap" title={sourceFor(event)}>{short(sourceFor(event), 28)}</td>
               <td>{event.lang || "-"}</td>
-              <td title={event.path || ""}><code>{short(event.path, 52)}</code></td>
+              <td class="admin-wrap" title={event.path || ""}><code>{short(event.path, 52)}</code></td>
             </tr>
           ))}
         </tbody>

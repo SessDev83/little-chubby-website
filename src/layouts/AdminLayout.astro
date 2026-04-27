@@ -148,6 +148,79 @@ const navGroups = [
   .admin-nav-link.active .admin-nav-icon {
     color: #fff;
   }
+
+  :global(.admin-page-head),
+  :global(.surface-card),
+  :global(.stat-card),
+  :global(.admin-panel) {
+    min-width: 0;
+  }
+
+  :global(.table-wrap),
+  :global(.admin-table-wrap),
+  :global(.journey-timeline) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  :global(.admin-table) {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  :global(.admin-table th),
+  :global(.admin-table td) {
+    max-width: clamp(8rem, 24vw, 24rem);
+    vertical-align: top;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  :global(.admin-table code),
+  :global(.admin-code-cell) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  :global(.admin-wrap) {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  :global(.admin-truncate) {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  :global(.admin-nowrap),
+  :global(.admin-table .nowrap) {
+    white-space: nowrap;
+  }
+
+  :global(.admin-number) {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :global(.stat-card strong),
+  :global(.stat-number),
+  :global(.stat-value),
+  :global(.mini-num) {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
   @media (max-width: 980px) {
     .admin-nav {
       grid-template-columns: 1fr 1fr;
