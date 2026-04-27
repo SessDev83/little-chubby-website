@@ -197,6 +197,11 @@ const shareUrl = new URL(pathname, siteConfig.siteUrl).toString();
       downloadBtn.disabled = true;
       var origHTML = downloadBtn.innerHTML;
       downloadBtn.textContent = "...";
+      try {
+        if (typeof window.lcpTrack === "function") {
+          window.lcpTrack("download_attempt", { artwork_id: artworkId, content_id: imagePath || "" });
+        }
+      } catch (e) {}
 
       fetch("/api/download-artwork/", {
         method: "POST",
@@ -207,15 +212,18 @@ const shareUrl = new URL(pathname, siteConfig.siteUrl).toString();
       .then(function(res) { return res.json().then(function(d) { return { status: res.status, data: d }; }); })
       .then(function(result) {
         if (result.status === 403 && result.data.error === "no_credits") {
+          try { if (typeof window.lcpTrack === "function") window.lcpTrack("download_blocked", { artwork_id: artworkId, reason: "no_credits" }); } catch (e) {}
           downloadBtn.innerHTML = lang === "es" ? "🥜 Sin Peanuts" : "🥜 No Peanuts";
           setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2500);
           return;
         }
         if (result.status !== 200 || !result.data.ok) {
+          try { if (typeof window.lcpTrack === "function") window.lcpTrack("download_error", { artwork_id: artworkId, status: result.status }); } catch (e) {}
           downloadBtn.textContent = "Error";
           setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2000);
           return;
         }
+        try { if (typeof window.lcpTrack === "function") window.lcpTrack("download_success", { artwork_id: artworkId, content_id: imagePath || "" }); } catch (e) {}
         // Blob download
         fetch(result.data.signedUrl)
           .then(function(r) { return r.blob(); })
@@ -235,6 +243,7 @@ const shareUrl = new URL(pathname, siteConfig.siteUrl).toString();
         setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2000);
       })
       .catch(function() {
+        try { if (typeof window.lcpTrack === "function") window.lcpTrack("download_error", { artwork_id: artworkId, network: true }); } catch (e) {}
         downloadBtn.textContent = "Error";
         setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2000);
       });
@@ -253,6 +262,11 @@ const shareUrl = new URL(pathname, siteConfig.siteUrl).toString();
       else if (link.classList.contains("share-cl")) platform = "copy-link";
 
       sharedPlatform = platform;
+      try {
+        if (typeof window.lcpTrack === "function") {
+          window.lcpTrack("share_click", { platform: platform, artwork_id: downloadBtn ? downloadBtn.getAttribute("data-artwork-id") : "" });
+        }
+      } catch (e) {}
 
       // Show claim button after share dialog opens
       if (claimBtn) {
@@ -292,18 +306,22 @@ const shareUrl = new URL(pathname, siteConfig.siteUrl).toString();
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.credited) {
+          try { if (typeof window.lcpTrack === "function") window.lcpTrack("share_credit_success", { platform: sharedPlatform }); } catch (e) {}
           userBalance = data.balance;
           updateDisplay();
           claimBtn.innerHTML = '<span style="color:var(--brand-green)">✅ +1 🥜!</span>';
           claimBtn.classList.remove("artwork-claim-btn--pulse");
         } else if (data.duplicate) {
+          try { if (typeof window.lcpTrack === "function") window.lcpTrack("share_credit_error", { platform: sharedPlatform, reason: "duplicate" }); } catch (e) {}
           claimBtn.textContent = lang === "es" ? "Ya reclamado hoy" : "Already claimed today";
         } else {
+          try { if (typeof window.lcpTrack === "function") window.lcpTrack("share_credit_error", { platform: sharedPlatform }); } catch (e) {}
           claimBtn.textContent = lang === "es" ? "Máximo diario alcanzado" : "Daily max reached";
         }
         setTimeout(function() { claimBtn.style.display = "none"; claimBtn.innerHTML = origHTML; claimBtn.disabled = false; }, 3000);
       })
       .catch(function() {
+        try { if (typeof window.lcpTrack === "function") window.lcpTrack("share_credit_error", { platform: sharedPlatform, network: true }); } catch (e) {}
         claimBtn.textContent = "Error";
         setTimeout(function() { claimBtn.style.display = "none"; claimBtn.innerHTML = origHTML; claimBtn.disabled = false; }, 2000);
       });

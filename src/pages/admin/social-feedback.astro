@@ -1,0 +1,171 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildChannelScorecard } from "../../lib/admin-channel-scorecard.mjs";
+import { buildTrafficQualitySummary, fetchAdminKpiWindow, formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+import { buildSocialFeedbackLoop } from "../../lib/admin-social-feedback.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const now = new Date();
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d", now);
+const rangeParam = range.rangeKey;
+const sc = getServiceClient() as any;
+const kpiWindow = await fetchAdminKpiWindow(sc, { rangeParam, now, limit: 10000 });
+const [{ data: pageviewRows }, { data: contentRows }] = await Promise.all([
+  sc.from("pageviews").select("path,landing_page,visitor_hash,utm_source,utm_medium,utm_campaign,utm_content,referrer,created_at").gte("created_at", range.sinceIso).order("created_at", { ascending: false }).limit(10000),
+  sc.from("content_performance").select("post_id,post_type,platform,likes,comments,shares,clicks,reach,impressions,posted_at,content_url,created_at").gte("created_at", range.sinceIso).order("posted_at", { ascending: false }).limit(1000),
+]);
+
+const events = kpiWindow.events;
+const pageviews = pageviewRows ?? kpiWindow.pageviews;
+const trafficQuality = buildTrafficQualitySummary({ events, pageviews });
+const channelScorecard = buildChannelScorecard({ events, pageviews });
+const report = buildSocialFeedbackLoop({ contentPerformance: contentRows ?? [], pageviews, events, channelScorecard, trafficQuality });
+const summary = report.summary;
+const short = shortText;
+---
+
+<AdminLayout title="Social Feedback" current="social-feedback">
+  <div class="admin-page-head">
+    <div>
+      <h1>Social Feedback Loop</h1>
+      <p>Window: last {range.label} - generated {formatKpiTime(range.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Social feedback range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card"><span>Top platform</span><strong>{summary.topPlatform}</strong><small>{summary.platforms.toLocaleString()} platform(s)</small></div>
+    <div class="stat-card"><span>Top content</span><strong>{summary.topContentType}</strong><small>{summary.contentTypes.toLocaleString()} type(s)</small></div>
+    <div class="stat-card"><span>Tagged pageviews</span><strong>{summary.taggedPageviews.toLocaleString()}</strong><small>{pageviews.length.toLocaleString()} total pageviews</small></div>
+    <div class="stat-card"><span>Site outcomes</span><strong>{summary.totalMeaningfulActions.toLocaleString()}</strong><small>from social/source rows</small></div>
+    <div class="stat-card"><span>Test candidates</span><strong>{summary.testCandidates.toLocaleString()}</strong><small>owner review only</small></div>
+  </section>
+
+  <section class="surface-card feedback-panel notice-panel">
+    <strong>Scope boundary</strong>
+    <p>{report.note}</p>
+  </section>
+
+  <section class="feedback-grid">
+    <div class="surface-card feedback-panel">
+      <div class="panel-head"><h2>Social Distribution Packets</h2></div>
+      <div class="packet-stack">
+        {report.packetRows.length === 0 && <p class="empty-note">No social feedback packets in this window.</p>}
+        {report.packetRows.map((packet: any) => (
+          <article class="packet-card">
+            <div class="packet-top"><strong>{packet.metric}</strong><span class:list={["priority-pill", packet.severity]}>{packet.severity}</span></div>
+            <p>{packet.finding}</p>
+            <small>{packet.recommended_action}</small>
+          </article>
+        ))}
+      </div>
+    </div>
+    <div class="surface-card feedback-panel">
+      <div class="panel-head"><h2>Guardrails</h2></div>
+      <ul class="guardrail-list">
+        {report.guardrails.map((item: string) => <li>{item}</li>)}
+      </ul>
+    </div>
+  </section>
+
+  <section class="surface-card feedback-panel">
+    <div class="panel-head"><h2>Platform Outcomes</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Platform</th><th>Priority</th><th>Posts</th><th>Clicks</th><th>Site views</th><th>Actions</th><th>Book</th><th>Amazon</th><th>Top content</th><th>Action</th></tr></thead>
+        <tbody>
+          {report.platformRows.length === 0 && <tr><td colspan="10" class="empty-cell">No platform rows in this window.</td></tr>}
+          {report.platformRows.map((row: any) => (
+            <tr>
+              <td><strong>{row.platform}</strong></td>
+              <td><span class:list={["priority-pill", row.priority.toLowerCase().replace(" ", "-")]}>{row.priority}</span></td>
+              <td>{row.posts.toLocaleString()}<small>{row.reach.toLocaleString()} reach</small></td>
+              <td>{row.clicks.toLocaleString()}<small>{row.clickRate}</small></td>
+              <td>{row.pageviews.toLocaleString()}<small>{row.uniqueVisitors.toLocaleString()} visitors</small></td>
+              <td>{row.meaningfulActions.toLocaleString()}<small>{row.actionRate}</small></td>
+              <td>{row.bookIntent.toLocaleString()}</td>
+              <td>{row.amazonClicks.toLocaleString()}<small>{row.amazonRate}</small></td>
+              <td>{row.topContentType}</td>
+              <td>{row.recommendedAction}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="split-grid">
+    <div class="surface-card feedback-panel">
+      <div class="panel-head"><h2>Content Type Outcomes</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Type</th><th>Priority</th><th>Posts</th><th>Clicks</th><th>Actions</th><th>Amazon</th><th>Platform</th></tr></thead>
+        <tbody>
+          {report.contentRows.map((row: any) => (
+            <tr><td><code>{row.contentType}</code></td><td><span class:list={["priority-pill", row.priority.toLowerCase().replace(" ", "-")]}>{row.priority}</span></td><td>{row.posts.toLocaleString()}</td><td>{row.clicks.toLocaleString()} <small>{row.clickRate}</small></td><td>{row.meaningfulActions.toLocaleString()} <small>{row.actionRate}</small></td><td>{row.amazonClicks.toLocaleString()} <small>{row.amazonRate}</small></td><td>{row.topPlatform}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card feedback-panel">
+      <div class="panel-head"><h2>Creative UTM Outcomes</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Creative</th><th>Source</th><th>Views</th><th>Actions</th><th>Book</th><th>Amazon</th><th>Action</th></tr></thead>
+        <tbody>
+          {report.creativeRows.map((row: any) => (
+            <tr><td title={row.content}>{short(row.content, 24)}</td><td>{row.source}</td><td>{row.pageviews.toLocaleString()}</td><td>{row.meaningfulActions.toLocaleString()} <small>{row.actionRate}</small></td><td>{row.bookIntent.toLocaleString()}</td><td>{row.amazonClicks.toLocaleString()} <small>{row.amazonRate}</small></td><td>{row.recommendedAction}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn { display: inline-flex; align-items: center; min-height: 2rem; padding: 0.35rem 0.7rem; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--ink-soft); text-decoration: none; font-size: 0.85rem; font-weight: 700; background: var(--surface); }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.8rem; margin-bottom: 1rem; }
+  .stat-card, .feedback-panel { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); padding: 0.95rem; }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.15rem; overflow-wrap: anywhere; }
+  .stat-card small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .notice-panel { margin-bottom: 1rem; border-color: rgba(37,99,235,0.25); background: rgba(37,99,235,0.06); }
+  .notice-panel p { margin: 0.25rem 0 0; color: var(--ink-soft); }
+  .feedback-panel { margin-bottom: 1rem; }
+  .feedback-grid, .split-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .packet-stack { display: grid; gap: 0.7rem; }
+  .packet-card { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.75rem; background: rgba(255,255,255,0.55); }
+  .packet-top { display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; }
+  .packet-card p { margin: 0.55rem 0 0; color: var(--ink); font-size: 0.86rem; }
+  .packet-card small { display: block; margin-top: 0.45rem; color: var(--ink-soft); font-size: 0.78rem; }
+  .guardrail-list { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: 0.88rem; }
+  .guardrail-list li + li { margin-top: 0.35rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .priority-pill { display: inline-flex; align-items: center; padding: 0.18rem 0.45rem; border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 0.7rem; font-weight: 800; }
+  .priority-pill.test-next, .priority-pill.green { color: #166534; background: rgba(22,101,52,0.08); border-color: rgba(22,101,52,0.22); }
+  .priority-pill.watch, .priority-pill.yellow { color: #92400e; background: rgba(146,64,14,0.08); border-color: rgba(146,64,14,0.22); }
+  .priority-pill.hold, .priority-pill.neutral { color: #475569; background: rgba(71,85,105,0.08); border-color: rgba(71,85,105,0.22); }
+  .empty-note, .empty-cell { color: var(--ink-soft); }
+  @media (max-width: 900px) { .feedback-grid, .split-grid { grid-template-columns: 1fr; } }
+</style>

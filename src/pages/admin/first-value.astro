@@ -1,0 +1,177 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildFirstValueAnalysis } from "../../lib/admin-first-value-analysis.mjs";
+import { fetchAdminKpiWindow, formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d");
+const rangeParam = range.rangeKey;
+const sc = getServiceClient() as any;
+const kpiWindow = await fetchAdminKpiWindow(sc, { rangeParam, limit: 10000 });
+const analysis = buildFirstValueAnalysis({ events: kpiWindow.events, pageviews: kpiWindow.pageviews });
+const summary = analysis.summary;
+const short = shortText;
+---
+
+<AdminLayout title="First Value" current="first-value">
+  <div class="admin-page-head">
+    <div>
+      <h1>First Value Analysis</h1>
+      <p>Window: last {range.label} - generated {formatKpiTime(range.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="First value range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card"><span>Actors with first value</span><strong>{summary.actorsWithFirstValue.toLocaleString()}</strong><small>{summary.sampleWarning}</small></div>
+    <div class="stat-card"><span>Top first value</span><strong>{short(summary.topFirstValue, 24)}</strong><small>{summary.firstValueTypes.toLocaleString()} action types</small></div>
+    <div class="stat-card"><span>Best return action</span><strong>{short(summary.bestReturnAction, 24)}</strong><small>{summary.returnedActors.toLocaleString()} returned actors</small></div>
+    <div class="stat-card"><span>Best book action</span><strong>{short(summary.bestBookAction, 24)}</strong><small>{summary.bookIntentActors.toLocaleString()} book-intent actors</small></div>
+    <div class="stat-card"><span>Amazon actors</span><strong>{summary.amazonClickActors.toLocaleString()}</strong><small>after first value</small></div>
+    <div class="stat-card"><span>Community actors</span><strong>{summary.communityActors.toLocaleString()}</strong><small>{short(summary.bestCommunityAction, 24)}</small></div>
+  </section>
+
+  <section class="surface-card first-value-panel notice-panel">
+    <strong>Scope boundary</strong>
+    <p>{analysis.note}</p>
+  </section>
+
+  <section class="surface-card first-value-panel">
+    <div class="panel-head"><h2>First Value Outcome Rows</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>First value</th><th>Actors</th><th>Return</th><th>Second session</th><th>Activation</th><th>Book intent</th><th>Amazon</th><th>Community</th><th>Top source</th><th>Top follow-up</th><th>Recommendation</th></tr></thead>
+        <tbody>
+          {analysis.firstValueRows.length === 0 && <tr><td colspan="11" class="empty-cell">No first-value actors in this window.</td></tr>}
+          {analysis.firstValueRows.map((row: any) => (
+            <tr>
+              <td><code>{row.firstValue}</code><small>{row.sampleWarning}</small></td>
+              <td>{row.actors.toLocaleString()}</td>
+              <td>{row.returned.toLocaleString()}<small>{row.returnRate}</small></td>
+              <td>{row.secondSession.toLocaleString()}<small>{row.secondSessionRate}</small></td>
+              <td>{row.activated.toLocaleString()}<small>{row.activationRate}</small></td>
+              <td>{row.bookIntent.toLocaleString()}<small>{row.bookIntentRate}</small></td>
+              <td>{row.amazonClicks.toLocaleString()}<small>{row.amazonRate}</small></td>
+              <td>{row.community.toLocaleString()}<small>{row.communityRate}</small></td>
+              <td>{short(row.topSource, 28)}</td>
+              <td><code>{row.topFollowup}</code></td>
+              <td>{row.recommendation}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="first-value-grid">
+    <div class="surface-card first-value-panel">
+      <div class="panel-head"><h2>Source To First Value</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Source</th><th>First value</th><th>Actors</th><th>Return</th><th>Book</th><th>Amazon</th></tr></thead>
+        <tbody>
+          {analysis.sourceRows.length === 0 && <tr><td colspan="6" class="empty-cell">No source-linked first value rows yet.</td></tr>}
+          {analysis.sourceRows.map((row: any) => (
+            <tr>
+              <td>{short(row.source, 28)}</td>
+              <td><code>{row.firstValue}</code></td>
+              <td>{row.actors.toLocaleString()}</td>
+              <td>{row.returned.toLocaleString()}<small>{row.returnRate}</small></td>
+              <td>{row.bookIntent.toLocaleString()}<small>{row.bookIntentRate}</small></td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card first-value-panel">
+      <div class="panel-head"><h2>Anonymous Outcome Examples</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Actor</th><th>First value</th><th>Source</th><th>Return</th><th>Book</th><th>Follow-up</th></tr></thead>
+        <tbody>
+          {analysis.actorRows.length === 0 && <tr><td colspan="6" class="empty-cell">No actor-level outcome examples in this window.</td></tr>}
+          {analysis.actorRows.map((row: any) => (
+            <tr>
+              <td><code>{short(row.id, 12)}</code></td>
+              <td><code>{row.firstValue}</code></td>
+              <td>{short(row.source, 24)}</td>
+              <td>{row.returned ? "yes" : "no"}</td>
+              <td>{row.bookIntent ? "yes" : "no"}</td>
+              <td><code>{row.followup}</code></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card, .first-value-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.2rem; }
+  .stat-card small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .notice-panel { margin-bottom: 1rem; border-color: rgba(37,99,235,0.25); background: rgba(37,99,235,0.06); }
+  .notice-panel p { margin: 0.25rem 0 0; color: var(--ink-soft); }
+  .first-value-panel { margin-bottom: 1rem; }
+  .first-value-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.85rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .admin-table code { font-size: 0.76rem; }
+  .empty-cell { color: var(--ink-soft); text-align: center; }
+  @media (max-width: 1080px) {
+    .first-value-grid { grid-template-columns: 1fr; }
+  }
+</style>

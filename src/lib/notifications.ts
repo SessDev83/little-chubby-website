@@ -11,7 +11,7 @@ const FROM = "Little Chubby Press <hello@littlechubbypress.com>";
 
 // ── HTML escape helper (prevents XSS in emails) ─────
 
-function escapeHtml(str: string): string {
+export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

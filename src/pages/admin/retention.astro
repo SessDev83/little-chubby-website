@@ -1,0 +1,210 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildRetentionCohorts } from "../../lib/admin-retention-cohorts.mjs";
+import { formatKpiTime, resolveAdminRange } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "90d");
+const rangeParam = range.rangeKey;
+const sc = getServiceClient();
+
+const [{ data: profiles }, { data: eventRows }] = await Promise.all([
+  sc
+    .from("profiles")
+    .select("id, created_at, lang_pref")
+    .gte("created_at", range.sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(3000),
+  (sc as any)
+    .from("conversion_events")
+    .select("event_name,path,props,lang,created_at")
+    .gte("created_at", range.sinceIso)
+    .order("created_at", { ascending: true })
+    .limit(10000),
+]);
+
+const cohorts = buildRetentionCohorts({ profiles: profiles ?? [], events: eventRows ?? [], now: new Date(range.generatedAtIso) });
+const summary = cohorts.summary;
+---
+
+<AdminLayout title="Retention" current="retention">
+  <div class="admin-page-head">
+    <div>
+      <h1>Retention Cohorts</h1>
+      <p>Registered users from last {range.label} - generated {formatKpiTime(range.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Retention range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card"><span>Registered</span><strong>{summary.registered.toLocaleString()}</strong></div>
+    <div class="stat-card"><span>D1 retained</span><strong>{summary.d1Rate}</strong><small>{summary.retainedD1}/{summary.eligibleD1}</small></div>
+    <div class="stat-card"><span>D7 retained</span><strong>{summary.d7Rate}</strong><small>{summary.retainedD7}/{summary.eligibleD7}</small></div>
+    <div class="stat-card"><span>D30 retained</span><strong>{summary.d30Rate}</strong><small>{summary.retainedD30}/{summary.eligibleD30}</small></div>
+    <div class="stat-card"><span>Activated</span><strong>{summary.activationRate}</strong><small>{summary.activated}/{summary.registered}</small></div>
+    <div class="stat-card"><span>Second session</span><strong>{summary.secondSessionRate}</strong><small>{summary.secondSession}/{summary.registered}</small></div>
+  </section>
+
+  <section class="surface-card retention-panel">
+    <div class="panel-head"><h2>Cohorts By Registration Week</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Cohort</th><th>Registered</th><th>D1</th><th>D7</th><th>D30</th><th>Activation</th><th>Second session</th><th>Top first value</th><th>Top source</th></tr></thead>
+        <tbody>
+          {cohorts.cohortRows.length === 0 && <tr><td colspan="9" class="empty-cell">No registered-user cohorts in this window.</td></tr>}
+          {cohorts.cohortRows.map((row: any) => (
+            <tr>
+              <td><strong>{row.label}</strong></td>
+              <td>{row.registered.toLocaleString()}</td>
+              <td>{row.d1Rate} <small>{row.retainedD1}/{row.eligibleD1}</small></td>
+              <td>{row.d7Rate} <small>{row.retainedD7}/{row.eligibleD7}</small></td>
+              <td>{row.d30Rate} <small>{row.retainedD30}/{row.eligibleD30}</small></td>
+              <td>{row.activationRate}</td>
+              <td>{row.secondSessionRate}</td>
+              <td><code>{row.topFirstValue}</code></td>
+              <td>{row.topSource}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="retention-grid">
+    <div class="surface-card retention-panel">
+      <div class="panel-head"><h2>Source Cohorts</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Source</th><th>Users</th><th>D7</th><th>Activation</th><th>Second session</th></tr></thead>
+        <tbody>
+          {cohorts.sourceRows.length === 0 && <tr><td colspan="5" class="empty-cell">No source-linked registrations yet.</td></tr>}
+          {cohorts.sourceRows.map((row: any) => (
+            <tr>
+              <td>{row.label}</td>
+              <td>{row.registered.toLocaleString()}</td>
+              <td>{row.d7Rate}</td>
+              <td>{row.activationRate}</td>
+              <td>{row.secondSessionRate}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card retention-panel">
+      <div class="panel-head"><h2>First Value Actions</h2></div>
+      <div class="value-stack">
+        {cohorts.firstValueRows.length === 0 && <p class="empty-note">No first-value actions found in this window.</p>}
+        {cohorts.firstValueRows.map((row: any) => (
+          <div class="value-row"><code>{row.eventName}</code><strong>{row.count.toLocaleString()}</strong></div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="surface-card retention-panel">
+    <div class="panel-head"><h2>Recent Registered User Paths</h2></div>
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead><tr><th>Registered</th><th>Lang</th><th>First stage</th><th>First source</th><th>First value</th><th>Activated</th><th>Second session</th><th>D1</th><th>D7</th><th>D30</th></tr></thead>
+        <tbody>
+          {cohorts.recentUsers.length === 0 && <tr><td colspan="10" class="empty-cell">No recent registered users in this window.</td></tr>}
+          {cohorts.recentUsers.map((row: any) => (
+            <tr>
+              <td>{formatKpiTime(row.registeredAt)}</td>
+              <td>{row.lang}</td>
+              <td>{row.firstStage}</td>
+              <td>{row.firstSource}</td>
+              <td><code>{row.firstValue}</code></td>
+              <td>{row.activated ? "yes" : "no"}</td>
+              <td>{row.secondSession ? "yes" : "no"}</td>
+              <td>{row.d1 ? "yes" : "no"}</td>
+              <td>{row.d7 ? "yes" : "no"}</td>
+              <td>{row.d30 ? "yes" : "no"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card, .retention-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.25rem; }
+  .stat-card small { color: var(--ink-soft); font-weight: 700; }
+  .retention-panel { margin-bottom: 1rem; }
+  .retention-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr); gap: 0.85rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table small { display: block; color: var(--ink-soft); font-weight: 700; }
+  .admin-table code { font-size: 0.76rem; }
+  .value-stack { display: grid; gap: 0.45rem; }
+  .value-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 0.65rem;
+    background: var(--surface-strong, #f8f8f8);
+  }
+  .value-row strong { color: var(--brand-blue); }
+  .empty-cell, .empty-note { color: var(--ink-soft); text-align: center; }
+  .empty-note { margin: 0; }
+  @media (max-width: 900px) {
+    .retention-grid { grid-template-columns: 1fr; }
+  }
+</style>

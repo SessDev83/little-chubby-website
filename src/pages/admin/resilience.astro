@@ -1,0 +1,240 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { books } from "../../data/books";
+import { buildResilienceReport } from "../../lib/admin-resilience-report.mjs";
+import { fetchAdminKpiWindow, formatKpiTime, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d");
+const rangeParam = range.rangeKey;
+const sc = getServiceClient() as any;
+const kpiWindow = await fetchAdminKpiWindow(sc, { rangeParam, limit: 10000 });
+
+const [{ data: subscriberRows }, { data: profileRows }, { data: reviewRows }] = await Promise.all([
+  sc
+    .from("newsletter_subscribers")
+    .select("confirmed,source,lang_pref,created_at")
+    .limit(10000),
+  sc
+    .from("profiles")
+    .select("id,created_at,lang_pref")
+    .limit(10000),
+  sc
+    .from("book_reviews")
+    .select("book_id,rating,status,featured,submitted_at")
+    .gte("submitted_at", range.sinceIso)
+    .order("submitted_at", { ascending: false })
+    .limit(10000),
+]);
+
+const report = buildResilienceReport({
+  events: kpiWindow.events,
+  pageviews: kpiWindow.pageviews,
+  subscribers: subscriberRows ?? [],
+  profiles: profileRows ?? [],
+  reviews: reviewRows ?? [],
+  books,
+});
+const summary = report.summary;
+const short = shortText;
+---
+
+<AdminLayout title="Resilience" current="resilience">
+  <div class="admin-page-head">
+    <div>
+      <h1>Resilience Metrics</h1>
+      <p>Window: last {range.label} - generated {formatKpiTime(range.generatedAtIso)}</p>
+    </div>
+    <div class="range-actions" aria-label="Resilience range">
+      {(["7d", "30d", "90d"] as const).map((item) => (
+        <a href={`?range=${item}`} class:list={["range-btn", { active: rangeParam === item }]}>{item}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class="stat-grid">
+    <div class="stat-card score-card"><span>Resilience score</span><strong>{summary.resilienceScore}</strong><small>{summary.status}</small></div>
+    <div class="stat-card"><span>Confirmed subscribers</span><strong>{summary.confirmedSubscribers.toLocaleString()}</strong><small>{summary.totalSubscribers.toLocaleString()} total</small></div>
+    <div class="stat-card"><span>Registered users</span><strong>{summary.registeredUsers.toLocaleString()}</strong><small>{summary.uniqueVisitors.toLocaleString()} visitors in window</small></div>
+    <div class="stat-card"><span>Book intent</span><strong>{summary.bookIntent.toLocaleString()}</strong><small>{summary.amazonRate} to Amazon</small></div>
+    <div class="stat-card"><span>Repeat downloaders</span><strong>{summary.repeatDownloaders.toLocaleString()}</strong><small>same user or visitor</small></div>
+    <div class="stat-card"><span>Option signals</span><strong>{(summary.supportInterest + summary.bundleInterest).toLocaleString()}</strong><small>support or bundle interest</small></div>
+  </section>
+
+  <section class="surface-card resilience-panel notice-panel">
+    <strong>Scope boundary</strong>
+    <p>{report.note}</p>
+  </section>
+
+  <section class="surface-card resilience-panel">
+    <div class="panel-head"><h2>Resilience Scorecard</h2></div>
+    <div class="area-grid">
+      {report.areaRows.map((row: any) => (
+        <article class="area-card">
+          <div class="area-meta">
+            <strong>{row.label}</strong>
+            <span class:list={["status-pill", row.status.toLowerCase()]}>{row.status}</span>
+          </div>
+          <div class="score-line"><span style={`width:${row.score}%`}></span></div>
+          <p>{row.evidence}</p>
+          <small>{row.nextAction}</small>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <section class="resilience-grid">
+    <div class="surface-card resilience-panel">
+      <div class="panel-head"><h2>Decision Metrics</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Metric</th><th>Value</th><th>Detail</th></tr></thead>
+        <tbody>
+          {report.metricRows.map((row: any) => (
+            <tr>
+              <td>{row.metric}</td>
+              <td><strong>{row.value}</strong></td>
+              <td>{row.detail}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card resilience-panel">
+      <div class="panel-head"><h2>Risk Register</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Severity</th><th>Risk</th><th>Action</th></tr></thead>
+        <tbody>
+          {report.riskRows.map((row: any) => (
+            <tr>
+              <td><span class:list={["risk-pill", row.severity.toLowerCase()]}>{row.severity}</span></td>
+              <td><strong>{row.title}</strong><small>{row.detail}</small></td>
+              <td>{row.action}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="resilience-grid">
+    <div class="surface-card resilience-panel">
+      <div class="panel-head"><h2>Top Book Dependency Signals</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Book</th><th>Intent</th><th>Amazon</th><th>Reviews</th><th>Action</th></tr></thead>
+        <tbody>
+          {report.bookRows.length === 0 && <tr><td colspan="5" class="empty-cell">No book rows available.</td></tr>}
+          {report.bookRows.map((row: any) => (
+            <tr>
+              <td title={row.title}>{short(row.title, 34)}</td>
+              <td>{row.bookIntent.toLocaleString()}</td>
+              <td>{row.amazonClicks.toLocaleString()}</td>
+              <td>{row.approvedReviews.toLocaleString()} approved</td>
+              <td>{row.recommendedAction}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="surface-card resilience-panel">
+      <div class="panel-head"><h2>Traffic Independence Mix</h2></div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Category</th><th>Pageviews</th><th>Top label</th></tr></thead>
+        <tbody>
+          {report.sourceRows.length === 0 && <tr><td colspan="3" class="empty-cell">No pageview source rows in this window.</td></tr>}
+          {report.sourceRows.map((row: any) => (
+            <tr>
+              <td>{row.category}</td>
+              <td>{row.pageviews.toLocaleString()}</td>
+              <td>{short(row.topLabel, 34)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card, .resilience-panel, .area-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.25rem; }
+  .stat-card small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.76rem; }
+  .score-card strong { font-size: 1.55rem; }
+  .notice-panel { margin-bottom: 1rem; border-color: rgba(220,150,50,0.35); background: rgba(220,150,50,0.07); }
+  .notice-panel p { margin: 0.25rem 0 0; color: var(--ink-soft); }
+  .resilience-panel { margin-bottom: 1rem; }
+  .resilience-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.85rem; }
+  .panel-head { margin-bottom: 0.8rem; }
+  .area-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; }
+  .area-card { min-height: 10rem; }
+  .area-meta { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+  .status-pill, .risk-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.18rem 0.45rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-weight: 800;
+    border: 1px solid var(--line);
+  }
+  .status-pill.strong, .risk-pill.low { color: #166534; background: rgba(22,101,52,0.08); border-color: rgba(22,101,52,0.22); }
+  .status-pill.healthy, .risk-pill.medium { color: #92400e; background: rgba(146,64,14,0.08); border-color: rgba(146,64,14,0.22); }
+  .status-pill.weak, .risk-pill.high { color: #991b1b; background: rgba(153,27,27,0.08); border-color: rgba(153,27,27,0.22); }
+  .score-line { height: 0.45rem; margin: 0.75rem 0; border-radius: 999px; background: var(--surface-strong, #f1f1f1); overflow: hidden; }
+  .score-line span { display: block; height: 100%; border-radius: inherit; background: var(--brand-blue); }
+  .area-card p { margin: 0 0 0.5rem; color: var(--ink); font-size: 0.86rem; }
+  .area-card small, .admin-table small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.74rem; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  .admin-table th, .admin-table td { padding: 0.5rem 0.58rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .empty-cell { color: var(--ink-soft); text-align: center; }
+  @media (max-width: 980px) {
+    .resilience-grid { grid-template-columns: 1fr; }
+  }
+</style>
