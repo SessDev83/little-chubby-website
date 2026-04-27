@@ -1,0 +1,405 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const rangeParam = (Astro.url.searchParams.get("range") || "7d").toLowerCase();
+const RANGES: Record<string, number> = { "24h": 1, "7d": 7, "30d": 30, "90d": 90 };
+const days = RANGES[rangeParam] ?? 7;
+const sinceIso = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+type ConversionEvent = {
+  event_name: string | null;
+  path: string | null;
+  visitor_hash: string | null;
+  props: Record<string, unknown> | null;
+  lang: string | null;
+  created_at: string | null;
+};
+
+type PageviewRow = {
+  path: string | null;
+  visitor_hash: string | null;
+  utm_source: string | null;
+  referrer: string | null;
+  created_at: string | null;
+};
+
+const sc = getServiceClient() as any;
+
+const [
+  { data: eventRows, count: totalEventCount },
+  { data: pageviewRows, count: totalPageviewCount },
+] = await Promise.all([
+  sc
+    .from("conversion_events")
+    .select("event_name,path,visitor_hash,props,lang,created_at", { count: "exact" })
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(5000),
+  sc
+    .from("pageviews")
+    .select("path,visitor_hash,utm_source,referrer,created_at", { count: "exact" })
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(5000),
+]);
+
+const events = (eventRows ?? []) as ConversionEvent[];
+const pageviews = (pageviewRows ?? []) as PageviewRow[];
+const totalEvents = totalEventCount ?? events.length;
+const totalPageviews = totalPageviewCount ?? pageviews.length;
+const uniqueVisitors = new Set(pageviews.map((row) => row.visitor_hash).filter(Boolean)).size;
+
+function eventCount(name: string) {
+  return events.filter((event) => event.event_name === name).length;
+}
+
+function pct(value: number, total: number) {
+  if (!total) return "0.0%";
+  return `${((value / total) * 100).toFixed(1)}%`;
+}
+
+function prop(event: ConversionEvent, key: string) {
+  const value = event.props?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+function fallbackStage(eventName: string | null) {
+  const name = eventName || "";
+  if (name === "amazon_click") return "amazon_click";
+  if (/book_page|sample/.test(name)) return "book_intent";
+  if (/lead_magnet|newsletter/.test(name)) return "lead";
+  if (/register_submit_success|login_submit_success/.test(name)) return "registered";
+  if (/download/.test(name)) return "activated";
+  if (/lottery|review|share|art_|reaction/.test(name)) return "community";
+  if (/return_session/.test(name)) return "return";
+  return "other";
+}
+
+function sourceFor(event: ConversionEvent) {
+  return prop(event, "utm_source") || prop(event, "source") || "unknown";
+}
+
+function short(value: string | null | undefined, max = 46) {
+  const text = value || "-";
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1)}...`;
+}
+
+function fmtTime(iso: string | null) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+const leadEvents = eventCount("lead_magnet_submit_success") + eventCount("newsletter_inline_submit_success") + eventCount("newsletter_confirmed");
+const registerSuccess = eventCount("register_submit_success");
+const downloadSuccess = eventCount("download_success");
+const downloadBlocked = eventCount("download_blocked");
+const bookViews = eventCount("book_page_viewed");
+const sampleViews = eventCount("sample_viewed");
+const sampleClicks = eventCount("sample_cta_click");
+const amazonClicks = eventCount("amazon_click");
+const shareClicks = eventCount("share_click");
+const shareCredits = eventCount("share_credit_success");
+const bookIntent = bookViews + sampleViews + sampleClicks + amazonClicks;
+
+const funnelRows = [
+  { stage: "Visit", count: totalPageviews, rateFromPrior: "-" },
+  { stage: "Lead", count: leadEvents, rateFromPrior: pct(leadEvents, totalPageviews) },
+  { stage: "Registered", count: registerSuccess, rateFromPrior: pct(registerSuccess, Math.max(leadEvents, 1)) },
+  { stage: "Activated", count: downloadSuccess, rateFromPrior: pct(downloadSuccess, Math.max(registerSuccess || leadEvents, 1)) },
+  { stage: "Community", count: shareCredits, rateFromPrior: pct(shareCredits, Math.max(downloadSuccess || shareClicks, 1)) },
+  { stage: "Book Intent", count: bookIntent, rateFromPrior: pct(bookIntent, totalPageviews) },
+  { stage: "Amazon Click", count: amazonClicks, rateFromPrior: pct(amazonClicks, Math.max(bookIntent, 1)) },
+];
+
+const stageMap = new Map<string, number>();
+for (const event of events) {
+  const stage = prop(event, "funnel_stage") || fallbackStage(event.event_name);
+  stageMap.set(stage, (stageMap.get(stage) ?? 0) + 1);
+}
+const stageBreakdown = [...stageMap.entries()]
+  .map(([stage, count]) => ({ stage, count }))
+  .sort((a, b) => b.count - a.count);
+
+const sourceMap = new Map<string, { events: number; activated: number; amazon: number; book: number }>();
+for (const event of events) {
+  const source = sourceFor(event);
+  const current = sourceMap.get(source) ?? { events: 0, activated: 0, amazon: 0, book: 0 };
+  current.events += 1;
+  if (event.event_name === "download_success") current.activated += 1;
+  if (event.event_name === "amazon_click") current.amazon += 1;
+  if (event.event_name === "book_page_viewed") current.book += 1;
+  sourceMap.set(source, current);
+}
+const sourceRows = [...sourceMap.entries()]
+  .map(([source, values]) => ({ source, ...values }))
+  .sort((a, b) => b.events - a.events)
+  .slice(0, 12);
+
+const bookMap = new Map<string, { views: number; samples: number; amazon: number; asins: Set<string> }>();
+for (const event of events) {
+  const bookId = prop(event, "book_id");
+  const asin = prop(event, "asin");
+  if (!bookId && !asin) continue;
+  const key = bookId || asin;
+  const current = bookMap.get(key) ?? { views: 0, samples: 0, amazon: 0, asins: new Set<string>() };
+  if (event.event_name === "book_page_viewed") current.views += 1;
+  if (event.event_name === "sample_viewed" || event.event_name === "sample_cta_click") current.samples += 1;
+  if (event.event_name === "amazon_click") current.amazon += 1;
+  if (asin) current.asins.add(asin);
+  bookMap.set(key, current);
+}
+const bookRows = [...bookMap.entries()]
+  .map(([book, values]) => ({ book, ...values, asinList: [...values.asins].join(", ") || "-" }))
+  .sort((a, b) => (b.amazon + b.views + b.samples) - (a.amazon + a.views + a.samples))
+  .slice(0, 10);
+
+const recentEvents = events.slice(0, 30);
+---
+
+<AdminLayout title="Analytics" current="analytics">
+  <div class="admin-page-head">
+    <div>
+      <h1>Analytics Dashboard</h1>
+      <p>Window: last {days === 1 ? "24 hours" : `${days} days`} · generated {new Date().toLocaleString()}</p>
+    </div>
+    <div class="range-actions" aria-label="Analytics range">
+      {(["24h", "7d", "30d", "90d"] as const).map((range) => (
+        <a href={`?range=${range}`} class:list={["range-btn", { active: rangeParam === range }]}>{range}</a>
+      ))}
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-value">{totalPageviews.toLocaleString()}</div><div class="stat-label">Pageviews</div></div>
+    <div class="stat-card"><div class="stat-value">{uniqueVisitors.toLocaleString()}</div><div class="stat-label">Unique visitors</div></div>
+    <div class="stat-card"><div class="stat-value">{totalEvents.toLocaleString()}</div><div class="stat-label">Tracked events</div></div>
+    <div class="stat-card"><div class="stat-value">{downloadSuccess.toLocaleString()}</div><div class="stat-label">Downloads completed</div></div>
+    <div class="stat-card"><div class="stat-value">{amazonClicks.toLocaleString()}</div><div class="stat-label">Amazon clicks</div></div>
+    <div class="stat-card"><div class="stat-value">{pct(amazonClicks, Math.max(bookIntent, 1))}</div><div class="stat-label">Book intent to Amazon</div></div>
+  </div>
+
+  <div class="grid-2">
+    <section class="surface-card admin-panel">
+      <h2>Funnel Snapshot</h2>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Stage</th><th>Count</th><th>Rate</th></tr></thead>
+          <tbody>
+            {funnelRows.map((row) => (
+              <tr>
+                <td>{row.stage}</td>
+                <td>{row.count.toLocaleString()}</td>
+                <td>{row.rateFromPrior}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="surface-card admin-panel">
+      <h2>Event Stage Mix</h2>
+      {stageBreakdown.length === 0 ? (
+        <p class="muted">No tracked events in this window.</p>
+      ) : (
+        <div class="bar-list">
+          {stageBreakdown.map((row) => {
+            const width = Math.max(3, (row.count / Math.max(1, stageBreakdown[0].count)) * 100);
+            return (
+              <div class="bar-row">
+                <div class="bar-meta"><span>{row.stage}</span><strong>{row.count.toLocaleString()}</strong></div>
+                <div class="bar-track"><div class="bar-fill" style={`width:${width}%`}></div></div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <section class="surface-card admin-panel">
+      <h2>Source Quality</h2>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Source</th><th>Events</th><th>Downloads</th><th>Book views</th><th>Amazon</th></tr></thead>
+          <tbody>
+            {sourceRows.length === 0 && <tr><td colspan="5" class="empty-cell">No event sources yet.</td></tr>}
+            {sourceRows.map((row) => (
+              <tr>
+                <td><code>{short(row.source, 28)}</code></td>
+                <td>{row.events.toLocaleString()}</td>
+                <td>{row.activated.toLocaleString()}</td>
+                <td>{row.book.toLocaleString()}</td>
+                <td>{row.amazon.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="surface-card admin-panel">
+      <h2>Book Intent</h2>
+      <div class="book-metrics">
+        <div><strong>{bookViews.toLocaleString()}</strong><span>Book views</span></div>
+        <div><strong>{sampleViews.toLocaleString()}</strong><span>Samples viewed</span></div>
+        <div><strong>{sampleClicks.toLocaleString()}</strong><span>Sample CTAs</span></div>
+        <div><strong>{amazonClicks.toLocaleString()}</strong><span>Amazon clicks</span></div>
+      </div>
+      <div class="table-wrap compact-table">
+        <table class="admin-table">
+          <thead><tr><th>Book / ASIN</th><th>Views</th><th>Samples</th><th>Amazon</th></tr></thead>
+          <tbody>
+            {bookRows.length === 0 && <tr><td colspan="4" class="empty-cell">No book-intent events yet.</td></tr>}
+            {bookRows.map((row) => (
+              <tr>
+                <td title={row.asinList}><code>{short(row.book, 30)}</code></td>
+                <td>{row.views.toLocaleString()}</td>
+                <td>{row.samples.toLocaleString()}</td>
+                <td>{row.amazon.toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <section class="surface-card admin-panel">
+      <h2>Activation And Community</h2>
+      <div class="mini-grid">
+        <div><strong>{downloadSuccess.toLocaleString()}</strong><span>Download success</span></div>
+        <div><strong>{downloadBlocked.toLocaleString()}</strong><span>No-Peanuts blocks</span></div>
+        <div><strong>{shareClicks.toLocaleString()}</strong><span>Share clicks</span></div>
+        <div><strong>{shareCredits.toLocaleString()}</strong><span>Share credits</span></div>
+      </div>
+    </section>
+
+    <section class="surface-card admin-panel">
+      <h2>Data Quality Notes</h2>
+      <ul class="note-list">
+        <li>{events.length.toLocaleString()} events loaded from `conversion_events` for this window.</li>
+        <li>{pageviews.length.toLocaleString()} pageview rows loaded for visitor/source context.</li>
+        <li>Amazon clicks are buyer-intent signals, not confirmed KDP sales.</li>
+        <li>Rates are directional until P5-01 has a full 7-30 day data window.</li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="surface-card admin-panel">
+    <h2>Recent Meaningful Events</h2>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>When</th><th>Event</th><th>Source</th><th>Lang</th><th>Path</th></tr></thead>
+        <tbody>
+          {recentEvents.length === 0 && <tr><td colspan="5" class="empty-cell">No conversion events in this window.</td></tr>}
+          {recentEvents.map((event) => (
+            <tr>
+              <td class="nowrap">{fmtTime(event.created_at)}</td>
+              <td><code>{event.event_name || "unknown"}</code></td>
+              <td>{short(sourceFor(event), 28)}</td>
+              <td>{event.lang || "-"}</td>
+              <td title={event.path || ""}><code>{short(event.path, 52)}</code></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0 0 0.8rem; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.4rem;
+  }
+  .stat-card {
+    background: var(--surface-strong, #f8f8f8);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    min-height: 5.6rem;
+  }
+  .stat-value { font-size: 1.65rem; font-weight: 800; color: var(--brand-blue); line-height: 1.1; }
+  .stat-label { margin-top: 0.35rem; color: var(--ink-soft); font-size: 0.82rem; }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.4rem;
+    margin-bottom: 1.4rem;
+  }
+  .admin-panel { padding: 1.2rem; }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .admin-table th, .admin-table td { padding: 0.55rem 0.65rem; text-align: left; border-bottom: 1px solid var(--line); }
+  .admin-table th { color: var(--ink-soft); font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0; }
+  .admin-table code { font-size: 0.78rem; }
+  .empty-cell { text-align: center; color: var(--ink-soft); }
+  .muted { color: var(--ink-soft); }
+  .bar-list { display: grid; gap: 0.75rem; }
+  .bar-meta { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.88rem; margin-bottom: 0.25rem; }
+  .bar-track { height: 0.5rem; background: var(--border-soft, #e8e2d8); border-radius: 999px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--brand-blue); border-radius: 999px; }
+  .book-metrics, .mini-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .book-metrics div, .mini-grid div {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    background: var(--surface, #fff);
+  }
+  .book-metrics strong, .mini-grid strong { display: block; font-size: 1.25rem; color: var(--brand-green); }
+  .book-metrics span, .mini-grid span { display: block; color: var(--ink-soft); font-size: 0.78rem; margin-top: 0.2rem; }
+  .compact-table { margin-top: 0.8rem; }
+  .note-list { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); font-size: 0.9rem; }
+  .note-list li { margin-bottom: 0.45rem; }
+  .nowrap { white-space: nowrap; }
+  @media (max-width: 820px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .book-metrics, .mini-grid { grid-template-columns: 1fr; }
+  }
+</style>
