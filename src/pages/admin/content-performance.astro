@@ -3,6 +3,7 @@ export const prerender = false;
 
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { formatAdminDateTime } from "../../lib/admin-time.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -230,7 +231,7 @@ function fmtRate(v: number) {
           <tbody>
             {fails.map((f: any) => (
               <tr>
-                <td style="white-space:nowrap; font-size:0.82rem; color:var(--ink-soft);">{new Date(f.ts).toLocaleString()}</td>
+                <td style="white-space:nowrap; font-size:0.82rem; color:var(--ink-soft);">{formatAdminDateTime(f.ts)}</td>
                 <td><code>{f.post_type}</code></td>
                 <td>{f.lang}</td>
                 <td style="max-width:14rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{f.concept || "—"}</td>

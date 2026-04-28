@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { supabase, getServiceClient, isAdmin } from "../../../lib/supabase";
+import { formatAdminDateTimeWithZone } from "../../../lib/admin-time.mjs";
 
 export const prerender = false;
 
@@ -41,12 +42,14 @@ export const GET: APIRoute = async ({ cookies, url }) => {
 
   const uniqueVisitors = new Set((uniqueRows ?? []).map((r: any) => r.visitor_hash).filter(Boolean)).size;
 
+  const generatedAt = new Date().toISOString();
   return new Response(
     JSON.stringify({
       totalPageviews: totalPageviews ?? 0,
       uniqueVisitors,
       todayCount: todayCount ?? 0,
-      generatedAt: new Date().toISOString(),
+      generatedAt,
+      generatedAtLabel: formatAdminDateTimeWithZone(generatedAt),
     }),
     { status: 200, headers },
   );

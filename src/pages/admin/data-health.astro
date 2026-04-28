@@ -3,7 +3,7 @@ export const prerender = false;
 
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
-import { fetchAdminKpiWindow, pct, shortText } from "../../lib/admin-kpis.mjs";
+import { fetchAdminKpiWindow, formatKpiTime, pct, shortText } from "../../lib/admin-kpis.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -60,7 +60,7 @@ function formatCheckValue(check: any) {
   <div class="admin-page-head">
     <div>
       <h1>Data Health</h1>
-      <p>Window: last {days === 1 ? "24 hours" : `${days} days`} · generated {new Date(generatedAtIso).toLocaleString()}</p>
+      <p>Window: last {days === 1 ? "24 hours" : `${days} days`} · generated {formatKpiTime(generatedAtIso)}</p>
     </div>
     <div class="range-actions" aria-label="Data health range">
       {(["24h", "7d", "30d", "90d"] as const).map((range) => (

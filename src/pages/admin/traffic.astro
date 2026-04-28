@@ -4,6 +4,7 @@ export const prerender = false;
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
 import { buildPageviewGeoTimeSummary, buildTrafficQualitySummary, classifyAdminSource, pageviewGeoLabel, pct as formatRate, resolveAdminRange } from "../../lib/admin-kpis.mjs";
+import { ADMIN_OWNER_TIME_ZONE_LABEL, adminTimeZoneSummary, formatAdminDateKey, formatAdminDateLabel, formatAdminDateTimeWithZone, formatAdminHourLabel, formatAdminShortDateTime, formatVisitorDateTime } from "../../lib/admin-time.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -16,6 +17,7 @@ const rangeParam = range.rangeKey;
 const days = range.days;
 const sinceIso = range.sinceIso;
 const todayIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+const ownerTimeZone = adminTimeZoneSummary(new Date(range.generatedAtIso));
 
 const sc = getServiceClient() as any;
 const pageviewBaseSelect = "path, referrer, country, visitor_hash, created_at, utm_source, utm_medium, utm_campaign, utm_content, landing_page";
@@ -105,7 +107,7 @@ const topSources = [...sourceMap.entries()]
 // Pageviews per day for sparkline
 const dayBucket: Record<string, { pv: number; uv: Set<string> }> = {};
 for (const r of rows) {
-  const d = (r.created_at || "").slice(0, 10);
+  const d = formatAdminDateKey(r.created_at);
   if (!d) continue;
   if (!dayBucket[d]) dayBucket[d] = { pv: 0, uv: new Set() };
   dayBucket[d].pv += 1;
@@ -114,7 +116,7 @@ for (const r of rows) {
 // Fill missing days with 0
 const series: { date: string; pv: number; uv: number }[] = [];
 for (let i = days - 1; i >= 0; i--) {
-  const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const d = formatAdminDateKey(new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString());
   const b = dayBucket[d];
   series.push({ date: d, pv: b?.pv ?? 0, uv: b?.uv.size ?? 0 });
 }
@@ -153,10 +155,12 @@ const topUtm = [...utmMap.entries()]
 // Recent live feed (last 20)
 const liveFeed = rows.slice(0, 20).map((r) => ({
   when: r.created_at,
+  whenLabel: formatAdminShortDateTime(r.created_at),
+  whenTitle: formatAdminDateTimeWithZone(r.created_at),
   path: r.path,
   source: classifySource(r).label,
   country: pageviewGeoLabel(r).label,
-  localHour: Number.isInteger(Number(r.local_hour)) ? `${String(Number(r.local_hour)).padStart(2, "0")}:00` : "-",
+  visitorTime: formatVisitorDateTime(r.created_at, r.timezone) || (Number.isInteger(Number(r.local_hour)) ? `${formatAdminHourLabel(Number(r.local_hour))} visitor` : "-"),
   timezone: r.timezone || "",
 }));
 
@@ -186,12 +190,7 @@ function short(p: string) {
   return p.slice(0, 39) + "…";
 }
 function fmtTime(iso: string) {
-  const d = new Date(iso);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${mm}/${dd} ${hh}:${mi}`;
+  return formatAdminShortDateTime(iso);
 }
 ---
 
@@ -214,7 +213,7 @@ function fmtTime(iso: string) {
 
   <p style="margin-top:0.3rem; color:var(--ink-soft); font-size:0.9rem;">
     Window: last {days === 1 ? "24 hours" : `${days} days`} · {rows.length.toLocaleString()} pageviews loaded
-    · <span id="last-refresh">just now</span>
+    · owner timezone locked to {ownerTimeZone} · <span id="last-refresh">just now</span>
   </p>
 
   {/* ─── KPI cards ─── */}
@@ -341,7 +340,7 @@ function fmtTime(iso: string) {
         {/* X-axis labels (first, middle, last) */}
         {[0, Math.floor(series.length / 2), series.length - 1].map((i) => (
           <text x={PAD + i * stepX} y={H - PAD + 16} text-anchor="middle" style="font-size:10px; fill:currentColor; fill-opacity:0.55;">
-            {series[i]?.date.slice(5)}
+            {formatAdminDateLabel(series[i]?.date)}
           </text>
         ))}
         {/* Filled area for PV */}
@@ -420,8 +419,8 @@ function fmtTime(iso: string) {
           ))}
         </ul>
       )}
-      {geoTimeSummary.peakLocalHour && (
-        <p class="time-pulse"><strong>{geoTimeSummary.peakLocalHour.label}</strong> is the strongest visitor-local hour in this window.</p>
+      {geoTimeSummary.peakOwnerHour && (
+        <p class="time-pulse"><strong>{geoTimeSummary.peakOwnerHour.label}</strong> is the strongest {ADMIN_OWNER_TIME_ZONE_LABEL} hour. Visitor-local peak: <strong>{geoTimeSummary.peakLocalHour?.label ?? "not enough data"}</strong>.</p>
       )}
       {topTimezones.length > 0 && (
         <div class="timezone-list">
@@ -506,20 +505,20 @@ function fmtTime(iso: string) {
           <table class="admin-table" style="width:100%;">
             <thead>
               <tr>
-                <th>When <span id="tz-label" style="font-weight:normal; font-size:0.7rem; color:var(--ink-soft);">(UTC)</span></th>
+                <th>When <span id="tz-label" style="font-weight:normal; font-size:0.7rem; color:var(--ink-soft);">({ADMIN_OWNER_TIME_ZONE_LABEL})</span></th>
                 <th>Source</th>
                 <th>Geo</th>
-                <th>Visitor hour</th>
+                <th>Visitor time</th>
                 <th>Path</th>
               </tr>
             </thead>
             <tbody id="live-feed">
               {liveFeed.map((v: any) => (
                 <tr>
-                  <td class="local-time admin-nowrap" data-iso={v.when || ""} style="font-size:0.78rem; color:var(--ink-soft);">{fmtTime(v.when || "")}</td>
+                  <td class="admin-nowrap" title={v.whenTitle || ""} style="font-size:0.78rem; color:var(--ink-soft);">{v.whenLabel || fmtTime(v.when || "")}</td>
                   <td style="font-size:0.82rem;">{v.source}</td>
                   <td style="font-size:0.82rem;">{v.country}</td>
-                  <td style="font-size:0.82rem;" title={v.timezone}>{v.localHour}</td>
+                  <td style="font-size:0.82rem;" title={v.timezone}>{v.visitorTime}</td>
                   <td class="admin-wrap admin-code-cell" title={v.path || ""}>{short(v.path || "/")}</td>
                 </tr>
               ))}
@@ -559,31 +558,6 @@ function fmtTime(iso: string) {
 </AdminLayout>
 
 <script>
-  // ── Convert server timestamps (UTC) to viewer local time ──
-  (() => {
-    const cells = document.querySelectorAll<HTMLElement>(".local-time");
-    const pad = (n: number) => String(n).padStart(2, "0");
-    cells.forEach((el) => {
-      const iso = el.getAttribute("data-iso");
-      if (!iso) return;
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return;
-      el.textContent = `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-      el.title = d.toLocaleString();
-    });
-    const tzLabel = document.getElementById("tz-label");
-    if (tzLabel) {
-      try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
-        const off = -new Date().getTimezoneOffset() / 60;
-        const sign = off >= 0 ? "+" : "";
-        tzLabel.textContent = `(${tz} · UTC${sign}${off})`;
-      } catch {
-        tzLabel.textContent = "(local)";
-      }
-    }
-  })();
-
   // ── Interactive tooltip on line chart ──
   (() => {
     const wrap = document.getElementById("chart-wrap");
@@ -690,7 +664,7 @@ function fmtTime(iso: string) {
       tag("pv", data.totalPageviews);
       tag("uv", data.uniqueVisitors);
       const lr = document.getElementById("last-refresh");
-      if (lr) lr.textContent = `updated ${new Date().toLocaleTimeString()}`;
+      if (lr) lr.textContent = data.generatedAtLabel ? `updated ${data.generatedAtLabel}` : "updated";
     } catch { /* silent */ }
   }
 

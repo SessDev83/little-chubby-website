@@ -1,4 +1,5 @@
-import { classifyAdminSource, formatKpiTime, landingPathForEvent, shortText, sourceForEvent, stageLabelForEvent } from "./admin-kpis.mjs";
+import { classifyAdminSource, formatKpiTime, landingPathForEvent, pageviewGeoLabel, shortText, sourceForEvent, stageLabelForEvent } from "./admin-kpis.mjs";
+import { formatAdminDateTimeWithZone, formatAdminHourLabel, formatVisitorDateTime } from "./admin-time.mjs";
 import { normalizeAnalyticsEvents } from "./analytics-event-contract.mjs";
 
 function timeValue(value) {
@@ -13,6 +14,19 @@ function humanizeEventName(name) {
 function visitorLabel(visitorHash) {
   if (!visitorHash) return "-";
   return shortText(String(visitorHash), 12);
+}
+
+function visitorTimeLabel(row = {}) {
+  const timezone = row.timezone || row.props?.timezone || "";
+  const exact = formatVisitorDateTime(row.created_at, timezone);
+  if (exact) return exact;
+  const hour = Number(row.local_hour ?? row.props?.local_hour);
+  return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? `${formatAdminHourLabel(hour)} visitor` : "-";
+}
+
+function geoLabel(row = {}) {
+  const propsCountry = row.props?.country || row.props?.country_code;
+  return pageviewGeoLabel({ country: row.country || propsCountry }).label;
 }
 
 function toneForEvent(name) {
@@ -41,6 +55,11 @@ function eventItem(event, index = 0) {
     tone: toneForEvent(eventName),
     priority: priorityForEvent(eventName),
     at: event.created_at || null,
+    ownerTime: formatKpiTime(event.created_at),
+    ownerTimeTitle: formatAdminDateTimeWithZone(event.created_at),
+    visitorTime: visitorTimeLabel(event),
+    country: geoLabel(event),
+    timezone: event.props?.timezone || "",
     title: humanizeEventName(eventName),
     stage,
     source,
@@ -58,6 +77,11 @@ function pageviewItem(row, index = 0) {
     tone: "quiet",
     priority: 10,
     at: row.created_at || null,
+    ownerTime: formatKpiTime(row.created_at),
+    ownerTimeTitle: formatAdminDateTimeWithZone(row.created_at),
+    visitorTime: visitorTimeLabel(row),
+    country: geoLabel(row),
+    timezone: row.timezone || "",
     title: "page visit",
     stage: "Visit",
     source: source.label,

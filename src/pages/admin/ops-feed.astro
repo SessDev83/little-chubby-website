@@ -5,6 +5,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
 import { buildOpsFeed, formatOpsFeedTime } from "../../lib/admin-ops-feed.mjs";
 import { resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+import { ADMIN_OWNER_TIME_ZONE_LABEL, adminTimeZoneSummary, formatAdminDateTimeWithZone } from "../../lib/admin-time.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -13,9 +14,12 @@ if (!user || !(await isAdmin(user))) {
 
 const range = resolveAdminRange(Astro.url.searchParams.get("range") || "24h");
 const rangeParam = range.rangeKey;
+const ownerTimeZone = adminTimeZoneSummary(new Date(range.generatedAtIso));
 const sc = getServiceClient();
+const pageviewBaseSelect = "id,path,visitor_hash,utm_source,utm_medium,referrer,created_at";
+const pageviewGeoSelect = `${pageviewBaseSelect},country,timezone,local_date,local_hour,local_weekday`;
 
-const [{ data: eventRows }, { data: pageviewRows }] = await Promise.all([
+const [eventResult, pageviewResult] = await Promise.all([
   (sc as any)
     .from("conversion_events")
     .select("id,event_name,path,visitor_hash,props,lang,created_at")
@@ -24,12 +28,24 @@ const [{ data: eventRows }, { data: pageviewRows }] = await Promise.all([
     .limit(80),
   sc
     .from("pageviews")
-    .select("id,path,visitor_hash,utm_source,utm_medium,referrer,created_at")
+    .select(pageviewGeoSelect)
     .gte("created_at", range.sinceIso)
     .order("created_at", { ascending: false })
     .limit(40),
 ]);
 
+let pageviewRows: any[] | null = pageviewResult.data as any[] | null;
+if (pageviewResult.error && /country|timezone|local_date|local_hour|local_weekday|schema cache|column/i.test(pageviewResult.error.message || "")) {
+  const fallback = await sc
+    .from("pageviews")
+    .select(pageviewBaseSelect)
+    .gte("created_at", range.sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(40);
+  pageviewRows = fallback.data;
+}
+
+const eventRows = eventResult.data;
 const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? [], limit: 50 });
 ---
 
@@ -37,7 +53,7 @@ const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? 
   <div class="admin-page-head">
     <div>
       <h1>Real-Time Ops Feed</h1>
-      <p>Window: last {range.label} - generated {new Date(range.generatedAtIso).toLocaleString()}</p>
+      <p>Window: last {range.label} - generated {formatAdminDateTimeWithZone(range.generatedAtIso)} · owner timezone locked to {ownerTimeZone}</p>
     </div>
     <div class="head-actions">
       <div class="range-actions" aria-label="Ops feed range">
@@ -63,18 +79,20 @@ const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? 
   <section class="surface-card feed-panel">
     <div class="feed-head">
       <h2>Recent Activity</h2>
-      <span id="ops-last-refresh">just now</span>
+      <span id="ops-last-refresh">owner time</span>
     </div>
     <div class="table-wrap">
       <table class="admin-table">
         <thead>
-          <tr><th>When</th><th>Type</th><th>Activity</th><th>Stage</th><th>Source</th><th>Lang</th><th>Visitor</th><th>Path</th></tr>
+          <tr><th>When <span>({ADMIN_OWNER_TIME_ZONE_LABEL})</span></th><th>Visitor time</th><th>Geo</th><th>Type</th><th>Activity</th><th>Stage</th><th>Source</th><th>Lang</th><th>Visitor</th><th>Path</th></tr>
         </thead>
         <tbody id="ops-feed-body">
-          {feed.items.length === 0 && <tr><td colspan="8" class="empty-cell">No ops activity in this window.</td></tr>}
+          {feed.items.length === 0 && <tr><td colspan="10" class="empty-cell">No ops activity in this window.</td></tr>}
           {feed.items.map((item: any) => (
             <tr class={`tone-${item.tone}`}>
-              <td class="nowrap">{formatOpsFeedTime(item.at)}</td>
+              <td class="nowrap" title={item.ownerTimeTitle || formatAdminDateTimeWithZone(item.at)}>{item.ownerTime || formatOpsFeedTime(item.at)}</td>
+              <td class="nowrap" title={item.timezone || ""}>{item.visitorTime || "-"}</td>
+              <td class="admin-wrap" title={item.country || ""}>{shortText(item.country || "Unknown", 24)}</td>
               <td><code>{item.kind}</code></td>
               <td class="admin-wrap" title={item.title}>{item.title}</td>
               <td>{item.stage}</td>
@@ -122,7 +140,7 @@ const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? 
     if (!items.length) {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
-      cell.colSpan = 8;
+      cell.colSpan = 10;
       cell.className = "empty-cell";
       cell.textContent = "No ops activity in this window.";
       row.appendChild(cell);
@@ -132,7 +150,9 @@ const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? 
     for (const item of items) {
       const row = document.createElement("tr");
       row.className = `tone-${item.tone || "quiet"}`;
-      addCell(row, item.timeLabel, false, "nowrap");
+      addCell(row, item.ownerTime || item.timeLabel, false, "nowrap");
+      addCell(row, item.visitorTime, false, "nowrap");
+      addCell(row, item.country, false, "admin-wrap");
       addCell(row, item.kind, true);
       addCell(row, item.title, false, "admin-wrap");
       addCell(row, item.stage);
@@ -155,7 +175,7 @@ const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? 
     setStat("highValue", data.stats?.highValue || 0);
     setStat("warnings", data.stats?.warnings || 0);
     renderItems(data.items || []);
-    if (lastRefresh) lastRefresh.textContent = `updated ${new Date().toLocaleTimeString()}`;
+    if (lastRefresh) lastRefresh.textContent = data.generatedAtLabel ? `updated ${data.generatedAtLabel}` : "updated";
   }
 
   function start() {
@@ -229,6 +249,7 @@ const feed = buildOpsFeed({ events: eventRows ?? [], pageviews: pageviewRows ?? 
   .admin-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
   .admin-table th, .admin-table td { padding: 0.52rem 0.6rem; text-align: left; border-bottom: 1px solid var(--line); }
   .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table th span { font-weight: 700; text-transform: none; }
   .admin-table code { font-size: 0.76rem; }
   .tone-good { background: rgba(92,150,80,0.06); }
   .tone-warn { background: rgba(220,150,50,0.08); }

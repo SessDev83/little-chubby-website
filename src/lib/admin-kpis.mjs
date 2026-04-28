@@ -4,6 +4,7 @@ import {
   eventFunnelStage,
   normalizeAnalyticsEvents,
 } from "./analytics-event-contract.mjs";
+import { formatAdminDateTime, formatAdminHourLabel, getTimeZoneParts } from "./admin-time.mjs";
 
 export const ADMIN_KPI_RANGES = Object.freeze({ "24h": 1, "7d": 7, "30d": 30, "90d": 90 });
 
@@ -52,6 +53,7 @@ const PAGEVIEW_LEGACY_TIMEZONE_REGIONS = new Set([
 ]);
 
 const WEEKDAY_LABELS = Object.freeze(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
+const REGION_NAMES = typeof Intl.DisplayNames === "function" ? new Intl.DisplayNames(["en"], { type: "region" }) : null;
 
 export function resolveAdminRange(rangeParam = "7d", now = new Date()) {
   const requested = String(rangeParam || "7d").toLowerCase();
@@ -123,10 +125,18 @@ export function shortText(value, max = 46) {
 }
 
 export function formatKpiTime(iso) {
-  if (!iso) return "-";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return formatAdminDateTime(iso);
+}
+
+function countryDisplayName(code) {
+  const countryCode = String(code || "").trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(countryCode)) return "";
+  try {
+    const name = REGION_NAMES?.of(countryCode);
+    return name && name !== countryCode ? `${name} (${countryCode})` : countryCode;
+  } catch {
+    return countryCode;
+  }
 }
 
 function countRows(map, limit = 12) {
@@ -145,7 +155,7 @@ export function pageviewGeoLabel(row = {}) {
   const raw = safeText(row.country, 40);
   if (!raw || raw === "??") return { label: "Unknown", quality: "unknown" };
   const upper = raw.toUpperCase();
-  if (/^[A-Z]{2}$/.test(upper)) return { label: upper, quality: "country" };
+  if (/^[A-Z]{2}$/.test(upper)) return { label: countryDisplayName(upper), quality: "country", code: upper };
   if (PAGEVIEW_LEGACY_TIMEZONE_REGIONS.has(raw)) return { label: `${raw} region`, quality: "legacy_timezone" };
   return { label: raw, quality: "coarse" };
 }
@@ -156,6 +166,8 @@ export function buildPageviewGeoTimeSummary(pageviews = []) {
   const timezoneMap = new Map();
   const hourMap = new Map();
   const weekdayMap = new Map();
+  const ownerHourMap = new Map();
+  const ownerWeekdayMap = new Map();
 
   for (const row of pageviews) {
     const geo = pageviewGeoLabel(row);
@@ -172,12 +184,23 @@ export function buildPageviewGeoTimeSummary(pageviews = []) {
 
     const weekday = Number(row?.local_weekday);
     if (Number.isInteger(weekday) && weekday >= 0 && weekday <= 6) weekdayMap.set(weekday, (weekdayMap.get(weekday) || 0) + 1);
+
+    const ownerParts = getTimeZoneParts(row?.created_at);
+    if (Number.isInteger(ownerParts?.hour)) ownerHourMap.set(ownerParts.hour, (ownerHourMap.get(ownerParts.hour) || 0) + 1);
+    const ownerWeekday = WEEKDAY_LABELS.indexOf(ownerParts?.weekday);
+    if (ownerWeekday >= 0) ownerWeekdayMap.set(ownerWeekday, (ownerWeekdayMap.get(ownerWeekday) || 0) + 1);
   }
 
   const localHourRows = [...hourMap.entries()]
-    .map(([hour, count]) => ({ hour, label: `${String(hour).padStart(2, "0")}:00`, count }))
+    .map(([hour, count]) => ({ hour, label: formatAdminHourLabel(hour), count }))
     .sort((a, b) => b.count - a.count || a.hour - b.hour);
   const localWeekdayRows = [...weekdayMap.entries()]
+    .map(([weekday, count]) => ({ weekday, label: WEEKDAY_LABELS[weekday] || String(weekday), count }))
+    .sort((a, b) => b.count - a.count || a.weekday - b.weekday);
+  const ownerHourRows = [...ownerHourMap.entries()]
+    .map(([hour, count]) => ({ hour, label: formatAdminHourLabel(hour), count }))
+    .sort((a, b) => b.count - a.count || a.hour - b.hour);
+  const ownerWeekdayRows = [...ownerWeekdayMap.entries()]
     .map(([weekday, count]) => ({ weekday, label: WEEKDAY_LABELS[weekday] || String(weekday), count }))
     .sort((a, b) => b.count - a.count || a.weekday - b.weekday);
   const topCountries = countRows(countryMap).map((row) => ({ ...row, quality: countryQuality.get(row.label) || "unknown" }));
@@ -187,8 +210,12 @@ export function buildPageviewGeoTimeSummary(pageviews = []) {
     topTimezones: countRows(timezoneMap, 8),
     localHourRows,
     localWeekdayRows,
+    ownerHourRows,
+    ownerWeekdayRows,
     peakLocalHour: localHourRows[0] || null,
     peakLocalWeekday: localWeekdayRows[0] || null,
+    peakOwnerHour: ownerHourRows[0] || null,
+    peakOwnerWeekday: ownerWeekdayRows[0] || null,
     legacyCountryRows: topCountries.filter((row) => row.quality === "legacy_timezone"),
   };
 }

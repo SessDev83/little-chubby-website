@@ -1,3 +1,5 @@
+import { adminTimeZoneSummary } from "./admin-time.mjs";
+
 const AREA_MAP = Object.freeze({
   Data: { phases: ["Phase 1", "Phase 13"], decisions: ["MEA-01", "MEA-02", "AGT-09"], packages: ["P5-01", "P5-02", "P5-ADM-10", "P5-ADM-11"] },
   Activation: { phases: ["Phase 1", "Phase 5", "Phase 13"], decisions: ["MEA-01", "EML-01"], packages: ["P5-09", "P5-12", "P5-ADM-03"] },
@@ -108,7 +110,7 @@ export function buildLearningLedgerEntry(options = {}) {
     periodCovered: `${current.label || brief.periodLabel || "selected window"} ending ${formatDate(generatedAtIso)}`,
     reportReceivedDate: formatDate(generatedAtIso),
     reportSources: ["Admin Intelligence Brief", "conversion_events", "pageviews", "Traffic Quality Summary"],
-    timezone: "UTC event timestamps; admin display uses local browser/server formatting",
+    timezone: `UTC event timestamps; admin display locked to ${adminTimeZoneSummary(new Date(generatedAtIso))}`,
     dataQuality: dataQuality(brief),
     confidence: confidence(brief),
     topMetrics: [

@@ -41,7 +41,7 @@ function userHash(event: any) {
   <div class="admin-page-head">
     <div>
       <h1>Funnel Command Center</h1>
-      <p>Window: last {days === 1 ? "24 hours" : `${days} days`} · generated {new Date(generatedAtIso).toLocaleString()}</p>
+      <p>Window: last {days === 1 ? "24 hours" : `${days} days`} · generated {formatKpiTime(generatedAtIso)}</p>
     </div>
     <div class="head-actions">
       <div class="range-actions" aria-label="Funnel range">

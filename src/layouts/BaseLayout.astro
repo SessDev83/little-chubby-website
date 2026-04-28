@@ -413,6 +413,18 @@ const eventContractJson = JSON.stringify({
             return "desktop";
           } catch (e) { return "unknown"; }
         }
+        function getClientLocalTime() {
+          try {
+            var now = new Date();
+            var pad = function(n){ return String(n).padStart(2, "0"); };
+            return {
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+              local_date: now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate()),
+              local_hour: now.getHours(),
+              local_weekday: now.getDay()
+            };
+          } catch (e) { return {}; }
+        }
         function isSensitivePropName(key) {
           var normalized = String(key || "").replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
           return /(^|_)(email|phone|ip|ip_address|child|transcript|review_text|raw_text|message|full_url|shared_url|token|secret)(_|$)/.test(normalized);
@@ -476,6 +488,7 @@ const eventContractJson = JSON.stringify({
             if (eventName.length > 64) eventName = eventName.slice(0, 64);
             var occurredAt = new Date().toISOString();
             var utm = getUtmState();
+            var localTime = getClientLocalTime();
             var mergedProps = safeProps({
               event_contract_version: eventContract.version || "conversion_events_v1",
               event_id: makeId("evt"),
@@ -490,6 +503,10 @@ const eventContractJson = JSON.stringify({
               utm_content: utm.utm_content,
               landing_page: utm.landing_page,
               device_class: getDeviceClass(),
+              timezone: localTime.timezone,
+              local_date: localTime.local_date,
+              local_hour: localTime.local_hour,
+              local_weekday: localTime.local_weekday,
               funnel_stage: getFunnelStage(eventName)
             });
             var eventProps = safeProps(props);

@@ -7,6 +7,7 @@ import {
   buildTrafficQualitySummary,
   classifyAdminSource,
   fallbackFunnelStage,
+  formatKpiTime,
   pageviewGeoLabel,
   resolveAdminRange,
 } from "../../src/lib/admin-kpis.mjs";
@@ -39,6 +40,7 @@ assert.equal(range.rangeKey, "30d");
 assert.equal(range.days, 30);
 assert.equal(range.sinceIso, "2026-03-28T12:00:00.000Z");
 assert.equal(resolveAdminRange("bad", fixedNow).rangeKey, "7d");
+assert.equal(formatKpiTime("2026-04-28T15:49:00.000Z"), "Apr 28, 11:49 AM");
 
 assert.equal(fallbackFunnelStage("newsletter_confirmed"), "lead");
 assert.equal(fallbackFunnelStage("download_success"), "activated");
@@ -63,18 +65,19 @@ assert.deepEqual(classifyAdminSource({ referrer: "https://www.google.com/search?
   detail: "google.com",
   label: "google.com",
 });
-assert.deepEqual(pageviewGeoLabel({ country: "US" }), { label: "US", quality: "country" });
+assert.deepEqual(pageviewGeoLabel({ country: "US" }), { label: "United States (US)", quality: "country", code: "US" });
 assert.deepEqual(pageviewGeoLabel({ country: "America" }), { label: "America region", quality: "legacy_timezone" });
 
 const geoTime = buildPageviewGeoTimeSummary([
-  { country: "US", timezone: "America/New_York", local_hour: 20, local_weekday: 1 },
-  { country: "US", timezone: "America/New_York", local_hour: 20, local_weekday: 1 },
-  { country: "ES", timezone: "Europe/Madrid", local_hour: 9, local_weekday: 2 },
-  { country: "America", local_hour: 18, local_weekday: 0 },
+  { country: "US", timezone: "America/New_York", local_hour: 20, local_weekday: 1, created_at: "2026-04-28T15:49:00.000Z" },
+  { country: "US", timezone: "America/New_York", local_hour: 20, local_weekday: 1, created_at: "2026-04-28T15:55:00.000Z" },
+  { country: "ES", timezone: "Europe/Madrid", local_hour: 9, local_weekday: 2, created_at: "2026-04-28T13:00:00.000Z" },
+  { country: "America", local_hour: 18, local_weekday: 0, created_at: "2026-04-28T22:00:00.000Z" },
 ]);
-assert.equal(geoTime.topCountries[0].label, "US");
+assert.equal(geoTime.topCountries[0].label, "United States (US)");
 assert.equal(geoTime.topTimezones[0].label, "America/New_York");
 assert.equal(geoTime.peakLocalHour.label, "20:00");
+assert.equal(geoTime.peakOwnerHour.label, "11:00");
 assert.equal(geoTime.legacyCountryRows[0].label, "America region");
 
 const summary = buildAdminKpiSummary({
@@ -186,7 +189,7 @@ const opsFeed = buildOpsFeed({
     { id: 2, event_name: "download_blocked", path: "/en/coloring-corner/dino/", visitor_hash: "warning-user", lang: "en", created_at: "2026-04-27T11:05:00.000Z", props: { source: "direct" } },
   ],
   pageviews: [
-    { id: 1, path: "/en/", visitor_hash: "visitor-a", utm_medium: "social", utm_source: "facebook", created_at: "2026-04-27T10:59:00.000Z" },
+    { id: 1, path: "/en/", visitor_hash: "visitor-a", utm_medium: "social", utm_source: "facebook", country: "US", timezone: "America/New_York", created_at: "2026-04-27T10:59:00.000Z" },
   ],
   limit: 3,
 });
@@ -195,6 +198,8 @@ assert.equal(opsFeed.items[0].title, "download blocked");
 assert.equal(opsFeed.items[0].tone, "warn");
 assert.equal(opsFeed.stats.warnings, 1);
 assert.equal(opsFeed.stats.highValue, 1);
+assert.equal(opsFeed.items.find((item) => item.kind === "visit")?.country, "United States (US)");
+assert.equal(opsFeed.items.find((item) => item.kind === "visit")?.ownerTime, "Apr 27, 6:59 AM");
 
 const currentKpis = buildAdminKpiSummary({
   events: [

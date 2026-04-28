@@ -4,6 +4,7 @@ export const prerender = false;
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
 import { buildFunnelCommandCenter, buildPageviewGeoTimeSummary, buildTrafficQualitySummary, fetchAdminKpiWindow, pct, shortText } from "../../lib/admin-kpis.mjs";
+import { adminTimeZoneSummary, formatAdminDateTimeWithZone, formatAdminShortDateTime } from "../../lib/admin-time.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -13,6 +14,7 @@ if (!user || !(await isAdmin(user))) {
 const sc = getServiceClient();
 const currentMonth = new Date().toISOString().slice(0, 7);
 const ownerRange = "7d";
+const ownerTimeZone = adminTimeZoneSummary(new Date());
 
 // ── Stats (parallel queries) ──
 const [
@@ -89,7 +91,7 @@ const ownerSteps = [
       <div>
         <span class="eyebrow">Owner read map · last 7 days</span>
         <h2 id="owner-map-title">Where users arrive, what they do, and what needs your eyes</h2>
-        <p>Generated from pageviews + conversion events. Admin display timezone: <span id="dashboard-tz-label">local</span>.</p>
+        <p>Generated from pageviews + conversion events. Admin display timezone locked to {ownerTimeZone}.</p>
       </div>
       <a class:list={["health-badge", dataHealthStatus]} href={`/admin/data-health/?range=${ownerRange}`}>Data {dataHealthLabel}</a>
     </div>
@@ -169,7 +171,7 @@ const ownerSteps = [
           <tbody>
             {recentAudit.map((log: any) => (
               <tr>
-                <td class="local-time" data-iso={log.created_at || ""} style="white-space:nowrap; font-size:0.82rem; color:var(--ink-soft);">{new Date(log.created_at).toLocaleString()}</td>
+                <td style="white-space:nowrap; font-size:0.82rem; color:var(--ink-soft);" title={formatAdminDateTimeWithZone(log.created_at)}>{formatAdminShortDateTime(log.created_at)}</td>
                 <td><code style="font-size:0.82rem;">{log.action}</code></td>
                 <td>{log.target_type}</td>
                 <td style="max-width:10rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{log.target_id || "—"}</td>
@@ -182,31 +184,6 @@ const ownerSteps = [
     </div>
   )}
 </AdminLayout>
-
-<script>
-  (() => {
-    const pad = (n: number) => String(n).padStart(2, "0");
-    document.querySelectorAll(".local-time").forEach((el) => {
-      const iso = el.getAttribute("data-iso");
-      if (!iso) return;
-      const date = new Date(iso);
-      if (Number.isNaN(date.getTime())) return;
-      el.textContent = `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-      el.setAttribute("title", date.toLocaleString());
-    });
-    const tzLabel = document.getElementById("dashboard-tz-label");
-    if (tzLabel) {
-      try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
-        const offset = -new Date().getTimezoneOffset() / 60;
-        const sign = offset >= 0 ? "+" : "";
-        tzLabel.textContent = `${tz} · UTC${sign}${offset}`;
-      } catch {
-        tzLabel.textContent = "local";
-      }
-    }
-  })();
-</script>
 
 <style>
   .owner-map {
