@@ -1,4 +1,5 @@
 import { ADMIN_FUNNEL_STAGES, eventProp, langFromPath, sourceForEvent, stageLabelForEvent } from "./admin-kpis.mjs";
+import { normalizeAnalyticsEvents } from "./analytics-event-contract.mjs";
 
 export const AUDIENCE_SEGMENTS = Object.freeze([
   "Parent/Caregiver",
@@ -12,8 +13,8 @@ export const AUDIENCE_SEGMENTS = Object.freeze([
   "Unknown",
 ]);
 
-const FIRST_VALUE_EVENTS = new Set(["download_success", "first_peanut_earned", "newsletter_confirmed", "register_submit_success", "book_page_viewed", "sample_viewed"]);
-const COMMUNITY_EVENTS = new Set(["review_submitted", "review_approved", "art_upload_submitted", "art_approved", "reaction_received", "share_credit_success"]);
+const FIRST_VALUE_EVENTS = new Set(["download_completed", "first_peanut_earned", "newsletter_confirmed", "register_completed", "book_page_viewed", "sample_viewed"]);
+const COMMUNITY_EVENTS = new Set(["review_submitted", "review_approved", "art_upload_submitted", "art_approved", "reaction_received", "share_completed"]);
 const LOTTERY_EVENTS = new Set(["lottery_viewed", "lottery_entered"]);
 const BOOK_EVENTS = new Set(["book_page_viewed", "sample_viewed", "sample_cta_click", "amazon_click"]);
 const ADULT_BOOK_HINTS = new Set(["chic-styles", "style-time-machine"]);
@@ -219,7 +220,8 @@ function buildSourceRows(actors) {
  * @returns {Record<string, any>}
  */
 export function buildAudienceSignalModel(options = {}) {
-  const { events = [], pageviews = [] } = options;
+  const { pageviews = [] } = options;
+  const events = normalizeAnalyticsEvents(options.events || []);
   const actorMap = new Map();
 
   for (const pageview of pageviews) {
@@ -250,8 +252,8 @@ export function buildAudienceSignalModel(options = {}) {
     setFirstValue(actor, event);
 
     if (/lead_magnet|newsletter/.test(name)) actor.leads += 1;
-    if (/register_submit_success/.test(name)) actor.registrations += 1;
-    if (name === "download_success") {
+    if (name === "register_completed") actor.registrations += 1;
+    if (name === "download_completed") {
       actor.downloads += 1;
       addScore(actor, "Parent/Caregiver", 2);
       const day = event?.created_at ? new Date(event.created_at).getUTCDay() : -1;

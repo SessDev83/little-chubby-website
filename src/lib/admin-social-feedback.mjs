@@ -1,8 +1,9 @@
 import { classifyAdminSource, eventProp, pct, sourceForEvent } from "./admin-kpis.mjs";
+import { normalizeAnalyticsEvents } from "./analytics-event-contract.mjs";
 
-const FIRST_VALUE_EVENTS = new Set(["download_success", "newsletter_confirmed", "register_submit_success", "first_peanut_earned", "peanut_earned", "book_page_viewed", "sample_viewed"]);
-const LEAD_EVENTS = new Set(["lead_magnet_submit_success", "newsletter_inline_submit_success", "newsletter_confirmed"]);
-const ACTIVATION_EVENTS = new Set(["download_success", "first_peanut_earned"]);
+const FIRST_VALUE_EVENTS = new Set(["download_completed", "newsletter_confirmed", "register_completed", "first_peanut_earned", "peanut_earned", "book_page_viewed", "sample_viewed"]);
+const LEAD_EVENTS = new Set(["lead_magnet_submitted", "newsletter_submitted", "newsletter_confirmed"]);
+const ACTIVATION_EVENTS = new Set(["download_completed", "first_peanut_earned"]);
 const BOOK_EVENTS = new Set(["book_page_viewed", "sample_viewed", "sample_cta_click", "amazon_click"]);
 
 function count(value) {
@@ -223,7 +224,8 @@ function packetFromPlatform(row, sampleSizeWarning) {
  * @returns {Record<string, any>}
  */
 export function buildSocialFeedbackLoop(options = {}) {
-  const { contentPerformance = [], pageviews = [], events = [], channelScorecard = {}, trafficQuality = {} } = options;
+  const { contentPerformance = [], pageviews = [], channelScorecard = {}, trafficQuality = {} } = options;
+  const events = normalizeAnalyticsEvents(options.events || []);
   const platformMap = new Map();
   const contentMap = new Map();
   const creativeMap = new Map();

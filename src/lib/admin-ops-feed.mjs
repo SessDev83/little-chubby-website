@@ -1,4 +1,5 @@
 import { classifyAdminSource, formatKpiTime, landingPathForEvent, shortText, sourceForEvent, stageLabelForEvent } from "./admin-kpis.mjs";
+import { normalizeAnalyticsEvents } from "./analytics-event-contract.mjs";
 
 function timeValue(value) {
   const time = Date.parse(value || "");
@@ -17,7 +18,7 @@ function visitorLabel(visitorHash) {
 function toneForEvent(name) {
   const eventName = String(name || "");
   if (/error|blocked|failed|denied/.test(eventName)) return "warn";
-  if (/success|confirmed|approved|download|amazon_click|register_submit_success/.test(eventName)) return "good";
+  if (/success|confirmed|approved|download|amazon_click|register_(submit_success|completed)/.test(eventName)) return "good";
   if (/attempt|submit|click|viewed|sample/.test(eventName)) return "neutral";
   return "quiet";
 }
@@ -25,7 +26,7 @@ function toneForEvent(name) {
 function priorityForEvent(name) {
   const eventName = String(name || "");
   if (/error|blocked|failed|denied/.test(eventName)) return 90;
-  if (/amazon_click|register_submit_success|newsletter_confirmed|download_success/.test(eventName)) return 80;
+  if (/amazon_click|register_(submit_success|completed)|newsletter_confirmed|download_(success|completed)/.test(eventName)) return 80;
   if (/book_page|sample|lead|share|lottery|review/.test(eventName)) return 60;
   return 40;
 }
@@ -75,7 +76,8 @@ export function formatOpsFeedTime(iso) {
  * @returns {{ items: any[], stats: Record<string, number> }}
  */
 export function buildOpsFeed(options = {}) {
-  const { events = [], pageviews = [], limit = 50 } = options;
+  const { pageviews = [], limit = 50 } = options;
+  const events = normalizeAnalyticsEvents(options.events || []);
   const eventItems = events.map(eventItem);
   const visitItems = pageviews.map(pageviewItem);
   const items = [...eventItems, ...visitItems]

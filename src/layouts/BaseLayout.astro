@@ -9,6 +9,7 @@ import ParentalConsentBanner from "../components/ParentalConsentBanner.astro";
 import { siteConfig } from "../data/site";
 import type { Lang } from "../data/i18n";
 import { switchLangPath } from "../data/i18n";
+import { EVENT_CONTRACT_VERSION, EVENT_NAME_ALIASES } from "../lib/analytics-event-contract.mjs";
 import "../styles/global.css";
 
 interface Props {
@@ -108,6 +109,10 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     "@id": new URL(articleSchema.url, siteConfig.siteUrl).toString()
   }
 }) : null;
+const eventContractJson = JSON.stringify({
+  version: EVENT_CONTRACT_VERSION,
+  aliases: EVENT_NAME_ALIASES,
+}).replace(/</g, "\\u003c");
 ---
 
 <!doctype html>
@@ -216,6 +221,8 @@ const articleJsonLd = articleSchema ? JSON.stringify({
     <CookieConsent lang={lang} />
     {showLeadMagnet && <LeadMagnetPopup lang={lang} />}
     {!pathname.startsWith("/admin") && <ChubbyChat lang={lang} />}
+
+    <script id="lcp-event-contract" type="application/json" is:inline set:html={eventContractJson}></script>
 
     <!-- Vercel Analytics & Speed Insights (cookie-free, GDPR-compliant) -->
     <script>
@@ -405,13 +412,25 @@ const articleJsonLd = articleSchema ? JSON.stringify({
             return "desktop";
           } catch (e) { return "unknown"; }
         }
+        function getEventContract() {
+          try {
+            var el = document.getElementById("lcp-event-contract");
+            return el && el.textContent ? JSON.parse(el.textContent) : { version: "conversion_events_v1", aliases: {} };
+          } catch (e) { return { version: "conversion_events_v1", aliases: {} }; }
+        }
+        var eventContract = getEventContract();
+        function canonicalEventName(eventName) {
+          return (eventContract.aliases && eventContract.aliases[eventName]) || eventName;
+        }
         function getFunnelStage(eventName) {
+          eventName = canonicalEventName(eventName);
           if (eventName === "amazon_click") return "amazon_click";
           if (/book_page|sample/.test(eventName)) return "book_intent";
           if (/lead_magnet|newsletter/.test(eventName)) return "lead";
-          if (/register_submit_success|login_submit_success/.test(eventName)) return "registered";
-          if (/download/.test(eventName)) return "activated";
-          if (/lottery|review|share|art_|reaction/.test(eventName)) return "community";
+          if (/register_|login_/.test(eventName)) return "registered";
+          if (/download|first_peanut|first_value/.test(eventName)) return "activated";
+          if (/peanut|shop|lottery|ticket|share_click/.test(eventName)) return "engaged";
+          if (/review|share_completed|art_|reaction/.test(eventName)) return "community";
           if (/return_session/.test(eventName)) return "return";
           return null;
         }
@@ -434,9 +453,16 @@ const articleJsonLd = articleSchema ? JSON.stringify({
         window.lcpTrack = function (eventName, props) {
           try {
             if (!eventName || typeof eventName !== "string") return;
+            var originalEventName = eventName;
+            eventName = canonicalEventName(eventName);
             if (eventName.length > 64) eventName = eventName.slice(0, 64);
+            var occurredAt = new Date().toISOString();
             var utm = getUtmState();
             var mergedProps = safeProps({
+              event_contract_version: eventContract.version || "conversion_events_v1",
+              event_id: makeId("evt"),
+              occurred_at: occurredAt,
+              legacy_event_name: originalEventName !== eventName ? originalEventName : "",
               session_id: getSessionId(),
               anonymous_id: getAnonymousId(),
               source: getSource(utm),
@@ -451,23 +477,36 @@ const articleJsonLd = articleSchema ? JSON.stringify({
             var eventProps = safeProps(props);
             for (var propName in eventProps) mergedProps[propName] = eventProps[propName];
             var body = {
+              event_id: mergedProps.event_id,
               event_name: eventName,
+              occurred_at: mergedProps.occurred_at,
               path: location.pathname,
               visitor_hash: getVisitorHash(),
               props: mergedProps,
               lang: document.documentElement.lang || null
             };
-            fetch(sb.content + "/rest/v1/conversion_events", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: sk.content,
-                Authorization: "Bearer " + sk.content,
-                Prefer: "return=minimal"
-              },
-              body: JSON.stringify(body),
-              keepalive: true
-            }).catch(function () {});
+            function send(payload, allowSchemaFallback) {
+              return fetch(sb.content + "/rest/v1/conversion_events", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  apikey: sk.content,
+                  Authorization: "Bearer " + sk.content,
+                  Prefer: "return=minimal"
+                },
+                body: JSON.stringify(payload),
+                keepalive: true
+              }).then(function (res) {
+                if (allowSchemaFallback && !res.ok && (res.status === 400 || res.status === 404)) {
+                  var fallback = Object.assign({}, payload);
+                  delete fallback.event_id;
+                  delete fallback.occurred_at;
+                  return send(fallback, false);
+                }
+                return res;
+              });
+            }
+            send(body, true).catch(function () {});
           } catch (e) { /* never throw from tracker */ }
         };
 

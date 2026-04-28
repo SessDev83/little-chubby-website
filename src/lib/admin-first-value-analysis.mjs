@@ -1,10 +1,11 @@
 import { classifyAdminSource, eventProp, pct, sourceForEvent } from "./admin-kpis.mjs";
+import { normalizeAnalyticsEvents } from "./analytics-event-contract.mjs";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FIRST_VALUE_EVENTS = new Set([
-  "download_success",
+  "download_completed",
   "newsletter_confirmed",
-  "register_submit_success",
+  "register_completed",
   "first_peanut_earned",
   "peanut_earned",
   "book_page_viewed",
@@ -14,9 +15,9 @@ const FIRST_VALUE_EVENTS = new Set([
 ]);
 
 const BOOK_EVENTS = new Set(["book_page_viewed", "sample_viewed", "sample_cta_click", "amazon_click"]);
-const COMMUNITY_EVENTS = new Set(["review_submitted", "review_approved", "art_upload_submitted", "art_approved", "reaction_received", "share_credit_success"]);
-const ECONOMY_EVENTS = new Set(["first_peanut_earned", "peanut_earned", "shop_purchase_completed", "ticket_purchase", "ticket_purchased"]);
-const LEAD_EVENTS = new Set(["lead_magnet_submit_success", "newsletter_inline_submit_success", "newsletter_confirmed"]);
+const COMMUNITY_EVENTS = new Set(["review_submitted", "review_approved", "art_upload_submitted", "art_approved", "reaction_received", "share_completed"]);
+const ECONOMY_EVENTS = new Set(["first_peanut_earned", "peanut_earned", "shop_purchase_completed", "ticket_purchased_with_peanuts"]);
+const LEAD_EVENTS = new Set(["lead_magnet_submitted", "newsletter_submitted", "newsletter_confirmed"]);
 
 function timeValue(iso) {
   const value = Date.parse(iso || "");
@@ -131,7 +132,8 @@ function buildSourceRows(actorResults) {
  * @returns {Record<string, any>}
  */
 export function buildFirstValueAnalysis(options = {}) {
-  const { events = [], pageviews = [] } = options;
+  const { pageviews = [] } = options;
+  const events = normalizeAnalyticsEvents(options.events || []);
   const actorMap = new Map();
 
   for (const pageview of pageviews) {
@@ -165,9 +167,9 @@ export function buildFirstValueAnalysis(options = {}) {
     const landing = landingFromActor(actor, firstEvent);
     const returned = after.some((event) => event.event_name === "return_session" || timeValue(event.created_at) >= firstTime + DAY_MS);
     const secondSession = after.some((event) => event.event_name === "return_session" || timeValue(event.created_at) >= firstTime + DAY_MS);
-    const activated = after.some((event) => event.event_name === "download_success" || event.event_name === "first_peanut_earned");
+    const activated = after.some((event) => event.event_name === "download_completed" || event.event_name === "first_peanut_earned");
     const leads = after.some((event) => LEAD_EVENTS.has(event.event_name));
-    const registrations = after.some((event) => event.event_name === "register_submit_success");
+    const registrations = after.some((event) => event.event_name === "register_completed");
     const economy = after.some((event) => ECONOMY_EVENTS.has(event.event_name));
     const community = after.some((event) => COMMUNITY_EVENTS.has(event.event_name));
     const bookIntent = after.some((event) => BOOK_EVENTS.has(event.event_name));

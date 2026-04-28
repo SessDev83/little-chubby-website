@@ -9,6 +9,11 @@ import {
   resolveAdminRange,
 } from "../../src/lib/admin-kpis.mjs";
 import { buildAgentKpiInputContract } from "../../src/lib/admin-agent-contract.mjs";
+import {
+  canonicalEventName,
+  buildEventContractHealth,
+  EVENT_CONTRACT_VERSION,
+} from "../../src/lib/analytics-event-contract.mjs";
 import { buildAudienceSignalModel } from "../../src/lib/admin-audience-signals.mjs";
 import { buildAmazonAttribution } from "../../src/lib/admin-amazon-attribution.mjs";
 import { buildBookScorecard } from "../../src/lib/admin-book-scorecard.mjs";
@@ -35,8 +40,11 @@ assert.equal(resolveAdminRange("bad", fixedNow).rangeKey, "7d");
 
 assert.equal(fallbackFunnelStage("newsletter_confirmed"), "lead");
 assert.equal(fallbackFunnelStage("download_success"), "activated");
+assert.equal(fallbackFunnelStage("download_completed"), "activated");
 assert.equal(fallbackFunnelStage("share_click"), "engaged");
 assert.equal(fallbackFunnelStage("amazon_click"), "amazon_click");
+assert.equal(canonicalEventName("register_submit_success"), "register_completed");
+assert.equal(canonicalEventName("download_success"), "download_completed");
 
 assert.deepEqual(classifyAdminSource({ utm_medium: "social", utm_source: "facebook" }), {
   category: "social",
@@ -75,6 +83,7 @@ assert.equal(summary.uniqueVisitors, 2);
 assert.equal(summary.leadEvents, 1);
 assert.equal(summary.registerSuccess, 1);
 assert.equal(summary.downloadSuccess, 1);
+assert.equal(summary.eventContractHealth.contractVersion, EVENT_CONTRACT_VERSION);
 assert.equal(summary.bookIntent, 3);
 assert.equal(summary.amazonClicks, 1);
 assert.equal(summary.funnelRows.find((row) => row.stage === "Amazon Click")?.rateFromPrior, "33.3%");
@@ -114,6 +123,18 @@ assert.equal(facebookQuality?.activations, 1);
 assert.equal(trafficQuality.landingQualityRows.find((row) => row.label === "/en/coloring-corner/")?.meaningfulActions, 2);
 assert.equal(trafficQuality.utmQualityRows[0].label, "dino-20260427-f-en");
 assert.equal(trafficQuality.utmQualityRows[0].actionRate, 2);
+
+const eventContractHealth = buildEventContractHealth({
+  now: fixedNow,
+  events: [
+    { event_name: "download_success", event_id: "evt_1", path: "/en/coloring-corner/dino/", lang: "en", created_at: "2026-04-27T11:55:00.000Z", props: { session_id: "sess_1", anonymous_id: "anon_1", source: "facebook" } },
+    { event_name: "register_completed", event_id: "evt_1", path: "/en/register/", lang: "en", created_at: "2026-04-27T11:56:00.000Z", props: { session_id: "sess_1", anonymous_id: "anon_1", source: "facebook" } },
+    { event_name: "surprise_unknown", path: "/", created_at: "2026-04-27T11:57:00.000Z", props: {} },
+  ],
+});
+assert.equal(eventContractHealth.metrics.duplicateEventIds, 1);
+assert.equal(eventContractHealth.metrics.missingEventIds, 1);
+assert.equal(eventContractHealth.unknownEventNames[0].eventName, "surprise_unknown");
 
 const journey = buildAdminUserJourney({
   now: fixedNow,
@@ -202,7 +223,7 @@ assert.equal(retention.summary.retainedD1, 1);
 assert.equal(retention.summary.retainedD7, 1);
 assert.equal(retention.summary.activated, 1);
 assert.equal(retention.summary.secondSession, 1);
-assert.equal(retention.firstValueRows[0].eventName, "download_success");
+assert.equal(retention.firstValueRows[0].eventName, "download_completed");
 
 const economy = buildEconomyHealth({
   now: new Date("2026-04-20T00:00:00.000Z"),
@@ -336,9 +357,9 @@ const firstValue = buildFirstValueAnalysis({
 });
 
 assert.equal(firstValue.summary.actorsWithFirstValue, 2);
-assert.equal(firstValue.summary.topFirstValue, "download_success");
+assert.equal(firstValue.summary.topFirstValue, "download_completed");
 assert.equal(firstValue.summary.bestBookAction, "book_page_viewed");
-assert.equal(firstValue.firstValueRows.find((row) => row.firstValue === "download_success")?.returnRate, "100.0%");
+assert.equal(firstValue.firstValueRows.find((row) => row.firstValue === "download_completed")?.returnRate, "100.0%");
 assert.equal(firstValue.firstValueRows.find((row) => row.firstValue === "book_page_viewed")?.amazonRate, "100.0%");
 
 const channelScorecard = buildChannelScorecard({

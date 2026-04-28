@@ -1,8 +1,9 @@
 import { pct, sourceForEvent, stageLabelForEvent } from "./admin-kpis.mjs";
+import { normalizeAnalyticsEvents } from "./analytics-event-contract.mjs";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FIRST_VALUE_EVENTS = new Set([
-  "download_success",
+  "download_completed",
   "first_peanut_earned",
   "peanut_earned",
   "newsletter_confirmed",
@@ -96,7 +97,8 @@ function getBucket(map, key) {
  * @returns {Record<string, any>}
  */
 export function buildRetentionCohorts(options = {}) {
-  const { profiles = [], events = [], now = new Date() } = options;
+  const { profiles = [], now = new Date() } = options;
+  const events = normalizeAnalyticsEvents(options.events || []);
   const nowTime = now.getTime();
   const eventsByUser = new Map();
 
@@ -125,7 +127,7 @@ export function buildRetentionCohorts(options = {}) {
     const postSignupEvents = userEvents.filter((event) => timeValue(event.created_at) >= registeredAt);
     const firstEvent = postSignupEvents[0] || null;
     const firstValue = postSignupEvents.find(isFirstValue) || null;
-    const hasActivation = postSignupEvents.some((event) => event.event_name === "download_success" || event.event_name === "first_peanut_earned");
+    const hasActivation = postSignupEvents.some((event) => event.event_name === "download_completed" || event.event_name === "first_peanut_earned");
     const hasSecondSession = postSignupEvents.some((event) => event.event_name === "return_session" || timeValue(event.created_at) >= registeredAt + DAY_MS);
     const hasD1 = postSignupEvents.some((event) => inDayWindow(timeValue(event.created_at), registeredAt, 1));
     const hasD7 = postSignupEvents.some((event) => inDayWindow(timeValue(event.created_at), registeredAt, 7));

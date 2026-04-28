@@ -1,9 +1,10 @@
 import { eventProp, langFromPath, pct } from "./admin-kpis.mjs";
+import { normalizeAnalyticsEvents } from "./analytics-event-contract.mjs";
 
-const FIRST_VALUE_EVENTS = new Set(["download_success", "newsletter_confirmed", "register_submit_success", "first_peanut_earned", "peanut_earned", "book_page_viewed", "sample_viewed"]);
-const LEAD_EVENTS = new Set(["lead_magnet_submit_success", "newsletter_inline_submit_success", "newsletter_confirmed"]);
-const ACTIVATION_EVENTS = new Set(["download_success", "first_peanut_earned"]);
-const COMMUNITY_EVENTS = new Set(["review_submitted", "review_approved", "art_upload_submitted", "art_approved", "reaction_received", "share_credit_success"]);
+const FIRST_VALUE_EVENTS = new Set(["download_completed", "newsletter_confirmed", "register_completed", "first_peanut_earned", "peanut_earned", "book_page_viewed", "sample_viewed"]);
+const LEAD_EVENTS = new Set(["lead_magnet_submitted", "newsletter_submitted", "newsletter_confirmed"]);
+const ACTIVATION_EVENTS = new Set(["download_completed", "first_peanut_earned"]);
+const COMMUNITY_EVENTS = new Set(["review_submitted", "review_approved", "art_upload_submitted", "art_approved", "reaction_received", "share_completed"]);
 const BOOK_EVENTS = new Set(["book_page_viewed", "sample_viewed", "sample_cta_click", "amazon_click"]);
 
 function normalizeLang(value) {
@@ -101,7 +102,8 @@ function finalizeRow(row) {
  * @returns {Record<string, any>}
  */
 export function buildLanguageMarketReport(options = {}) {
-  const { events = [], pageviews = [], subscribers = [], profiles = [] } = options;
+  const { pageviews = [], subscribers = [], profiles = [] } = options;
+  const events = normalizeAnalyticsEvents(options.events || []);
   const map = new Map();
   ensureLang(map, "en");
   ensureLang(map, "es");
@@ -119,7 +121,7 @@ export function buildLanguageMarketReport(options = {}) {
     row.events += 1;
     if (FIRST_VALUE_EVENTS.has(name)) row.firstValue += 1;
     if (LEAD_EVENTS.has(name)) row.leads += 1;
-    if (name === "register_submit_success") row.registrations += 1;
+    if (name === "register_completed") row.registrations += 1;
     if (ACTIVATION_EVENTS.has(name)) row.activations += 1;
     if (name === "return_session") row.returns += 1;
     if (COMMUNITY_EVENTS.has(name)) row.community += 1;

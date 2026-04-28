@@ -1,4 +1,9 @@
 import { classifyGrowthSource } from "./linkable-assets.mjs";
+import {
+  buildEventContractHealth,
+  eventFunnelStage,
+  normalizeAnalyticsEvents,
+} from "./analytics-event-contract.mjs";
 
 export const ADMIN_KPI_RANGES = Object.freeze({ "24h": 1, "7d": 7, "30d": 30, "90d": 90 });
 
@@ -58,16 +63,7 @@ export function eventProp(event, key) {
 }
 
 export function fallbackFunnelStage(eventName) {
-  const name = eventName || "";
-  if (name === "amazon_click") return "amazon_click";
-  if (/book_page|sample/.test(name)) return "book_intent";
-  if (/lead_magnet|newsletter/.test(name)) return "lead";
-  if (/register_submit_success|login_submit_success/.test(name)) return "registered";
-  if (/download/.test(name)) return "activated";
-  if (/shop|peanut|lottery|share_click/.test(name)) return "engaged";
-  if (/review|share_credit|art_|reaction/.test(name)) return "community";
-  if (/return_session/.test(name)) return "return";
-  return "other";
+  return eventFunnelStage(eventName);
 }
 
 export function funnelStageForEvent(event) {
@@ -119,15 +115,15 @@ export function formatKpiTime(iso) {
 }
 
 function isLeadEvent(name) {
-  return /lead_magnet|newsletter|register_submit_success/.test(name || "");
+  return eventFunnelStage(name) === "lead";
 }
 
 function isActivationEvent(name) {
-  return /download_success|first_peanut_earned/.test(name || "");
+  return eventFunnelStage(name) === "activated";
 }
 
 function isBookIntentEvent(name) {
-  return /book_page|sample|amazon_click/.test(name || "");
+  return eventFunnelStage(name) === "book_intent" || eventFunnelStage(name) === "amazon_click";
 }
 
 function ensureQualityBucket(map, key, defaults = {}) {
@@ -170,22 +166,23 @@ function finalizeQualityRows(map, limit = 12) {
     .slice(0, limit);
 }
 
-export function buildAdminKpiSummary({ events = [], pageviews = [], totalEventCount, totalPageviewCount } = {}) {
+export function buildAdminKpiSummary({ events: rawEvents = [], pageviews = [], totalEventCount, totalPageviewCount } = {}) {
+  const events = normalizeAnalyticsEvents(rawEvents);
   const totalEvents = totalEventCount ?? events.length;
   const totalPageviews = totalPageviewCount ?? pageviews.length;
   const uniqueVisitors = new Set(pageviews.map((row) => row.visitor_hash).filter(Boolean)).size;
 
   const eventCount = (name) => events.filter((event) => event.event_name === name).length;
-  const leadEvents = eventCount("lead_magnet_submit_success") + eventCount("newsletter_inline_submit_success") + eventCount("newsletter_confirmed");
-  const registerSuccess = eventCount("register_submit_success");
-  const downloadSuccess = eventCount("download_success");
+  const leadEvents = eventCount("lead_magnet_submitted") + eventCount("newsletter_submitted") + eventCount("newsletter_confirmed");
+  const registerSuccess = eventCount("register_completed");
+  const downloadSuccess = eventCount("download_completed");
   const downloadBlocked = eventCount("download_blocked");
   const bookViews = eventCount("book_page_viewed");
   const sampleViews = eventCount("sample_viewed");
   const sampleClicks = eventCount("sample_cta_click");
   const amazonClicks = eventCount("amazon_click");
   const shareClicks = eventCount("share_click");
-  const shareCredits = eventCount("share_credit_success");
+  const shareCredits = eventCount("share_completed");
   const engagedEvents = shareClicks
     + eventCount("lottery_viewed")
     + eventCount("lottery_entered")
@@ -226,7 +223,7 @@ export function buildAdminKpiSummary({ events = [], pageviews = [], totalEventCo
     const source = sourceForEvent(event);
     const current = sourceMap.get(source) ?? { events: 0, activated: 0, amazon: 0, book: 0 };
     current.events += 1;
-    if (event.event_name === "download_success") current.activated += 1;
+    if (event.event_name === "download_completed") current.activated += 1;
     if (event.event_name === "amazon_click") current.amazon += 1;
     if (event.event_name === "book_page_viewed") current.book += 1;
     sourceMap.set(source, current);
@@ -276,6 +273,7 @@ export function buildAdminKpiSummary({ events = [], pageviews = [], totalEventCo
     stageBreakdown,
     sourceRows,
     bookRows,
+    eventContractHealth: buildEventContractHealth({ events, pageviews }),
   };
 }
 
@@ -309,7 +307,8 @@ function rowsFromDimension(map, limit = 10) {
  * @returns {Record<string, any>}
  */
 export function buildFunnelCommandCenter(options = {}) {
-  const { events = [], pageviews = [], summary } = options;
+  const { pageviews = [], summary } = options;
+  const events = normalizeAnalyticsEvents(options.events || []);
   const kpis = summary || buildAdminKpiSummary({ events, pageviews });
   const stageCounts = new Map(kpis.funnelRows.map((row) => [row.stage, row.count]));
   const stageDetails = new Map(ADMIN_FUNNEL_STAGES.map((stage) => [stage, { sources: new Map(), languages: new Map(), landingPages: new Map() }]));
@@ -391,39 +390,51 @@ export function buildFunnelCommandCenter(options = {}) {
 
 export async function fetchAdminKpiWindow(serviceClient, { rangeParam = "7d", now = new Date(), untilIso = "", limit = 5000 } = {}) {
   const range = resolveAdminRange(rangeParam, now);
-  let eventsQuery = serviceClient
-    .from("conversion_events")
-    .select("event_name,path,visitor_hash,props,lang,created_at", { count: "exact" })
-    .gte("created_at", range.sinceIso);
+  const baseEventSelect = "event_name,path,visitor_hash,props,lang,created_at";
+  const eventSelect = `${baseEventSelect},event_id,occurred_at`;
+  const buildEventsQuery = (selectColumns) => {
+    let query = serviceClient
+      .from("conversion_events")
+      .select(selectColumns, { count: "exact" })
+      .gte("created_at", range.sinceIso);
+    if (untilIso) query = query.lte("created_at", untilIso);
+    return query.order("created_at", { ascending: false }).limit(limit);
+  };
   let pageviewsQuery = serviceClient
     .from("pageviews")
     .select("path,landing_page,visitor_hash,utm_source,utm_medium,referrer,created_at", { count: "exact" })
     .gte("created_at", range.sinceIso);
 
   if (untilIso) {
-    eventsQuery = eventsQuery.lte("created_at", untilIso);
     pageviewsQuery = pageviewsQuery.lte("created_at", untilIso);
   }
 
   const [
-    { data: eventRows, count: totalEventCount },
+    eventResult,
     { data: pageviewRows, count: totalPageviewCount },
   ] = await Promise.all([
-    eventsQuery
-      .order("created_at", { ascending: false })
-      .limit(limit),
+    buildEventsQuery(eventSelect),
     pageviewsQuery
       .order("created_at", { ascending: false })
       .limit(limit),
   ]);
 
+  let eventRows = eventResult.data;
+  let totalEventCount = eventResult.count;
+  if (eventResult.error && /event_id|occurred_at|schema cache|column/i.test(eventResult.error.message || "")) {
+    const fallbackResult = await buildEventsQuery(baseEventSelect);
+    eventRows = fallbackResult.data;
+    totalEventCount = fallbackResult.count;
+  }
+
   const events = eventRows ?? [];
+  const normalizedEvents = normalizeAnalyticsEvents(events);
   const pageviews = pageviewRows ?? [];
   return {
     ...range,
-    events,
+    events: normalizedEvents,
     pageviews,
-    ...buildAdminKpiSummary({ events, pageviews, totalEventCount, totalPageviewCount }),
+    ...buildAdminKpiSummary({ events: normalizedEvents, pageviews, totalEventCount, totalPageviewCount }),
   };
 }
 
@@ -432,7 +443,8 @@ export async function fetchAdminKpiWindow(serviceClient, { rangeParam = "7d", no
  * @returns {{ sourceQualityRows: any[], landingQualityRows: any[], utmQualityRows: any[] }}
  */
 export function buildTrafficQualitySummary(options = {}) {
-  const { pageviews = [], events = [] } = options;
+  const { pageviews = [] } = options;
+  const events = normalizeAnalyticsEvents(options.events || []);
   const sourceMap = new Map();
   const landingMap = new Map();
   const utmMap = new Map();
@@ -474,7 +486,7 @@ export function buildTrafficQualitySummary(options = {}) {
     for (const bucket of buckets) {
       bucket.events += 1;
       if (isLeadEvent(name)) bucket.leads += 1;
-      if (name === "register_submit_success") bucket.registrations += 1;
+      if (name === "register_completed") bucket.registrations += 1;
       if (isActivationEvent(name)) bucket.activations += 1;
       if (isBookIntentEvent(name)) bucket.bookIntent += 1;
       if (name === "amazon_click") bucket.amazonClicks += 1;

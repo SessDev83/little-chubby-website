@@ -5,7 +5,7 @@ export const LINKABLE_ASSETS = [
     status: "pilot",
     audience: "Parents, caregivers, teachers, and homeschool families looking for printable activities.",
     routes: ["/en/coloring-corner/", "/es/coloring-corner/"],
-    primaryActions: ["download_success", "download_blocked", "register_submit_success", "newsletter_inline_submit_success", "newsletter_confirmed"],
+    primaryActions: ["download_completed", "download_success", "download_blocked", "register_completed", "register_submit_success", "newsletter_submitted", "newsletter_inline_submit_success", "newsletter_confirmed"],
     nextSteps: ["Download", "Register", "Newsletter"],
     outreachGuardrails: [
       "Recommend only where free printable resources are genuinely useful.",
@@ -19,7 +19,7 @@ export const LINKABLE_ASSETS = [
     status: "pilot",
     audience: "Families and educators who need practical EN/ES activity ideas.",
     routes: ["/en/blog/", "/es/blog/"],
-    primaryActions: ["newsletter_inline_submit_success", "newsletter_confirmed", "lead_magnet_submit_success", "book_page_viewed", "amazon_click"],
+    primaryActions: ["newsletter_submitted", "newsletter_inline_submit_success", "newsletter_confirmed", "lead_magnet_submitted", "lead_magnet_submit_success", "book_page_viewed", "amazon_click"],
     nextSteps: ["Newsletter", "Book page", "Coloring library"],
     outreachGuardrails: [
       "Use practical guides, not generic AI content volume, as the link target.",

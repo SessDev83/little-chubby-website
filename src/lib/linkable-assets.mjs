@@ -106,8 +106,8 @@ export function summarizeLinkableAssetPerformance(pageviews = [], events = [], a
     if (!asset) continue;
     const summary = byId.get(asset.id);
     const name = event.event_name || "";
-    const isDownload = name === "download_success";
-    const isLead = /lead_magnet|newsletter|register_submit_success/.test(name);
+    const isDownload = name === "download_success" || name === "download_completed";
+    const isLead = /lead_magnet|newsletter|register_submit_success|register_completed/.test(name);
     const isBookIntent = /book_page|sample/.test(name);
     const isAmazonClick = name === "amazon_click";
     if (asset.primaryActions.includes(name) || isDownload || isLead || isBookIntent || isAmazonClick) summary.actionEvents += 1;

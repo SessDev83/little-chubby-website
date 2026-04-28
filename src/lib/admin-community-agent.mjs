@@ -1,7 +1,8 @@
 import { pct } from "./admin-kpis.mjs";
+import { normalizeAnalyticsEvents } from "./analytics-event-contract.mjs";
 
-const COMMUNITY_EVENTS = new Set(["review_submitted", "review_approved", "art_upload_submitted", "art_approved", "reaction_received", "share_credit_success"]);
-const ECONOMY_EVENTS = new Set(["first_peanut_earned", "peanut_earned", "shop_purchase_completed", "ticket_purchase", "ticket_purchased", "lottery_entered"]);
+const COMMUNITY_EVENTS = new Set(["review_submitted", "review_approved", "art_upload_submitted", "art_approved", "reaction_received", "share_completed"]);
+const ECONOMY_EVENTS = new Set(["first_peanut_earned", "peanut_earned", "shop_purchase_completed", "ticket_purchased_with_peanuts", "lottery_entered"]);
 const RETURN_EVENTS = new Set(["return_session"]);
 
 function count(value) {
@@ -183,7 +184,8 @@ function buildFocusRows({ retention, economy, audienceSignals, preferenceRows, e
  * @returns {Record<string, any>}
  */
 export function buildCommunityEngagementAgentReport(options = {}) {
-  const { profiles = [], events = [], retention = {}, economy = {}, audienceSignals = {} } = options;
+  const { profiles = [], retention = {}, economy = {}, audienceSignals = {} } = options;
+  const events = normalizeAnalyticsEvents(options.events || []);
   const preferenceRows = buildPreferenceRows(profiles);
   const eventRows = buildEventRows(events);
   const healthRows = buildHealthRows({ retention, economy, audienceSignals, preferenceRows, eventRows });

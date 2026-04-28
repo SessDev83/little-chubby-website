@@ -1,11 +1,12 @@
 import { buildBookScorecard } from "./admin-book-scorecard.mjs";
 import { classifyAdminSource, eventProp, pct, sourceForEvent } from "./admin-kpis.mjs";
+import { normalizeAnalyticsEvents } from "./analytics-event-contract.mjs";
 
 const COMMUNITY_EVENTS = new Set([
   "review_submitted",
   "review_approved",
   "lottery_entered",
-  "share_credit_success",
+  "share_completed",
   "art_upload_submitted",
   "art_approved",
   "reaction_received",
@@ -87,7 +88,8 @@ function risk(severity, title, detail, action) {
  * @returns {Record<string, any>}
  */
 export function buildResilienceReport(options = {}) {
-  const { events = [], pageviews = [], subscribers = [], profiles = [], reviews = [], books = [] } = options;
+  const { pageviews = [], subscribers = [], profiles = [], reviews = [], books = [] } = options;
+  const events = normalizeAnalyticsEvents(options.events || []);
   const bookScorecard = buildBookScorecard({ events, reviews, books });
   const confirmedSubscribers = countBy(subscribers, (row) => row?.confirmed === true);
   const pendingSubscribers = countBy(subscribers, (row) => row?.confirmed === false);
@@ -98,8 +100,8 @@ export function buildResilienceReport(options = {}) {
   const directPageviews = countBy(pageviews, (row) => classifyAdminSource(row).category === "direct");
   const organicPageviews = countBy(pageviews, (row) => classifyAdminSource(row).category === "organic");
   const ownedSourceEvents = countBy(events, (event) => sourceLooksOwned(eventSource(event)));
-  const emailReturnEvents = countBy(events, (event) => sourceLooksOwned(eventSource(event)) && ["return_session", "download_success", "book_page_viewed", "amazon_click"].includes(event?.event_name));
-  const repeatDownloaders = repeatActors(events, "download_success");
+  const emailReturnEvents = countBy(events, (event) => sourceLooksOwned(eventSource(event)) && ["return_session", "download_completed", "book_page_viewed", "amazon_click"].includes(event?.event_name));
+  const repeatDownloaders = repeatActors(events, "download_completed");
   const communityEvents = countBy(events, (event) => COMMUNITY_EVENTS.has(event?.event_name));
   const supportInterest = countBy(events, (event) => SUPPORT_EVENTS.has(event?.event_name));
   const bundleInterest = countBy(events, (event) => BUNDLE_EVENTS.has(event?.event_name));
@@ -162,7 +164,7 @@ export function buildResilienceReport(options = {}) {
     { metric: "Confirmed subscriber rate", value: pct(confirmedSubscribers, Math.max(totalSubscribers, 1)), detail: `${confirmedSubscribers} confirmed / ${pendingSubscribers} pending` },
     { metric: "Direct + organic traffic", value: (directPageviews + organicPageviews).toLocaleString(), detail: `${directPageviews} direct, ${organicPageviews} organic pageviews` },
     { metric: "Book intent to Amazon", value: pct(amazonClicks, Math.max(bookIntent, 1)), detail: `${bookIntent} intent events / ${amazonClicks} Amazon clicks` },
-    { metric: "Repeat downloaders", value: repeatDownloaders.toLocaleString(), detail: "Same user/visitor with more than one download_success" },
+    { metric: "Repeat downloaders", value: repeatDownloaders.toLocaleString(), detail: "Same user/visitor with more than one download_completed" },
     { metric: "Community participation", value: communityEvents.toLocaleString(), detail: "Reviews, lottery, share, art, or reaction events" },
     { metric: "Future option interest", value: (supportInterest + bundleInterest).toLocaleString(), detail: `${supportInterest} support / ${bundleInterest} bundle interest` },
   ];
