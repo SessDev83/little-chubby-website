@@ -319,7 +319,7 @@ const eventContractJson = JSON.stringify({
           body.local_hour = now.getHours();
           body.local_weekday = now.getDay();
         } catch(e){}
-        fetch("/api/track-pageview", {
+        fetch("/api/track-pageview/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
