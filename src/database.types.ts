@@ -864,8 +864,12 @@ export type Database = {
           created_at: string | null
           id: number
           landing_page: string | null
+          local_date: string | null
+          local_hour: number | null
+          local_weekday: number | null
           path: string
           referrer: string | null
+          timezone: string | null
           utm_campaign: string | null
           utm_content: string | null
           utm_medium: string | null
@@ -877,8 +881,12 @@ export type Database = {
           created_at?: string | null
           id?: never
           landing_page?: string | null
+          local_date?: string | null
+          local_hour?: number | null
+          local_weekday?: number | null
           path: string
           referrer?: string | null
+          timezone?: string | null
           utm_campaign?: string | null
           utm_content?: string | null
           utm_medium?: string | null
@@ -890,8 +898,12 @@ export type Database = {
           created_at?: string | null
           id?: never
           landing_page?: string | null
+          local_date?: string | null
+          local_hour?: number | null
+          local_weekday?: number | null
           path?: string
           referrer?: string | null
+          timezone?: string | null
           utm_campaign?: string | null
           utm_content?: string | null
           utm_medium?: string | null

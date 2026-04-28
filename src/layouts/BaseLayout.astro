@@ -297,9 +297,6 @@ const eventContractJson = JSON.stringify({
         var sid = sessionStorage.getItem("_pvs");
         if (!sid) { sid = Math.random().toString(36).slice(2); sessionStorage.setItem("_pvs", sid); }
         var vh = sid + "_" + new Date().toISOString().slice(0,10);
-        var sb = document.querySelector('meta[name="x-sb-url"]');
-        var sk = document.querySelector('meta[name="x-sb-key"]');
-        if (!sb || !sk) return;
         var body = { path: p, referrer: document.referrer || null, visitor_hash: vh };
         // Capture UTM parameters from landing URL (set by social agents)
         try {
@@ -313,18 +310,21 @@ const eventContractJson = JSON.stringify({
             body.landing_page = p + location.search;
           }
         } catch(e){}
-        // Try to get country from Vercel header (edge) or timezone fallback
         try {
+          var now = new Date();
+          var pad = function(n){ return String(n).padStart(2, "0"); };
           var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-          body.country = tz.split("/")[0]; // rough region (America, Europe, Asia…)
+          body.timezone = tz || null;
+          body.local_date = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
+          body.local_hour = now.getHours();
+          body.local_weekday = now.getDay();
         } catch(e){}
-        fetch(sb.content + "/rest/v1/pageviews", {
-          method: "POST", headers: {
-            "Content-Type": "application/json",
-            apikey: sk.content,
-            Authorization: "Bearer " + sk.content,
-            Prefer: "return=minimal"
-          }, body: JSON.stringify(body), keepalive: true
+        fetch("/api/track-pageview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          keepalive: true,
+          credentials: "omit"
         }).catch(function(){});
       })();
     </script>

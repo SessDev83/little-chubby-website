@@ -23,6 +23,9 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 
+# local agent/tool settings
+.claude/settings.local.json
+
 .vercel
 .env*.local
 

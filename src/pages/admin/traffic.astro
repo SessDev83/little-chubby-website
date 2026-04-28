@@ -3,7 +3,7 @@ export const prerender = false;
 
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
-import { buildTrafficQualitySummary, classifyAdminSource, pct as formatRate, resolveAdminRange } from "../../lib/admin-kpis.mjs";
+import { buildPageviewGeoTimeSummary, buildTrafficQualitySummary, classifyAdminSource, pageviewGeoLabel, pct as formatRate, resolveAdminRange } from "../../lib/admin-kpis.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -17,21 +17,27 @@ const days = range.days;
 const sinceIso = range.sinceIso;
 const todayIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-const sc = getServiceClient();
+const sc = getServiceClient() as any;
+const pageviewBaseSelect = "path, referrer, country, visitor_hash, created_at, utm_source, utm_medium, utm_campaign, utm_content, landing_page";
+const pageviewGeoSelect = `${pageviewBaseSelect}, timezone, local_date, local_hour, local_weekday`;
+
+function buildPageviewQuery(selectColumns: string) {
+  return sc
+    .from("pageviews")
+    .select(selectColumns, { count: "exact" })
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(5000);
+}
 
 // ── Parallel queries ─────────────────────────────
 const [
-  { data: pvRows, count: totalPv },
+  pageviewResult,
   { count: todayPv },
   { data: utmClicks },
   { data: weekly },
 ] = await Promise.all([
-  sc
-    .from("pageviews")
-    .select("path, referrer, country, visitor_hash, created_at, utm_source, utm_medium, utm_campaign, utm_content, landing_page", { count: "exact" })
-    .gte("created_at", sinceIso)
-    .order("created_at", { ascending: false })
-    .limit(5000),
+  buildPageviewQuery(pageviewGeoSelect),
   sc
     .from("pageviews")
     .select("visitor_hash", { count: "exact", head: true })
@@ -49,7 +55,15 @@ const [
     .limit(1),
 ]);
 
-const rows = pvRows ?? [];
+let pvRows = pageviewResult.data;
+let totalPv = pageviewResult.count;
+if (pageviewResult.error && /timezone|local_date|local_hour|local_weekday|schema cache|column/i.test(pageviewResult.error.message || "")) {
+  const fallbackResult = await buildPageviewQuery(pageviewBaseSelect);
+  pvRows = fallbackResult.data;
+  totalPv = fallbackResult.count;
+}
+
+const rows: any[] = pvRows ?? [];
 const utmRows = utmClicks ?? [];
 const latestWeekly = weekly?.[0] ?? null;
 
@@ -120,16 +134,9 @@ const topPaths = [...pathMap.entries()]
   .sort((a, b) => b.count - a.count)
   .slice(0, 15);
 
-// Countries
-const countryMap = new Map<string, number>();
-for (const r of rows) {
-  const c = r.country || "??";
-  countryMap.set(c, (countryMap.get(c) || 0) + 1);
-}
-const topCountries = [...countryMap.entries()]
-  .map(([code, count]) => ({ code, count }))
-  .sort((a, b) => b.count - a.count)
-  .slice(0, 10);
+const geoTimeSummary = buildPageviewGeoTimeSummary(rows);
+const topCountries = geoTimeSummary.topCountries.slice(0, 8);
+const topTimezones = geoTimeSummary.topTimezones.slice(0, 4);
 
 // UTM attribution
 const utmMap = new Map<string, { clicks: number; source: string; campaign: string }>();
@@ -148,7 +155,9 @@ const liveFeed = rows.slice(0, 20).map((r) => ({
   when: r.created_at,
   path: r.path,
   source: classifySource(r).label,
-  country: r.country || "??",
+  country: pageviewGeoLabel(r).label,
+  localHour: Number.isInteger(Number(r.local_hour)) ? `${String(Number(r.local_hour)).padStart(2, "0")}:00` : "-",
+  timezone: r.timezone || "",
 }));
 
 // Source category colours
@@ -398,18 +407,29 @@ function fmtTime(iso: string) {
     </div>
 
     <div class="surface-card" style="padding:1.4rem;">
-      <h2 style="margin-top:0; margin-bottom:0.8rem;">🗺️ Countries</h2>
+      <h2 style="margin-top:0; margin-bottom:0.8rem;">Geo & visitor time</h2>
       {topCountries.length === 0 ? (
         <p style="color:var(--ink-soft);">No data.</p>
       ) : (
         <ul style="list-style:none; padding:0; margin:0; font-size:0.9rem;">
           {topCountries.map((c) => (
             <li style="display:flex; justify-content:space-between; padding:0.35rem 0; border-bottom:1px solid var(--border-soft);">
-              <span><strong>{c.code}</strong></span>
+              <span><strong>{c.label}</strong></span>
               <span style="color:var(--ink-soft);">{c.count.toLocaleString()}</span>
             </li>
           ))}
         </ul>
+      )}
+      {geoTimeSummary.peakLocalHour && (
+        <p class="time-pulse"><strong>{geoTimeSummary.peakLocalHour.label}</strong> is the strongest visitor-local hour in this window.</p>
+      )}
+      {topTimezones.length > 0 && (
+        <div class="timezone-list">
+          {topTimezones.map((row: any) => <span title={row.label}>{row.label} · {row.count.toLocaleString()}</span>)}
+        </div>
+      )}
+      {geoTimeSummary.legacyCountryRows.length > 0 && (
+        <p class="geo-note">Rows marked as region are older timezone fallback data. New rows use edge country when Vercel provides it.</p>
       )}
     </div>
   </div>
@@ -488,16 +508,18 @@ function fmtTime(iso: string) {
               <tr>
                 <th>When <span id="tz-label" style="font-weight:normal; font-size:0.7rem; color:var(--ink-soft);">(UTC)</span></th>
                 <th>Source</th>
-                <th>Country</th>
+                <th>Geo</th>
+                <th>Visitor hour</th>
                 <th>Path</th>
               </tr>
             </thead>
             <tbody id="live-feed">
-              {liveFeed.map((v) => (
+              {liveFeed.map((v: any) => (
                 <tr>
                   <td class="local-time admin-nowrap" data-iso={v.when || ""} style="font-size:0.78rem; color:var(--ink-soft);">{fmtTime(v.when || "")}</td>
                   <td style="font-size:0.82rem;">{v.source}</td>
                   <td style="font-size:0.82rem;">{v.country}</td>
+                  <td style="font-size:0.82rem;" title={v.timezone}>{v.localHour}</td>
                   <td class="admin-wrap admin-code-cell" title={v.path || ""}>{short(v.path || "/")}</td>
                 </tr>
               ))}
@@ -753,6 +775,37 @@ function fmtTime(iso: string) {
     text-decoration: none;
     font-size: 0.85rem;
     font-weight: 700;
+  }
+  .time-pulse {
+    margin: 0.8rem 0 0;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--border-soft);
+    color: var(--ink-soft);
+    font-size: 0.86rem;
+  }
+  .time-pulse strong { color: var(--brand-blue); }
+  .timezone-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.65rem;
+  }
+  .timezone-list span {
+    display: inline-flex;
+    max-width: 100%;
+    padding: 0.22rem 0.45rem;
+    border: 1px solid var(--border-soft);
+    border-radius: 0.45rem;
+    color: var(--ink-soft);
+    font-size: 0.74rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .geo-note {
+    margin: 0.65rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.78rem;
   }
   .quality-table code {
     font-size: 0.76rem;

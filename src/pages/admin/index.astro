@@ -3,6 +3,7 @@ export const prerender = false;
 
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildFunnelCommandCenter, buildPageviewGeoTimeSummary, buildTrafficQualitySummary, fetchAdminKpiWindow, pct, shortText } from "../../lib/admin-kpis.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -11,6 +12,7 @@ if (!user || !(await isAdmin(user))) {
 
 const sc = getServiceClient();
 const currentMonth = new Date().toISOString().slice(0, 7);
+const ownerRange = "7d";
 
 // ── Stats (parallel queries) ──
 const [
@@ -22,6 +24,7 @@ const [
   { data: creditRows },
   { data: monthEntries },
   { data: recentAudit },
+  kpiWindow,
 ] = await Promise.all([
   sc.from("profiles").select("*", { count: "exact", head: true }),
   sc.from("book_reviews").select("*", { count: "exact", head: true }).eq("status", "pending"),
@@ -31,15 +34,84 @@ const [
   sc.from("credit_transactions").select("amount").limit(10000),
   sc.from("lottery_entries").select("entry_count").eq("month", currentMonth),
   sc.from("admin_audit_log").select("action, target_type, target_id, created_at, admin_id").order("created_at", { ascending: false }).limit(10),
+  fetchAdminKpiWindow(sc as any, { rangeParam: ownerRange, limit: 5000 }),
 ]);
 
 const peanutsInCirculation = (creditRows ?? []).reduce((sum, c) => sum + (c.amount ?? 0), 0);
 const monthlyTickets = (monthEntries ?? []).reduce((sum, e) => sum + (e.entry_count ?? 0), 0);
+const ownerFunnel = buildFunnelCommandCenter({ events: kpiWindow.events, pageviews: kpiWindow.pageviews, summary: kpiWindow });
+const ownerTraffic = buildTrafficQualitySummary({ events: kpiWindow.events, pageviews: kpiWindow.pageviews });
+const ownerGeoTime = buildPageviewGeoTimeSummary(kpiWindow.pageviews);
+const topSource = ownerTraffic.sourceQualityRows[0] || null;
+const topLanding = ownerTraffic.landingQualityRows[0] || null;
+const topCountry = ownerGeoTime.topCountries[0] || null;
+const topTimezone = ownerGeoTime.topTimezones[0] || null;
+const peakLocalHour = ownerGeoTime.peakLocalHour || null;
+const dataHealthStatus = kpiWindow.eventContractHealth?.status || "yellow";
+const dataHealthLabel = dataHealthStatus === "green" ? "Healthy" : dataHealthStatus === "red" ? "Needs attention" : "Watch";
+const freshnessMinutes = kpiWindow.eventContractHealth?.metrics?.freshnessMinutes;
+const freshnessLabel = typeof freshnessMinutes === "number" ? `${freshnessMinutes.toLocaleString()} min freshness` : "No event freshness yet";
+const short = shortText;
+const ownerSteps = [
+  {
+    href: `/admin/traffic/?range=${ownerRange}`,
+    step: "1 Arrival",
+    value: topSource ? short(topSource.label, 28) : "No source yet",
+    meta: topSource ? `${topSource.pageviews.toLocaleString()} pageviews - ${pct(topSource.meaningfulActions, topSource.pageviews)} action rate` : "Watch Traffic first",
+  },
+  {
+    href: `/admin/funnel/?range=${ownerRange}`,
+    step: "2 Movement",
+    value: ownerFunnel.topLeak ? `${ownerFunnel.topLeak.from} -> ${ownerFunnel.topLeak.to}` : "No leak yet",
+    meta: ownerFunnel.topLeak ? `${ownerFunnel.topLeak.conversionLabel} conversion - ${ownerFunnel.topLeak.lost.toLocaleString()} drop` : "Needs more journey data",
+  },
+  {
+    href: `/admin/traffic/?range=${ownerRange}`,
+    step: "3 Landing",
+    value: topLanding ? short(topLanding.label, 30) : "No landing yet",
+    meta: topLanding ? `${topLanding.meaningfulActions.toLocaleString()} actions - ${pct(topLanding.amazonClicks, Math.max(topLanding.bookIntent, 1))} Amazon from intent` : "Check UTM and landing links",
+  },
+  {
+    href: `/admin/traffic/?range=${ownerRange}`,
+    step: "4 Place + Time",
+    value: topCountry ? topCountry.label : "No geo yet",
+    meta: `${peakLocalHour ? `${peakLocalHour.label} peak visitor hour` : "No local hour yet"}${topTimezone ? ` - ${short(topTimezone.label, 26)}` : ""}`,
+  },
+];
 ---
 
 <AdminLayout title="Dashboard" current="dashboard">
   <h1>Dashboard</h1>
   <p style="margin-top:0.3rem; color:var(--ink-soft);">Welcome, {user.email} · {currentMonth}</p>
+
+  <section class="owner-map" aria-labelledby="owner-map-title">
+    <div class="owner-map-head">
+      <div>
+        <span class="eyebrow">Owner read map · last 7 days</span>
+        <h2 id="owner-map-title">Where users arrive, what they do, and what needs your eyes</h2>
+        <p>Generated from pageviews + conversion events. Admin display timezone: <span id="dashboard-tz-label">local</span>.</p>
+      </div>
+      <a class:list={["health-badge", dataHealthStatus]} href={`/admin/data-health/?range=${ownerRange}`}>Data {dataHealthLabel}</a>
+    </div>
+
+    <div class="flow-grid">
+      {ownerSteps.map((item) => (
+        <a class="flow-step" href={item.href}>
+          <span>{item.step}</span>
+          <strong title={item.value}>{item.value}</strong>
+          <small>{item.meta}</small>
+        </a>
+      ))}
+    </div>
+
+    <div class="owner-watch-row">
+      <a href={`/admin/data-health/?range=${ownerRange}`}>Data Health</a>
+      <a href={`/admin/traffic/?range=${ownerRange}`}>Traffic</a>
+      <a href={`/admin/funnel/?range=${ownerRange}`}>Funnel</a>
+      <a href={`/admin/conversion-agent/?range=${ownerRange}`}>Conversion Agent</a>
+      <span>{freshnessLabel}</span>
+    </div>
+  </section>
 
   {/* ── Stat Cards ── */}
   <div class="stat-grid">
@@ -97,7 +169,7 @@ const monthlyTickets = (monthEntries ?? []).reduce((sum, e) => sum + (e.entry_co
           <tbody>
             {recentAudit.map((log: any) => (
               <tr>
-                <td style="white-space:nowrap; font-size:0.82rem; color:var(--ink-soft);">{new Date(log.created_at).toLocaleString()}</td>
+                <td class="local-time" data-iso={log.created_at || ""} style="white-space:nowrap; font-size:0.82rem; color:var(--ink-soft);">{new Date(log.created_at).toLocaleString()}</td>
                 <td><code style="font-size:0.82rem;">{log.action}</code></td>
                 <td>{log.target_type}</td>
                 <td style="max-width:10rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{log.target_id || "—"}</td>
@@ -111,7 +183,140 @@ const monthlyTickets = (monthEntries ?? []).reduce((sum, e) => sum + (e.entry_co
   )}
 </AdminLayout>
 
+<script>
+  (() => {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    document.querySelectorAll(".local-time").forEach((el) => {
+      const iso = el.getAttribute("data-iso");
+      if (!iso) return;
+      const date = new Date(iso);
+      if (Number.isNaN(date.getTime())) return;
+      el.textContent = `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      el.setAttribute("title", date.toLocaleString());
+    });
+    const tzLabel = document.getElementById("dashboard-tz-label");
+    if (tzLabel) {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+        const offset = -new Date().getTimezoneOffset() / 60;
+        const sign = offset >= 0 ? "+" : "";
+        tzLabel.textContent = `${tz} · UTC${sign}${offset}`;
+      } catch {
+        tzLabel.textContent = "local";
+      }
+    }
+  })();
+</script>
+
 <style>
+  .owner-map {
+    margin-top: 1.5rem;
+    padding: 1.15rem 0 1.25rem;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .owner-map-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.9rem;
+  }
+  .owner-map h2 {
+    margin: 0.15rem 0 0;
+    font-size: 1.25rem;
+    line-height: 1.2;
+  }
+  .owner-map p {
+    margin: 0.3rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+  }
+  .eyebrow {
+    color: var(--ink-soft);
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+  .health-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .health-badge.green { color: #166534; background: rgba(22,101,52,0.08); border-color: rgba(22,101,52,0.22); }
+  .health-badge.yellow { color: #92400e; background: rgba(146,64,14,0.08); border-color: rgba(146,64,14,0.22); }
+  .health-badge.red { color: #991b1b; background: rgba(153,27,27,0.08); border-color: rgba(153,27,27,0.22); }
+  .flow-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .flow-step {
+    display: grid;
+    gap: 0.18rem;
+    padding: 0.9rem;
+    border-right: 1px solid var(--line);
+    color: inherit;
+    text-decoration: none;
+    min-width: 0;
+  }
+  .flow-step:last-child { border-right: 0; }
+  .flow-step:hover { background: rgba(37,99,235,0.05); }
+  .flow-step span {
+    color: var(--ink-soft);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+  .flow-step strong {
+    display: block;
+    color: var(--brand-blue);
+    font-size: 1rem;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .flow-step small {
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    line-height: 1.3;
+  }
+  .owner-watch-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+  }
+  .owner-watch-row a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.8rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 700;
+    background: var(--surface);
+  }
   .stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
@@ -162,5 +367,15 @@ const monthlyTickets = (monthEntries ?? []).reduce((sum, e) => sum + (e.entry_co
   }
   .admin-table tbody tr {
     border-bottom: 1px solid var(--line);
+  }
+  @media (max-width: 920px) {
+    .flow-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .flow-step:nth-child(2) { border-right: 0; }
+    .flow-step:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
+  }
+  @media (max-width: 560px) {
+    .flow-grid { grid-template-columns: 1fr; }
+    .flow-step { border-right: 0; border-bottom: 1px solid var(--line); }
+    .flow-step:last-child { border-bottom: 0; }
   }
 </style>

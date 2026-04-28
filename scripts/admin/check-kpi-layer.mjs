@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import {
   buildFunnelCommandCenter,
   buildAdminKpiSummary,
+  buildPageviewGeoTimeSummary,
   buildTrafficQualitySummary,
   classifyAdminSource,
   fallbackFunnelStage,
+  pageviewGeoLabel,
   resolveAdminRange,
 } from "../../src/lib/admin-kpis.mjs";
 import { buildAgentKpiInputContract } from "../../src/lib/admin-agent-contract.mjs";
@@ -61,6 +63,19 @@ assert.deepEqual(classifyAdminSource({ referrer: "https://www.google.com/search?
   detail: "google.com",
   label: "google.com",
 });
+assert.deepEqual(pageviewGeoLabel({ country: "US" }), { label: "US", quality: "country" });
+assert.deepEqual(pageviewGeoLabel({ country: "America" }), { label: "America region", quality: "legacy_timezone" });
+
+const geoTime = buildPageviewGeoTimeSummary([
+  { country: "US", timezone: "America/New_York", local_hour: 20, local_weekday: 1 },
+  { country: "US", timezone: "America/New_York", local_hour: 20, local_weekday: 1 },
+  { country: "ES", timezone: "Europe/Madrid", local_hour: 9, local_weekday: 2 },
+  { country: "America", local_hour: 18, local_weekday: 0 },
+]);
+assert.equal(geoTime.topCountries[0].label, "US");
+assert.equal(geoTime.topTimezones[0].label, "America/New_York");
+assert.equal(geoTime.peakLocalHour.label, "20:00");
+assert.equal(geoTime.legacyCountryRows[0].label, "America region");
 
 const summary = buildAdminKpiSummary({
   pageviews: [

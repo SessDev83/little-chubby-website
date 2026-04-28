@@ -38,6 +38,21 @@ const FUNNEL_STAGE_ALIASES = Object.freeze({
   returning: "Return",
 });
 
+const PAGEVIEW_LEGACY_TIMEZONE_REGIONS = new Set([
+  "Africa",
+  "America",
+  "Antarctica",
+  "Arctic",
+  "Asia",
+  "Atlantic",
+  "Australia",
+  "Europe",
+  "Indian",
+  "Pacific",
+]);
+
+const WEEKDAY_LABELS = Object.freeze(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
+
 export function resolveAdminRange(rangeParam = "7d", now = new Date()) {
   const requested = String(rangeParam || "7d").toLowerCase();
   const rangeKey = Object.hasOwn(ADMIN_KPI_RANGES, requested) ? requested : "7d";
@@ -112,6 +127,70 @@ export function formatKpiTime(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function countRows(map, limit = 12) {
+  return [...map.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || String(a.label).localeCompare(String(b.label)))
+    .slice(0, limit);
+}
+
+function safeText(value, max = 80) {
+  const text = String(value || "").trim();
+  return text ? text.slice(0, max) : "";
+}
+
+export function pageviewGeoLabel(row = {}) {
+  const raw = safeText(row.country, 40);
+  if (!raw || raw === "??") return { label: "Unknown", quality: "unknown" };
+  const upper = raw.toUpperCase();
+  if (/^[A-Z]{2}$/.test(upper)) return { label: upper, quality: "country" };
+  if (PAGEVIEW_LEGACY_TIMEZONE_REGIONS.has(raw)) return { label: `${raw} region`, quality: "legacy_timezone" };
+  return { label: raw, quality: "coarse" };
+}
+
+export function buildPageviewGeoTimeSummary(pageviews = []) {
+  const countryMap = new Map();
+  const countryQuality = new Map();
+  const timezoneMap = new Map();
+  const hourMap = new Map();
+  const weekdayMap = new Map();
+
+  for (const row of pageviews) {
+    const geo = pageviewGeoLabel(row);
+    if (geo.label !== "Unknown") {
+      countryMap.set(geo.label, (countryMap.get(geo.label) || 0) + 1);
+      countryQuality.set(geo.label, geo.quality);
+    }
+
+    const timezone = safeText(row?.timezone, 80);
+    if (timezone) timezoneMap.set(timezone, (timezoneMap.get(timezone) || 0) + 1);
+
+    const hour = Number(row?.local_hour);
+    if (Number.isInteger(hour) && hour >= 0 && hour <= 23) hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
+
+    const weekday = Number(row?.local_weekday);
+    if (Number.isInteger(weekday) && weekday >= 0 && weekday <= 6) weekdayMap.set(weekday, (weekdayMap.get(weekday) || 0) + 1);
+  }
+
+  const localHourRows = [...hourMap.entries()]
+    .map(([hour, count]) => ({ hour, label: `${String(hour).padStart(2, "0")}:00`, count }))
+    .sort((a, b) => b.count - a.count || a.hour - b.hour);
+  const localWeekdayRows = [...weekdayMap.entries()]
+    .map(([weekday, count]) => ({ weekday, label: WEEKDAY_LABELS[weekday] || String(weekday), count }))
+    .sort((a, b) => b.count - a.count || a.weekday - b.weekday);
+  const topCountries = countRows(countryMap).map((row) => ({ ...row, quality: countryQuality.get(row.label) || "unknown" }));
+
+  return {
+    topCountries,
+    topTimezones: countRows(timezoneMap, 8),
+    localHourRows,
+    localWeekdayRows,
+    peakLocalHour: localHourRows[0] || null,
+    peakLocalWeekday: localWeekdayRows[0] || null,
+    legacyCountryRows: topCountries.filter((row) => row.quality === "legacy_timezone"),
+  };
 }
 
 function isLeadEvent(name) {
@@ -392,6 +471,8 @@ export async function fetchAdminKpiWindow(serviceClient, { rangeParam = "7d", no
   const range = resolveAdminRange(rangeParam, now);
   const baseEventSelect = "event_name,path,visitor_hash,props,lang,created_at";
   const eventSelect = `${baseEventSelect},event_id,occurred_at`;
+  const basePageviewSelect = "path,landing_page,visitor_hash,utm_source,utm_medium,referrer,created_at";
+  const pageviewSelect = `${basePageviewSelect},utm_campaign,utm_content,country,timezone,local_date,local_hour,local_weekday`;
   const buildEventsQuery = (selectColumns) => {
     let query = serviceClient
       .from("conversion_events")
@@ -400,23 +481,21 @@ export async function fetchAdminKpiWindow(serviceClient, { rangeParam = "7d", no
     if (untilIso) query = query.lte("created_at", untilIso);
     return query.order("created_at", { ascending: false }).limit(limit);
   };
-  let pageviewsQuery = serviceClient
-    .from("pageviews")
-    .select("path,landing_page,visitor_hash,utm_source,utm_medium,referrer,created_at", { count: "exact" })
-    .gte("created_at", range.sinceIso);
-
-  if (untilIso) {
-    pageviewsQuery = pageviewsQuery.lte("created_at", untilIso);
-  }
+  const buildPageviewsQuery = (selectColumns) => {
+    let query = serviceClient
+      .from("pageviews")
+      .select(selectColumns, { count: "exact" })
+      .gte("created_at", range.sinceIso);
+    if (untilIso) query = query.lte("created_at", untilIso);
+    return query.order("created_at", { ascending: false }).limit(limit);
+  };
 
   const [
     eventResult,
-    { data: pageviewRows, count: totalPageviewCount },
+    pageviewResult,
   ] = await Promise.all([
     buildEventsQuery(eventSelect),
-    pageviewsQuery
-      .order("created_at", { ascending: false })
-      .limit(limit),
+    buildPageviewsQuery(pageviewSelect),
   ]);
 
   let eventRows = eventResult.data;
@@ -425,6 +504,14 @@ export async function fetchAdminKpiWindow(serviceClient, { rangeParam = "7d", no
     const fallbackResult = await buildEventsQuery(baseEventSelect);
     eventRows = fallbackResult.data;
     totalEventCount = fallbackResult.count;
+  }
+
+  let pageviewRows = pageviewResult.data;
+  let totalPageviewCount = pageviewResult.count;
+  if (pageviewResult.error && /country|timezone|local_date|local_hour|local_weekday|utm_campaign|utm_content|schema cache|column/i.test(pageviewResult.error.message || "")) {
+    const fallbackResult = await buildPageviewsQuery(basePageviewSelect);
+    pageviewRows = fallbackResult.data;
+    totalPageviewCount = fallbackResult.count;
   }
 
   const events = eventRows ?? [];
