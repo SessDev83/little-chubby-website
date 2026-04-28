@@ -61,6 +61,9 @@ jobs:
             node scripts/create-blog-post.mjs --auto
           fi
 
+      - name: Validate build
+        run: npx astro build
+
       - name: Commit and open auto-merge PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -86,15 +89,14 @@ jobs:
           git checkout -b "$BRANCH"
           git commit -m "$COMMIT_MSG"
           git push --set-upstream origin "$BRANCH"
-          # Open PR and enable auto-merge so it merges once required checks pass
+          # Open PR. build-and-typecheck fires automatically on push to auto-blog/**
+          # (see build-and-typecheck.yml push trigger) so --auto will activate once
+          # that check passes. GITHUB_TOKEN cannot trigger workflow_dispatch on other
+          # workflows — push trigger is the reliable alternative.
           PR_URL=$(gh pr create \
             --base main \
             --head "$BRANCH" \
             --title "$COMMIT_MSG" \
             --body "Automated daily blog post. Auto-merges once \`build-and-typecheck\` passes.")
           echo "PR opened: $PR_URL"
-          # Enable auto-merge first so it activates as soon as required checks pass.
-          # workflow_dispatch via GITHUB_TOKEN is blocked by GitHub's loop-prevention
-          # policy — CI runs automatically via pull_request triggers on the new branch.
           gh pr merge "$PR_URL" --auto --squash --delete-branch
-          gh workflow run build-and-typecheck.yml --ref "$BRANCH" || true
