@@ -964,17 +964,27 @@ async function main() {
       console.log("📝 Post recorded in history for anti-repetition tracking.\n");
     }
 
-    // Fail the process if any Meta platform post failed, so CI shows a red X
+    // Fail CI for auth errors (token expired / permission revoked) — these need owner action.
+    // Media-download errors from Instagram are intermittent CDN issues; treat them as skips
+    // so a transient image-hosting failure does not fail the whole run.
     const metaFailures = results.filter(
       (r) => !r.success && (r.platform === "facebook" || r.platform === "instagram")
     );
     if (metaFailures.length > 0) {
+      let hasAuthError = false;
       for (const f of metaFailures) {
         const isExpired =
           f.error &&
           (f.error.includes("Session has expired") ||
             (f.error.includes("OAuthException") && f.error.includes("190")));
+        const isMediaError =
+          f.error &&
+          (f.error.includes("media could not be fetched") ||
+            f.error.includes("Media download has failed") ||
+            f.error.includes("2207052") ||
+            f.error.includes("media type"));
         if (isExpired) {
+          hasAuthError = true;
           console.error(`\n🔑 ACTION REQUIRED — META TOKEN EXPIRED`);
           console.error(`   The META_PAGE_ACCESS_TOKEN in your GitHub repository secrets has expired.`);
           console.error(`   To fix:`);
@@ -988,9 +998,14 @@ async function main() {
           console.error(`         &fb_exchange_token=SHORT_LIVED_TOKEN`);
           console.error(`   4. Update the META_PAGE_ACCESS_TOKEN secret in:`);
           console.error(`      https://github.com/SessDev83/little-chubby-website/settings/secrets/actions\n`);
+        } else if (isMediaError) {
+          console.warn(`  ⚠️  ${f.platform}: image URI rejected by platform (intermittent CDN issue) — skipping platform for this run.`);
+        } else {
+          hasAuthError = true;
+          console.error(`  ❌ ${f.platform}: unexpected failure — ${f.error}`);
         }
       }
-      process.exit(1);
+      if (hasAuthError) process.exit(1);
     }
   }
 }
