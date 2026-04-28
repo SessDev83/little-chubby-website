@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { createHash } from "node:crypto";
 import { getServiceClient } from "../../lib/supabase";
 import { notifyNewSubscriber, sendConfirmationEmail } from "../../lib/notifications";
+import { buildAnalyticsVisitorHash, trackServerConversionEvent } from "../../lib/server-analytics";
 
 export const prerender = false;
 
@@ -122,6 +123,17 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
               headers,
             });
           }
+          await trackServerConversionEvent(svc, {
+            eventName: "newsletter_submitted",
+            request,
+            lang,
+            visitorHash: buildAnalyticsVisitorHash(cleanEmail),
+            props: {
+              source: source || "popup",
+              existing: true,
+              confirmed: false,
+            },
+          });
           return new Response(JSON.stringify({ ok: true, existing: true, confirmed: false }), {
             status: 200,
             headers,
@@ -158,6 +170,18 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 
     // Admin notification (awaited to prevent loss on Vercel)
     await notifyNewSubscriber(cleanEmail, cleanName, source || "popup", lang);
+
+    await trackServerConversionEvent(svc, {
+      eventName: "newsletter_submitted",
+      request,
+      lang,
+      visitorHash: buildAnalyticsVisitorHash(cleanEmail),
+      props: {
+        source: source || "popup",
+        existing: false,
+        confirmed: false,
+      },
+    });
 
     return new Response(JSON.stringify({ ok: true }), {
       status: 201,

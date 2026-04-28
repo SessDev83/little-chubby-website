@@ -1,10 +1,11 @@
 import type { APIRoute } from "astro";
 import { getServiceClient } from "../../lib/supabase";
 import { notifySubscriberConfirmed } from "../../lib/notifications";
+import { buildAnalyticsVisitorHash, trackServerConversionEvent } from "../../lib/server-analytics";
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, request }) => {
   const token = url.searchParams.get("token");
   const rawLang = url.searchParams.get("lang") || "en";
   const lang = rawLang === "es" ? "es" : "en";
@@ -52,6 +53,17 @@ export const GET: APIRoute = async ({ url }) => {
 
   // Notify admin
   await notifySubscriberConfirmed(subscriber.email || "unknown");
+
+  await trackServerConversionEvent(supabase, {
+    eventName: "newsletter_confirmed",
+    request,
+    path: `/${lang}/welcome/`,
+    lang,
+    visitorHash: buildAnalyticsVisitorHash(subscriber.email),
+    props: {
+      source: "double_opt_in",
+    },
+  });
 
   return new Response(null, {
     status: 302,

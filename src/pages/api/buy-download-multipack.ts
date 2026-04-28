@@ -1,12 +1,13 @@
 import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
+import { trackServerConversionEvent } from "../../lib/server-analytics";
 
 export const prerender = false;
 
 const MULTIPACK_COST = 5;
 const MULTIPACK_CREDITS = 3;
 
-export const POST: APIRoute = async ({ request: _request, cookies }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   const headers = {
     "Content-Type": "application/json",
     "Cache-Control": "private, no-cache, max-age=0",
@@ -71,6 +72,18 @@ export const POST: APIRoute = async ({ request: _request, cookies }) => {
         headers,
       });
     }
+
+    await trackServerConversionEvent(svc, {
+      eventName: "shop_purchase_completed",
+      request,
+      userId: user_id,
+      props: {
+        item_type: "download_multipack",
+        cost: MULTIPACK_COST,
+        credits: res.credits ?? MULTIPACK_CREDITS,
+        balance: res.balance ?? null,
+      },
+    });
 
     return new Response(
       JSON.stringify({

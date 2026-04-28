@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
+import { trackServerConversionEvent } from "../../lib/server-analytics";
 
 export const prerender = false;
 
@@ -86,6 +87,20 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         { status: 403, headers }
       );
     }
+
+    await trackServerConversionEvent(svc, {
+      eventName: "ticket_purchased_with_peanuts",
+      request,
+      userId: user_id,
+      props: {
+        quantity: qty,
+        cost_per_ticket: TICKET_COST,
+        total_cost: qty * TICKET_COST,
+        tickets_added: res.tickets_added ?? null,
+        peanut_balance: res.peanut_balance ?? null,
+        ticket_balance: res.ticket_balance ?? null,
+      },
+    });
 
     return new Response(
       JSON.stringify({

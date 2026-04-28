@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
+import { trackServerConversionEvent } from "../../lib/server-analytics";
 
 export const prerender = false;
 
@@ -89,6 +90,30 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // Get updated balance
     const { data: balance } = await svc.rpc("get_user_credits", {
       p_user_id: user_id,
+    });
+
+    let sharedPath = "";
+    try {
+      const parsedShareUrl = new URL(shared_url);
+      const requestHost = new URL(request.url).hostname.replace(/^www\./, "").toLowerCase();
+      const siteHost = new URL(import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com").hostname.replace(/^www\./, "").toLowerCase();
+      const shareHost = parsedShareUrl.hostname.replace(/^www\./, "").toLowerCase();
+      if (shareHost === requestHost || shareHost === siteHost) sharedPath = parsedShareUrl.pathname;
+    } catch {
+      sharedPath = "";
+    }
+
+    await trackServerConversionEvent(svc, {
+      eventName: "share_completed",
+      request,
+      userId: user_id,
+      props: {
+        platform,
+        shared_path: sharedPath || undefined,
+        credited,
+        peanuts_awarded: credited ? 1 : 0,
+        balance: typeof balance === "number" ? balance : 0,
+      },
     });
 
     return new Response(

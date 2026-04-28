@@ -8,6 +8,7 @@ import { supabase, getServiceClient } from "../../lib/supabase";
 import { validateOrigin } from "../../lib/csrf";
 import { books } from "../../data/books";
 import { notifyNewReview, notifyReviewUpdated } from "../../lib/notifications";
+import { trackServerConversionEvent } from "../../lib/server-analytics";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
@@ -178,6 +179,19 @@ if (user) {
                 shareMsgType = "success";
                 const bTitle = books.find(b => b.id === bookId)?.title[lang] || bookId;
                 notifyNewReview(user.email || "unknown", bTitle, rating, reviewText).catch(() => {});
+                await trackServerConversionEvent(sc, {
+                  eventName: "review_submitted",
+                  request: Astro.request,
+                  path: pathname,
+                  lang,
+                  userId: user.id,
+                  props: {
+                    book_id: bookId,
+                    rating,
+                    photo_count: validPhotos.length,
+                    show_in_gallery: formData.get("show_in_gallery") === "on",
+                  },
+                });
               }
             }
           }

@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
 import { emailUserGiftReceived, emailUserGiftInvite } from "../../lib/notifications";
+import { trackServerConversionEvent } from "../../lib/server-analytics";
 
 export const prerender = false;
 
@@ -121,6 +122,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     } catch (e) {
       console.warn("[gift-ticket] notify recipient failed:", (e as any)?.message);
     }
+
+    await trackServerConversionEvent(svc, {
+      eventName: "shop_purchase_completed",
+      request,
+      userId: user_id,
+      props: {
+        item_type: "ticket_gift",
+        quantity: res.quantity ?? qty,
+        pending: !!res.pending,
+        sender_balance: res.sender_balance ?? null,
+        expires_at: res.expires_at ?? null,
+      },
+    });
 
     return new Response(JSON.stringify(res), { status: 200, headers });
   } catch (err: any) {
