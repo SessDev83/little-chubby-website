@@ -47,7 +47,7 @@ const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 // Model upgrade Apr 2026: blogs are long-form SEO — Opus 4.7 gives noticeably
 // better prose + reasoning. Cost impact: ~$0.02 per blog post.
 const CLAUDE_MODEL = process.env.ANTHROPIC_BLOG_MODEL || "claude-opus-4-7";
-const MAX_TOKENS = 8192;
+const MAX_TOKENS = 12288;
 
 const NANO_API_URL = "https://api.nanobananaapi.dev/v1/images/generate";
 // Model Apr 2026: flash-image-hd (5 credits) — matches social quality and avoids Pro 2K timeouts.
@@ -298,32 +298,40 @@ async function generatePost(topic, bookId, enPostsList, esPostsList) {
 
   const systemPrompt = buildSystemPrompt(enPostsList, esPostsList);
 
-  console.log("  🤖 Calling Claude for bilingual content...");
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: MAX_TOKENS,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-  });
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    if (attempt > 1) console.log(`  🔄 Retry ${attempt - 1}/${MAX_ATTEMPTS - 1} — Claude returned invalid JSON`);
+    console.log("  🤖 Calling Claude for bilingual content...");
+    const res = await fetch(ANTHROPIC_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: CLAUDE_MODEL,
+        max_tokens: MAX_TOKENS,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      }),
+    });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic API error (${res.status}): ${err}`);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Anthropic API error (${res.status}): ${err}`);
+    }
+
+    const json = await res.json();
+    let raw = json.content?.[0]?.text ?? "";
+    // Strip markdown fences if Claude wraps JSON in ```json ... ```
+    raw = raw.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+    try {
+      return JSON.parse(raw);
+    } catch (parseErr) {
+      if (attempt === MAX_ATTEMPTS) throw parseErr;
+    }
   }
-
-  const json = await res.json();
-  let raw = json.content?.[0]?.text ?? "";
-  // Strip markdown fences if Claude wraps JSON in ```json ... ```
-  raw = raw.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
-  return JSON.parse(raw);
 }
 
 // ─── Hero image generation ─────────────────────────────────────────────────
