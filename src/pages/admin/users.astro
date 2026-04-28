@@ -59,7 +59,7 @@ function pageUrl(p: number) {
 <AdminLayout title="Users" current="users">
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
     <h1>Users ({totalCount ?? 0})</h1>
-    <form method="GET" style="display:flex; gap:0.4rem; align-items:center;">
+    <form method="GET" aria-label="Search users" style="display:flex; gap:0.4rem; align-items:center;">
       <input
         type="text"
         name="q"
@@ -67,7 +67,7 @@ function pageUrl(p: number) {
         placeholder="Search by email or name…"
         style="padding:0.4rem 0.6rem; border:1px solid var(--line); border-radius:var(--radius-sm); font-size:0.88rem; width:16rem;"
       />
-      <button type="submit" class="btn btn-ghost" style="font-size:0.85rem;">🔍</button>
+      <button type="submit" class="btn btn-ghost" style="font-size:0.85rem;" aria-label="Search users">🔍</button>
       {search && <a href="/admin/users/" class="btn btn-ghost" style="font-size:0.85rem;">✕ Clear</a>}
     </form>
   </div>
@@ -87,7 +87,7 @@ function pageUrl(p: number) {
       </thead>
       <tbody>
         {profiles?.map((p) => (
-          <tr class={`clickable-row ${p.suspended ? "row-suspended" : ""}`} onclick={`window.location='/admin/users/${p.id}/'`}>
+          <tr class={`clickable-row ${p.suspended ? "row-suspended" : ""}`} data-admin-row-href={`/admin/users/${p.id}/`} tabindex="0" role="link" aria-label={`Open ${p.email || p.display_name || "user"}`}>
             <td>{p.email}</td>
             <td>{p.display_name || "—"}</td>
             <td>{p.lang_pref}</td>
@@ -98,7 +98,7 @@ function pageUrl(p: number) {
           </tr>
         ))}
         {(!profiles || profiles.length === 0) && (
-          <tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--ink-soft);">No users found.</td></tr>
+          <tr><td colspan="7"><p class="admin-empty-state">No users found.</p></td></tr>
         )}
       </tbody>
     </table>

@@ -85,6 +85,76 @@ const navGroups = [
   </section>
 </BaseLayout>
 
+<script is:inline>
+  document.addEventListener("submit", function(event) {
+    var form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (!form.matches("[data-admin-pending], [data-admin-confirm]")) return;
+
+    var submitter = event.submitter instanceof HTMLElement ? event.submitter : null;
+    var confirmText = submitter?.getAttribute("data-admin-confirm") || form.getAttribute("data-admin-confirm");
+    if (confirmText && !window.confirm(confirmText)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (form.dataset.adminSubmitting === "1") {
+      event.preventDefault();
+      return;
+    }
+    if (!form.checkValidity()) return;
+
+    form.dataset.adminSubmitting = "1";
+    form.setAttribute("aria-busy", "true");
+
+    if ((submitter instanceof HTMLButtonElement || submitter instanceof HTMLInputElement) && submitter.name) {
+      var mirror = document.createElement("input");
+      mirror.type = "hidden";
+      mirror.name = submitter.name;
+      mirror.value = submitter.value;
+      mirror.setAttribute("data-admin-submit-mirror", "true");
+      form.appendChild(mirror);
+    }
+
+    var pendingText = submitter?.getAttribute("data-admin-pending") || form.getAttribute("data-admin-pending");
+    if (pendingText && submitter) {
+      if (submitter instanceof HTMLInputElement) {
+        submitter.value = pendingText;
+      } else {
+        submitter.textContent = pendingText;
+      }
+    }
+
+    form.querySelectorAll('button, input[type="submit"]').forEach(function(control) {
+      if (control instanceof HTMLButtonElement && control.type !== "submit") return;
+      if (!(control instanceof HTMLButtonElement || control instanceof HTMLInputElement)) return;
+      control.disabled = true;
+      control.setAttribute("aria-disabled", "true");
+    });
+  });
+
+  document.addEventListener("click", function(event) {
+    var target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest("a, button, input, select, textarea, summary, label")) return;
+    var row = target.closest("[data-admin-row-href]");
+    if (row instanceof HTMLElement) {
+      var href = row.getAttribute("data-admin-row-href");
+      if (href) window.location.href = href;
+    }
+  });
+
+  document.addEventListener("keydown", function(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    var target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    var href = target.getAttribute("data-admin-row-href");
+    if (!href) return;
+    event.preventDefault();
+    window.location.href = href;
+  });
+</script>
+
 <style>
   .admin-nav {
     display: grid;
@@ -219,6 +289,52 @@ const navGroups = [
   :global(.mini-num) {
     max-width: 100%;
     overflow-wrap: anywhere;
+  }
+
+  :global(form[aria-busy="true"]) {
+    opacity: 0.78;
+  }
+
+  :global(form[aria-busy="true"] button),
+  :global(button[aria-disabled="true"]) {
+    cursor: wait;
+  }
+
+  :global(.admin-empty-state) {
+    margin: 0;
+    padding: 1rem;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface, #fff);
+    color: var(--ink-soft);
+    text-align: center;
+  }
+
+  :global(.admin-action-row) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+
+  :global(.admin-action-cell) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+  }
+
+  :global(.admin-danger) {
+    color: #8f1f18 !important;
+  }
+
+  :global([data-admin-row-href]) {
+    cursor: pointer;
+  }
+
+  :global([data-admin-row-href]:focus-visible) {
+    outline: 2px solid var(--brand-blue);
+    outline-offset: -2px;
   }
 
   @media (max-width: 980px) {

@@ -145,8 +145,8 @@ function filterUrl(f: string) {
 <AdminLayout title="Newsletter" current="newsletter">
   <h1>📬 Newsletter</h1>
 
-  {actionMsg && <p class="msg-ok">{actionMsg}</p>}
-  {actionErr && <p class="msg-err">{actionErr}</p>}
+  {actionMsg && <p class="msg-ok" role="status">{actionMsg}</p>}
+  {actionErr && <p class="msg-err" role="alert">{actionErr}</p>}
 
   {/* ── Stat Cards ── */}
   <div class="stat-grid">
@@ -180,10 +180,10 @@ function filterUrl(f: string) {
       <a href={filterUrl("pending")} class={`filter-tab ${filter === "pending" ? "active" : ""}`}>Pending ({pendingCount ?? 0})</a>
     </div>
     <div style="display:flex; gap:0.4rem; align-items:center;">
-      <form method="GET" style="display:flex; gap:0.4rem; align-items:center;">
+      <form method="GET" aria-label="Search newsletter subscribers" style="display:flex; gap:0.4rem; align-items:center;">
         {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
         <input type="text" name="q" value={search} placeholder="Search email or name…" class="search-input" />
-        <button type="submit" class="btn btn-ghost" style="font-size:0.85rem;">🔍</button>
+        <button type="submit" class="btn btn-ghost" style="font-size:0.85rem;" aria-label="Search subscribers">🔍</button>
         {search && <a href={filterUrl(filter)} class="btn btn-ghost" style="font-size:0.85rem;">✕</a>}
       </form>
       <button type="button" class="btn btn-secondary" id="exportCsvBtn" style="font-size:0.85rem;">📥 CSV</button>
@@ -191,7 +191,7 @@ function filterUrl(f: string) {
   </div>
 
   {/* ── Subscriber Table ── */}
-  <div style="overflow-x:auto; margin-top:1rem;">
+  <div class="table-wrap" style="margin-top:1rem;">
     <table class="admin-table" id="subTable">
       <thead>
         <tr>
@@ -208,35 +208,35 @@ function filterUrl(f: string) {
       <tbody>
         {subscribers?.map((s) => (
           <tr>
-            <td style="font-weight:600;">{s.email}</td>
-            <td>{s.name || "—"}</td>
+            <td class="admin-wrap" style="font-weight:600;">{s.email}</td>
+            <td class="admin-wrap">{s.name || "—"}</td>
             <td>
               {s.confirmed
                 ? <span class="badge badge-green">Confirmed</span>
                 : <span class="badge badge-yellow">Pending</span>}
             </td>
-            <td style="font-size:0.82rem;">{s.source || "—"}</td>
+            <td class="admin-wrap" style="font-size:0.82rem;">{s.source || "—"}</td>
             <td>{s.lang_pref?.toUpperCase() || "—"}</td>
             <td style="text-align:center;">{s.reminder_count ?? 0}</td>
             <td style="white-space:nowrap; font-size:0.82rem;">{s.created_at ? new Date(s.created_at).toLocaleDateString() : "—"}</td>
             <td class="action-cell">
               {!s.confirmed && (
-                <form method="POST" style="display:inline;">
+                <form method="POST" style="display:inline;" data-admin-pending="Sending...">
                   <input type="hidden" name="action" value="resend_confirmation" />
                   <input type="hidden" name="sub_id" value={s.id} />
-                  <button type="submit" class="btn btn-ghost action-btn" title="Resend confirmation email">📧</button>
+                  <button type="submit" class="btn btn-ghost action-btn" title="Resend confirmation email" aria-label={`Resend confirmation email to ${s.email}`}>📧</button>
                 </form>
               )}
-              <form method="POST" style="display:inline;" onsubmit="return confirm('Remove this subscriber?')">
+              <form method="POST" style="display:inline;" data-admin-confirm={`Remove ${s.email} from the newsletter?`} data-admin-pending="Removing...">
                 <input type="hidden" name="action" value="unsubscribe" />
                 <input type="hidden" name="sub_id" value={s.id} />
-                <button type="submit" class="btn btn-ghost action-btn" title="Remove subscriber" style="color:#8f1f18;">🗑</button>
+                <button type="submit" class="btn btn-ghost action-btn admin-danger" title="Remove subscriber" aria-label={`Remove ${s.email}`}>🗑</button>
               </form>
             </td>
           </tr>
         ))}
         {(!subscribers || subscribers.length === 0) && (
-          <tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--ink-soft);">No subscribers found.</td></tr>
+          <tr><td colspan="8"><p class="admin-empty-state">No subscribers found.</p></td></tr>
         )}
       </tbody>
     </table>

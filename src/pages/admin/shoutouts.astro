@@ -131,13 +131,13 @@ function fmtDate(d: string | null | undefined): string {
   <h1>📣 Social Shoutouts</h1>
   <p style="color:var(--ink-soft); margin-top:0.2rem;">Users spent peanuts to get their reviews featured on Little Chubby's social channels.</p>
 
-  {flash && <div class="admin-flash" style="background:#d4edda; color:#155724; padding:0.6rem 1rem; border-radius:8px; margin:0.8rem 0;">{flash}</div>}
-  {flashErr && <div class="admin-flash" style="background:#f8d7da; color:#721c24; padding:0.6rem 1rem; border-radius:8px; margin:0.8rem 0;">{flashErr}</div>}
+  {flash && <div class="admin-flash" role="status" style="background:#d4edda; color:#155724; padding:0.6rem 1rem; border-radius:8px; margin:0.8rem 0;">{flash}</div>}
+  {flashErr && <div class="admin-flash" role="alert" style="background:#f8d7da; color:#721c24; padding:0.6rem 1rem; border-radius:8px; margin:0.8rem 0;">{flashErr}</div>}
 
   <section style="margin-top:1.5rem;">
     <h2 style="margin-bottom:0.6rem;">Queue ({(queued || []).length})</h2>
     {(queued || []).length === 0
-      ? <p style="color:var(--ink-soft);">No queued shoutouts.</p>
+      ? <p class="admin-empty-state">No queued shoutouts.</p>
       : <div class="admin-table-wrapper">
           <table class="admin-table">
             <thead>
@@ -167,17 +167,17 @@ function fmtDate(d: string | null | undefined): string {
                     <td>
                       <details>
                         <summary style="cursor:pointer; color:var(--brand-blue);">Actions</summary>
-                        <form method="POST" style="margin-top:0.5rem; display:grid; gap:0.4rem;">
+                        <form method="POST" style="margin-top:0.5rem; display:grid; gap:0.4rem;" data-admin-pending="Updating...">
                           <input type="hidden" name="order_id" value={o.id} />
                           <input type="text" name="admin_note" placeholder="Optional note (max 500 chars)" maxlength="500" style="width:100%; padding:0.3rem;" />
                           <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
                             {o.status === "queued" && (
-                              <button type="submit" name="action" value="approve" class="btn btn-sm">Approve</button>
+                              <button type="submit" name="action" value="approve" class="btn btn-sm" data-admin-pending="Approving...">Approve</button>
                             )}
-                            <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger" onclick="return confirm('Reject and refund this user?');">Reject + Refund</button>
+                            <button type="submit" name="action" value="reject" class="btn btn-sm btn-danger" data-admin-confirm="Reject and refund this user?" data-admin-pending="Refunding...">Reject + Refund</button>
                           </div>
                           <input type="url" name="published_url" placeholder="https://..." pattern="https?://.+" style="width:100%; padding:0.3rem;" />
-                          <button type="submit" name="action" value="publish" class="btn btn-sm btn-primary">Publish with URL</button>
+                          <button type="submit" name="action" value="publish" class="btn btn-sm btn-primary" data-admin-pending="Publishing...">Publish with URL</button>
                         </form>
                       </details>
                     </td>
@@ -193,7 +193,7 @@ function fmtDate(d: string | null | undefined): string {
   <section style="margin-top:2rem;">
     <h2 style="margin-bottom:0.6rem;">Recent history</h2>
     {(recent || []).length === 0
-      ? <p style="color:var(--ink-soft);">No past shoutouts.</p>
+      ? <p class="admin-empty-state">No past shoutouts.</p>
       : <div class="admin-table-wrapper">
           <table class="admin-table">
             <thead>

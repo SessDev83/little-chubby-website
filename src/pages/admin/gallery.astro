@@ -160,8 +160,8 @@ const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
 <AdminLayout title="Gallery" current="gallery">
   <h1>🎨 Gallery Management</h1>
 
-  {actionMsg && <div class="alert alert-ok">{actionMsg}</div>}
-  {actionErr && <div class="alert alert-err">{actionErr}</div>}
+  {actionMsg && <div class="alert alert-ok" role="status">{actionMsg}</div>}
+  {actionErr && <div class="alert alert-err" role="alert">{actionErr}</div>}
 
   {/* ── Summary Cards ── */}
   <div class="stat-grid">
@@ -190,7 +190,7 @@ const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
   {/* ── Upload Form ── */}
   <details class="upload-section">
     <summary><strong>➕ Upload New Artwork</strong></summary>
-    <form method="POST" enctype="multipart/form-data" class="upload-form">
+    <form method="POST" enctype="multipart/form-data" class="upload-form" data-admin-pending="Uploading...">
       <div class="form-row">
         <label>Title (EN) <input type="text" name="title_en" required maxlength="200" /></label>
         <label>Title (ES) <input type="text" name="title_es" required maxlength="200" /></label>
@@ -234,7 +234,7 @@ const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
       </thead>
       <tbody>
         {items.length === 0 && (
-          <tr><td colspan="9" style="text-align:center;color:var(--ink-soft);">No artworks in gallery yet.</td></tr>
+          <tr><td colspan="9"><p class="admin-empty-state">No artworks in gallery yet.</p></td></tr>
         )}
         {items.map(a => {
           const dl = dlMap[a.id] || 0;
@@ -248,11 +248,11 @@ const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
               </td>
               <td>{a.category}</td>
               <td>
-                <form method="POST" class="inline-form">
+                <form method="POST" class="inline-form" data-admin-pending="Saving...">
                   <input type="hidden" name="action" value="update_cost" />
                   <input type="hidden" name="artwork_id" value={a.id} />
                   <input type="number" name="peanut_cost" value={a.peanut_cost ?? 0} min="0" max="99999" class="cost-input" />
-                  <button type="submit" class="btn-mini" title="Save cost">💾</button>
+                  <button type="submit" class="btn-mini" title="Save cost" aria-label={`Save peanut cost for ${a.title_en}`}>💾</button>
                 </form>
               </td>
               <td>{dl}</td>
@@ -260,11 +260,11 @@ const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
               <td>{rev > 0 ? `🥜 ${rev}` : "—"}</td>
               <td>{a.is_premium ? "⭐" : "—"}</td>
               <td>
-                <form method="POST" class="inline-form">
+                <form method="POST" class="inline-form" data-admin-pending={a.active ? "Deactivating..." : "Activating..."}>
                   <input type="hidden" name="action" value="toggle_active" />
                   <input type="hidden" name="artwork_id" value={a.id} />
                   <input type="hidden" name="current_active" value={String(!!a.active)} />
-                  <button type="submit" class={`btn-mini ${a.active ? "btn-warn" : "btn-ok"}`}>
+                  <button type="submit" class={`btn-mini ${a.active ? "btn-warn" : "btn-ok"}`} data-admin-confirm={a.active ? `Deactivate ${a.title_en}? It will disappear from the public gallery.` : undefined}>
                     {a.active ? "Deactivate" : "Activate"}
                   </button>
                 </form>

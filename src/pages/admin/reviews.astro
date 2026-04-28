@@ -111,7 +111,9 @@ if (Astro.request.method === "POST") {
       const ids = formData.getAll("selected_ids").map(v => v.toString());
       const newStatus = action === "bulk_approve" ? "approved" : "rejected";
       const reviewerNote = (formData.get("bulk_reviewer_note")?.toString().trim() || "").slice(0, 500);
-      if (ids.length > 0) {
+      if (ids.length === 0) {
+        bulkMsg = "Select at least one review first.";
+      } else {
         if (newStatus === "rejected" && !reviewerNote) {
           bulkMsg = "Please add a rejection reason for users before bulk reject.";
         } else {
@@ -184,6 +186,8 @@ const { count: totalRejected } = await sc
 const bookMap = Object.fromEntries(books.map(b => [b.id, b.title.en]));
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
 const totalPages = Math.ceil((totalPending ?? 0) / PAGE_SIZE);
+const reviewMsgIsError = reviewMsg.startsWith("Error") || reviewMsg.startsWith("Missing") || reviewMsg.startsWith("Please") || reviewMsg.startsWith("⛔");
+const bulkMsgIsError = bulkMsg.startsWith("Error") || bulkMsg.startsWith("Please") || bulkMsg.startsWith("Select");
 ---
 
 <AdminLayout title="Reviews" current="reviews">
@@ -195,12 +199,12 @@ const totalPages = Math.ceil((totalPending ?? 0) / PAGE_SIZE);
     <div class="stat-pill rejected">{totalRejected ?? 0} Rejected</div>
   </div>
 
-  {reviewMsg && <p class="msg-ok">{reviewMsg}</p>}
-  {bulkMsg && <p class={bulkMsg.startsWith("Error") ? "msg-err" : "msg-ok"}>{bulkMsg}</p>}
+  {reviewMsg && <p class={reviewMsgIsError ? "msg-err" : "msg-ok"} role={reviewMsgIsError ? "alert" : "status"}>{reviewMsg}</p>}
+  {bulkMsg && <p class={bulkMsgIsError ? "msg-err" : "msg-ok"} role={bulkMsgIsError ? "alert" : "status"}>{bulkMsg}</p>}
 
   {pendingReviews && pendingReviews.length > 0 ? (
     <>
-      <form method="POST" id="bulkForm">
+      <form method="POST" id="bulkForm" data-admin-pending="Applying...">
         <div class="bulk-bar" id="bulkBar" style="display:none;">
           <label class="bulk-select-all">
             <input type="checkbox" id="selectAll" /> Select All
@@ -213,8 +217,8 @@ const totalPages = Math.ceil((totalPending ?? 0) / PAGE_SIZE);
             class="bulk-note-input"
             placeholder="Message to users (required for bulk reject)"
           />
-          <button type="submit" name="action" value="bulk_approve" id="bulkApproveBtn" class="btn btn-ghost" style="font-size:0.8rem; padding:0.3rem 0.6rem;">✓ Approve Selected</button>
-          <button type="submit" name="action" value="bulk_reject" id="bulkRejectBtn" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.6rem;">✗ Reject Selected</button>
+          <button type="submit" name="action" value="bulk_approve" id="bulkApproveBtn" class="btn btn-ghost" style="font-size:0.8rem; padding:0.3rem 0.6rem;" data-admin-pending="Approving...">✓ Approve Selected</button>
+          <button type="submit" name="action" value="bulk_reject" id="bulkRejectBtn" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.6rem;" data-admin-confirm="Reject selected reviews and notify users?" data-admin-pending="Rejecting...">✗ Reject Selected</button>
         </div>
       </form>
       <div class="review-queue">
@@ -249,20 +253,20 @@ const totalPages = Math.ceil((totalPending ?? 0) / PAGE_SIZE);
               </div>
             </div>
             <div class="review-actions">
-              <form method="POST">
+              <form method="POST" data-admin-pending="Approving...">
                 <input type="hidden" name="action" value="approve_review" />
                 <input type="hidden" name="review_id" value={r.id} />
                 <input type="text" name="reviewer_note" placeholder="Note (optional)" maxlength="500" class="action-input" />
                 <button type="submit" class="btn btn-ghost action-btn">✓ Approve</button>
               </form>
-              <form method="POST">
+              <form method="POST" data-admin-confirm="Reject this review and notify the user?" data-admin-pending="Rejecting...">
                 <input type="hidden" name="action" value="reject_review" />
                 <input type="hidden" name="review_id" value={r.id} />
                 <input type="text" name="reviewer_note" required placeholder="Rejection reason" maxlength="500" class="action-input" />
                 <button type="submit" class="btn btn-secondary action-btn">✗ Reject</button>
               </form>
               <div class="action-row-compact">
-                <form method="POST">
+                <form method="POST" data-admin-pending="Updating...">
                   <input type="hidden" name="action" value="toggle_featured" />
                   <input type="hidden" name="review_id" value={r.id} />
                   <input type="hidden" name="featured" value={r.featured ? "true" : "false"} />
@@ -270,7 +274,7 @@ const totalPages = Math.ceil((totalPending ?? 0) / PAGE_SIZE);
                     {r.featured ? "★ Unfeature" : "☆ Feature"}
                   </button>
                 </form>
-                <form method="POST" onsubmit="return confirm('Delete this review permanently?')">
+                <form method="POST" data-admin-confirm="Delete this review permanently?" data-admin-pending="Deleting...">
                   <input type="hidden" name="action" value="delete_review" />
                   <input type="hidden" name="review_id" value={r.id} />
                   <button type="submit" class="btn btn-secondary action-btn-sm" style="color:#8f1f18;">🗑 Delete</button>
@@ -292,7 +296,7 @@ const totalPages = Math.ceil((totalPending ?? 0) / PAGE_SIZE);
     </>
   ) : (
     <div class="surface-card" style="padding:1.2rem; margin-top:1rem;">
-      <p style="margin:0; color:var(--ink-soft);">No pending reviews right now. 🎉</p>
+      <p class="admin-empty-state">No pending reviews right now. 🎉</p>
     </div>
   )}
 </AdminLayout>
@@ -311,6 +315,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const checked = document.querySelectorAll(".bulk-checkbox:checked").length;
     if (bulkBar) bulkBar.style.display = checked > 0 || (checkboxes.length > 0) ? "flex" : "none";
     if (bulkCount) bulkCount.textContent = checked + " selected";
+    if (bulkApproveBtn) bulkApproveBtn.disabled = checked === 0;
+    if (bulkRejectBtn) bulkRejectBtn.disabled = checked === 0;
+    if (selectAll && checkboxes.length > 0) {
+      selectAll.indeterminate = checked > 0 && checked < checkboxes.length;
+      selectAll.checked = checked === checkboxes.length;
+    }
   }
 
   if (selectAll) {

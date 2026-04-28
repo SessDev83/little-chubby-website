@@ -270,8 +270,8 @@ const bookMap = Object.fromEntries(books.map(b => [b.id, b.title.en]));
   {/* ── Config ── */}
   <div class="surface-card" style="padding:1.6rem; margin-top:1.5rem;">
     <h2>Config for {currentMonth}</h2>
-    {configMsg && <p class="msg-ok">{configMsg}</p>}
-    <form method="POST" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(10rem,1fr)); gap:1rem; margin-top:1rem;">
+    {configMsg && <p class="msg-ok" role="status">{configMsg}</p>}
+    <form method="POST" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(10rem,1fr)); gap:1rem; margin-top:1rem;" data-admin-pending="Saving...">
       <input type="hidden" name="action" value="save_config" />
       <div class="form-group">
         <label>Max winners</label>
@@ -315,15 +315,15 @@ const bookMap = Object.fromEntries(books.map(b => [b.id, b.title.en]));
     <h2>Draw — {currentMonth}</h2>
     <p>Approved reviews: <strong>{totalApproved ?? 0}</strong> · Eligible users: <strong>{uniqueUserIds.size}</strong> · Paid entries: <strong>{totalPaidEntries}</strong></p>
 
-    {drawResult && <p class="msg-ok">🎉 {drawResult}</p>}
-    {drawError && <p class="msg-err">{drawError}</p>}
+    {drawResult && <p class="msg-ok" role="status">🎉 {drawResult}</p>}
+    {drawError && <p class="msg-err" role="alert">{drawError}</p>}
 
     {drawAlreadyDone ? (
       <p class="msg-err">⚠️ Draw already completed for {currentMonth}.</p>
     ) : (
-      <form method="POST" style="margin-top:1rem;" id="drawForm">
+      <form method="POST" style="margin-top:1rem;" id="drawForm" data-admin-confirm={`Draw winners for ${currentMonth}? This cannot be undone.`} data-admin-pending="Drawing...">
         <input type="hidden" name="action" value="draw" />
-        <button type="submit" class="btn btn-primary" id="drawBtn" onclick="this.disabled=true;this.textContent='⏳ Drawing...';this.form.submit();">🎲 Draw Winners</button>
+        <button type="submit" class="btn btn-primary" id="drawBtn">🎲 Draw Winners</button>
       </form>
     )}
   </div>
@@ -433,7 +433,7 @@ const bookMap = Object.fromEntries(books.map(b => [b.id, b.title.en]));
         )}
       </>
     ) : (
-      <p style="margin-top:1rem; color:var(--ink-soft);">No winners yet.</p>
+      <p class="admin-empty-state" style="margin-top:1rem;">No winners yet.</p>
     )}
   </div>
 </AdminLayout>
