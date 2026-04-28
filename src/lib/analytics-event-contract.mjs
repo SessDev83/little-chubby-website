@@ -55,8 +55,9 @@ export const EVENT_NAME_ALIASES = Object.freeze({
 });
 
 export const REQUIRED_EVENT_PROPS = Object.freeze({
-  all: Object.freeze(["event_id", "event_contract_version", "session_id", "anonymous_id", "funnel_stage"]),
-  browser: Object.freeze(["path", "lang", "device_class"]),
+  all: Object.freeze(["event_id", "event_contract_version", "funnel_stage"]),
+  browser: Object.freeze(["session_id", "anonymous_id", "path", "lang", "device_class"]),
+  server: Object.freeze(["capture", "server_confirmed", "user_id, anonymous_id, or visitor_hash"]),
   acquisition: Object.freeze(["source", "landing_page"]),
   books: Object.freeze(["book_id"]),
   content: Object.freeze(["content_id"]),
@@ -75,6 +76,14 @@ const KNOWN_EVENT_NAME_SET = new Set([...ANALYTICS_EVENT_NAMES, ...ANALYTICS_OPE
 function stringProp(event, key) {
   const value = event?.props?.[key] ?? event?.[key];
   return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+function booleanProp(event, key) {
+  return event?.props?.[key] === true || event?.[key] === true;
+}
+
+function isServerConfirmedEvent(event) {
+  return stringProp(event, "capture") === "server" || booleanProp(event, "server_confirmed");
 }
 
 function eventTimeMs(event) {
@@ -174,6 +183,7 @@ export function buildEventContractHealth({ events = [], pageviews = [], now = ne
   for (let index = 0; index < rawEvents.length; index += 1) {
     const rawEvent = rawEvents[index] || {};
     const event = normalizedEvents[index] || {};
+    const serverConfirmed = isServerConfirmedEvent(event);
     const eventId = eventIdForHealth(event);
     if (!eventId) {
       missingEventIds += 1;
@@ -182,8 +192,8 @@ export function buildEventContractHealth({ events = [], pageviews = [], now = ne
       if (count > 0) duplicateEventIds += 1;
       eventIds.set(eventId, count + 1);
     }
-    if (!stringProp(event, "session_id")) missingSessionIds += 1;
-    if (!stringProp(event, "anonymous_id") && !stringProp(event, "user_id")) missingAnonymousIds += 1;
+    if (!serverConfirmed && !stringProp(event, "session_id")) missingSessionIds += 1;
+    if (!stringProp(event, "anonymous_id") && !stringProp(event, "user_id") && !stringProp(event, "visitor_hash")) missingAnonymousIds += 1;
     if (!event?.lang && !String(event?.path || "").match(/^\/(en|es)(\/|$)/)) missingLanguages += 1;
     if (!stringProp(event, "source") && !stringProp(event, "utm_source")) missingSources += 1;
     if (!stringProp(event, "funnel_stage") || stringProp(event, "funnel_stage") === "other") missingFunnelStages += 1;

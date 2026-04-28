@@ -6,6 +6,7 @@ import { getServiceClient, isAdmin } from "../../lib/supabase";
 import { validateOrigin } from "../../lib/csrf";
 import { books } from "../../data/books";
 import { emailUserReviewApproved, emailUserReviewRejected } from "../../lib/notifications";
+import { trackServerConversionEvent } from "../../lib/server-analytics";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -95,9 +96,20 @@ if (Astro.request.method === "POST") {
           reviewMsg = `Error: ${updateError.message}`;
         } else {
           if (newStatus === "approved") {
-            const { data: rev } = await sc.from("book_reviews").select("user_id").eq("id", reviewId).single();
+            const { data: rev } = await sc.from("book_reviews").select("user_id, book_id").eq("id", reviewId).single();
             if (rev?.user_id) {
               await sc.rpc("award_review_tickets", { p_user_id: rev.user_id, p_review_id: reviewId });
+              await trackServerConversionEvent(sc, {
+                eventName: "review_approved",
+                request: Astro.request,
+                path: "/admin/reviews/",
+                userId: rev.user_id,
+                props: {
+                  review_id: reviewId,
+                  book_id: rev.book_id || undefined,
+                  approved_by_admin: true,
+                },
+              });
             }
           }
           await notifyUserReviewDecision(reviewId, newStatus, reviewerNote);
@@ -126,9 +138,21 @@ if (Astro.request.method === "POST") {
           if (!error) {
             for (const rid of ids) {
               if (newStatus === "approved") {
-                const { data: rev } = await sc.from("book_reviews").select("user_id").eq("id", rid).single();
+                const { data: rev } = await sc.from("book_reviews").select("user_id, book_id").eq("id", rid).single();
                 if (rev?.user_id) {
                   await sc.rpc("award_review_tickets", { p_user_id: rev.user_id, p_review_id: rid });
+                  await trackServerConversionEvent(sc, {
+                    eventName: "review_approved",
+                    request: Astro.request,
+                    path: "/admin/reviews/",
+                    userId: rev.user_id,
+                    props: {
+                      review_id: rid,
+                      book_id: rev.book_id || undefined,
+                      approved_by_admin: true,
+                      bulk_action: true,
+                    },
+                  });
                 }
               }
               await notifyUserReviewDecision(rid, newStatus, reviewerNote);

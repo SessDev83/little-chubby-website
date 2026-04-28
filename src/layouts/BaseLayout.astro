@@ -399,8 +399,9 @@ const eventContractJson = JSON.stringify({
           if (utm && utm.utm_source) return utm.utm_source;
           try {
             if (!document.referrer) return "direct";
-            var host = new URL(document.referrer).hostname.replace(/^www\./, "");
-            if (host.indexOf(location.hostname.replace(/^www\./, "")) >= 0) return "internal";
+            var host = new URL(document.referrer).hostname.replace(/^www\./, "").toLowerCase();
+            var currentHost = location.hostname.replace(/^www\./, "").toLowerCase();
+            if (host === currentHost || host.endsWith("." + currentHost)) return "internal";
             return host;
           } catch (e) { return "unknown"; }
         }
@@ -411,6 +412,22 @@ const eventContractJson = JSON.stringify({
             if (w < 1024) return "tablet";
             return "desktop";
           } catch (e) { return "unknown"; }
+        }
+        function isSensitivePropName(key) {
+          var normalized = String(key || "").replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
+          return /(^|_)(email|phone|ip|ip_address|child|transcript|review_text|raw_text|message|full_url|shared_url|token|secret)(_|$)/.test(normalized);
+        }
+        function isReservedAnalyticsProp(key) {
+          return /^(event_id|occurred_at|event_contract_version|session_id|anonymous_id|visitor_hash)$/.test(String(key || ""));
+        }
+        function getClientAnalyticsContext() {
+          var utm = getUtmState();
+          return {
+            session_id: getSessionId(),
+            anonymous_id: getAnonymousId(),
+            path: location.pathname,
+            source: getSource(utm)
+          };
         }
         function getEventContract() {
           try {
@@ -440,6 +457,7 @@ const eventContractJson = JSON.stringify({
           var keys = Object.keys(props).slice(0, 24);
           for (var i = 0; i < keys.length; i++) {
             var k = keys[i];
+            if (isSensitivePropName(k)) continue;
             var v = props[k];
             if (v === null || v === undefined || v === "") continue;
             if (typeof v === "string") {
@@ -475,7 +493,9 @@ const eventContractJson = JSON.stringify({
               funnel_stage: getFunnelStage(eventName)
             });
             var eventProps = safeProps(props);
-            for (var propName in eventProps) mergedProps[propName] = eventProps[propName];
+            for (var propName in eventProps) {
+              if (!isReservedAnalyticsProp(propName)) mergedProps[propName] = eventProps[propName];
+            }
             var body = {
               event_id: mergedProps.event_id,
               event_name: eventName,
@@ -509,6 +529,29 @@ const eventContractJson = JSON.stringify({
             send(body, true).catch(function () {});
           } catch (e) { /* never throw from tracker */ }
         };
+
+        window.lcpAnalyticsContext = getClientAnalyticsContext;
+        if (window.fetch && !window.__lcpAnalyticsFetchPatched) {
+          window.__lcpAnalyticsFetchPatched = true;
+          var originalFetch = window.fetch;
+          window.fetch = function (input, init) {
+            try {
+              var requestUrl = typeof input === "string" ? input : (input && input.url ? input.url : "");
+              var url = requestUrl ? new URL(requestUrl, location.href) : null;
+              if (url && url.origin === location.origin && url.pathname.indexOf("/api/") === 0) {
+                var context = getClientAnalyticsContext();
+                var baseHeaders = init && init.headers ? init.headers : (input && typeof input !== "string" && input.headers ? input.headers : undefined);
+                var headers = new Headers(baseHeaders);
+                if (context.session_id && !headers.has("x-lcp-session-id")) headers.set("x-lcp-session-id", context.session_id);
+                if (context.anonymous_id && !headers.has("x-lcp-anonymous-id")) headers.set("x-lcp-anonymous-id", context.anonymous_id);
+                if (context.path && !headers.has("x-lcp-path")) headers.set("x-lcp-path", context.path);
+                if (context.source && !headers.has("x-lcp-source")) headers.set("x-lcp-source", context.source);
+                init = Object.assign({}, init || {}, { headers: headers });
+              }
+            } catch (e) {}
+            return originalFetch.call(this, input, init);
+          };
+        }
 
         function slugFromPath(pattern) {
           var match = location.pathname.match(pattern);

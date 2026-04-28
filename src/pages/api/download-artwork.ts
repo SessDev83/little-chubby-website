@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
 import { notifyDownload } from "../../lib/notifications";
+import { trackServerConversionEvent } from "../../lib/server-analytics";
 
 export const prerender = false;
 
@@ -109,6 +110,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     // 6. Notify admin (non-blocking)
     const userEmail = sessionData.session.user.email || "unknown";
     notifyDownload(userEmail, artwork.title_en || artwork_id, res.balance ?? 0);
+
+    await trackServerConversionEvent(svc, {
+      eventName: "download_completed",
+      request,
+      userId: user_id,
+      props: {
+        artwork_id,
+        content_id: artwork.image_path,
+        peanut_cost: cost,
+        balance: res.balance ?? null,
+      },
+    });
 
     return new Response(
       JSON.stringify({

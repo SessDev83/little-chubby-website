@@ -136,6 +136,16 @@ assert.equal(eventContractHealth.metrics.duplicateEventIds, 1);
 assert.equal(eventContractHealth.metrics.missingEventIds, 1);
 assert.equal(eventContractHealth.unknownEventNames[0].eventName, "surprise_unknown");
 
+const serverConfirmedHealth = buildEventContractHealth({
+  now: fixedNow,
+  events: [
+    { event_name: "shop_purchase_completed", event_id: "srv_1", path: "/en/peanuts/", lang: "en", created_at: "2026-04-27T11:58:00.000Z", props: { capture: "server", server_confirmed: true, user_id: "user-a", source: "internal" } },
+    { event_name: "newsletter_confirmed", event_id: "srv_2", visitor_hash: "lead-hash", path: "/en/welcome/", lang: "en", created_at: "2026-04-27T11:59:00.000Z", props: { capture: "server", server_confirmed: true, source: "double_opt_in" } },
+  ],
+});
+assert.equal(serverConfirmedHealth.metrics.missingSessionIds, 0);
+assert.equal(serverConfirmedHealth.metrics.missingAnonymousIds, 0);
+
 const journey = buildAdminUserJourney({
   now: fixedNow,
   profile: { email: "test@example.com", created_at: "2026-04-01T00:00:00.000Z", suspended: false },

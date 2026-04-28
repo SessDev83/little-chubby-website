@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { supabase, getServiceClient } from "../../lib/supabase";
+import { trackServerConversionEvent } from "../../lib/server-analytics";
 
 export const prerender = false;
 
@@ -71,6 +72,17 @@ export const POST: APIRoute = async ({ cookies, request }) => {
   // Get new balance via RPC
   const { data: bal } = await sc.rpc("get_user_credits", { p_user_id: user.id });
   const balance = typeof bal === "number" ? bal : 0;
+
+  await trackServerConversionEvent(sc, {
+    eventName: "share_completed",
+    request,
+    userId: user.id,
+    props: {
+      review_id: reviewId,
+      peanuts_awarded: REWARD,
+      balance,
+    },
+  });
 
   return new Response(JSON.stringify({ credited: true, balance }), {
     status: 200,

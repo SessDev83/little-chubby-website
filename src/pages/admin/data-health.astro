@@ -1,0 +1,250 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { fetchAdminKpiWindow, pct, shortText } from "../../lib/admin-kpis.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const requestedRangeParam = (Astro.url.searchParams.get("range") || "7d").toLowerCase();
+const sc = getServiceClient() as any;
+const kpiWindow = await fetchAdminKpiWindow(sc, { rangeParam: requestedRangeParam });
+const { rangeKey: rangeParam, days, generatedAtIso, events, pageviews, eventContractHealth } = kpiWindow;
+const health = eventContractHealth;
+
+const totalEvents = Math.max(events.length, 0);
+const serverConfirmed = events.filter((event: any) => event?.props?.server_confirmed === true || event?.props?.capture === "server").length;
+const contractVersioned = events.filter((event: any) => event?.props?.event_contract_version === health.contractVersion).length;
+const withOccurredAt = events.filter((event: any) => event?.occurred_at || event?.props?.occurred_at).length;
+const withEventId = events.filter((event: any) => event?.event_id || event?.props?.event_id).length;
+
+const metricRows = [
+  ["Missing event IDs", health.metrics.missingEventIds],
+  ["Duplicate event IDs", health.metrics.duplicateEventIds],
+  ["Missing sessions", health.metrics.missingSessionIds],
+  ["Missing identity", health.metrics.missingAnonymousIds],
+  ["Missing language", health.metrics.missingLanguages],
+  ["Missing source", health.metrics.missingSources],
+  ["Missing/other funnel stage", health.metrics.missingFunnelStages],
+  ["Admin/internal noise", health.metrics.internalNoise],
+  ["Test/debug noise", health.metrics.testNoise],
+  ["Unknown-source pageviews", health.metrics.unknownSourcePageviews],
+];
+
+function tone(status: string) {
+  if (status === "red") return "danger";
+  if (status === "yellow") return "warn";
+  return "good";
+}
+
+function formatCount(value: unknown) {
+  if (typeof value === "number") return value.toLocaleString();
+  if (value === null || value === undefined) return "-";
+  return String(value);
+}
+
+function formatCheckValue(check: any) {
+  const value = check?.value;
+  if (typeof value === "number" && /rate|coverage/.test(String(check?.key || ""))) return pct(value, 1);
+  if (typeof value === "number") return value.toLocaleString();
+  if (value === null || value === undefined) return "-";
+  return String(value);
+}
+---
+
+<AdminLayout title="Data Health" current="data-health">
+  <div class="admin-page-head">
+    <div>
+      <h1>Data Health</h1>
+      <p>Window: last {days === 1 ? "24 hours" : `${days} days`} · generated {new Date(generatedAtIso).toLocaleString()}</p>
+    </div>
+    <div class="range-actions" aria-label="Data health range">
+      {(["24h", "7d", "30d", "90d"] as const).map((range) => (
+        <a href={`?range=${range}`} class:list={["range-btn", { active: rangeParam === range }]}>{range}</a>
+      ))}
+    </div>
+  </div>
+
+  <section class:list={["surface-card", "status-strip", tone(health.status)]}>
+    <div>
+      <span class="eyebrow">Contract</span>
+      <h2>{health.contractVersion}</h2>
+    </div>
+    <div class="status-metrics">
+      <div><strong>{health.status.toUpperCase()}</strong><span>Overall status</span></div>
+      <div><strong>{totalEvents.toLocaleString()}</strong><span>Events loaded</span></div>
+      <div><strong>{pageviews.length.toLocaleString()}</strong><span>Pageviews loaded</span></div>
+      <div><strong>{formatCount(health.metrics.freshnessMinutes)}</strong><span>Freshness minutes</span></div>
+    </div>
+  </section>
+
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-value">{pct(withEventId, Math.max(totalEvents, 1))}</div><div class="stat-label">Event ID coverage</div></div>
+    <div class="stat-card"><div class="stat-value">{pct(withOccurredAt, Math.max(totalEvents, 1))}</div><div class="stat-label">Occurred-at coverage</div></div>
+    <div class="stat-card"><div class="stat-value">{pct(contractVersioned, Math.max(totalEvents, 1))}</div><div class="stat-label">V1 version coverage</div></div>
+    <div class="stat-card"><div class="stat-value">{serverConfirmed.toLocaleString()}</div><div class="stat-label">Server-confirmed events</div></div>
+  </div>
+
+  <div class="grid-2">
+    <section class="surface-card admin-panel">
+      <h2>Contract Checks</h2>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Check</th><th>Status</th><th>Value</th><th>Detail</th></tr></thead>
+          <tbody>
+            {health.checks.map((check: any) => (
+              <tr>
+                <td>{check.label}</td>
+                <td><span class:list={["pill", tone(check.status)]}>{check.status}</span></td>
+                <td class="admin-number">{formatCheckValue(check)}</td>
+                <td class="admin-wrap">{check.detail}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="surface-card admin-panel">
+      <h2>Metric Counters</h2>
+      <div class="table-wrap compact-table">
+        <table class="admin-table">
+          <thead><tr><th>Metric</th><th>Count</th></tr></thead>
+          <tbody>
+            {metricRows.map(([label, value]) => (
+              <tr><td>{label}</td><td class="admin-number">{formatCount(value)}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <section class="surface-card admin-panel">
+      <h2>Unknown Event Names</h2>
+      <div class="table-wrap compact-table">
+        <table class="admin-table">
+          <thead><tr><th>Event</th><th>Count</th></tr></thead>
+          <tbody>
+            {health.unknownEventNames.length === 0 && <tr><td colspan="2" class="empty-cell">All loaded event names are known.</td></tr>}
+            {health.unknownEventNames.map((row: any) => (
+              <tr><td><code>{shortText(row.eventName, 52)}</code></td><td class="admin-number">{row.count.toLocaleString()}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="surface-card admin-panel">
+      <h2>Privacy Guardrails</h2>
+      <ul class="note-list">
+        {health.privacyRules.map((rule: string) => <li>{rule}</li>)}
+      </ul>
+    </section>
+  </div>
+
+  <section class="surface-card admin-panel">
+    <h2>Required Props</h2>
+    <div class="prop-grid">
+      {Object.entries(health.requiredProps).map(([group, props]) => (
+        <div>
+          <strong>{group}</strong>
+          <p>{(props as string[]).join(", ")}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.4rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0 0 0.8rem; font-size: 1.05rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .status-strip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-left: 0.35rem solid var(--brand-green);
+  }
+  .status-strip.warn { border-left-color: #d3a442; }
+  .status-strip.danger { border-left-color: #c94c4c; }
+  .eyebrow {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+  .status-metrics, .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.7rem;
+  }
+  .status-metrics div, .stat-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.7rem;
+    background: var(--surface, #fff);
+  }
+  .status-metrics strong, .stat-value { display: block; font-size: 1.15rem; color: var(--brand-blue); }
+  .status-metrics span, .stat-label { color: var(--ink-soft); font-size: 0.78rem; }
+  .stat-grid { margin-bottom: 1rem; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+  .admin-panel { padding: 1rem; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.45rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    background: #eaf6ee;
+    color: #1d6b3a;
+  }
+  .pill.warn { background: #fff7dc; color: #8a6100; }
+  .pill.danger { background: #fdecec; color: #9f2727; }
+  .prop-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem; }
+  .prop-grid div { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 0.75rem; }
+  .prop-grid strong { display: block; margin-bottom: 0.35rem; color: var(--brand-blue); }
+  .prop-grid p { margin: 0; color: var(--ink-soft); font-size: 0.86rem; overflow-wrap: anywhere; }
+  @media (max-width: 900px) {
+    .status-strip, .grid-2 { grid-template-columns: 1fr; }
+    .status-metrics, .stat-grid, .prop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 560px) {
+    .status-metrics, .stat-grid, .prop-grid { grid-template-columns: 1fr; }
+  }
+</style>
