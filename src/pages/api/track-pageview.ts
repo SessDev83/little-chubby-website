@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { getServiceClient } from "../../lib/supabase";
+import { recordAnalyticsIdentity } from "../../lib/analytics-identity";
 
 export const prerender = false;
 
@@ -41,12 +42,17 @@ function cleanNumber(value: unknown, min: number, max: number): number | null {
   return number;
 }
 
+function cleanIdentityId(value: unknown): string | null {
+  const text = cleanText(value, 180);
+  return text && /^[a-z0-9:_-]+$/i.test(text) ? text : null;
+}
+
 function isBot(headers: Headers): boolean {
   const ua = headers.get("user-agent") || "";
   return /bot|crawler|spider|preview|lighthouse|pagespeed/i.test(ua);
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   if (isBot(request.headers)) {
     return new Response(JSON.stringify({ ok: true, skipped: "bot" }), { status: 202, headers: JSON_HEADERS });
   }
@@ -69,10 +75,19 @@ export const POST: APIRoute = async ({ request }) => {
     "cf-ipcountry",
   ]));
 
+  const authUser = locals.user ? { id: locals.user.id, email: locals.user.email } : null;
+
+  const sessionId = cleanIdentityId(body.session_id);
+  const anonymousId = cleanIdentityId(body.anonymous_id);
+  const visitorHash = cleanText(body.visitor_hash, 160);
+
   const payload = {
     path,
     referrer: cleanText(body.referrer, 1000),
-    visitor_hash: cleanText(body.visitor_hash, 160),
+    visitor_hash: visitorHash,
+    user_id: authUser?.id || null,
+    session_id: sessionId,
+    anonymous_id: anonymousId,
     country: headerCountry,
     utm_source: cleanText(body.utm_source, 120),
     utm_medium: cleanText(body.utm_medium, 120),
@@ -88,10 +103,20 @@ export const POST: APIRoute = async ({ request }) => {
   const sc = getServiceClient() as any;
   const { error } = await sc.from("pageviews").insert(payload);
   if (!error) {
+    if (authUser) {
+      await recordAnalyticsIdentity(sc, {
+        userId: authUser.id,
+        email: authUser.email,
+        anonymousId,
+        sessionId,
+        visitorHash,
+        linkReason: "pageview",
+      });
+    }
     return new Response(JSON.stringify({ ok: true }), { status: 201, headers: JSON_HEADERS });
   }
 
-  if (/timezone|local_date|local_hour|local_weekday|schema cache|column/i.test(error.message || "")) {
+  if (/user_id|session_id|anonymous_id|timezone|local_date|local_hour|local_weekday|schema cache|column/i.test(error.message || "")) {
     const legacyPayload = {
       path: payload.path,
       referrer: payload.referrer,
@@ -105,6 +130,16 @@ export const POST: APIRoute = async ({ request }) => {
     };
     const retry = await sc.from("pageviews").insert(legacyPayload);
     if (!retry.error) {
+      if (authUser) {
+        await recordAnalyticsIdentity(sc, {
+          userId: authUser.id,
+          email: authUser.email,
+          anonymousId,
+          sessionId,
+          visitorHash,
+          linkReason: "pageview_legacy",
+        });
+      }
       return new Response(JSON.stringify({ ok: true, fallback: true }), { status: 201, headers: JSON_HEADERS });
     }
   }

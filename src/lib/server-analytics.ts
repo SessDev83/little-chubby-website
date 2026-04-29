@@ -4,6 +4,7 @@ import {
   canonicalEventName,
   eventFunnelStage,
 } from "./analytics-event-contract.mjs";
+import { recordAnalyticsIdentity } from "./analytics-identity";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
@@ -185,6 +186,7 @@ export function buildServerAnalyticsEventPayload(options: ServerAnalyticsOptions
   const requestSource = params.get("utm_source") || shortHeader(options.request, "x-lcp-source") || (referrer ? (internalReferrerPath ? "internal" : referrer) : "");
   const sessionId = shortHeader(options.request, "x-lcp-session-id");
   const anonymousId = shortHeader(options.request, "x-lcp-anonymous-id");
+  const visitorHashHeader = shortHeader(options.request, "x-lcp-visitor-hash");
   const optionProps = cleanProps(options.props || {});
   const optionSource = typeof optionProps.source === "string" ? optionProps.source : "";
   const props = cleanProps({
@@ -215,7 +217,7 @@ export function buildServerAnalyticsEventPayload(options: ServerAnalyticsOptions
     event_name: eventName,
     occurred_at: occurredAt,
     path: path || null,
-    visitor_hash: options.visitorHash || null,
+    visitor_hash: options.visitorHash || visitorHashHeader || null,
     props,
     lang,
   };
@@ -235,7 +237,17 @@ export async function trackServerConversionEvent(serviceClient: any, options: Se
     }
 
     const { error } = result as AnalyticsInsertResult;
-    if (!error) return { ok: true, eventId: payload.event_id };
+    if (!error) {
+      await recordAnalyticsIdentity(serviceClient, {
+        userId: options.userId,
+        anonymousId: payload.props?.anonymous_id as string | undefined,
+        sessionId: payload.props?.session_id as string | undefined,
+        visitorHash: payload.visitor_hash,
+        linkReason: payload.event_name,
+        seenAt: payload.occurred_at,
+      });
+      return { ok: true, eventId: payload.event_id };
+    }
 
     if (SCHEMA_FALLBACK_RE.test(error.message || "")) {
       const fallback = { ...payload };
@@ -249,7 +261,17 @@ export async function trackServerConversionEvent(serviceClient: any, options: Se
         return { ok: false, eventId: payload.event_id, timedOut: true };
       }
       const fallbackInsertResult = fallbackResult as AnalyticsInsertResult;
-      if (!fallbackInsertResult.error) return { ok: true, eventId: payload.event_id, fallback: true };
+      if (!fallbackInsertResult.error) {
+        await recordAnalyticsIdentity(serviceClient, {
+          userId: options.userId,
+          anonymousId: payload.props?.anonymous_id as string | undefined,
+          sessionId: payload.props?.session_id as string | undefined,
+          visitorHash: payload.visitor_hash,
+          linkReason: payload.event_name,
+          seenAt: payload.occurred_at,
+        });
+        return { ok: true, eventId: payload.event_id, fallback: true };
+      }
       console.warn("[server-analytics] fallback insert failed:", fallbackInsertResult.error.message);
       return { ok: false, error: fallbackInsertResult.error.message };
     }

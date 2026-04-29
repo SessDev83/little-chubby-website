@@ -30,6 +30,7 @@ if (!profile) {
 // Get auth email
 const { data: authUser } = await sc.auth.admin.getUserById(userId!);
 const userEmail = authUser?.user?.email || profile.email;
+const analyticsSinceIso = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
 let actionMsg = "";
 let actionErr = "";
@@ -167,22 +168,96 @@ const [
   sc.from("newsletter_subscribers").select("id, confirmed, created_at, source").eq("email", userEmail).maybeSingle(),
 ]);
 
-const { data: conversionEvents } = await (sc as any)
-  .from("conversion_events")
-  .select("event_name,path,visitor_hash,props,lang,created_at")
-  .filter("props->>user_id", "eq", userId!)
-  .order("created_at", { ascending: false })
-  .limit(30);
+async function fetchAnalyticsIdentities() {
+  const { data, error } = await (sc as any)
+    .from("analytics_identities")
+    .select("user_id,email_hash,anonymous_id,session_id,visitor_hash,link_reason,first_seen_at,linked_at,last_seen_at")
+    .eq("user_id", userId!)
+    .order("last_seen_at", { ascending: false })
+    .limit(100);
+  return error ? [] : (data ?? []);
+}
+
+async function fetchRecentConversionEvents() {
+  const { data, error } = await (sc as any)
+    .from("conversion_events")
+    .select("event_name,path,visitor_hash,props,lang,created_at,occurred_at")
+    .gte("created_at", analyticsSinceIso)
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  return error ? [] : (data ?? []);
+}
+
+async function fetchRecentPageviews() {
+  const modernSelect = "id,path,referrer,visitor_hash,country,utm_source,utm_medium,utm_campaign,utm_content,landing_page,timezone,created_at,user_id,session_id,anonymous_id";
+  const legacySelect = "id,path,referrer,visitor_hash,country,utm_source,utm_medium,utm_campaign,utm_content,landing_page,timezone,created_at";
+  const modern = await (sc as any)
+    .from("pageviews")
+    .select(modernSelect)
+    .gte("created_at", analyticsSinceIso)
+    .order("created_at", { ascending: false })
+    .limit(2000);
+  if (!modern.error) return modern.data ?? [];
+  const legacy = await (sc as any)
+    .from("pageviews")
+    .select(legacySelect)
+    .gte("created_at", analyticsSinceIso)
+    .order("created_at", { ascending: false })
+    .limit(2000);
+  return legacy.error ? [] : (legacy.data ?? []);
+}
+
+function uniqueBy(items: any[], keyFn: (item: any) => string) {
+  const seen = new Set<string>();
+  const out: any[] = [];
+  for (const item of items) {
+    const key = keyFn(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+const [analyticsIdentities, rawConversionEvents, rawPageviews] = await Promise.all([
+  fetchAnalyticsIdentities(),
+  fetchRecentConversionEvents(),
+  fetchRecentPageviews(),
+]);
+
+const identityVisitorHashes = new Set(analyticsIdentities.map((row: any) => row.visitor_hash).filter(Boolean));
+const identityAnonymousIds = new Set(analyticsIdentities.map((row: any) => row.anonymous_id).filter(Boolean));
+const identitySessionIds = new Set(analyticsIdentities.map((row: any) => row.session_id).filter(Boolean));
+
+const conversionEvents = uniqueBy(
+  rawConversionEvents.filter((event: any) => {
+    const props = event?.props || {};
+    return props.user_id === userId
+      || (event?.visitor_hash && identityVisitorHashes.has(event.visitor_hash))
+      || (props.anonymous_id && identityAnonymousIds.has(props.anonymous_id))
+      || (props.session_id && identitySessionIds.has(props.session_id));
+  }),
+  (event: any) => event.event_id || event.props?.event_id || `${event.event_name}:${event.created_at}:${event.path || ""}`,
+).slice(0, 80);
+
+const pageviews = uniqueBy(
+  rawPageviews.filter((pageview: any) => pageview.user_id === userId
+    || (pageview.visitor_hash && identityVisitorHashes.has(pageview.visitor_hash))
+    || (pageview.anonymous_id && identityAnonymousIds.has(pageview.anonymous_id))
+    || (pageview.session_id && identitySessionIds.has(pageview.session_id))),
+  (pageview: any) => String(pageview.id || `${pageview.path}:${pageview.created_at}`),
+).slice(0, 80);
 
 const peanutBalance = (credits ?? []).reduce((sum: number, c: any) => sum + c.amount, 0);
 const ticketBalance = (tickets ?? []).reduce((sum: number, t: any) => sum + t.amount, 0);
 const bookMap = Object.fromEntries(books.map(b => [b.id, b.title.en]));
 const stars = (n: number) => "★".repeat(n) + "☆".repeat(5 - n);
-const journey = buildAdminUserJourney({ profile, newsletterSub, reviews, credits, tickets, badges, lotteryEntries, downloads, conversionEvents });
+const journey = buildAdminUserJourney({ profile, newsletterSub, reviews, credits, tickets, badges, lotteryEntries, downloads, conversionEvents, pageviews, analyticsIdentities });
 const short = (value: string | null | undefined, max = 42) => {
   const text = value || "—";
   return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 };
+const labels = (items: any[], empty = "—") => items && items.length ? items.map((item) => item.label || item).join(", ") : empty;
 ---
 
 <AdminLayout title={profile.display_name || userEmail} current="users">
@@ -202,15 +277,25 @@ const short = (value: string | null | undefined, max = 42) => {
     <div class="journey-head">
       <div>
         <h2>User Journey</h2>
-        <p>{journey.acquisitionSource} · {journey.acquisitionLanding}</p>
+        <p>{journey.agentSummary}</p>
       </div>
       <span class={`journey-chip tone-${journey.retention.tone}`}>{journey.lifecycleStage} · {journey.retention.label}</span>
     </div>
+    <div class="journey-snapshot">
+      <div class="journey-primary">
+        <span>Likely person</span>
+        <strong>{journey.primarySegment}</strong>
+        <small>{journey.segmentConfidence} confidence · {journey.linkedIdentityCount} linked IDs</small>
+      </div>
+      <div><span>Why here</span><strong>{short(journey.acquisitionSource, 28)}</strong><small>{short(journey.acquisitionLanding, 52)}</small></div>
+      <div><span>Top interests</span><strong>{labels(journey.topInterests)}</strong><small>{labels(journey.topContent, "No content pattern yet")}</small></div>
+      <div><span>Friction</span><strong>{labels(journey.frictionFlags)}</strong><small>{journey.nextBestAction}</small></div>
+    </div>
     <div class="journey-grid">
       <div><span>First value</span><strong>{journey.firstValueAt ? formatUserJourneyTime(journey.firstValueAt) : "—"}</strong></div>
-      <div><span>Last action</span><strong>{journey.lastActionAt ? formatUserJourneyTime(journey.lastActionAt) : "—"}</strong></div>
-      <div><span>Next action</span><strong>{journey.nextBestAction}</strong></div>
-      <div><span>Tracked events</span><strong>{journey.counts.conversionEvents}</strong></div>
+      <div><span>Last seen</span><strong>{journey.lastSeenAt ? formatUserJourneyTime(journey.lastSeenAt) : "—"}</strong></div>
+      <div><span>Pageviews</span><strong>{journey.counts.pageviews}</strong></div>
+      <div><span>Events</span><strong>{journey.counts.conversionEvents}</strong></div>
     </div>
     <div class="journey-timeline">
       <table class="admin-table compact-table">
@@ -529,6 +614,41 @@ const short = (value: string | null | undefined, max = 42) => {
   .journey-chip.tone-warn { color: #8a6d00; background: rgba(220,180,50,0.14); border-color: rgba(220,180,50,0.3); }
   .journey-chip.tone-danger { color: #8f1f18; background: rgba(220,50,50,0.08); border-color: rgba(220,50,50,0.24); }
   .journey-chip.tone-quiet { color: var(--ink-soft); background: var(--surface); }
+  .journey-snapshot {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .journey-snapshot > div {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface, #fff);
+    padding: 0.8rem;
+    min-height: 6rem;
+  }
+  .journey-snapshot span {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    margin-bottom: 0.25rem;
+  }
+  .journey-snapshot strong {
+    display: block;
+    font-size: 0.92rem;
+    line-height: 1.28;
+  }
+  .journey-snapshot small {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    line-height: 1.3;
+  }
+  .journey-primary {
+    border-color: rgba(43,108,176,0.24) !important;
+    background: rgba(43,108,176,0.06) !important;
+  }
   .journey-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -620,6 +740,9 @@ const short = (value: string | null | undefined, max = 42) => {
     margin-bottom: 0.3rem;
   }
   @media (max-width: 760px) {
+    .journey-snapshot {
+      grid-template-columns: 1fr 1fr;
+    }
     .journey-grid {
       grid-template-columns: 1fr 1fr;
     }
@@ -629,6 +752,9 @@ const short = (value: string | null | undefined, max = 42) => {
       grid-template-columns: 1fr;
     }
     .journey-grid {
+      grid-template-columns: 1fr;
+    }
+    .journey-snapshot {
       grid-template-columns: 1fr;
     }
   }

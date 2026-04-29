@@ -297,7 +297,34 @@ const eventContractJson = JSON.stringify({
         var sid = sessionStorage.getItem("_pvs");
         if (!sid) { sid = Math.random().toString(36).slice(2); sessionStorage.setItem("_pvs", sid); }
         var vh = sid + "_" + new Date().toISOString().slice(0,10);
-        var body = { path: p, referrer: document.referrer || null, visitor_hash: vh };
+        function makePvId(prefix) {
+          try {
+            if (window.crypto && window.crypto.getRandomValues) {
+              var bytes = new Uint8Array(8);
+              window.crypto.getRandomValues(bytes);
+              var hex = Array.prototype.map.call(bytes, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+              return prefix + "_" + hex;
+            }
+          } catch (e) {}
+          return prefix + "_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        }
+        function getPvStoredId(storage, key, prefix) {
+          try {
+            var id = storage.getItem(key);
+            if (!id) {
+              id = makePvId(prefix);
+              storage.setItem(key, id);
+            }
+            return id;
+          } catch (e) { return ""; }
+        }
+        var body = {
+          path: p,
+          referrer: document.referrer || null,
+          visitor_hash: vh,
+          session_id: getPvStoredId(sessionStorage, "_lcp_session_id", "sess"),
+          anonymous_id: getPvStoredId(localStorage, "_lcp_anonymous_id", "anon")
+        };
         // Capture UTM parameters from landing URL (set by social agents)
         try {
           var qs = new URLSearchParams(location.search);
@@ -324,7 +351,7 @@ const eventContractJson = JSON.stringify({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
           keepalive: true,
-          credentials: "omit"
+          credentials: "same-origin"
         }).catch(function(){});
       })();
     </script>
@@ -437,6 +464,7 @@ const eventContractJson = JSON.stringify({
           return {
             session_id: getSessionId(),
             anonymous_id: getAnonymousId(),
+            visitor_hash: getVisitorHash(),
             path: location.pathname,
             source: getSource(utm)
           };
@@ -561,6 +589,7 @@ const eventContractJson = JSON.stringify({
                 var headers = new Headers(baseHeaders);
                 if (context.session_id && !headers.has("x-lcp-session-id")) headers.set("x-lcp-session-id", context.session_id);
                 if (context.anonymous_id && !headers.has("x-lcp-anonymous-id")) headers.set("x-lcp-anonymous-id", context.anonymous_id);
+                if (context.visitor_hash && !headers.has("x-lcp-visitor-hash")) headers.set("x-lcp-visitor-hash", context.visitor_hash);
                 if (context.path && !headers.has("x-lcp-path")) headers.set("x-lcp-path", context.path);
                 if (context.source && !headers.has("x-lcp-source")) headers.set("x-lcp-source", context.source);
                 init = Object.assign({}, init || {}, { headers: headers });
