@@ -4,14 +4,13 @@ import { getServiceClient } from "../../../lib/supabase";
 import { books, getMonthlyPrizeBook } from "../../../data/books";
 import { notifyAdminCronError } from "../../../lib/notifications";
 import { pingHeartbeat } from "../../../lib/monitoring";
+import { getPublicSiteUrl } from "../../../lib/site-url";
 
 export const prerender = false;
 
 const RESEND_API_KEY = import.meta.env.RESEND_API_KEY;
 const FROM = "Little Chubby Press <hello@littlechubbypress.com>";
-const SITE = (
-  import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com"
-).replace(/\/+$/, "");
+const SITE = getPublicSiteUrl();
 const LOGO = `${SITE}/images/brand/logo-lockup.png`;
 
 function coverUrl(coverSrc: string): string {

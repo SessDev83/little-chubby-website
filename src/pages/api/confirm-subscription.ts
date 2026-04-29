@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { getServiceClient } from "../../lib/supabase";
 import { notifySubscriberConfirmed } from "../../lib/notifications";
 import { buildAnalyticsVisitorHash, trackServerConversionEvent } from "../../lib/server-analytics";
+import { getPublicSiteUrl } from "../../lib/site-url";
 
 export const prerender = false;
 
@@ -9,7 +10,7 @@ export const GET: APIRoute = async ({ url, request }) => {
   const token = url.searchParams.get("token");
   const rawLang = url.searchParams.get("lang") || "en";
   const lang = rawLang === "es" ? "es" : "en";
-  const siteUrl = import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com";
+  const siteUrl = getPublicSiteUrl();
 
   if (!token || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
     return new Response(null, { status: 302, headers: { Location: `${siteUrl}/${lang}/?msg=invalid-token` } });

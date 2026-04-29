@@ -6,8 +6,9 @@
  * (top-level navigation POSTs, older browsers, etc.).
  */
 
-const SITE_URL =
-  import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com";
+import { getPublicSiteUrl } from "./site-url";
+
+const SITE_URL = getPublicSiteUrl();
 
 /**
  * Validates that the request's Origin header matches one of the allowed

@@ -1,11 +1,12 @@
 import type { APIRoute } from "astro";
 import { getServiceClient } from "../../lib/supabase";
+import { getPublicSiteUrl } from "../../lib/site-url";
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ url }) => {
   const token = url.searchParams.get("token");
-  const siteUrl = import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com";
+  const siteUrl = getPublicSiteUrl();
 
   if (!token) {
     return new Response(null, {

@@ -6,13 +6,14 @@ import UserFlair from "../../components/UserFlair.astro";
 import { getLangFromParam, ui } from "../../data/i18n";
 import type { Lang } from "../../data/i18n";
 import { supabase } from "../../lib/supabase";
+import { getPublicSiteUrl } from "../../lib/site-url";
 import { books } from "../../data/books";
 import { getSampleItems, SAMPLE_THRESHOLD } from "../../data/sample-reviews";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
 const text = ui[lang];
 const pathname = `/${lang}/gallery/`;
-const siteUrl = import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com";
+const siteUrl = getPublicSiteUrl();
 
 const bookMap = Object.fromEntries(books.map(b => [b.id, b.title[lang]]));
 const bookOptions = books.map(b => ({ id: b.id, title: b.title[lang] }));

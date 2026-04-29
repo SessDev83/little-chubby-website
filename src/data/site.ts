@@ -1,3 +1,5 @@
+import { getPublicSiteUrl } from "../lib/site-url";
+
 export type LocalizedText = {
   es: string;
   en: string;
@@ -5,8 +7,7 @@ export type LocalizedText = {
 
 const cleanEnvValue = (value: string | undefined) => (value || "").trim();
 
-const publicSiteUrl = cleanEnvValue(import.meta.env.PUBLIC_SITE_URL).replace(/\/+$/, "");
-const resolvedSiteUrl = publicSiteUrl || "https://www.littlechubbypress.com";
+const resolvedSiteUrl = getPublicSiteUrl();
 
 
 

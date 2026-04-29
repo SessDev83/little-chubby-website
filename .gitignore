@@ -60,3 +60,5 @@ docs-internal/
 
 i18n.log
 check.log
+
+.env*.local

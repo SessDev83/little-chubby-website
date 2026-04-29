@@ -4,6 +4,7 @@
  */
 import * as Sentry from "@sentry/astro";
 import { getServiceClient } from "./supabase";
+import { getPublicSiteUrl } from "./site-url";
 
 const RESEND_API_KEY = import.meta.env.RESEND_API_KEY;
 const ANALYTICS_EMAIL = import.meta.env.ANALYTICS_EMAIL || "hello@littlechubbypress.com";
@@ -59,7 +60,7 @@ async function send(subject: string, html: string): Promise<void> {
 // ── Send to subscriber ───────────────────────────────
 
 const FROM_USER = "Little Chubby Press <hello@littlechubbypress.com>";
-const SITE_URL = (import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com").replace(/\/+$/, "");
+const SITE_URL = getPublicSiteUrl();
 const LOGO_URL = `${SITE_URL}/images/brand/logo-lockup.png`;
 
 export async function sendToUser(to: string, subject: string, html: string): Promise<boolean> {

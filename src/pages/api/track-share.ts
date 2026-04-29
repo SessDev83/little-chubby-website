@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
 import { trackServerConversionEvent } from "../../lib/server-analytics";
+import { getPublicSiteUrl } from "../../lib/site-url";
 
 export const prerender = false;
 
@@ -96,7 +97,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     try {
       const parsedShareUrl = new URL(shared_url);
       const requestHost = new URL(request.url).hostname.replace(/^www\./, "").toLowerCase();
-      const siteHost = new URL(import.meta.env.PUBLIC_SITE_URL || "https://www.littlechubbypress.com").hostname.replace(/^www\./, "").toLowerCase();
+      const siteHost = new URL(getPublicSiteUrl()).hostname.replace(/^www\./, "").toLowerCase();
       const shareHost = parsedShareUrl.hostname.replace(/^www\./, "").toLowerCase();
       if (shareHost === requestHost || shareHost === siteHost) sharedPath = parsedShareUrl.pathname;
     } catch {
