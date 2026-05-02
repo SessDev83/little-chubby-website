@@ -1,0 +1,98 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import PostCard from "../../../components/PostCard.astro";
+import { getCollection } from "astro:content";
+import { languages, getLangFromParam, ui } from "../../../data/i18n";
+import { funFactCategories, getFunFactCategoryMatches, type FunFactCategory } from "../../../data/funFactCategories";
+import { siteConfig } from "../../../data/site";
+
+export function getStaticPaths() {
+  return languages.flatMap((lang) =>
+    funFactCategories.map((category) => ({
+      params: { lang, category: category.slug },
+      props: { category },
+    }))
+  );
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const { category } = Astro.props as { category: FunFactCategory };
+const pathname = `/${lang}/fun-facts/${category.slug}/`;
+const alternatePath = `/${lang === "es" ? "en" : "es"}/fun-facts/${category.slug}/`;
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: text.navFunFacts, url: `/${lang}/fun-facts/` },
+  { name: category.label[lang], url: pathname },
+];
+
+const allFunFacts = await getCollection("blog", (entry) => entry.data.lang === lang && entry.data.category === "fun-fact");
+const posts = allFunFacts
+  .filter((post) => getFunFactCategoryMatches(post.data.tags).some((matchedCategory) => matchedCategory.slug === category.slug))
+  .sort((firstPost, secondPost) => secondPost.data.date.localeCompare(firstPost.data.date));
+
+const itemListJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: category.metaTitle[lang],
+  description: category.metaDescription[lang],
+  url: new URL(pathname, siteConfig.siteUrl).toString(),
+  inLanguage: lang,
+  about: category.label[lang],
+  mainEntity: {
+    "@type": "ItemList",
+    itemListElement: posts.map((post, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: post.data.title,
+      url: new URL(`/${lang}/blog/${post.id.replace(/^(es|en)\//, "")}/`, siteConfig.siteUrl).toString(),
+    })),
+  },
+}).replace(/</g, "\\u003c");
+---
+
+<BaseLayout
+  lang={lang}
+  title={category.metaTitle[lang]}
+  description={category.metaDescription[lang]}
+  pathname={pathname}
+  alternatePath={alternatePath}
+  breadcrumbs={breadcrumbs}
+>
+  <section class="page-section fun-fact-category-page">
+    <div class="container">
+      <div class="fun-fact-category-header" style={`--category-color: ${category.color};`}>
+        <a class="fun-fact-back-link" href={`/${lang}/fun-facts/`}>{lang === "es" ? "Todos los datos curiosos" : "All fun facts"}</a>
+        <div class="section-head">
+          <p class="eyebrow"><span aria-hidden="true">{category.icon}</span> {text.navFunFacts}</p>
+          <h1>{category.label[lang]}</h1>
+          <p>{category.description[lang]}</p>
+        </div>
+        <p class="fun-fact-category-total">
+          <strong>{posts.length}</strong> {lang === "es" ? "datos curiosos en esta categoría" : "fun facts in this category"}
+        </p>
+      </div>
+
+      <nav class="fun-fact-topic-nav" aria-label={lang === "es" ? "Otras categorías" : "Other categories"}>
+        {funFactCategories.map((item) => (
+          <a href={`/${lang}/fun-facts/${item.slug}/`} aria-current={item.slug === category.slug ? "page" : undefined}>
+            <span aria-hidden="true">{item.icon}</span>
+            {item.shortLabel[lang]}
+          </a>
+        ))}
+      </nav>
+
+      {posts.length > 0 ? (
+        <div class="grid-cards posts">
+          {posts.map((post) => <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />)}
+        </div>
+      ) : (
+        <p class="blog-empty-msg">
+          {lang === "es" ? "No hay datos curiosos en esta categoría todavía." : "No fun facts in this category yet."}
+        </p>
+      )}
+    </div>
+  </section>
+
+  <script type="application/ld+json" is:inline set:html={itemListJsonLd}></script>
+</BaseLayout>
