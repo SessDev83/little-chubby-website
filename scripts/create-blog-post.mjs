@@ -13,6 +13,7 @@
  *   node scripts/create-blog-post.mjs --topic "..." --bookId cozy-kids-club
  *   node scripts/create-blog-post.mjs --topic "..." --dry-run
  *   node scripts/create-blog-post.mjs --topic "..." --no-image   # skip image generation
+ *   node scripts/create-blog-post.mjs --seo-auto --date 2026-04-29
  *   node scripts/create-blog-post.mjs --seo-auto                  # pick next item from blog-queue-500.json
  */
 
@@ -81,6 +82,9 @@ function readExistingPosts(lang) {
       const m = fm.match(/^tags:\s*\[([^\]]*)\]/m);
       return m ? m[1].split(",").map((t) => t.trim().replace(/"/g, "")) : [];
     };
+    const category = get("category") || "article";
+    if (category !== "article") continue;
+    const articleCategory = get("articleCategory");
     const slug = file.replace(/\.md$/, "");
     posts.push({
       slug,
@@ -89,7 +93,7 @@ function readExistingPosts(lang) {
       summary: get("summary"),
       tags: getTags(),
       bookId: get("bookId"),
-      path: `/${lang}/blog/${slug}/`,
+      path: articleCategory ? `/${lang}/articles/${articleCategory}/${slug}/` : `/${lang}/blog/${slug}/`,
     });
   }
   return posts;
@@ -228,10 +232,11 @@ Respond with VALID JSON ONLY. No markdown fences, no backticks, no commentary.
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { topic: null, bookId: null, dryRun: false, noImage: false, auto: false, seoAuto: false };
+  const opts = { topic: null, bookId: null, dryRun: false, noImage: false, auto: false, seoAuto: false, date: null };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--topic" && args[i + 1]) opts.topic = args[++i];
     if (args[i] === "--bookId" && args[i + 1]) opts.bookId = args[++i];
+    if (args[i] === "--date" && args[i + 1]) opts.date = args[++i];
     if (args[i] === "--dry-run") opts.dryRun = true;
     if (args[i] === "--no-image") opts.noImage = true;
     if (args[i] === "--auto") opts.auto = true;
@@ -341,6 +346,17 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function validateDateISO(date) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error(`Invalid --date value "${date}". Use YYYY-MM-DD.`);
+  }
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+    throw new Error(`Invalid --date value "${date}". Use a real calendar date.`);
+  }
+  return date;
+}
+
 function buildFrontmatter(data, lang, postId, bookId, date, imagePath, seoMeta = null) {
   const yamlEscape = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const lines = [
@@ -371,7 +387,7 @@ function buildFrontmatter(data, lang, postId, bookId, date, imagePath, seoMeta =
 
 // ─── AI content generation ─────────────────────────────────────────────────
 
-async function generatePost(topic, bookId, enPostsList, esPostsList, seoItem = null) {
+async function generatePost(topic, bookId, enPostsList, esPostsList, seoItem = null, date = todayISO()) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("  ✗ ANTHROPIC_API_KEY not set");
@@ -385,7 +401,7 @@ async function generatePost(topic, bookId, enPostsList, esPostsList, seoItem = n
   if (bookId) {
     userPrompt += `\n\nRelated book (bookId: "${bookId}"). Mention this book naturally in both versions with its title in **bold** — never as an ad. Include a brief recommendation that fits the post narrative.`;
   }
-  userPrompt += `\n\nToday's date: ${todayISO()}`;
+  userPrompt += `\n\nToday's date: ${date}`;
 
   const systemPrompt = buildSystemPrompt(enPostsList, esPostsList);
 
@@ -493,7 +509,8 @@ async function generateHeroImage(imagePrompt, filename) {
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 async function main() {
-  const { topic: topicArg, bookId: bookIdArg, dryRun, noImage, auto, seoAuto } = parseArgs();
+  const { topic: topicArg, bookId: bookIdArg, dryRun, noImage, auto, seoAuto, date: dateArg } = parseArgs();
+  const publicationDate = dateArg ? validateDateISO(dateArg) : todayISO();
 
   // ─── Auto mode: pick next topic from queue ───────────────────────────────
   let topic = topicArg;
@@ -530,6 +547,7 @@ Options:
   --seo-auto   Pick the next pending SEO item from blog-queue-500.json
   --dry-run    Preview output without writing files or generating images
   --no-image   Skip hero image generation
+  --date       Publication date to write in frontmatter (YYYY-MM-DD)
 `);
     process.exit(0);
   }
@@ -539,7 +557,7 @@ Options:
   if (queueItem?.seoCluster) console.log(`  Cluster: ${queueItem.seoCluster}`);
   if (queueItem?.contentRole) console.log(`  Role:    ${queueItem.contentRole}`);
   if (bookId) console.log(`  Book:    ${bookId}`);
-  console.log(`  Date:    ${todayISO()}`);
+  console.log(`  Date:    ${publicationDate}`);
 
   // Step 1: Read existing posts for internal linking
   console.log("\n  📚 Reading existing posts for internal linking...");
@@ -550,9 +568,9 @@ Options:
   console.log(`     Found ${enCount} EN + ${esCount} ES posts`);
 
   // Step 2: Generate bilingual content with Claude
-  const post = await generatePost(topic, bookId, enPostsList, esPostsList, queueItem);
+  const post = await generatePost(topic, bookId, enPostsList, esPostsList, queueItem, publicationDate);
 
-  const date = todayISO();
+  const date = publicationDate;
   const postId = queueItem?.id || post.postId;
   const { imagePrompt } = post;
   validateGeneratedPost(post, postId, queueItem);

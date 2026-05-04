@@ -1,6 +1,6 @@
 # Automated daily blog post creation.
-# Picks the next pending topic from scripts/blog-queue.json,
-# generates bilingual EN+ES content via Claude + hero image,
+# Picks the next pending topic from scripts/blog-queue-500.json,
+# generates bilingual EN+ES SEO content via the flagship blog model + hero image,
 # opens an auto-merge PR. Vercel auto-deploys after merge.
 
 name: Daily Blog Post
@@ -49,6 +49,7 @@ jobs:
       - name: Create blog post
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_BLOG_MODEL: claude-opus-4-7
           NANO_BANANA_API_KEY: ${{ secrets.NANO_BANANA_API_KEY }}
         run: |
           TOPIC="${{ github.event.inputs.topic }}"
@@ -60,7 +61,7 @@ jobs:
             fi
             eval $CMD
           else
-            node scripts/create-blog-post.mjs --auto
+            node scripts/create-blog-post.mjs --seo-auto
           fi
 
       - name: Validate build

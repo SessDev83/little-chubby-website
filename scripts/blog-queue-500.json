@@ -1,7 +1,7 @@
 [
   {
     "id": "calm-coloring-big-feelings-guide",
-    "status": "pending",
+    "status": "done",
     "priority": 1,
     "contentRole": "pillar",
     "pillarId": "calm-coloring-big-feelings-guide",
@@ -18,11 +18,15 @@
     },
     "angle": "Pillar guide for tantrums, anxiety, transitions, and gentle emotional regulation.",
     "bookId": "coloring-emotions",
-    "avoidOverlapWith": ["coloring-activities-kids-adhd", "coloring-builds-patience-toddlers", "mindfulness-coloring-exercises-anxious-kids"]
+    "avoidOverlapWith": [
+      "coloring-activities-kids-adhd",
+      "coloring-builds-patience-toddlers",
+      "mindfulness-coloring-exercises-anxious-kids"
+    ]
   },
   {
     "id": "screen-free-activities-guide",
-    "status": "pending",
+    "status": "done",
     "priority": 2,
     "contentRole": "pillar",
     "pillarId": "screen-free-activities-guide",
@@ -39,11 +43,15 @@
     },
     "angle": "Pillar guide for travel, restaurants, waiting rooms, rainy days, and daily transitions.",
     "bookId": null,
-    "avoidOverlapWith": ["coloring-perfect-screen-free-summer", "road-trip-coloring-kit-creative-travel", "sin-pantallas-ninos"]
+    "avoidOverlapWith": [
+      "coloring-perfect-screen-free-summer",
+      "road-trip-coloring-kit-creative-travel",
+      "sin-pantallas-ninos"
+    ]
   },
   {
     "id": "coloring-learning-fine-motor-guide",
-    "status": "pending",
+    "status": "done",
     "priority": 3,
     "contentRole": "pillar",
     "pillarId": "coloring-learning-fine-motor-guide",
@@ -60,11 +68,14 @@
     },
     "angle": "Pillar guide connecting coloring with pre-writing, STEM, vocabulary, and visual thinking.",
     "bookId": "alphabet-coloring-book",
-    "avoidOverlapWith": ["fine-motor-skills-coloring-builds-child-development", "alphabet-games-beyond-abcs-coloring"]
+    "avoidOverlapWith": [
+      "fine-motor-skills-coloring-builds-child-development",
+      "alphabet-games-beyond-abcs-coloring"
+    ]
   },
   {
     "id": "parent-wellbeing-creative-pauses-guide",
-    "status": "pending",
+    "status": "done",
     "priority": 4,
     "contentRole": "pillar",
     "pillarId": "parent-wellbeing-creative-pauses-guide",
@@ -81,11 +92,13 @@
     },
     "angle": "Pillar guide for burned-out parents, co-regulation, couch time, and low-pressure connection.",
     "bookId": "cozy-kids-club",
-    "avoidOverlapWith": ["friendship-activities-coloring-books-kids"]
+    "avoidOverlapWith": [
+      "friendship-activities-coloring-books-kids"
+    ]
   },
   {
     "id": "visual-routines-calm-transitions-guide",
-    "status": "pending",
+    "status": "done",
     "priority": 5,
     "contentRole": "pillar",
     "pillarId": "visual-routines-calm-transitions-guide",
@@ -102,11 +115,14 @@
     },
     "angle": "Pillar guide for bedtime, mornings, visual schedules, bath time, and waiting.",
     "bookId": "coloring-emotions",
-    "avoidOverlapWith": ["coloring-helps-kids-struggle-transitions", "why-coloring-helps-kids-bedtime-routine"]
+    "avoidOverlapWith": [
+      "coloring-helps-kids-struggle-transitions",
+      "why-coloring-helps-kids-bedtime-routine"
+    ]
   },
   {
     "id": "slow-parenting-analog-childhood-guide",
-    "status": "pending",
+    "status": "done",
     "priority": 6,
     "contentRole": "pillar",
     "pillarId": "slow-parenting-analog-childhood-guide",
@@ -123,7 +139,9 @@
     },
     "angle": "Pillar guide for screen-smart, tactile, lower-clutter, nostalgic childhood.",
     "bookId": "style-time-machine",
-    "avoidOverlapWith": ["fashion-history-coloring-activity"]
+    "avoidOverlapWith": [
+      "fashion-history-coloring-activity"
+    ]
   },
   {
     "id": "grocery-store-meltdown-age-three",
@@ -144,7 +162,9 @@
     },
     "angle": "Urgent public tantrum support with a tiny calm kit and no parent shame.",
     "bookId": "coloring-emotions",
-    "avoidOverlapWith": ["coloring-calms-kids-doctor-waiting-rooms"]
+    "avoidOverlapWith": [
+      "coloring-calms-kids-doctor-waiting-rooms"
+    ]
   },
   {
     "id": "screen-free-restaurant-waiting",
@@ -165,7 +185,10 @@
     },
     "angle": "Realistic table-friendly activities that do not shame parents or disturb other diners.",
     "bookId": null,
-    "avoidOverlapWith": ["road-trip-coloring-kit-creative-travel", "coloring-calms-kids-doctor-waiting-rooms"]
+    "avoidOverlapWith": [
+      "road-trip-coloring-kit-creative-travel",
+      "coloring-calms-kids-doctor-waiting-rooms"
+    ]
   },
   {
     "id": "pencil-grip-games-no-homework",
@@ -186,7 +209,9 @@
     },
     "angle": "Playful pre-writing exercises with crayons, short sessions, and no worksheet pressure.",
     "bookId": "alphabet-coloring-book",
-    "avoidOverlapWith": ["fine-motor-skills-coloring-builds-child-development"]
+    "avoidOverlapWith": [
+      "fine-motor-skills-coloring-builds-child-development"
+    ]
   },
   {
     "id": "ten-minute-creative-breaks-parents",
@@ -249,6 +274,8 @@
     },
     "angle": "Reframe boredom as a creativity trigger without ignoring real parent workload.",
     "bookId": null,
-    "avoidOverlapWith": ["summer-coloring-activities-beat-boredom"]
+    "avoidOverlapWith": [
+      "summer-coloring-activities-beat-boredom"
+    ]
   }
 ]

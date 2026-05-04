@@ -67,18 +67,38 @@ function readPosts(lang) {
   return posts;
 }
 
-function addSeen(map, key, label) {
+function addSeen(map, key, label, groupKey = label) {
   if (!key) return;
   const normalized = normalize(key);
   if (!normalized) return;
   if (!map.has(normalized)) map.set(normalized, []);
-  map.get(normalized).push(label);
+  map.get(normalized).push({ label, groupKey });
 }
 
 function reportDuplicates(errors, map, type) {
-  for (const [key, labels] of map.entries()) {
-    if (labels.length > 1) errors.push(`${type} duplicated: "${key}" -> ${labels.join(" | ")}`);
+  for (const [key, entries] of map.entries()) {
+    if (entries.length > 1) errors.push(`${type} duplicated: "${key}" -> ${entries.map((entry) => entry.label).join(" | ")}`);
   }
+}
+
+function reportDuplicatesAcrossGroups(errors, map, type) {
+  for (const [key, entries] of map.entries()) {
+    const groupKeys = new Set(entries.map((entry) => entry.groupKey));
+    if (groupKeys.size > 1) {
+      errors.push(`${type} duplicated across items: "${key}" -> ${entries.map((entry) => entry.label).join(" | ")}`);
+    }
+  }
+}
+
+function hasConflictOutsideGroup(map, key, groupKey) {
+  const normalized = normalize(key);
+  if (!normalized || !map.has(normalized)) return false;
+  return map.get(normalized).some((entry) => entry.groupKey !== groupKey);
+}
+
+function labelsForKey(map, key) {
+  const normalized = normalize(key);
+  return normalized && map.has(normalized) ? map.get(normalized).map((entry) => entry.label) : [];
 }
 
 function main() {
@@ -101,12 +121,13 @@ function main() {
     if (!post.postId) errors.push(`Missing postId in ${post.lang}/${post.file}`);
     if (!postIdsByLang.has(post.postId)) postIdsByLang.set(post.postId, new Set());
     postIdsByLang.get(post.postId).add(post.lang);
-    addSeen(existingKeywords, post.primaryKeywordEn, `${post.lang}/${post.file}`);
-    addSeen(existingKeywords, post.primaryKeywordEs, `${post.lang}/${post.file}`);
+    const postGroupKey = post.postId || `${post.lang}/${post.file}`;
+    addSeen(existingKeywords, post.primaryKeywordEn, `${post.lang}/${post.file}`, postGroupKey);
+    addSeen(existingKeywords, post.primaryKeywordEs, `${post.lang}/${post.file}`, postGroupKey);
   }
 
   reportDuplicates(errors, titles, "Article title");
-  reportDuplicates(errors, existingKeywords, "Existing primary keyword");
+  reportDuplicatesAcrossGroups(errors, existingKeywords, "Existing primary keyword");
 
   for (const [postId, langs] of postIdsByLang.entries()) {
     if (!postId) continue;
@@ -123,8 +144,8 @@ function main() {
     const label = item.id || JSON.stringify(item.topic);
     if (!item.id) errors.push(`Queue item missing id: ${label}`);
     addSeen(queueIds, item.id, label);
-    addSeen(queueKeywords, item.primaryKeyword?.en, `${label} [en]`);
-    addSeen(queueKeywords, item.primaryKeyword?.es, `${label} [es]`);
+    addSeen(queueKeywords, item.primaryKeyword?.en, `${label} [en]`, item.id || label);
+    addSeen(queueKeywords, item.primaryKeyword?.es, `${label} [es]`, item.id || label);
     addSeen(queuePriorities, String(item.priority), label);
 
     if (!clusterIds.has(item.seoCluster)) errors.push(`Invalid seoCluster in queue item ${label}: ${item.seoCluster}`);
@@ -135,17 +156,16 @@ function main() {
     if (!item.topic?.en || !item.topic?.es) errors.push(`Queue item missing bilingual topic: ${label}`);
 
     const existingPostIdLangs = postIdsByLang.get(item.id);
-    if (existingPostIdLangs) warnings.push(`Queue item already appears published by postId: ${item.id}`);
+    if (item.status !== "done" && existingPostIdLangs) warnings.push(`Queue item already appears published by postId: ${item.id}`);
     for (const keyword of [item.primaryKeyword?.en, item.primaryKeyword?.es]) {
-      const normalized = normalize(keyword);
-      if (normalized && existingKeywords.has(normalized)) {
-        warnings.push(`Queue keyword may already exist: "${keyword}" -> ${existingKeywords.get(normalized).join(" | ")}`);
+      if (item.status !== "done" && hasConflictOutsideGroup(existingKeywords, keyword, item.id)) {
+        warnings.push(`Queue keyword may already exist: "${keyword}" -> ${labelsForKey(existingKeywords, keyword).join(" | ")}`);
       }
     }
   }
 
   reportDuplicates(errors, queueIds, "Queue id");
-  reportDuplicates(errors, queueKeywords, "Queue primary keyword");
+  reportDuplicatesAcrossGroups(errors, queueKeywords, "Queue primary keyword");
   reportDuplicates(warnings, queuePriorities, "Queue priority");
 
   console.log("\nBlog strategy audit");
