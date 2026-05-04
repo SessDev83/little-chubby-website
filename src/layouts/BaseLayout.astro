@@ -601,7 +601,11 @@ const eventContractJson = JSON.stringify({
 
         function slugFromPath(pattern) {
           var match = location.pathname.match(pattern);
-          return match ? decodeURIComponent(match[2] || match[1]) : null;
+          if (!match) return null;
+          for (var index = match.length - 1; index >= 1; index -= 1) {
+            if (match[index]) return decodeURIComponent(match[index]);
+          }
+          return null;
         }
         function asinFromUrl(url) {
           var match = String(url || "").match(/\/dp\/([A-Z0-9]{10})/i);
@@ -630,7 +634,7 @@ const eventContractJson = JSON.stringify({
               window.lcpTrack("amazon_click", {
                 asin: asinFromUrl(anchor.href) || "",
                 book_id: slugFromPath(/^\/(?:en|es)\/books\/([^/]+)\/?$/) || "",
-                content_id: slugFromPath(/^\/(?:en|es)\/blog\/([^/]+)\/?$/) || "",
+                content_id: slugFromPath(/^\/(?:en|es)\/(?:blog\/([^/]+)|articles\/[^/]+\/([^/]+)|fun-facts\/[^/]+\/([^/]+))\/?$/) || "",
                 link_text: linkText(anchor)
               });
             }

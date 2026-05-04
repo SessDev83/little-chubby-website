@@ -69,6 +69,17 @@ jobs:
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
           node scripts/agents/weekly-report.mjs "${ARGS[@]}"
 
+      - name: Generate blog SEO intelligence recommendations
+        if: always()
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          DAYS="${{ github.event.inputs.days || '30' }}"
+          ARGS=(--days "$DAYS")
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          node scripts/agents/blog-seo-intelligence.mjs "${ARGS[@]}"
+
       - name: Generate monthly analytics report (only on 1st of month)
         if: always()
         env:

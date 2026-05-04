@@ -1,0 +1,305 @@
+---
+export const prerender = false;
+
+import { getCollection } from "astro:content";
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { getPostUrl } from "../../data/postUrl";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { buildContentTrafficReport, CONTENT_CATEGORY_LABELS } from "../../lib/admin-content-traffic.mjs";
+import { fetchAdminKpiWindow, pct, resolveAdminRange, shortText } from "../../lib/admin-kpis.mjs";
+import { formatAdminShortDateTime } from "../../lib/admin-time.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const range = resolveAdminRange(Astro.url.searchParams.get("range") || "30d");
+const rangeParam = range.rangeKey;
+const sc = getServiceClient() as any;
+
+const [contentEntries, kpiWindow, decisionsResult] = await Promise.all([
+  getCollection("blog", (entry) => ["article", "fun-fact", "joke"].includes(entry.data.category || "article")),
+  fetchAdminKpiWindow(sc, { rangeParam, limit: 10000 }),
+  sc
+    .from("agent_decisions")
+    .select("created_at,recommended_action,reasoning,confidence_score,context_data")
+    .eq("decision_type", "blog_seo_recommendation")
+    .order("created_at", { ascending: false })
+    .limit(8),
+]);
+
+const contentItems = contentEntries.map((entry) => {
+  const category = entry.data.category || "article";
+  const lang = entry.data.lang;
+  const slug = entry.id.replace(/^(es|en)\//, "");
+  const path = getPostUrl(lang, entry.id, category, entry.data.tags ?? [], entry.data.articleCategory);
+  const aliases: string[] = [];
+  if (category === "article" && entry.data.articleCategory) aliases.push(`/${lang}/blog/${slug}/`);
+  if (category === "fun-fact") aliases.push(`/${lang}/blog/${slug}/`);
+
+  return {
+    id: entry.id,
+    postId: entry.data.postId,
+    slug,
+    lang,
+    category,
+    title: entry.data.title,
+    summary: entry.data.summary,
+    date: entry.data.date,
+    path,
+    aliases,
+    articleCategory: entry.data.articleCategory || "",
+    seoCluster: entry.data.seoCluster || "unclustered",
+    contentRole: entry.data.contentRole || "",
+    searchIntent: entry.data.searchIntent || "",
+  };
+});
+
+const report = buildContentTrafficReport({
+  contentItems,
+  pageviews: kpiWindow.pageviews,
+  events: kpiWindow.events,
+});
+
+const rowsWithTraffic = report.activeRows.length ? report.activeRows : report.rows.slice(0, 20);
+const tableRows = rowsWithTraffic.slice(0, 80);
+const maxOrganic = Math.max(1, ...tableRows.map((row) => row.organicPageviews));
+const maxTypeOrganic = Math.max(1, ...report.typeRows.map((row) => row.organicPageviews));
+const latestRecommendations = decisionsResult.data ?? [];
+
+function labelForCategory(category: string) {
+  return CONTENT_CATEGORY_LABELS[category as keyof typeof CONTENT_CATEGORY_LABELS] || category;
+}
+
+function percent(value: number, total: number) {
+  return pct(value, total);
+}
+
+function formatScore(value: number) {
+  return value.toFixed(1);
+}
+
+function recommendationCluster(row: any) {
+  return row?.context_data?.seoCluster || row?.context_data?.queue_item || "blog-seo";
+}
+---
+
+<AdminLayout title="Content Traffic" current="content-traffic">
+  <div class="admin-page-head content-head">
+    <div>
+      <h1>Content Traffic</h1>
+      <p>Organic discovery and action signals for articles, fun facts, and jokes over the selected window.</p>
+    </div>
+    <div class="range-tabs" aria-label="Date range">
+      {(["24h", "7d", "30d", "90d"] as const).map((rangeOption) => (
+        <a href={`?range=${rangeOption}`} class:list={["range-btn", { active: rangeParam === rangeOption }]}>{rangeOption}</a>
+      ))}
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card"><span>Organic content PV</span><strong>{report.summary.totalOrganicPageviews.toLocaleString()}</strong><small>{percent(report.summary.totalOrganicPageviews, report.summary.totalContentPageviews)} of content traffic</small></div>
+    <div class="stat-card"><span>Qualified PV</span><strong>{report.summary.totalQualifiedPageviews.toLocaleString()}</strong><small>Organic plus referral</small></div>
+    <div class="stat-card"><span>Tracked actions</span><strong>{report.summary.totalActions.toLocaleString()}</strong><small>Leads, downloads, book intent, Amazon</small></div>
+    <div class="stat-card"><span>Content with signal</span><strong>{report.summary.activeContentCount.toLocaleString()}</strong><small>of {report.summary.contentCount.toLocaleString()} tracked pages</small></div>
+  </div>
+
+  <section class="surface-card admin-panel type-panel">
+    <div class="section-head">
+      <div>
+        <h2>Content mix</h2>
+        <p>Sorted by organic pageviews, then total growth score.</p>
+      </div>
+      {report.summary.topOrganic && <a class="ghost-link" href={report.summary.topOrganic.item.path}>Top: {shortText(report.summary.topOrganic.item.title, 42)}</a>}
+    </div>
+    <div class="type-grid">
+      {report.typeRows.map((row) => (
+        <div class="type-row">
+          <div class="type-row-main">
+            <strong>{row.label}</strong>
+            <span>{row.contentCount.toLocaleString()} pages</span>
+          </div>
+          <div class="type-metrics">
+            <span>{row.organicPageviews.toLocaleString()} organic</span>
+            <span>{row.totalActions.toLocaleString()} actions</span>
+          </div>
+          <div class="metric-bar" aria-hidden="true"><span style={`width:${Math.round((row.organicPageviews / maxTypeOrganic) * 100)}%`}></span></div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section class="surface-card admin-panel">
+    <div class="section-head">
+      <div>
+        <h2>Top content by organic traffic</h2>
+        <p>{kpiWindow.pageviews.length.toLocaleString()} pageviews loaded · {kpiWindow.events.length.toLocaleString()} events loaded</p>
+      </div>
+      <span class="muted">Window: {range.label}</span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table content-table">
+        <thead>
+          <tr>
+            <th>Content</th>
+            <th>Type</th>
+            <th>Organic</th>
+            <th>Total PV</th>
+            <th>Actions</th>
+            <th>Top source</th>
+            <th>Score</th>
+            <th>Last seen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tableRows.map((row) => (
+            <tr>
+              <td class="content-cell">
+                <a href={row.item.path} target="_blank" rel="noopener noreferrer">{row.item.title}</a>
+                <small>{row.item.path}</small>
+                {row.stalePathPageviews > 0 && <em>{row.stalePathPageviews.toLocaleString()} legacy URL hit(s)</em>}
+              </td>
+              <td><span class={`type-pill type-${row.item.category}`}>{labelForCategory(row.item.category)}</span><small>{row.item.lang.toUpperCase()}</small></td>
+              <td class="metric-cell">
+                <strong>{row.organicPageviews.toLocaleString()}</strong>
+                <div class="metric-bar" aria-hidden="true"><span style={`width:${Math.round((row.organicPageviews / maxOrganic) * 100)}%`}></span></div>
+                <small>{percent(row.organicPageviews, row.pageviews)} organic share</small>
+              </td>
+              <td>{row.pageviews.toLocaleString()}<small>{row.uniqueVisitors.toLocaleString()} visitors</small></td>
+              <td>{row.totalActions.toLocaleString()}<small>{percent(row.totalActions, Math.max(row.pageviews, 1))} action rate</small></td>
+              <td>{row.topSource}</td>
+              <td>{formatScore(row.growthScore)}</td>
+              <td>{row.lastSeenAt ? formatAdminShortDateTime(row.lastSeenAt) : "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    {report.activeRows.length === 0 && <p class="empty-note">No content pageviews matched this window yet. The table is showing the newest tracked content as a reference map.</p>}
+  </section>
+
+  <div class="two-column">
+    <section class="surface-card admin-panel">
+      <div class="section-head compact">
+        <h2>SEO clusters</h2>
+        <span class="muted">Articles only</span>
+      </div>
+      <table class="admin-table compact-table">
+        <thead><tr><th>Cluster</th><th>Pages</th><th>Organic</th><th>Actions</th></tr></thead>
+        <tbody>
+          {report.clusterRows.map((row) => (
+            <tr><td>{row.label}</td><td>{row.contentCount}</td><td>{row.organicPageviews.toLocaleString()}</td><td>{row.totalActions.toLocaleString()}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="surface-card admin-panel">
+      <div class="section-head compact">
+        <h2>Blog SEO agent</h2>
+        <span class="muted">Latest recommendations</span>
+      </div>
+      {latestRecommendations.length === 0 ? (
+        <p class="empty-note">No blog SEO recommendations stored yet. The weekly agent will add them after the next intelligence run.</p>
+      ) : (
+        <div class="recommendation-list">
+          {latestRecommendations.map((row: any) => (
+            <article class="recommendation-row">
+              <div><strong>{row.recommended_action}</strong><small>{formatAdminShortDateTime(row.created_at)} · {recommendationCluster(row)}</small></div>
+              <p>{row.reasoning}</p>
+              <span>{Math.round((row.confidence_score || 0) * 100)}%</span>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  </div>
+</AdminLayout>
+
+<style>
+  .content-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .content-head h1 { margin: 0; }
+  .content-head p, .section-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .range-tabs { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
+  .range-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.84rem;
+    font-weight: 800;
+    background: var(--surface-card);
+  }
+  .range-btn.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.8rem;
+    margin: 1rem 0;
+  }
+  .stat-card {
+    padding: 0.95rem;
+    background: var(--surface-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+  }
+  .stat-card span, .stat-card small, .muted { color: var(--ink-soft); font-size: 0.78rem; }
+  .stat-card strong { display: block; margin: 0.18rem 0; font-size: clamp(1.45rem, 3vw, 2rem); line-height: 1.05; color: var(--brand-blue); }
+  .admin-panel { padding: 1rem; margin-top: 1rem; }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 0.85rem;
+  }
+  .section-head.compact { align-items: center; }
+  .section-head h2 { margin: 0; font-size: 1.05rem; }
+  .ghost-link { color: var(--brand-blue); font-weight: 800; text-decoration: none; font-size: 0.84rem; }
+  .type-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0.7rem; }
+  .type-row { display: grid; gap: 0.45rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+  .type-row-main, .type-metrics { display: flex; justify-content: space-between; gap: 0.7rem; align-items: baseline; }
+  .type-row-main span, .type-metrics span, .admin-table small, .content-cell small { color: var(--ink-soft); font-size: 0.74rem; }
+  .metric-bar { width: 100%; height: 0.42rem; overflow: hidden; background: color-mix(in srgb, var(--brand-blue) 10%, white); border-radius: 999px; }
+  .metric-bar span { display: block; height: 100%; min-width: 0; background: var(--brand-blue); border-radius: inherit; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  .admin-table th, .admin-table td { padding: 0.58rem 0.62rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .content-cell a { color: var(--ink); font-weight: 800; text-decoration: none; }
+  .content-cell a:hover { color: var(--brand-blue); text-decoration: underline; }
+  .content-cell small, .content-cell em, .admin-table small { display: block; margin-top: 0.18rem; }
+  .content-cell em { color: var(--accent-coral); font-size: 0.72rem; font-style: normal; font-weight: 800; }
+  .type-pill { display: inline-flex; padding: 0.18rem 0.42rem; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--line); font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
+  .type-article { color: var(--brand-blue); }
+  .type-fun-fact { color: var(--brand-green); }
+  .type-joke { color: var(--accent-coral); }
+  .metric-cell strong { display: block; margin-bottom: 0.28rem; font-size: 1rem; color: var(--brand-blue); }
+  .two-column { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 1rem; align-items: start; }
+  .compact-table { font-size: 0.8rem; }
+  .recommendation-list { display: grid; gap: 0.65rem; }
+  .recommendation-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.7rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+  .recommendation-row strong { display: block; font-size: 0.86rem; }
+  .recommendation-row small { display: block; margin-top: 0.16rem; color: var(--ink-soft); font-size: 0.72rem; }
+  .recommendation-row p { grid-column: 1 / -1; margin: 0; color: var(--ink-soft); font-size: 0.78rem; line-height: 1.45; }
+  .recommendation-row span { font-size: 0.82rem; font-weight: 900; color: var(--brand-blue); }
+  .empty-note { color: var(--ink-soft); font-size: 0.88rem; }
+  @media (max-width: 860px) {
+    .two-column { grid-template-columns: 1fr; }
+    .content-table th:nth-child(6), .content-table td:nth-child(6),
+    .content-table th:nth-child(8), .content-table td:nth-child(8) { display: none; }
+  }
+</style>

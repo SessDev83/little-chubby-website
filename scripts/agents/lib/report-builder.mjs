@@ -19,6 +19,22 @@ function classifySource(row) {
   return { category: source.category, detail: source.detail };
 }
 
+function normalizePath(value) {
+  try {
+    const parsed = new URL(String(value || "/"), "https://www.littlechubbypress.com");
+    return parsed.pathname.endsWith("/") ? parsed.pathname : `${parsed.pathname}/`;
+  } catch {
+    const path = String(value || "/").split("?")[0].split("#")[0] || "/";
+    return path.endsWith("/") ? path : `${path}/`;
+  }
+}
+
+function isLongformContentPath(path) {
+  const normalized = normalizePath(path);
+  return /^\/(en|es)\/blog\/[^/]+\/?$/.test(normalized)
+    || /^\/(en|es)\/articles\/[^/]+\/[^/]+\/?$/.test(normalized);
+}
+
 export async function queryTable(SUPABASE_URL, SUPABASE_KEY, table, params) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?${params}`;
   const res = await fetch(url, {
@@ -92,12 +108,13 @@ export async function buildReport(env, startISO, endISO) {
   // ── Blog performance with top source per post ─────────────────────────
   const blogBySource = {};
   for (const r of pageviews) {
-    if (!r.path.includes("/blog/") || r.path.endsWith("/blog/")) continue;
-    if (!blogBySource[r.path]) blogBySource[r.path] = { total: 0, sources: {} };
-    blogBySource[r.path].total++;
+    if (!isLongformContentPath(r.path)) continue;
+    const normalizedPath = normalizePath(r.path);
+    if (!blogBySource[normalizedPath]) blogBySource[normalizedPath] = { total: 0, sources: {} };
+    blogBySource[normalizedPath].total++;
     const c = classifySource(r);
     const k = `${c.category}/${c.detail}`;
-    blogBySource[r.path].sources[k] = (blogBySource[r.path].sources[k] || 0) + 1;
+    blogBySource[normalizedPath].sources[k] = (blogBySource[normalizedPath].sources[k] || 0) + 1;
   }
   const blogPerformance = Object.entries(blogBySource)
     .sort((a, b) => b[1].total - a[1].total)

@@ -319,7 +319,7 @@ async function fetchInstagramPosts() {
 function detectPostType(text) {
   const lower = (text || "").toLowerCase();
   if (lower.includes("amazon.com") || lower.includes("coloring book") || lower.includes("libro para colorear")) return "book-promo";
-  if (lower.includes("/blog/") || lower.includes("new post") || lower.includes("nuevo articulo")) return "blog-share";
+  if (lower.includes("/blog/") || lower.includes("/articles/") || lower.includes("new post") || lower.includes("nuevo articulo")) return "blog-share";
   if (lower.includes("link in bio") || lower.includes("link en bio")) return "book-promo";
   if (lower.includes("newsletter") || lower.includes("gallery") || lower.includes("galeria")) return "community";
   if (lower.includes("tip") || lower.includes("consejo")) return "parenting-tip";

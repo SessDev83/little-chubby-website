@@ -72,9 +72,17 @@ function parseFrontmatter(raw) {
     summary: get("summary"),
     date: get("date"),
     category: get("category") || "article",
+    articleCategory: get("articleCategory"),
     image: get("image"),
     bookId: get("bookId"),
   };
+}
+
+function postUrl(lang, post) {
+  if (post?.category === "article" && post.articleCategory) {
+    return `${SITE_URL}/${lang}/articles/${post.articleCategory}/${post.slug}/`;
+  }
+  return `${SITE_URL}/${lang}/blog/${post.slug}/`;
 }
 
 function readBlogPosts(lang, category) {
@@ -163,7 +171,7 @@ function buildEmail(lang, { funFact, joke, latestArticle, book, unsubscribeUrl }
   // Helpers to build each section safely
   const section = (post, color, label, icon) => {
     if (!post) return "";
-    const url = `${SITE_URL}/${lang}/blog/${post.slug}/`;
+    const url = postUrl(lang, post);
     return `
       <div style="margin-bottom:1.5rem;padding:1rem;background:#fffaf2;border-radius:8px;border-left:4px solid ${color};">
         <p style="margin:0 0 0.3rem;font-size:0.85rem;color:${color};font-weight:700;text-transform:uppercase;">
