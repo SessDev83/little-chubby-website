@@ -60,8 +60,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -70,7 +70,7 @@ jobs:
         run: npm ci
 
       - name: Restore engagement state
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: scripts/social/.engage-state.json
           key: social-engage-state-${{ github.job }}-${{ github.run_id }}
@@ -93,7 +93,7 @@ jobs:
 
       - name: Save engagement state
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: scripts/social/.engage-state.json
           key: social-engage-state-${{ github.job }}-${{ github.run_id }}
@@ -106,8 +106,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -116,7 +116,7 @@ jobs:
         run: npm ci
 
       - name: Restore engagement state
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: scripts/social/.engage-state.json
           key: social-engage-state-${{ github.job }}-${{ github.run_id }}
@@ -146,7 +146,7 @@ jobs:
 
       - name: Save engagement state
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: scripts/social/.engage-state.json
           key: social-engage-state-${{ github.job }}-${{ github.run_id }}
