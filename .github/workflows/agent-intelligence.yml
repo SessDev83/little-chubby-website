@@ -23,6 +23,11 @@ on:
         required: true
         default: false
         type: boolean
+      send_monthly_report:
+        description: "Also send the monthly report during manual runs"
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   analyze:
@@ -73,7 +78,7 @@ jobs:
           ANALYTICS_EMAIL: ${{ secrets.ANALYTICS_EMAIL }}
         run: |
           DAY_OF_MONTH=$(date -u +%d)
-          if [ "$DAY_OF_MONTH" != "01" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+          if [ "$DAY_OF_MONTH" != "01" ] && [ "${{ github.event.inputs.send_monthly_report }}" != "true" ]; then
             echo "Not the 1st — skipping monthly report."
             exit 0
           fi

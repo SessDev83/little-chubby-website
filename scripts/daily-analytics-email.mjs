@@ -4,7 +4,7 @@
  * Queries yesterday's pageview data from Supabase, fetches social media
  * stats from Bluesky (public API), and sends a summary email via Resend.
  *
- * Usage:  node scripts/daily-analytics-email.mjs [--dry-run]
+ * Usage:  node scripts/daily-analytics-email.mjs [--dry-run] [--date YYYY-MM-DD]
  *
  * Required env vars:
  *   PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY,
@@ -38,6 +38,26 @@ function yesterday() {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - 1);
   return d.toISOString().slice(0, 10);
+}
+
+function argValue(flag) {
+  const idx = process.argv.indexOf(flag);
+  return idx === -1 ? "" : process.argv[idx + 1] || "";
+}
+
+function reportDate() {
+  const override = argValue("--date") || process.env.ANALYTICS_REPORT_DATE || "";
+  if (!override) return yesterday();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(override)) {
+    console.error("Invalid --date. Expected YYYY-MM-DD.");
+    process.exit(1);
+  }
+  const parsed = new Date(`${override}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== override) {
+    console.error("Invalid --date. Expected a real calendar date.");
+    process.exit(1);
+  }
+  return override;
 }
 
 function formatDate(dateStr) {
@@ -519,7 +539,7 @@ async function sendEmail(subject, html) {
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────
-const date = yesterday();
+const date = reportDate();
 console.log(`📊 Fetching analytics for ${date}...\n`);
 
 const stats = await fetchAnalytics(date);

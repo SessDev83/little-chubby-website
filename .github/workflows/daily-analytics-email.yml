@@ -9,6 +9,11 @@ on:
     # Every day at 8:00 AM ET (12:00 UTC)
     - cron: "0 12 * * *"
   workflow_dispatch:
+    inputs:
+      date:
+        description: "Report date to resend (YYYY-MM-DD, defaults to yesterday UTC)"
+        required: false
+        type: string
 
 # Principle of least privilege: this job only reads the repo at checkout and
 # calls out to third-party APIs via secrets. No write access to repo/issues.
@@ -40,4 +45,9 @@ jobs:
           META_PAGE_ACCESS_TOKEN: ${{ secrets.META_PAGE_ACCESS_TOKEN }}
           META_PAGE_ID: ${{ secrets.META_PAGE_ID }}
           META_IG_USER_ID: ${{ secrets.META_IG_USER_ID }}
-        run: node scripts/daily-analytics-email.mjs
+        run: |
+          ARGS=()
+          if [ -n "${{ github.event.inputs.date || '' }}" ]; then
+            ARGS+=(--date "${{ github.event.inputs.date }}")
+          fi
+          node scripts/daily-analytics-email.mjs "${ARGS[@]}"
