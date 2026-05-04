@@ -5,6 +5,8 @@ import Button from "../../../components/Button.astro";
 import { getCollection, render } from "astro:content";
 import { languages, getLangFromParam, ui, formatDate } from "../../../data/i18n";
 import { siteConfig } from "../../../data/site";
+import { funFactCategories } from "../../../data/funFactCategories";
+import { articleCategories } from "../../../data/articleCategories";
 
 export function getStaticPaths() {
   return languages.map((lang) => ({ params: { lang } }));
@@ -21,6 +23,8 @@ const breadcrumbs = [
 const allPosts = await getCollection("blog", (entry) => entry.data.lang === lang);
 const sortedPosts = allPosts.sort((a, b) => b.data.date.localeCompare(a.data.date));
 
+const articles = sortedPosts.filter((p) => (p.data.category || "article") === "article");
+const funFacts = sortedPosts.filter((p) => p.data.category === "fun-fact");
 const jokes = sortedPosts.filter((p) => (p.data.category || "article") === "joke");
 const renderedJokes = await Promise.all(
   jokes.map(async (joke) => {
@@ -60,20 +64,64 @@ const categories = [
         ))}
       </div>
 
-      {categories.filter((cat) => cat.value !== "joke").map((cat) => (
-        <div class="blog-category-section" data-section={cat.value} style={cat.value !== "article" ? "display:none;" : ""}>
-          <div class="grid-cards posts">
-            {sortedPosts.filter((p) => (p.data.category || "article") === cat.value).length > 0
-              ? sortedPosts.filter((p) => (p.data.category || "article") === cat.value).map((post) => (
-                  <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />
-                ))
-              : <p class="blog-empty-msg">
-                  {lang === "es" ? "No hay publicaciones en esta categoría todavía." : "No posts in this category yet."}
-                </p>
-            }
-          </div>
+      <div class="blog-category-section" data-section="article">
+        <nav class="ff-category-filter" aria-label={lang === "es" ? "Categorías de artículos" : "Article categories"}>
+          {articleCategories.map((cat) => (
+            <a class="ff-cat-btn" href={`/${lang}/articles/${cat.slug}/`} style={`--ff-cat-color: ${cat.color};`}>
+              <span class="ff-cat-emoji" aria-hidden="true">{cat.icon}</span>
+              {cat.shortLabel[lang]}
+            </a>
+          ))}
+        </nav>
+
+        <p class="ff-section-label">{lang === "es" ? "Publicaciones recientes" : "Recent posts"}</p>
+
+        <div class="grid-cards posts">
+          {articles.length > 0
+            ? articles.slice(0, 4).map((post) => <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />)
+            : <p class="blog-empty-msg">{lang === "es" ? "No hay artículos todavía." : "No articles yet."}</p>
+          }
         </div>
-      ))}
+
+        <div class="ff-hub-banner">
+          <div class="ff-hub-banner-text">
+            <strong>{lang === "es" ? `${articles.length} artículos en 5 categorías` : `${articles.length} articles across 5 categories`}</strong>
+            <span>{lang === "es" ? "Explora el catálogo completo organizado por tema." : "Browse the full catalog organized by topic."}</span>
+          </div>
+          <a class="ff-hub-banner-btn" href={`/${lang}/articles/`}>
+            {lang === "es" ? "Ver todas las categorías" : "Explore all categories"}
+          </a>
+        </div>
+      </div>
+
+      <div class="blog-category-section" data-section="fun-fact" style="display:none;">
+        <nav class="ff-category-filter" aria-label={lang === "es" ? "Categorías de datos curiosos" : "Fun fact categories"}>
+          {funFactCategories.map((cat) => (
+            <a class="ff-cat-btn" href={`/${lang}/fun-facts/${cat.slug}/`} style={`--ff-cat-color: ${cat.color};`}>
+              <span class="ff-cat-emoji" aria-hidden="true">{cat.icon}</span>
+              {cat.shortLabel[lang]}
+            </a>
+          ))}
+        </nav>
+        <p class="ff-section-label">{lang === "es" ? "Publicaciones recientes" : "Recent posts"}</p>
+
+        <div class="grid-cards posts">
+          {funFacts.length > 0
+            ? funFacts.slice(0, 4).map((post) => <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />)
+            : <p class="blog-empty-msg">{lang === "es" ? "No hay datos curiosos todavía." : "No fun facts yet."}</p>
+          }
+        </div>
+
+        <div class="ff-hub-banner">
+          <div class="ff-hub-banner-text">
+            <strong>{lang === "es" ? `${funFacts.length} datos curiosos en ${funFactCategories.length} categorías` : `${funFacts.length} fun facts across ${funFactCategories.length} categories`}</strong>
+            <span>{lang === "es" ? "Explora el catálogo completo organizado por tema." : "Browse the full catalog organized by topic."}</span>
+          </div>
+          <a class="ff-hub-banner-btn" href={`/${lang}/fun-facts/`}>
+            {lang === "es" ? "Ver todas las categorías" : "Explore all categories"}
+          </a>
+        </div>
+      </div>
 
       <div class="blog-category-section" data-section="joke" style="display:none;">
         <div class="jokes-inline-grid">
@@ -153,6 +201,7 @@ function initBlogFilters() {
 }
 initBlogFilters();
 document.addEventListener("astro:after-swap", initBlogFilters);
+
 
 function initJokeCopyLinks() {
   document.querySelectorAll(".joke-copy-link").forEach(function(btn) {

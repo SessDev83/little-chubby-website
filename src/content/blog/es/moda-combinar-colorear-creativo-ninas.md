@@ -1,4 +1,4 @@
----
+﻿---
 postId: "mix-and-match-fashion-coloring-girls"
 title: "Moda para combinar: una forma creativa de colorear con ninas"
 date: "2026-04-23"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "dresses-and-dolls"
 image: "/images/blog/mix-and-match.webp"
 tags: ["creativity", "fashion", "self-expression", "activities", "coloring"]
+articleCategory: "creativity"
 ---
 
 Le das a tu peque un libro de colorear, elige una pagina, colorea diez minutos y pasa a otra cosa. Esta bien, pero siempre termina igual. Y si el mismo libro se pudiera convertir en un estudio de estilismo donde ella elige blusas, faldas, estampados y combinaciones de colores como una disenadora de verdad?

@@ -1,4 +1,4 @@
----
+﻿---
 postId: "road-trip-coloring-kit-creative-travel"
 title: "Road Trip Coloring Kit: What to Pack for Creative Travel"
 date: "2026-04-12"
@@ -6,6 +6,7 @@ summary: "Pack the perfect coloring kit for stress-free road trips that keep kid
 lang: "en"
 image: "/images/blog/road-trip-coloring.webp"
 tags: ["travel", "activities", "parenting", "screen-free", "creativity"]
+articleCategory: "activities"
 ---
 
 "Are we there yet?" If this question haunts your family road trips before you even reach the highway, you are not alone. Long car rides with restless kids can turn dream vacations into stress-filled marathons. But what if I told you that a well-planned coloring kit could transform those endless hours into peaceful, creative time that actually helps your family bond?

@@ -1,4 +1,4 @@
----
+﻿---
 postId: "fairy-tale-coloring-storytelling"
 title: "How Fairy Tale Coloring Transforms Kids Into Natural Storytellers"
 date: "2026-04-15"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "magical-creatures"
 image: "/images/blog/fairy-tale-coloring.webp"
 tags: ["creativity", "imagination", "storytelling", "book-review", "activities"]
+articleCategory: "creativity"
 ---
 
 Your child flips through another picture book, asks you to read it for the hundredth time, then wanders off saying they are bored. Sound familiar? While we love reading to our kids, many parents wonder how to help their children become active creators of stories, not just passive consumers.

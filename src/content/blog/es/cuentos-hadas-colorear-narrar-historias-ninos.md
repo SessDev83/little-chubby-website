@@ -1,4 +1,4 @@
----
+﻿---
 postId: "fairy-tale-coloring-storytelling"
 title: "Como Colorear Cuentos de Hadas Convierte a los Ninos en Narradores Naturales"
 date: "2026-04-15"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "magical-creatures"
 image: "/images/blog/fairy-tale-coloring.webp"
 tags: ["creativity", "imagination", "storytelling", "book-review", "activities"]
+articleCategory: "creativity"
 ---
 
 Tu peque hojea otro libro ilustrado, te pide que se lo leas por centesima vez, y luego se va diciendo que esta aburrido. Te suena familiar? Aunque adoramos leer a nuestros ninos, muchos padres nos preguntamos como ayudar a nuestros hijos a convertirse en creadores activos de historias, no solo en consumidores pasivos.

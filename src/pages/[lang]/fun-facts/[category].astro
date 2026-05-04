@@ -5,6 +5,7 @@ import { getCollection } from "astro:content";
 import { languages, getLangFromParam, ui } from "../../../data/i18n";
 import { funFactCategories, getFunFactCategoryMatches, type FunFactCategory } from "../../../data/funFactCategories";
 import { siteConfig } from "../../../data/site";
+import { getPostUrl } from "../../../data/postUrl";
 
 export function getStaticPaths() {
   return languages.flatMap((lang) =>
@@ -45,7 +46,7 @@ const itemListJsonLd = JSON.stringify({
       "@type": "ListItem",
       position: index + 1,
       name: post.data.title,
-      url: new URL(`/${lang}/blog/${post.id.replace(/^(es|en)\//, "")}/`, siteConfig.siteUrl).toString(),
+      url: new URL(getPostUrl(lang, post.id, "fun-fact", post.data.tags), siteConfig.siteUrl).toString(),
     })),
   },
 }).replace(/</g, "\\u003c");
@@ -75,7 +76,7 @@ const itemListJsonLd = JSON.stringify({
 
       <nav class="fun-fact-topic-nav" aria-label={lang === "es" ? "Otras categorías" : "Other categories"}>
         {funFactCategories.map((item) => (
-          <a href={`/${lang}/fun-facts/${item.slug}/`} aria-current={item.slug === category.slug ? "page" : undefined}>
+          <a class="fun-fact-topic-btn" href={`/${lang}/fun-facts/${item.slug}/`} aria-current={item.slug === category.slug ? "page" : undefined}>
             <span aria-hidden="true">{item.icon}</span>
             {item.shortLabel[lang]}
           </a>

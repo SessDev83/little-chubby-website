@@ -1,4 +1,4 @@
----
+﻿---
 postId: "ninas-confianza"
 title: "Criar ninas seguras: como el juego creativo construye autoestima"
 date: "2026-01-05"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "awesome-girls"
 image: "/images/blog/confident-girls.webp"
 tags: ["parenting", "book-review", "self-expression", "emotional-development"]
+articleCategory: "creativity"
 ---
 
 "No me sale bien." Si tu hija dice eso cada vez que intenta algo nuevo, no es falta de talento. Es falta de **experiencias donde no exista "mal" o "bien"**.

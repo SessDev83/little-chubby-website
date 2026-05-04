@@ -1,4 +1,4 @@
----
+﻿---
 postId: "coloring-calms-kids-doctor-waiting-rooms"
 title: "Why Coloring Is a Secret Weapon in Doctor Waiting Rooms"
 date: "2026-04-21"
@@ -6,6 +6,7 @@ summary: "A calm, practical guide to using coloring books at medical appointment
 lang: "en"
 image: "/images/blog/coloring-calms-kids.webp"
 tags: ["parenting", "wellness", "activities", "screen-free", "emotional-development"]
+articleCategory: "focus-calm"
 ---
 
 You know the moment. You signed in at the front desk, the chairs are a little too stiff, a TV is playing cartoons nobody asked for, and your kid has already asked three times how much longer. The waiting room is its own small world, and for a lot of kids, it is a world full of big feelings.

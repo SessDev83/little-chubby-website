@@ -1,4 +1,4 @@
----
+﻿---
 postId: "coloring-bedtime-wind-down"
 title: "Por que colorear es la actividad perfecta para relajarse antes de dormir"
 date: "2026-04-10"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "cozy-kids-club"
 image: "/images/blog/why-coloring-helps.webp"
 tags: ["bedtime", "wellness", "activities", "parenting", "screen-free"]
+articleCategory: "focus-calm"
 ---
 
 Conoces esa sensacion cuando llega la hora de dormir y tu peque todavia esta rebotando por toda la casa? Los juguetes estan regados, la energia esta por las nubes, y de alguna manera se supone que transformes magicamente este pequeno tornado en un durmiente pacifico. Que tal si te dijera que algo tan simple como colorear podria ser el cambio que has estado buscando?

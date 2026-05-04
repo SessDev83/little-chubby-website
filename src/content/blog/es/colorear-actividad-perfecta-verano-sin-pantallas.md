@@ -1,4 +1,4 @@
----
+﻿---
 postId: "coloring-perfect-screen-free-summer"
 title: "Por que colorear es la actividad perfecta de verano sin pantallas"
 date: "2026-04-14"
@@ -6,6 +6,7 @@ summary: "Descubre por que colorear supera a las pantallas para la diversion de 
 lang: "es"
 image: "/images/blog/coloring-perfect-screen.webp"
 tags: ["activities", "screen-free", "creativity", "wellness", "seasonal"]
+articleCategory: "activities"
 ---
 
 Llegaron las vacaciones de verano y ya estas escuchando esas palabras temidas: "Me aburro!" Aunque es tentador entregar una tablet para tener un poco de paz, hay una mejor manera de llenar esos largos dias de verano. Colorear ofrece todo lo que quieres en una actividad veraniega: mantiene a los peques ocupados, desarrolla habilidades importantes y te da esos momentos de tranquilidad que tanto necesitas.

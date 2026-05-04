@@ -1,0 +1,107 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import PostCard from "../../../components/PostCard.astro";
+import { getCollection } from "astro:content";
+import { languages, getLangFromParam, ui } from "../../../data/i18n";
+import { articleCategories, type ArticleCategory } from "../../../data/articleCategories";
+import { siteConfig } from "../../../data/site";
+import { getPostUrl } from "../../../data/postUrl";
+
+export function getStaticPaths() {
+  return languages.flatMap((lang) =>
+    articleCategories.map((cat) => ({
+      params: { lang, category: cat.slug },
+      props: { cat },
+    }))
+  );
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const { cat } = Astro.props as { cat: ArticleCategory };
+const pathname = `/${lang}/articles/${cat.slug}/`;
+const alternatePath = `/${lang === "es" ? "en" : "es"}/articles/${cat.slug}/`;
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: lang === "es" ? "Artículos" : "Articles", url: `/${lang}/articles/` },
+  { name: cat.label[lang], url: pathname },
+];
+
+const allArticles = await getCollection("blog", (entry) =>
+  entry.data.lang === lang && entry.data.category === "article"
+);
+const posts = allArticles
+  .filter((post) => post.data.articleCategory === cat.slug)
+  .sort((a, b) => b.data.date.localeCompare(a.data.date));
+
+const itemListJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: cat.metaTitle[lang],
+  description: cat.metaDescription[lang],
+  url: new URL(pathname, siteConfig.siteUrl).toString(),
+  inLanguage: lang,
+  about: cat.label[lang],
+  mainEntity: {
+    "@type": "ItemList",
+    itemListElement: posts.map((post, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: post.data.title,
+      url: new URL(getPostUrl(lang, post.id, "article", [], post.data.articleCategory), siteConfig.siteUrl).toString(),
+    })),
+  },
+}).replace(/</g, "\\u003c");
+---
+
+<BaseLayout
+  lang={lang}
+  title={cat.metaTitle[lang]}
+  description={cat.metaDescription[lang]}
+  pathname={pathname}
+  alternatePath={alternatePath}
+  breadcrumbs={breadcrumbs}
+>
+  <section class="page-section fun-fact-category-page">
+    <div class="container">
+      <div class="fun-fact-category-header" style={`--category-color: ${cat.color};`}>
+        <a class="fun-fact-back-link" href={`/${lang}/articles/`}>
+          ← {lang === "es" ? "Todos los artículos" : "All articles"}
+        </a>
+        <div class="section-head">
+          <p class="eyebrow"><span aria-hidden="true">{cat.icon}</span> {lang === "es" ? "Artículos" : "Articles"}</p>
+          <h1>{cat.label[lang]}</h1>
+          <p>{cat.description[lang]}</p>
+        </div>
+        <p class="fun-fact-category-total">
+          <strong>{posts.length}</strong> {lang === "es" ? "artículos en esta categoría" : "articles in this category"}
+        </p>
+      </div>
+
+      <nav class="fun-fact-topic-nav" aria-label={lang === "es" ? "Otras categorías" : "Other categories"}>
+        {articleCategories.map((item) => (
+          <a
+            class="fun-fact-topic-btn"
+            href={`/${lang}/articles/${item.slug}/`}
+            aria-current={item.slug === cat.slug ? "page" : undefined}
+          >
+            <span aria-hidden="true">{item.icon}</span>
+            {item.shortLabel[lang]}
+          </a>
+        ))}
+      </nav>
+
+      {posts.length > 0 ? (
+        <div class="grid-cards posts">
+          {posts.map((post) => <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />)}
+        </div>
+      ) : (
+        <p class="blog-empty-msg">
+          {lang === "es" ? "No hay artículos en esta categoría todavía." : "No articles in this category yet."}
+        </p>
+      )}
+    </div>
+  </section>
+
+  <script type="application/ld+json" is:inline set:html={itemListJsonLd}></script>
+</BaseLayout>

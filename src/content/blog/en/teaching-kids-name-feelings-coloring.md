@@ -1,4 +1,4 @@
----
+﻿---
 postId: "nombrar-emociones"
 title: "Teaching kids to name their feelings (without awkward talks)"
 date: "2026-01-25"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "coloring-emotions"
 image: "/images/blog/naming-feelings.webp"
 tags: ["parenting", "education", "emotional-development", "wellness"]
+articleCategory: "focus-calm"
 ---
 
 Your child cries "for no reason," has angry outbursts, or shuts down completely. It is not that they do not feel — it is that **they do not have words for what they feel**. And that is frustrating for everyone.

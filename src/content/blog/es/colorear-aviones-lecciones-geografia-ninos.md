@@ -1,4 +1,4 @@
----
+﻿---
 postId: "airplane-coloring-geography-lessons-kids"
 title: "Colorear Aviones: La Forma Astuta de Ensenar Geografia"
 date: "2026-04-22"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "awesome-airplanes"
 image: "/images/blog/airplane-coloring-geography.webp"
 tags: ["education", "creativity", "stem", "imagination", "coloring"]
+articleCategory: "learning"
 ---
 
 Imagina esto: tu peque esta en el piso con crayones, coloreando un avion. Parece una tarde cualquiera. Pero en veinte minutos, ya esta preguntando donde queda Japon, por que el Polo Norte es frio, y si los aviones pueden volar sobre los oceanos. Eso no es casualidad. Colorear aviones tiene una forma astuta de abrir el mundo entero, una pagina a la vez.

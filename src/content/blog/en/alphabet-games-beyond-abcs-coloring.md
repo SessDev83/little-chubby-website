@@ -1,4 +1,4 @@
----
+﻿---
 postId: "alphabet-games-beyond-abcs-coloring"
 title: "Alphabet Games Beyond the ABCs: Creative Coloring Activities That Make Letters Stick"
 date: "2026-04-19"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "alphabet-coloring-book"
 image: "/images/blog/alphabet-games-beyond.webp"
 tags: ["education", "creativity", "fine-motor", "activities", "coloring"]
+articleCategory: "learning"
 ---
 
 Your four-year-old knows the alphabet song by heart, but when you point to a random letter on a page, they freeze. Sound familiar? Knowing the ABC song is just the beginning — real letter mastery happens when kids can recognize, write, and connect letters to sounds in creative, engaging ways.

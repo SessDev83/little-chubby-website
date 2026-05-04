@@ -1,4 +1,4 @@
----
+﻿---
 postId: "moda-teens"
 title: "Why fashion coloring is the perfect creative outlet for teens"
 date: "2026-03-22"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "chic-styles"
 image: "/images/blog/fashion-teens.webp"
 tags: ["creativity", "book-review", "fashion", "self-expression"]
+articleCategory: "creativity"
 ---
 
 Your teenager is stressed, glued to their phone, and "bored of everything." Sound familiar? The problem is not a lack of activities — it is a lack of judgment-free creative expression.

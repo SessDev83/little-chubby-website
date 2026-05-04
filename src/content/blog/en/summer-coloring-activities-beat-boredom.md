@@ -1,4 +1,4 @@
----
+﻿---
 postId: "summer-coloring-beat-boredom"
 title: "Summer Coloring Activities to Beat the 'I'm Bored' Blues"
 date: "2026-04-10"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "awesome-boys"
 image: "/images/blog/summer-coloring-activities.webp"
 tags: ["activities", "screen-free", "creativity", "family-time", "seasonal"]
+articleCategory: "activities"
 ---
 
 You know that moment. It is 10 AM on a Tuesday in July, and you hear those dreaded words: "Mom, I am bored!" The summer stretches endlessly ahead, and you are already running out of ideas to keep your little ones engaged. Before you surrender to another screen time marathon, let me share something that has saved countless summer days in our house: strategic coloring activities that go way beyond the typical "here is a coloring book, go sit quietly" approach.

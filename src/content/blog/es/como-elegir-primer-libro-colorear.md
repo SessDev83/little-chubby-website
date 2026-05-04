@@ -1,4 +1,4 @@
----
+﻿---
 postId: "primer-libro"
 title: "Como elegir el primer libro de colorear para tu peque (sin desperdiciar dinero)"
 date: "2026-03-28"
@@ -6,6 +6,7 @@ summary: "Compraste un libro de colorear y tu peque lo ignoro? El problema no fu
 lang: "es"
 image: "/images/blog/choosing-coloring-book.webp"
 tags: ["parenting", "tips", "coloring", "gift-guide"]
+articleCategory: "guides"
 ---
 
 Compraste un libro de colorear que se veia perfecto en Amazon. Llego a casa, tu peque lo abrio… y lo dejo en 3 minutos. Ahora tienes un libro sin usar y la sensacion de haber tirado el dinero. **No fue culpa de tu hijo — fue el libro equivocado.**

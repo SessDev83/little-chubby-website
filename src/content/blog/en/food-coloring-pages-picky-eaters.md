@@ -1,4 +1,4 @@
----
+﻿---
 postId: "comida-creatividad"
 title: "How food coloring pages make picky eaters more adventurous"
 date: "2026-01-15"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "pizza-sweet-treats"
 image: "/images/blog/food-picky-eaters.webp"
 tags: ["parenting", "book-review", "wellness"]
+articleCategory: "activities"
 ---
 
 Another plate rejected. "I do not like it." They did not even try it. If dinnertime battles sound familiar, you are not alone. But what if the problem is not taste but a **lack of visual familiarity**?

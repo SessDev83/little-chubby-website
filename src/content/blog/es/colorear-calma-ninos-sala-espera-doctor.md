@@ -1,4 +1,4 @@
----
+﻿---
 postId: "coloring-calms-kids-doctor-waiting-rooms"
 title: "Por que colorear es un arma secreta en la sala de espera del doctor"
 date: "2026-04-21"
@@ -6,6 +6,7 @@ summary: "Una guia practica y tranquila para usar libros de colorear en citas me
 lang: "es"
 image: "/images/blog/coloring-calms-kids.webp"
 tags: ["parenting", "wellness", "activities", "screen-free", "emotional-development"]
+articleCategory: "focus-calm"
 ---
 
 Ya conoces el momento. Firmaste en recepcion, las sillas son un poco incomodas, hay una tele con dibujos que nadie pidio, y tu peque ya pregunto tres veces cuanto falta. La sala de espera es su propio mundo pequeno, y para muchos ninos es un mundo lleno de emociones grandes.

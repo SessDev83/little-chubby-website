@@ -1,4 +1,4 @@
----
+﻿---
 postId: "airplane-coloring-geography-lessons-kids"
 title: "Airplane Coloring: The Sneaky Way to Teach Geography"
 date: "2026-04-22"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "awesome-airplanes"
 image: "/images/blog/airplane-coloring-geography.webp"
 tags: ["education", "creativity", "stem", "imagination", "coloring"]
+articleCategory: "learning"
 ---
 
 Picture this: your kid is on the floor with crayons, coloring an airplane. It looks like a regular afternoon. But within twenty minutes, they are asking where Japan is, why the North Pole is cold, and whether airplanes can fly over oceans. That is not an accident. Airplane coloring has a sneaky way of opening up the whole world, one page at a time.

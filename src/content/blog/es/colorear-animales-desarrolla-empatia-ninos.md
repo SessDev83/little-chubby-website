@@ -1,4 +1,4 @@
----
+﻿---
 postId: "animal-coloring-builds-empathy-kids"
 title: "Como Colorear Animales Desarrolla la Empatia en los Ninos (La Ciencia Te Sorprendera)"
 date: "2026-04-11"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "easy-animals"
 image: "/images/blog/animal-coloring-builds.webp"
 tags: ["parenting", "emotional-development", "education", "creativity", "wellness"]
+articleCategory: "focus-calm"
 ---
 
 Tu peque de cuatro anos acaba de colorear un tigre morado y insiste en que esta llorando porque "extrana a su mama". Mientras sonries ante esta interpretacion creativa, algo mucho mas profundo esta sucediendo. Ese simple acto de colorear y crear historias esta desarrollando una de las habilidades mas importantes que tu hijo podra tener: la empatia.

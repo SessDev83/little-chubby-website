@@ -1,4 +1,4 @@
----
+﻿---
 postId: "vestir-confianza"
 title: "Como colorear vestidos y munecas fortalece la confianza de las ninas"
 date: "2026-03-15"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "dresses-and-dolls"
 image: "/images/blog/dress-confidence.webp"
 tags: ["parenting", "book-review", "fashion", "self-expression"]
+articleCategory: "creativity"
 ---
 
 Tu hija quiere elegir su propia ropa pero termina frustrada porque "nada combina". Esa frustracion es normal — solo le falta un espacio seguro para experimentar.

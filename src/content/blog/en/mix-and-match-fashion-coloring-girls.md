@@ -1,4 +1,4 @@
----
+﻿---
 postId: "mix-and-match-fashion-coloring-girls"
 title: "Mix-and-Match Fashion: A Fresh Way to Color With Girls"
 date: "2026-04-23"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "dresses-and-dolls"
 image: "/images/blog/mix-and-match.webp"
 tags: ["creativity", "fashion", "self-expression", "activities", "coloring"]
+articleCategory: "creativity"
 ---
 
 You hand your kid a coloring book, she picks a page, colors for ten minutes, and moves on. It is fine, but it always ends the same way. What if the same coloring book could become a whole styling studio where she picks tops, skirts, patterns, and color stories like a real designer?

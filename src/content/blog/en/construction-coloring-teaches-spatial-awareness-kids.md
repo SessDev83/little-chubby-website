@@ -1,4 +1,4 @@
----
+﻿---
 postId: "construction-coloring-spatial-awareness"
 title: "How Construction Coloring Teaches Spatial Awareness (The Skills Will Amaze You)"
 date: "2026-04-18"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "mighty-machines"
 image: "/images/blog/construction-coloring-teaches.webp"
 tags: ["education", "stem", "fine-motor", "creativity", "book-review"]
+articleCategory: "learning"
 ---
 
 Your child is hunched over a coloring page of a bulldozer, tongue poking out in concentration. You might think this is just quiet time, but something incredible is happening in their brain. Those construction scenes are secretly building one of the most important cognitive skills for future success: spatial awareness.

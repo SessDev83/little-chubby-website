@@ -1,4 +1,4 @@
----
+﻿---
 postId: "friendship-activities-coloring-books"
 title: "Actividades de Amistad con Libros de Colorear: Formas Faciles de Crear Conexion Real"
 date: "2026-04-28"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "awesome-girls"
 image: "/images/blog/friendship-activities-coloring.webp"
 tags: ["activities", "creativity", "screen-free", "emotional-development", "coloring"]
+articleCategory: "activities"
 ---
 
 Dos peques sentados en el suelo, con las rodillas tocandose, pasandose crayones de un lado a otro, trabajando en silencio sobre la misma pagina, riendose de vez en cuando porque alguien le puso bigotes morados al gato. Esa es la amistad en su forma mas pura, y no necesitas un plan elaborado para crearla. Un monton de paginas para colorear y una caja de lapices pueden hacer casi todo el trabajo.

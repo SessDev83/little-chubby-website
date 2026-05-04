@@ -1,4 +1,4 @@
----
+﻿---
 postId: "rincon-calma"
 title: "How to create a calm-down corner with coloring for anxious kids"
 date: "2026-02-20"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "cozy-kids-club"
 image: "/images/blog/calm-corner.webp"
 tags: ["parenting", "activities", "emotional-development", "wellness"]
+articleCategory: "focus-calm"
 ---
 
 Your child has meltdowns, gets frustrated quickly, or struggles to calm down after big emotions. You are not alone — and you do not need a therapist to take the first step.

@@ -1,0 +1,120 @@
+---
+import BaseLayout from "../../../../layouts/BaseLayout.astro";
+import PostCard from "../../../../components/PostCard.astro";
+import { getCollection } from "astro:content";
+import { languages, getLangFromParam, ui } from "../../../../data/i18n";
+import { funFactCategories, getFunFactCategoryMatches } from "../../../../data/funFactCategories";
+import { siteConfig } from "../../../../data/site";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/blog/fun-facts/`;
+const alternatePath = `/${lang === "es" ? "en" : "es"}/blog/fun-facts/`;
+const title = lang === "es"
+  ? "Datos curiosos por categoría | Little Chubby Press"
+  : "Fun Facts by Category | Little Chubby Press";
+const description = lang === "es"
+  ? "Explora datos curiosos para niños organizados por espacio, animales, cuerpo humano, océano, plantas, inventos, colores e historia."
+  : "Explore kid-friendly fun facts organized by space, animals, human body, ocean, plants, inventions, colors, and history.";
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: text.navBlog, url: `/${lang}/blog/` },
+  { name: text.navFunFacts, url: pathname },
+];
+
+const allFunFacts = await getCollection("blog", (entry) => entry.data.lang === lang && entry.data.category === "fun-fact");
+const sortedFunFacts = allFunFacts.sort((firstPost, secondPost) => secondPost.data.date.localeCompare(firstPost.data.date));
+const categoryGroups = funFactCategories.map((category) => {
+  const posts = sortedFunFacts.filter((post) =>
+    getFunFactCategoryMatches(post.data.tags).some((matchedCategory) => matchedCategory.slug === category.slug)
+  );
+  return { category, posts };
+});
+const latestPosts = sortedFunFacts.slice(0, 6);
+const totalPosts = sortedFunFacts.length;
+
+const collectionJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: title,
+  description,
+  url: new URL(pathname, siteConfig.siteUrl).toString(),
+  inLanguage: lang,
+  mainEntity: {
+    "@type": "ItemList",
+    itemListElement: categoryGroups.map(({ category, posts }, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: category.label[lang],
+      url: new URL(`/${lang}/blog/fun-facts/${category.slug}/`, siteConfig.siteUrl).toString(),
+      numberOfItems: posts.length,
+    })),
+  },
+}).replace(/</g, "\\u003c");
+---
+
+<BaseLayout lang={lang} title={title} description={description} pathname={pathname} alternatePath={alternatePath} breadcrumbs={breadcrumbs}>
+  <section class="page-section fun-facts-page-head">
+    <div class="container">
+      <div class="section-head fun-facts-hero-copy">
+        <p class="eyebrow">{lang === "es" ? "Biblioteca de curiosidades" : "Curiosity library"}</p>
+        <h1>{lang === "es" ? "Datos curiosos por categoría" : "Fun facts by category"}</h1>
+        <p>
+          {lang === "es"
+            ? "Una forma más fácil de explorar datos rápidos, familiares y listos para compartir: ciencia, animales, espacio, colores, inventos y más."
+            : "A simpler way to explore quick, family-friendly facts ready to share: science, animals, space, colors, inventions, and more."}
+        </p>
+      </div>
+
+      <div class="fun-facts-overview" aria-label={lang === "es" ? "Resumen de datos curiosos" : "Fun facts summary"}>
+        <div>
+          <strong>{totalPosts}</strong>
+          <span>{lang === "es" ? "datos curiosos" : "fun facts"}</span>
+        </div>
+        <div>
+          <strong>{funFactCategories.length}</strong>
+          <span>{lang === "es" ? "categorías" : "categories"}</span>
+        </div>
+        <div>
+          <strong>2</strong>
+          <span>{lang === "es" ? "idiomas" : "languages"}</span>
+        </div>
+      </div>
+
+      <div class="fun-fact-category-grid" aria-label={lang === "es" ? "Categorías de datos curiosos" : "Fun fact categories"}>
+        {categoryGroups.map(({ category, posts }) => (
+          <a class="fun-fact-category-card" href={`/${lang}/blog/fun-facts/${category.slug}/`} style={`--category-color: ${category.color};`}>
+            <span class="fun-fact-category-icon" aria-hidden="true">{category.icon}</span>
+            <span class="fun-fact-category-count">
+              {posts.length} {lang === "es" ? "posts" : "posts"}
+            </span>
+            <h2>{category.label[lang]}</h2>
+            <p>{category.description[lang]}</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section fun-facts-latest-section">
+    <div class="container">
+      <div class="section-head">
+        <h2>{lang === "es" ? "Últimos datos curiosos" : "Latest fun facts"}</h2>
+        <p>
+          {lang === "es"
+            ? "Nuevas ideas cortas para leer, comentar y convertir en una mini actividad de colorear."
+            : "Fresh quick reads to share, discuss, and turn into a tiny coloring activity."}
+        </p>
+      </div>
+      <div class="grid-cards posts">
+        {latestPosts.map((post) => <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />)}
+      </div>
+    </div>
+  </section>
+
+  <script type="application/ld+json" is:inline set:html={collectionJsonLd}></script>
+</BaseLayout>

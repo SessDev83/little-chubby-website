@@ -1,4 +1,4 @@
----
+﻿---
 postId: "comida-creatividad"
 title: "Como las paginas de comida para colorear hacen a los ninos menos exigentes con la comida"
 date: "2026-01-15"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "pizza-sweet-treats"
 image: "/images/blog/food-picky-eaters.webp"
 tags: ["parenting", "book-review", "wellness"]
+articleCategory: "activities"
 ---
 
 Otro plato rechazado. "No me gusta." Ni siquiera lo probo. Si la batalla de la cena te suena, no estas solo. Pero ¿y si el problema no es el sabor sino la **falta de familiaridad visual**?

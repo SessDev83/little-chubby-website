@@ -1,4 +1,4 @@
----
+﻿---
 postId: "friendship-activities-coloring-books"
 title: "Friendship Activities With Coloring Books: Easy Ways to Build Real Connection"
 date: "2026-04-28"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "awesome-girls"
 image: "/images/blog/friendship-activities-coloring.webp"
 tags: ["activities", "creativity", "screen-free", "emotional-development", "coloring"]
+articleCategory: "activities"
 ---
 
 Two kids sitting on the floor, knees touching, passing crayons back and forth — quietly working on the same page, occasionally laughing about who gave the cat purple whiskers. That is friendship in its purest form, and you do not need a fancy playdate plan to create it. A stack of coloring pages and a box of pencils can do most of the work for you.

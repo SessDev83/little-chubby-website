@@ -1,4 +1,4 @@
----
+﻿---
 postId: "pascua-familia"
 title: "5 Easter coloring activities the whole family can enjoy"
 date: "2026-02-05"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "enchanted-easter"
 image: "/images/blog/easter-family.webp"
 tags: ["activities", "book-review", "family-time", "coloring"]
+articleCategory: "activities"
 ---
 
 Another year, another Easter where kids eat chocolate, hunt for eggs, and get bored in 20 minutes. What if this year the celebration lasted all afternoon?

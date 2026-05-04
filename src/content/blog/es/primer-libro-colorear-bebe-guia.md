@@ -1,4 +1,4 @@
----
+﻿---
 postId: "primer-cuaderno-peque"
 title: "El primer libro de colorear para tu bebe: que buscar (y que evitar)"
 date: "2025-12-10"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "easy-animals"
 image: "/images/blog/first-coloring-book.webp"
 tags: ["tips", "book-review", "toddler", "coloring"]
+articleCategory: "guides"
 ---
 
 Compraste un libro de colorear "para ninos" y tu peque de 3 anos se frustro a los 2 minutos. Las figuras eran demasiado pequenas, los detalles demasiados, y el libro termino en el piso. **No fue culpa suya.**

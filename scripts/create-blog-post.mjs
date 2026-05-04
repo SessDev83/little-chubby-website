@@ -13,6 +13,7 @@
  *   node scripts/create-blog-post.mjs --topic "..." --bookId cozy-kids-club
  *   node scripts/create-blog-post.mjs --topic "..." --dry-run
  *   node scripts/create-blog-post.mjs --topic "..." --no-image   # skip image generation
+ *   node scripts/create-blog-post.mjs --seo-auto                  # pick next item from blog-queue-500.json
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "fs";
@@ -25,6 +26,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const BLOG_DIR = resolve(ROOT, "src/content/blog");
 const IMG_DIR = resolve(ROOT, "public/images/blog");
+const QUEUE_PATH = resolve(__dirname, "blog-queue.json");
+const SEO_QUEUE_PATH = resolve(__dirname, "blog-queue-500.json");
 
 // ─── Load .env ──────────────────────────────────────────────────────────────
 
@@ -225,38 +228,112 @@ Respond with VALID JSON ONLY. No markdown fences, no backticks, no commentary.
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { topic: null, bookId: null, dryRun: false, noImage: false, auto: false };
+  const opts = { topic: null, bookId: null, dryRun: false, noImage: false, auto: false, seoAuto: false };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--topic" && args[i + 1]) opts.topic = args[++i];
     if (args[i] === "--bookId" && args[i + 1]) opts.bookId = args[++i];
     if (args[i] === "--dry-run") opts.dryRun = true;
     if (args[i] === "--no-image") opts.noImage = true;
     if (args[i] === "--auto") opts.auto = true;
+    if (args[i] === "--seo-auto") opts.seoAuto = true;
   }
   return opts;
 }
 
 // ─── Queue management ───────────────────────────────────────────────────────
 
-const QUEUE_PATH = resolve(__dirname, "blog-queue.json");
-
-function loadQueue() {
-  if (!existsSync(QUEUE_PATH)) return [];
-  return JSON.parse(readFileSync(QUEUE_PATH, "utf-8"));
+function loadQueue(queuePath = QUEUE_PATH) {
+  if (!existsSync(queuePath)) return [];
+  return JSON.parse(readFileSync(queuePath, "utf-8"));
 }
 
-function pickNextFromQueue() {
-  const queue = loadQueue();
-  const next = queue.find((item) => item.status === "pending");
-  return next || null;
+function pickNextFromQueue(queuePath = QUEUE_PATH) {
+  const queue = loadQueue(queuePath);
+  const pending = queue.filter((item) => item.status === "pending");
+  pending.sort((a, b) => (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER));
+  return pending[0] || null;
 }
 
-function markQueueItemDone(topic) {
-  const queue = loadQueue();
-  const item = queue.find((i) => i.topic === topic && i.status === "pending");
+function getQueueItemKey(itemOrTopic) {
+  if (typeof itemOrTopic === "string") return itemOrTopic;
+  return itemOrTopic?.id || itemOrTopic?.topic || "";
+}
+
+function markQueueItemDone(itemOrTopic, queuePath = QUEUE_PATH) {
+  const queue = loadQueue(queuePath);
+  const key = getQueueItemKey(itemOrTopic);
+  const item = queue.find((i) => getQueueItemKey(i) === key && i.status === "pending");
   if (item) {
     item.status = "done";
-    writeFileSync(QUEUE_PATH, JSON.stringify(queue, null, 2) + "\n", "utf-8");
+    writeFileSync(queuePath, JSON.stringify(queue, null, 2) + "\n", "utf-8");
+  }
+}
+
+function queueTopicText(item) {
+  if (!item) return "";
+  if (typeof item.topic === "string") return item.topic;
+  if (item.topic?.en && item.topic?.es) return `${item.topic.en} / ${item.topic.es}`;
+  return item.id || "";
+}
+
+function buildSeoQueuePrompt(item) {
+  if (!item) return "";
+  return [
+    "Approved SEO queue item:",
+    `- postId to use exactly: ${item.id}`,
+    `- contentRole: ${item.contentRole}`,
+    `- seoCluster: ${item.seoCluster}`,
+    `- articleCategory: ${item.articleCategory}`,
+    `- searchIntent: ${item.searchIntent}`,
+    `- pillarId: ${item.pillarId}`,
+    `- EN topic/title target: ${item.topic?.en || item.topic}`,
+    `- ES topic/title target: ${item.topic?.es || item.topic}`,
+    `- EN primary keyword: ${item.primaryKeyword?.en || ""}`,
+    `- ES primary keyword: ${item.primaryKeyword?.es || ""}`,
+    `- editorial angle: ${item.angle || ""}`,
+    `- avoid overlapping with these existing/queued topics: ${(item.avoidOverlapWith || []).join(", ") || "none"}`,
+    "Use the primary keyword naturally. Do not keyword-stuff. Keep the article distinct from the avoidOverlapWith items.",
+    "If this is a spoke and the exact pillar URL appears in the existing-post lists, link to it naturally. If it does not appear, do not invent a pillar URL.",
+  ].join("\n");
+}
+
+function readAllExistingPosts() {
+  return ["en", "es"].flatMap((lang) => readExistingPosts(lang).map((post) => ({ ...post, lang })));
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function validateGeneratedPost(post, finalPostId, seoItem) {
+  const existing = readAllExistingPosts();
+  const existingPostIds = new Set(existing.map((p) => p.postId).filter(Boolean));
+  const existingTitles = new Set(existing.map((p) => normalizeText(p.title)).filter(Boolean));
+  const existingSlugs = new Set(existing.map((p) => p.slug).filter(Boolean));
+
+  if (existingPostIds.has(finalPostId)) {
+    throw new Error(`Duplicate postId detected before writing: ${finalPostId}`);
+  }
+  for (const lang of ["en", "es"]) {
+    const data = post[lang];
+    if (!data?.slug || !data?.title || !data?.summary || !Array.isArray(data?.tags) || !data?.body) {
+      throw new Error(`Generated ${lang.toUpperCase()} post is missing required fields`);
+    }
+    if (existingSlugs.has(data.slug)) {
+      throw new Error(`Duplicate ${lang.toUpperCase()} slug detected before writing: ${data.slug}`);
+    }
+    const normalizedTitle = normalizeText(data.title);
+    if (existingTitles.has(normalizedTitle)) {
+      throw new Error(`Duplicate ${lang.toUpperCase()} title detected before writing: ${data.title}`);
+    }
+  }
+  if (seoItem?.id && finalPostId !== seoItem.id) {
+    throw new Error(`SEO queue postId mismatch. Expected "${seoItem.id}", got "${finalPostId}"`);
   }
 }
 
@@ -264,7 +341,7 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function buildFrontmatter(data, lang, postId, bookId, date, imagePath) {
+function buildFrontmatter(data, lang, postId, bookId, date, imagePath, seoMeta = null) {
   const yamlEscape = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
   const lines = [
     "---",
@@ -273,17 +350,28 @@ function buildFrontmatter(data, lang, postId, bookId, date, imagePath) {
     `date: "${date}"`,
     `summary: "${yamlEscape(data.summary)}"`,
     `lang: "${lang}"`,
+    `category: "article"`,
   ];
-  if (bookId) lines.push(`bookId: "${bookId}"`);
-  if (imagePath) lines.push(`image: "${imagePath}"`);
+  if (seoMeta?.articleCategory) lines.push(`articleCategory: "${yamlEscape(seoMeta.articleCategory)}"`);
+  if (bookId) lines.push(`bookId: "${yamlEscape(bookId)}"`);
+  if (imagePath) lines.push(`image: "${yamlEscape(imagePath)}"`);
   lines.push(`tags: [${data.tags.map((t) => `"${yamlEscape(t)}"`).join(", ")}]`);
+  if (seoMeta?.seoCluster) lines.push(`seoCluster: "${yamlEscape(seoMeta.seoCluster)}"`);
+  if (seoMeta?.searchIntent) lines.push(`searchIntent: "${yamlEscape(seoMeta.searchIntent)}"`);
+  if (seoMeta?.contentRole) lines.push(`contentRole: "${yamlEscape(seoMeta.contentRole)}"`);
+  if (seoMeta?.pillarId) lines.push(`pillarId: "${yamlEscape(seoMeta.pillarId)}"`);
+  if (seoMeta?.primaryKeyword?.en && seoMeta?.primaryKeyword?.es) {
+    lines.push("primaryKeyword:");
+    lines.push(`  en: "${yamlEscape(seoMeta.primaryKeyword.en)}"`);
+    lines.push(`  es: "${yamlEscape(seoMeta.primaryKeyword.es)}"`);
+  }
   lines.push("---");
   return lines.join("\n");
 }
 
 // ─── AI content generation ─────────────────────────────────────────────────
 
-async function generatePost(topic, bookId, enPostsList, esPostsList) {
+async function generatePost(topic, bookId, enPostsList, esPostsList, seoItem = null) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error("  ✗ ANTHROPIC_API_KEY not set");
@@ -291,6 +379,9 @@ async function generatePost(topic, bookId, enPostsList, esPostsList) {
   }
 
   let userPrompt = `Write a bilingual blog post about: "${topic}"`;
+  if (seoItem) {
+    userPrompt += `\n\n${buildSeoQueuePrompt(seoItem)}`;
+  }
   if (bookId) {
     userPrompt += `\n\nRelated book (bookId: "${bookId}"). Mention this book naturally in both versions with its title in **bold** — never as an ad. Include a brief recommendation that fits the post narrative.`;
   }
@@ -402,21 +493,25 @@ async function generateHeroImage(imagePrompt, filename) {
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 async function main() {
-  const { topic: topicArg, bookId: bookIdArg, dryRun, noImage, auto } = parseArgs();
+  const { topic: topicArg, bookId: bookIdArg, dryRun, noImage, auto, seoAuto } = parseArgs();
 
   // ─── Auto mode: pick next topic from queue ───────────────────────────────
   let topic = topicArg;
   let bookId = bookIdArg;
+  let queueItem = null;
+  let activeQueuePath = QUEUE_PATH;
 
-  if (auto) {
-    const next = pickNextFromQueue();
+  if (auto || seoAuto) {
+    activeQueuePath = seoAuto ? SEO_QUEUE_PATH : QUEUE_PATH;
+    const next = pickNextFromQueue(activeQueuePath);
     if (!next) {
       console.log("\n  ✅ Queue empty — all blog posts have been created!\n");
       process.exit(0);
     }
-    topic = next.topic;
+    queueItem = next;
+    topic = queueTopicText(next);
     bookId = next.bookId || null;
-    console.log(`\n  🤖 AUTO MODE — picked from queue: "${topic}"`);
+    console.log(`\n  🤖 ${seoAuto ? "SEO AUTO" : "AUTO"} MODE — picked from queue: "${topic}"`);
   }
 
   if (!topic) {
@@ -426,11 +521,13 @@ async function main() {
 Usage:
   node scripts/create-blog-post.mjs --topic "your topic here"
   node scripts/create-blog-post.mjs --auto          # pick next from queue
+  node scripts/create-blog-post.mjs --seo-auto      # pick next from blog-queue-500.json
 
 Options:
   --topic      Topic or title idea for the post (required unless --auto)
   --bookId     Link a book (e.g. magical-creatures, awesome-boys)
   --auto       Pick the next pending topic from blog-queue.json
+  --seo-auto   Pick the next pending SEO item from blog-queue-500.json
   --dry-run    Preview output without writing files or generating images
   --no-image   Skip hero image generation
 `);
@@ -439,6 +536,8 @@ Options:
 
   console.log("\n📝 Little Chubby Press — Bilingual Blog Post Creator\n");
   console.log(`  Topic:   ${topic}`);
+  if (queueItem?.seoCluster) console.log(`  Cluster: ${queueItem.seoCluster}`);
+  if (queueItem?.contentRole) console.log(`  Role:    ${queueItem.contentRole}`);
   if (bookId) console.log(`  Book:    ${bookId}`);
   console.log(`  Date:    ${todayISO()}`);
 
@@ -451,10 +550,12 @@ Options:
   console.log(`     Found ${enCount} EN + ${esCount} ES posts`);
 
   // Step 2: Generate bilingual content with Claude
-  const post = await generatePost(topic, bookId, enPostsList, esPostsList);
+  const post = await generatePost(topic, bookId, enPostsList, esPostsList, queueItem);
 
   const date = todayISO();
-  const { postId, imagePrompt } = post;
+  const postId = queueItem?.id || post.postId;
+  const { imagePrompt } = post;
+  validateGeneratedPost(post, postId, queueItem);
 
   // Derive image filename from EN slug
   const imageFilename = `${post.en.slug.split("-").slice(0, 3).join("-")}.webp`;
@@ -469,8 +570,8 @@ Options:
   console.log(`  Image: ${imagePath}`);
 
   // Build markdown files
-  const enFrontmatter = buildFrontmatter(post.en, "en", postId, bookId, date, imagePath);
-  const esFrontmatter = buildFrontmatter(post.es, "es", postId, bookId, date, imagePath);
+  const enFrontmatter = buildFrontmatter(post.en, "en", postId, bookId, date, imagePath, queueItem);
+  const esFrontmatter = buildFrontmatter(post.es, "es", postId, bookId, date, imagePath, queueItem);
 
   const enContent = `${enFrontmatter}\n\n${post.en.body}\n`;
   const esContent = `${esFrontmatter}\n\n${post.es.body}\n`;
@@ -508,8 +609,8 @@ Options:
   console.log(`  📄 ES post written: src/content/blog/es/${post.es.slug}.md`);
 
   // Mark queue item as done (if auto mode)
-  if (auto) {
-    markQueueItemDone(topic);
+  if (auto || seoAuto) {
+    markQueueItemDone(queueItem || topic, activeQueuePath);
     console.log(`  ✅ Queue item marked done`);
   }
 

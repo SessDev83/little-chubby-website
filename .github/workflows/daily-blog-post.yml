@@ -1,13 +1,14 @@
 # Automated daily blog post creation.
 # Picks the next pending topic from scripts/blog-queue.json,
 # generates bilingual EN+ES content via Claude + hero image,
-# commits and pushes to main. Vercel auto-deploys from there.
+# opens an auto-merge PR. Vercel auto-deploys after merge.
 
 name: Daily Blog Post
 
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 concurrency:
   group: daily-blog-post
@@ -33,13 +34,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
@@ -62,7 +64,12 @@ jobs:
           fi
 
       - name: Validate build
-        run: npx astro build
+        env:
+          PUBLIC_SITE_URL: https://www.littlechubbypress.com
+          PUBLIC_SUPABASE_URL: https://dummy-ci-build.supabase.co
+          PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkdW1teSIsInJvbGUiOiJhbm9uIn0.ci-build-placeholder
+          SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkdW1teSIsInJvbGUiOiJzZXJ2aWNlX3JvbGUifQ.ci-build-placeholder
+        run: npm run build
 
       - name: Commit and open auto-merge PR
         env:
@@ -89,14 +96,13 @@ jobs:
           git checkout -b "$BRANCH"
           git commit -m "$COMMIT_MSG"
           git push --set-upstream origin "$BRANCH"
-          # Open PR. build-and-typecheck fires automatically on push to auto-blog/**
-          # (see build-and-typecheck.yml push trigger) so --auto will activate once
-          # that check passes. GITHUB_TOKEN cannot trigger workflow_dispatch on other
-          # workflows — push trigger is the reliable alternative.
+          # Open PR, then explicitly dispatch the build workflow on the generated branch.
+          # Events created by GITHUB_TOKEN do not reliably trigger sibling workflows.
           PR_URL=$(gh pr create \
             --base main \
             --head "$BRANCH" \
             --title "$COMMIT_MSG" \
             --body "Automated daily blog post. Auto-merges once \`build-and-typecheck\` passes.")
           echo "PR opened: $PR_URL"
+          gh workflow run build-and-typecheck.yml --ref "$BRANCH"
           gh pr merge "$PR_URL" --auto --squash --delete-branch

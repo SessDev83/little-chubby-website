@@ -1,4 +1,4 @@
----
+﻿---
 postId: "camiones-habilidades"
 title: "Why kids obsessed with trucks and diggers are building real skills"
 date: "2025-12-18"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "mighty-machines"
 image: "/images/blog/trucks-skills.webp"
 tags: ["education", "book-review", "stem", "fine-motor"]
+articleCategory: "learning"
 ---
 
 Your son will not stop talking about excavators. He owns 47 toy trucks. Every time you pass a construction site, he freezes. Should you be worried? **Quite the opposite.**

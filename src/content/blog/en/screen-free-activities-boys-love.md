@@ -1,4 +1,4 @@
----
+﻿---
 postId: "sin-pantallas-ninos"
 title: "Screen-free activities boys actually love (that are not sports)"
 date: "2026-02-12"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "awesome-boys"
 image: "/images/blog/screen-free.webp"
 tags: ["activities", "book-review", "screen-free", "coloring"]
+articleCategory: "activities"
 ---
 
 "Turn off the tablet." You say it, the drama starts, and you give in because you have no alternative that actually interests them. The problem is not the screen — it is that they have not found something better.

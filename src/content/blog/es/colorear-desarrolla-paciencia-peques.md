@@ -1,4 +1,4 @@
----
+﻿---
 postId: "coloring-builds-patience-toddlers"
 title: "Como colorear desarrolla la paciencia en los peques"
 date: "2026-04-28"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "easy-animals"
 image: "/images/blog/coloring-builds-patience.webp"
 tags: ["parenting", "toddler", "emotional-development", "coloring", "wellness"]
+articleCategory: "focus-calm"
 ---
 
 Tu peque quiere la galleta YA. Quiere el video YA. Quiere el zapato puesto, luego quitado, luego puesto otra vez, y todo tenia que pasar hace cinco minutos. Si alguna vez te has preguntado si la paciencia es algo que los peques realmente aprenden, la respuesta es si. Solo que requiere practica, repeticion y algunas herramientas inesperadas. Una de las mas silenciosas y suaves que hemos encontrado en nuestra casa es un crayon y una hoja sencilla.

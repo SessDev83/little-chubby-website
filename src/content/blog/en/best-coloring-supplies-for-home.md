@@ -1,4 +1,4 @@
----
+﻿---
 postId: "materiales"
 title: "The ultimate guide to coloring supplies (without ruining your couch)"
 date: "2026-01-30"
@@ -6,6 +6,7 @@ summary: "Crayons on walls, uncapped markers, and broken pencils. Here is how to
 lang: "en"
 image: "/images/blog/coloring-supplies.webp"
 tags: ["tips", "parenting", "coloring", "gift-guide"]
+articleCategory: "guides"
 ---
 
 You bought the 64-crayon box because it looked amazing. Two days later: 8 broken, 3 on the couch, 1 melted somewhere unknown, and your kid only uses the blue one. **Sound familiar?**

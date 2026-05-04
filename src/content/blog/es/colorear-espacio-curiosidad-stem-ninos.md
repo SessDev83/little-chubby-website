@@ -1,4 +1,4 @@
----
+﻿---
 postId: "espacio-stem"
 title: "Como colorear el espacio convierte la curiosidad en una base STEM"
 date: "2025-12-28"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "blast-off-space"
 image: "/images/blog/space-stem.webp"
 tags: ["education", "book-review", "stem", "imagination"]
+articleCategory: "learning"
 ---
 
 "¿Por que las estrellas no se caen?" Si tu peque hace este tipo de preguntas, tiene **curiosidad cientifica natural**. El peor error es desperdiciarla con un "porque si" o dejarla morir frente a una pantalla.

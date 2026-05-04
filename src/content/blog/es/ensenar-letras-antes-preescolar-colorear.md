@@ -1,4 +1,4 @@
----
+﻿---
 postId: "letras-preescolar"
 title: "La forma mas astuta de ensenar letras antes de que empiece preescolar"
 date: "2025-11-25"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "alphabet-coloring-book"
 image: "/images/blog/letters-preschool.webp"
 tags: ["education", "book-review", "toddler", "fine-motor"]
+articleCategory: "learning"
 ---
 
 Quieres que tu peque llegue a preescolar sabiendo algunas letras, pero cada vez que intentas con fichas o apps, **pierde interes en 60 segundos**. El problema no es el nino — es el metodo.

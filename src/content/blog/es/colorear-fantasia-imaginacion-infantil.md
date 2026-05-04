@@ -1,4 +1,4 @@
----
+﻿---
 postId: "fantasia-imaginacion"
 title: "Como colorear criaturas fantasticas despierta la imaginacion infantil"
 date: "2026-04-05"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "magical-creatures"
 image: "/images/blog/fantasy-coloring.webp"
 tags: ["creativity", "book-review", "imagination", "self-expression"]
+articleCategory: "creativity"
 ---
 
 Tu peque pasa horas frente a una pantalla y cuando la apagas... no sabe que hacer. La creatividad necesita un empujon, y los mundos fantasticos son el trampolín perfecto.

@@ -1,4 +1,4 @@
----
+﻿---
 postId: "moda-historia"
 title: "A fun history lesson through fashion: coloring across decades"
 date: "2026-03-05"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "style-time-machine"
 image: "/images/blog/fashion-history.webp"
 tags: ["education", "book-review", "fashion", "stem"]
+articleCategory: "learning"
 ---
 
 "History is boring." If your kid has said that, it is not their fault — it is how history is presented. What if it came through colors instead of textbooks?

@@ -1,4 +1,4 @@
----
+﻿---
 postId: "seasonal-fruits-vegetables-coloring-fun"
 title: "Frutas y verduras de temporada: una aventura para colorear que ensena sin esfuerzo"
 date: "2026-04-28"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "pizza-sweet-treats"
 image: "/images/blog/seasonal-fruits-vegetables.webp"
 tags: ["food", "education", "creativity", "seasonal", "coloring"]
+articleCategory: "learning"
 ---
 
 Imaginate esto: estas en el super, tu peque mira un monton de fresas como si nunca las hubiera visto, y te das cuenta de que no podria nombrar tres verduras aunque su merienda dependiera de eso. No es su culpa. La mayoria de los ninos aprende sobre comida por dibujos animados y empaques, no por notar de verdad que esta en temporada. La buena noticia? No necesitas un jardin ni una visita a una granja para cambiar eso. Una simple pagina para colorear puede hacer mucho mas de lo que parece.

@@ -1,4 +1,4 @@
----
+﻿---
 postId: "boys-creativity-breaking-stereotypes"
 title: "Boys and Creativity: Breaking the Stereotypes That Box Them In"
 date: "2026-04-26"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "awesome-boys"
 image: "/images/blog/boys-creativity-breaking.webp"
 tags: ["parenting", "creativity", "self-expression", "emotional-development", "book-review"]
+articleCategory: "creativity"
 ---
 
 A while back, one of our little ones reached for a pink crayon and then paused. Just a tiny pause. Like he was checking if it was okay. He is barely old enough to read, and he had already picked up the idea that some colors were not for him. We did not say anything dramatic. We just kept coloring. He picked up the pink, used it, and moved on. But that pause stuck with us.

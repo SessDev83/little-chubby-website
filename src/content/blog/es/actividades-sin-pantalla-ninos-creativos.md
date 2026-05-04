@@ -1,4 +1,4 @@
----
+﻿---
 postId: "sin-pantallas-ninos"
 title: "Actividades sin pantalla que los ninos realmente disfrutan (y no son deportes)"
 date: "2026-02-12"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "awesome-boys"
 image: "/images/blog/screen-free.webp"
 tags: ["activities", "book-review", "screen-free", "coloring"]
+articleCategory: "activities"
 ---
 
 "Apaga la tablet." Lo dices, empieza el drama, y al final cedes porque no tienes una alternativa que realmente le interese. El problema no es la pantalla — es que no ha encontrado algo mejor.

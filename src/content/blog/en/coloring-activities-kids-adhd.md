@@ -1,4 +1,4 @@
----
+﻿---
 postId: "coloring-activities-kids-adhd"
 title: "Coloring Activities That Actually Work for Kids With ADHD"
 date: "2026-04-26"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "coloring-emotions"
 image: "/images/blog/coloring-activities-kids.webp"
 tags: ["parenting", "wellness", "emotional-development", "activities", "focus"]
+articleCategory: "focus-calm"
 ---
 
 Homework time turns into a small storm. Your kid is up, down, sharpening pencils for the third time, asking for a snack, then declaring the whole thing impossible. If you parent a kid with ADHD, you know that feeling well — and you also know how rare and beautiful it is when something actually holds their attention for more than five minutes.

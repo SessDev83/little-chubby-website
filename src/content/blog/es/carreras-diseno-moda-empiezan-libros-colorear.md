@@ -1,4 +1,4 @@
----
+﻿---
 postId: "fashion-design-careers-start-coloring"
 title: "Como las Carreras de Diseno de Moda Empiezan con Libros de Colorear"
 date: "2026-04-16"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "chic-styles"
 image: "/images/blog/fashion-design-careers.webp"
 tags: ["creativity", "fashion", "education", "self-expression", "career"]
+articleCategory: "learning"
 ---
 
 Observas a tu peque colorear cuidadosamente dentro de las lineas de un vestido, eligiendo morado para el corpiño y agregando detalles brillantes a la falda. Lo que tal vez no sepas es que estas presenciando las primeras etapas de lo que podria convertirse en una pasion de por vida, o incluso una carrera. Algunos de los disenadores de moda mas celebrados de hoy rastrean su amor por el estilo hasta esos primeros momentos con crayones y libros para colorear.

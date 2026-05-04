@@ -1,4 +1,4 @@
----
+﻿---
 postId: "space-birthday-party-coloring"
 title: "Space Birthday Party Coloring Activities That Launch Epic Fun"
 date: "2026-04-13"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "blast-off-space"
 image: "/images/blog/space-birthday-party.webp"
 tags: ["activities", "creativity", "family-time", "book-review", "stem"]
+articleCategory: "activities"
 ---
 
 Picture this: fifteen excited kids hopped up on cake and ready to bounce off the walls at your child's space-themed birthday party. You need activities that channel that energy into something creative and engaging — not another round of chaotic running around your living room.

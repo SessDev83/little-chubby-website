@@ -1,4 +1,4 @@
----
+﻿---
 postId: "food-coloring-teaches-healthy-eating"
 title: "How Food Coloring Pages Can Actually Teach Kids Healthy Eating"
 date: "2026-04-21"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "pizza-sweet-treats"
 image: "/images/blog/food-coloring-teaches.webp"
 tags: ["food", "parenting", "education", "wellness", "coloring"]
+articleCategory: "learning"
 ---
 
 Your five-year-old refuses to eat anything green. Broccoli is the enemy. Carrots get pushed around the plate like tiny orange prisoners. But yesterday, they spent twenty minutes carefully coloring a carrot page, choosing the perfect shade of orange and asking why carrots are good for their eyes.

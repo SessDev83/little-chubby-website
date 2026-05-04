@@ -1,4 +1,4 @@
----
+﻿---
 postId: "food-coloring-teaches-healthy-eating"
 title: "Como las paginas de comida para colorear pueden ensenar alimentacion saludable"
 date: "2026-04-21"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "pizza-sweet-treats"
 image: "/images/blog/food-coloring-teaches.webp"
 tags: ["food", "parenting", "education", "wellness", "coloring"]
+articleCategory: "learning"
 ---
 
 Tu peque de cinco anos se niega a comer cualquier cosa verde. El brocoli es el enemigo. Las zanahorias quedan empujadas por el plato como pequenos prisioneros naranjas. Pero ayer se paso veinte minutos coloreando cuidadosamente una pagina de zanahorias, eligiendo el tono perfecto de naranja y preguntando por que las zanahorias son buenas para los ojos.

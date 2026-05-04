@@ -1,4 +1,4 @@
----
+﻿---
 postId: "coloring-activities-kids-adhd"
 title: "Actividades de colorear que si funcionan con peques con TDAH"
 date: "2026-04-26"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "coloring-emotions"
 image: "/images/blog/coloring-activities-kids.webp"
 tags: ["parenting", "wellness", "emotional-development", "activities", "focus"]
+articleCategory: "focus-calm"
 ---
 
 La hora de la tarea se convierte en una pequena tormenta. Tu peque se levanta, se sienta, saca punta al lapiz por tercera vez, pide un snack, y despues anuncia que todo es imposible. Si crias a un peque con TDAH, conoces bien esa sensacion. Y tambien sabes lo raro y hermoso que es cuando algo de verdad le sostiene la atencion mas de cinco minutos.

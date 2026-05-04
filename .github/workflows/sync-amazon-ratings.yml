@@ -1,5 +1,5 @@
 # Sync Amazon book ratings via DataForSEO every Sunday at 8 PM ET.
-# If any ratings changed, commits and pushes — triggering Vercel auto-deploy.
+# If any ratings changed, opens an auto-merge PR so branch protection can run.
 
 name: Sync Amazon Ratings
 
@@ -11,17 +11,23 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  actions: write
 
 jobs:
   sync-ratings:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
 
       - name: Sync Amazon ratings
         env:
@@ -29,11 +35,23 @@ jobs:
           DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
         run: node scripts/sync-amazon-ratings.mjs
 
-      - name: Commit and push if changed
+      - name: Commit and open auto-merge PR if changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git diff --quiet src/data/books.ts && echo "No rating changes" && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH="auto-ratings/amazon-ratings-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
           git add src/data/books.ts
           git commit -m "chore: update Amazon book ratings [automated]"
-          git push
+          git push --set-upstream origin "$BRANCH"
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore: update Amazon book ratings [automated]" \
+            --body "Automated Amazon ratings refresh. Auto-merges once \`build-and-typecheck\` passes.")
+          echo "PR opened: $PR_URL"
+          gh workflow run build-and-typecheck.yml --ref "$BRANCH"
+          gh pr merge "$PR_URL" --auto --squash --delete-branch

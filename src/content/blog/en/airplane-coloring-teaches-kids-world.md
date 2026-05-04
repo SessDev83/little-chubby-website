@@ -1,4 +1,4 @@
----
+﻿---
 postId: "aviones-mundo"
 title: "How airplane coloring teaches kids about the world"
 date: "2025-12-02"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "awesome-airplanes"
 image: "/images/blog/airplanes-world.webp"
 tags: ["education", "book-review", "stem", "imagination"]
+articleCategory: "learning"
 ---
 
 "Where is that plane going?" That simple question hides a huge opportunity. Your child wants to explore the world, but their universe is limited to school and home. **Paper can open the door.**

@@ -1,4 +1,4 @@
----
+﻿---
 postId: "concentracion"
 title: "Your kid cannot focus? Coloring might be the solution you did not expect"
 date: "2026-02-25"
@@ -6,6 +6,7 @@ summary: "Before chasing diagnoses, try this: 15 minutes of coloring might chang
 lang: "en"
 image: "/images/blog/focus-concentration.webp"
 tags: ["parenting", "education", "screen-free", "wellness"]
+articleCategory: "focus-calm"
 ---
 
 "He will not sit still." "She never finishes anything." "The school says he gets distracted." If any of these sound familiar, you have probably Googled it and ended up scared by acronyms like ADHD. **Before rushing to a specialist, read this.**

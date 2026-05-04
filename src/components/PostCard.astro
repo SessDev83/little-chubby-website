@@ -2,6 +2,7 @@
 import type { Lang } from "../data/i18n";
 import { formatDate, ui } from "../data/i18n";
 import Button from "./Button.astro";
+import { getPostUrl } from "../data/postUrl";
 
 interface Props {
   post: {
@@ -14,6 +15,8 @@ interface Props {
       lang: string;
       image?: string;
       category?: string;
+      tags?: string[];
+      articleCategory?: string;
     };
   };
   lang: Lang;
@@ -21,8 +24,8 @@ interface Props {
 }
 
 const { post, lang, readLabel } = Astro.props;
-const slug = post.id.replace(/^(es|en)\//, "");
-const postHref = `/${lang}/blog/${slug}/`;
+const category = post.data.category || "article";
+const postHref = getPostUrl(lang, post.id, category, post.data.tags ?? [], post.data.articleCategory);
 const text = ui[lang];
 
 const categoryLabels: Record<string, string> = {
@@ -31,7 +34,6 @@ const categoryLabels: Record<string, string> = {
   "joke": text.categoryJoke,
   "coloring-corner": text.categoryColoringCorner,
 };
-const category = post.data.category || "article";
 const categoryLabel = categoryLabels[category] || categoryLabels["article"];
 
 const categoryColors: Record<string, string> = {

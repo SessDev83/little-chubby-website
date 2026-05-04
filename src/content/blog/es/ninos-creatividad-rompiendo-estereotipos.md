@@ -1,4 +1,4 @@
----
+﻿---
 postId: "boys-creativity-breaking-stereotypes"
 title: "Ninos y creatividad: rompiendo los estereotipos que los limitan"
 date: "2026-04-26"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "awesome-boys"
 image: "/images/blog/boys-creativity-breaking.webp"
 tags: ["parenting", "creativity", "self-expression", "emotional-development", "book-review"]
+articleCategory: "creativity"
 ---
 
 Hace un tiempo, uno de nuestros peques estiro la mano para tomar un crayon rosa y se detuvo. Una pausa chiquita. Como chequeando si estaba bien. Apenas tiene edad para leer, y ya habia captado la idea de que algunos colores no eran para el. No dijimos nada dramatico. Solo seguimos coloreando. Tomo el rosa, lo uso, y siguio. Pero esa pausa se nos quedo grabada.

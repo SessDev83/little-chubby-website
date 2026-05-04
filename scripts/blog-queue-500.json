@@ -1,0 +1,254 @@
+[
+  {
+    "id": "calm-coloring-big-feelings-guide",
+    "status": "pending",
+    "priority": 1,
+    "contentRole": "pillar",
+    "pillarId": "calm-coloring-big-feelings-guide",
+    "seoCluster": "emotional-regulation",
+    "articleCategory": "focus-calm",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "calm coloring for kids emotions",
+      "es": "colorear para calmar emociones en ninos"
+    },
+    "topic": {
+      "en": "Complete Guide to Calm Coloring for Big Feelings",
+      "es": "Guia completa para usar colorear con emociones grandes"
+    },
+    "angle": "Pillar guide for tantrums, anxiety, transitions, and gentle emotional regulation.",
+    "bookId": "coloring-emotions",
+    "avoidOverlapWith": ["coloring-activities-kids-adhd", "coloring-builds-patience-toddlers", "mindfulness-coloring-exercises-anxious-kids"]
+  },
+  {
+    "id": "screen-free-activities-guide",
+    "status": "pending",
+    "priority": 2,
+    "contentRole": "pillar",
+    "pillarId": "screen-free-activities-guide",
+    "seoCluster": "screen-free-travel",
+    "articleCategory": "activities",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "screen-free activities for kids",
+      "es": "actividades sin pantallas para ninos"
+    },
+    "topic": {
+      "en": "The Complete Screen-Free Activity Guide for Busy Families",
+      "es": "Guia completa de actividades sin pantallas para familias ocupadas"
+    },
+    "angle": "Pillar guide for travel, restaurants, waiting rooms, rainy days, and daily transitions.",
+    "bookId": null,
+    "avoidOverlapWith": ["coloring-perfect-screen-free-summer", "road-trip-coloring-kit-creative-travel", "sin-pantallas-ninos"]
+  },
+  {
+    "id": "coloring-learning-fine-motor-guide",
+    "status": "pending",
+    "priority": 3,
+    "contentRole": "pillar",
+    "pillarId": "coloring-learning-fine-motor-guide",
+    "seoCluster": "developmental-learning",
+    "articleCategory": "learning",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "coloring fine motor skills early learning",
+      "es": "colorear motricidad fina aprendizaje temprano"
+    },
+    "topic": {
+      "en": "How Coloring Supports Early Learning and Fine Motor Skills",
+      "es": "Como colorear apoya el aprendizaje temprano y la motricidad fina"
+    },
+    "angle": "Pillar guide connecting coloring with pre-writing, STEM, vocabulary, and visual thinking.",
+    "bookId": "alphabet-coloring-book",
+    "avoidOverlapWith": ["fine-motor-skills-coloring-builds-child-development", "alphabet-games-beyond-abcs-coloring"]
+  },
+  {
+    "id": "parent-wellbeing-creative-pauses-guide",
+    "status": "pending",
+    "priority": 4,
+    "contentRole": "pillar",
+    "pillarId": "parent-wellbeing-creative-pauses-guide",
+    "seoCluster": "parent-wellbeing",
+    "articleCategory": "guides",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "creative breaks for parents",
+      "es": "pausas creativas para padres"
+    },
+    "topic": {
+      "en": "Parent Wellbeing: Small Creative Pauses That Help the Whole Family",
+      "es": "Bienestar parental: pausas creativas pequenas que ayudan a toda la familia"
+    },
+    "angle": "Pillar guide for burned-out parents, co-regulation, couch time, and low-pressure connection.",
+    "bookId": "cozy-kids-club",
+    "avoidOverlapWith": ["friendship-activities-coloring-books-kids"]
+  },
+  {
+    "id": "visual-routines-calm-transitions-guide",
+    "status": "pending",
+    "priority": 5,
+    "contentRole": "pillar",
+    "pillarId": "visual-routines-calm-transitions-guide",
+    "seoCluster": "routines-early-education",
+    "articleCategory": "focus-calm",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "visual routines for kids transitions",
+      "es": "rutinas visuales para transiciones en ninos"
+    },
+    "topic": {
+      "en": "Visual Routines and Calm Transitions for Young Kids",
+      "es": "Rutinas visuales y transiciones calmadas para peques"
+    },
+    "angle": "Pillar guide for bedtime, mornings, visual schedules, bath time, and waiting.",
+    "bookId": "coloring-emotions",
+    "avoidOverlapWith": ["coloring-helps-kids-struggle-transitions", "why-coloring-helps-kids-bedtime-routine"]
+  },
+  {
+    "id": "slow-parenting-analog-childhood-guide",
+    "status": "pending",
+    "priority": 6,
+    "contentRole": "pillar",
+    "pillarId": "slow-parenting-analog-childhood-guide",
+    "seoCluster": "slow-parenting-nostalgia",
+    "articleCategory": "creativity",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "slow parenting analog childhood",
+      "es": "slow parenting infancia analogica"
+    },
+    "topic": {
+      "en": "Slow Parenting, Nostalgia, and the Return of Analog Childhood",
+      "es": "Slow parenting, nostalgia y el regreso de la infancia analogica"
+    },
+    "angle": "Pillar guide for screen-smart, tactile, lower-clutter, nostalgic childhood.",
+    "bookId": "style-time-machine",
+    "avoidOverlapWith": ["fashion-history-coloring-activity"]
+  },
+  {
+    "id": "grocery-store-meltdown-age-three",
+    "status": "pending",
+    "priority": 10,
+    "contentRole": "spoke",
+    "pillarId": "calm-coloring-big-feelings-guide",
+    "seoCluster": "emotional-regulation",
+    "articleCategory": "focus-calm",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "3 year old meltdown grocery store",
+      "es": "berrinche de nino de 3 anos en supermercado"
+    },
+    "topic": {
+      "en": "What to Do When a 3-Year-Old Melts Down in a Grocery Store",
+      "es": "Que hacer cuando un peque de 3 anos hace berrinche en el supermercado"
+    },
+    "angle": "Urgent public tantrum support with a tiny calm kit and no parent shame.",
+    "bookId": "coloring-emotions",
+    "avoidOverlapWith": ["coloring-calms-kids-doctor-waiting-rooms"]
+  },
+  {
+    "id": "screen-free-restaurant-waiting",
+    "status": "pending",
+    "priority": 20,
+    "contentRole": "spoke",
+    "pillarId": "screen-free-activities-guide",
+    "seoCluster": "screen-free-travel",
+    "articleCategory": "activities",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "screen-free restaurant activities for kids",
+      "es": "actividades sin pantallas para restaurantes con ninos"
+    },
+    "topic": {
+      "en": "Screen-Free Restaurant Activities While Waiting for Food",
+      "es": "Actividades sin pantallas para esperar comida en restaurantes"
+    },
+    "angle": "Realistic table-friendly activities that do not shame parents or disturb other diners.",
+    "bookId": null,
+    "avoidOverlapWith": ["road-trip-coloring-kit-creative-travel", "coloring-calms-kids-doctor-waiting-rooms"]
+  },
+  {
+    "id": "pencil-grip-games-no-homework",
+    "status": "pending",
+    "priority": 30,
+    "contentRole": "spoke",
+    "pillarId": "coloring-learning-fine-motor-guide",
+    "seoCluster": "developmental-learning",
+    "articleCategory": "learning",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "pencil grip games for preschoolers",
+      "es": "juegos para agarre del lapiz en preescolares"
+    },
+    "topic": {
+      "en": "Pencil Grip Games That Do Not Feel Like Homework",
+      "es": "Juegos para mejorar el agarre del lapiz sin sentirse como tarea"
+    },
+    "angle": "Playful pre-writing exercises with crayons, short sessions, and no worksheet pressure.",
+    "bookId": "alphabet-coloring-book",
+    "avoidOverlapWith": ["fine-motor-skills-coloring-builds-child-development"]
+  },
+  {
+    "id": "ten-minute-creative-breaks-parents",
+    "status": "pending",
+    "priority": 40,
+    "contentRole": "spoke",
+    "pillarId": "parent-wellbeing-creative-pauses-guide",
+    "seoCluster": "parent-wellbeing",
+    "articleCategory": "guides",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "10 minute creative breaks for parents",
+      "es": "pausas creativas de 10 minutos para padres"
+    },
+    "topic": {
+      "en": "Ten-Minute Creative Breaks for Burned-Out Parents",
+      "es": "Pausas creativas de 10 minutos para padres agotados"
+    },
+    "angle": "Parent mental health, tiny resets, and realistic creative pauses without pretending life is calm.",
+    "bookId": "cozy-kids-club",
+    "avoidOverlapWith": []
+  },
+  {
+    "id": "visual-schedule-preschoolers-nonreaders",
+    "status": "pending",
+    "priority": 50,
+    "contentRole": "spoke",
+    "pillarId": "visual-routines-calm-transitions-guide",
+    "seoCluster": "routines-early-education",
+    "articleCategory": "focus-calm",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "visual schedule ideas for preschoolers",
+      "es": "ideas de horarios visuales para preescolares"
+    },
+    "topic": {
+      "en": "Visual Schedule Ideas for Preschoolers Who Cannot Read Yet",
+      "es": "Ideas de horarios visuales para preescolares que aun no leen"
+    },
+    "angle": "Practical visual cards, drawings, coloring icons, and transition cues.",
+    "bookId": "alphabet-coloring-book",
+    "avoidOverlapWith": []
+  },
+  {
+    "id": "boredom-healthy-overstimulated-kids",
+    "status": "pending",
+    "priority": 60,
+    "contentRole": "spoke",
+    "pillarId": "slow-parenting-analog-childhood-guide",
+    "seoCluster": "slow-parenting-nostalgia",
+    "articleCategory": "guides",
+    "searchIntent": "informational",
+    "primaryKeyword": {
+      "en": "why boredom is good for kids",
+      "es": "por que el aburrimiento es bueno para ninos"
+    },
+    "topic": {
+      "en": "Why Boredom Is Healthy for Overstimulated Kids",
+      "es": "Por que el aburrimiento es sano para peques sobreestimulados"
+    },
+    "angle": "Reframe boredom as a creativity trigger without ignoring real parent workload.",
+    "bookId": null,
+    "avoidOverlapWith": ["summer-coloring-activities-beat-boredom"]
+  }
+]

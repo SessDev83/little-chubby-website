@@ -1,4 +1,4 @@
----
+﻿---
 postId: "coloring-bedtime-wind-down"
 title: "Why Coloring Is the Perfect Wind-Down Activity Before Bedtime"
 date: "2026-04-10"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "cozy-kids-club"
 image: "/images/blog/why-coloring-helps.webp"
 tags: ["bedtime", "wellness", "activities", "parenting", "screen-free"]
+articleCategory: "focus-calm"
 ---
 
 You know that feeling when bedtime rolls around and your child is still bouncing off the walls? The toys are scattered, the energy is high, and somehow you are supposed to magically transform this tiny tornado into a peaceful sleeper. What if I told you that something as simple as coloring could be the game-changer you have been looking for?

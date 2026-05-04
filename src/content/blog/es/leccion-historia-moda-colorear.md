@@ -1,4 +1,4 @@
----
+﻿---
 postId: "moda-historia"
 title: "Una leccion de historia divertida a traves de la moda y el color"
 date: "2026-03-05"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "style-time-machine"
 image: "/images/blog/fashion-history.webp"
 tags: ["education", "book-review", "fashion", "stem"]
+articleCategory: "learning"
 ---
 
 "La historia es aburrida." Si tu peque ha dicho eso, no es culpa suya — es culpa de como se la presentan. ¿Que tal si la historia entrara por los colores en vez de por los textos?

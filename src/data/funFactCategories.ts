@@ -9,7 +9,8 @@ export type FunFactCategorySlug =
   | "food-plants"
   | "machines-inventions"
   | "colors-art"
-  | "history-language";
+  | "history-language"
+  | "world-records";
 
 export type FunFactCategory = {
   slug: FunFactCategorySlug;
@@ -202,6 +203,26 @@ export const funFactCategories: readonly FunFactCategory[] = [
     metaDescription: {
       es: "Datos curiosos de historia y palabras para niños: origen de nombres, mitos y cultura explicada de forma familiar.",
       en: "History and word fun facts for kids: name origins, myths, and culture explained in a family-friendly way.",
+    },
+  },
+  {
+    slug: "world-records",
+    icon: "🏆",
+    color: "#d97706",
+    tags: ["records", "world-records"],
+    label: { es: "Récords Mundiales", en: "World Records" },
+    shortLabel: { es: "Récords", en: "Records" },
+    description: {
+      es: "Las personas, lugares y cosas más altos, rápidos, viejos o sorprendentes del mundo, contados para peques curiosos.",
+      en: "The tallest, fastest, oldest, and most surprising people, places, and things in the world, told for curious kids.",
+    },
+    metaTitle: {
+      es: "Récords mundiales para niños | Little Chubby Press",
+      en: "World Record Fun Facts for Kids | Little Chubby Press",
+    },
+    metaDescription: {
+      es: "Récords mundiales para niños: la persona más alta, el edificio más alto, el animal más grande y datos sorprendentes para colorear y compartir.",
+      en: "World records for kids: the tallest human, the tallest building, the biggest animal, and amazing facts to color and share.",
     },
   },
 ] as const;

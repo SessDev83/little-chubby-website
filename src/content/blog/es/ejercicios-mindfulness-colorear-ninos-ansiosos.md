@@ -1,4 +1,4 @@
----
+﻿---
 postId: "mindfulness-coloring-exercises-anxious-kids"
 title: "Ejercicios de mindfulness para colorear que calman a peques ansiosos"
 date: "2026-04-24"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "cozy-kids-club"
 image: "/images/blog/mindfulness-coloring-exercises.webp"
 tags: ["wellness", "emotional-development", "parenting", "activities", "coloring"]
+articleCategory: "focus-calm"
 ---
 
 Tu peque camina de un lado a otro de la sala, los hombros tensos, diciendote que le duele la pancita otra vez. Tal vez es un examen manana. Tal vez un rato con amigos que no salio bien. Tal vez nada que aun pueda explicar con palabras. Tu quieres ayudar, pero lo ultimo que el o ella quiere es otra charla sobre emociones.

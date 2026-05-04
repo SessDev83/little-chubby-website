@@ -1,4 +1,4 @@
----
+﻿---
 postId: "rincon-calma"
 title: "Como crear un rincon de calma con colorear para ninos ansiosos"
 date: "2026-02-20"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "cozy-kids-club"
 image: "/images/blog/calm-corner.webp"
 tags: ["parenting", "activities", "emotional-development", "wellness"]
+articleCategory: "focus-calm"
 ---
 
 Tu peque tiene rabietas, se frustra rapido o le cuesta calmarse despues de una emocion fuerte. No estas solo — y no necesitas un terapeuta para dar el primer paso.

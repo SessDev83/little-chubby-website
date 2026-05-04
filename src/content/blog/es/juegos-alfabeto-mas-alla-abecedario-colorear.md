@@ -1,4 +1,4 @@
----
+﻿---
 postId: "alphabet-games-beyond-abcs-coloring"
 title: "Juegos del Alfabeto Mas Alla del Abecedario: Actividades Creativas que Hacen que las Letras se Queden Grabadas"
 date: "2026-04-19"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "alphabet-coloring-book"
 image: "/images/blog/alphabet-games-beyond.webp"
 tags: ["education", "creativity", "fine-motor", "activities", "coloring"]
+articleCategory: "learning"
 ---
 
 Tu peque de cuatro anos se sabe la cancion del alfabeto de memoria, pero cuando le senalias una letra al azar en una pagina, se queda en blanco. Te suena familiar? Saberse la cancion del ABC es solo el comienzo — el verdadero dominio de las letras ocurre cuando los ninos pueden reconocerlas, escribirlas y conectarlas con sus sonidos de maneras creativas y divertidas.

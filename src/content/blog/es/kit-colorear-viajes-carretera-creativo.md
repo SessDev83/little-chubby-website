@@ -1,4 +1,4 @@
----
+﻿---
 postId: "road-trip-coloring-kit-creative-travel"
 title: "Kit de Colorear para Viajes: Que Empacar para Aventuras Creativas"
 date: "2026-04-12"
@@ -6,6 +6,7 @@ summary: "Empaca el kit perfecto de colorear para viajes sin estres que mantiene
 lang: "es"
 image: "/images/blog/road-trip-coloring.webp"
 tags: ["travel", "activities", "parenting", "screen-free", "creativity"]
+articleCategory: "activities"
 ---
 
 "¿Ya llegamos?" Si esta pregunta persigue tus viajes familiares antes de llegar siquiera a la carretera, no estas solo. Los viajes largos en carro con peques inquietos pueden convertir vacaciones de ensueño en maratones llenos de estres. Pero ¿que tal si te dijera que un kit de colorear bien planeado podria transformar esas horas interminables en tiempo pacifico y creativo que realmente ayuda a unir a tu familia?

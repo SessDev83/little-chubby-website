@@ -1,4 +1,4 @@
----
+﻿---
 postId: "fine-motor-skills-coloring"
 title: "The Hidden Fine Motor Skills Your Child Builds While Coloring"
 date: "2026-04-17"
@@ -6,6 +6,7 @@ summary: "Discover how coloring secretly strengthens your child's fine motor ski
 lang: "en"
 image: "/images/blog/fine-motor-skills.webp"
 tags: ["fine-motor", "education", "parenting", "coloring", "wellness"]
+articleCategory: "learning"
 ---
 
 You hand your four-year-old a coloring book to keep them busy for ten minutes, and suddenly they are absorbed for an hour, tongue poking out in concentration. What you might not realize is that during this peaceful moment, your child is building crucial fine motor skills that will serve them for years to come.

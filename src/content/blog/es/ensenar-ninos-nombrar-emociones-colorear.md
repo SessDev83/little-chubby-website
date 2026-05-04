@@ -1,4 +1,4 @@
----
+﻿---
 postId: "nombrar-emociones"
 title: "Ensenar a los ninos a nombrar sus emociones (sin charlas incomodas)"
 date: "2026-01-25"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "coloring-emotions"
 image: "/images/blog/naming-feelings.webp"
 tags: ["parenting", "education", "emotional-development", "wellness"]
+articleCategory: "focus-calm"
 ---
 
 Tu peque llora "sin razon", tiene explosiones de ira o se cierra y no habla. No es que no sienta — es que **no tiene palabras para lo que siente**. Y eso es frustrante para todos.

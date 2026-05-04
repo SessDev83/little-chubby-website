@@ -53,6 +53,11 @@ astro-check*.log
 # operator-only local artifacts
 __schema_dump.sql
 docs/*.pdf
+/0
+/f.endsWith('.md'))
+/tags.includes(t)))
+/tags.includes(t)))counts\[k\]++
+/.claude/scheduled_tasks.lock
 
 
 # Internal planning / operations docs (not for public repo)

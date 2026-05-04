@@ -1,4 +1,4 @@
----
+﻿---
 postId: "fantasia-imaginacion"
 title: "How fantasy coloring sparks imagination and problem-solving in kids"
 date: "2026-04-05"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "magical-creatures"
 image: "/images/blog/fantasy-coloring.webp"
 tags: ["creativity", "book-review", "imagination", "self-expression"]
+articleCategory: "creativity"
 ---
 
 Your kid spends hours glued to a screen, and when you turn it off… they have no idea what to do. Creativity needs a nudge, and fantasy worlds are the perfect launchpad.

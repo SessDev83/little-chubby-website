@@ -1,4 +1,4 @@
----
+﻿---
 postId: "seasonal-fruits-vegetables-coloring-fun"
 title: "Seasonal Fruits and Vegetables: A Coloring Adventure That Teaches Without Trying"
 date: "2026-04-28"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "pizza-sweet-treats"
 image: "/images/blog/seasonal-fruits-vegetables.webp"
 tags: ["food", "education", "creativity", "seasonal", "coloring"]
+articleCategory: "learning"
 ---
 
 Picture this: you are at the grocery store, your kid is staring at a pile of strawberries like they have never seen one before, and you realize they could not name three vegetables if their snack depended on it. It is not their fault. Most kids learn about food from cartoons and packaging, not from actually noticing what is in season. The good news? You do not need a garden or a farm visit to fix that. A simple coloring page can do a surprising amount of heavy lifting.

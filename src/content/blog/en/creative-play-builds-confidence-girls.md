@@ -1,4 +1,4 @@
----
+﻿---
 postId: "ninas-confianza"
 title: "Raising confident girls: how creative play builds self-esteem"
 date: "2026-01-05"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "awesome-girls"
 image: "/images/blog/confident-girls.webp"
 tags: ["parenting", "book-review", "self-expression", "emotional-development"]
+articleCategory: "creativity"
 ---
 
 "It does not look right." If your daughter says that every time she tries something new, it is not a lack of talent. It is a lack of **experiences where there is no "wrong" or "right."**

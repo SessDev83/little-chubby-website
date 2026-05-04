@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "source": "Plan de Contenido Blog Libros Colorear.pdf",
+  "strategy": "Keep the existing 5 Astro article categories for stable URLs; use seoCluster metadata for the 6 strategic SEO clusters.",
+  "clusters": [
+    {
+      "id": "emotional-regulation",
+      "label": {
+        "en": "Emotional Regulation & Child Behavior",
+        "es": "Gestion emocional y comportamiento infantil"
+      },
+      "primaryArticleCategory": "focus-calm",
+      "searchIntents": ["informational", "commercial"],
+      "pillar": {
+        "postId": "calm-coloring-big-feelings-guide",
+        "articleCategory": "focus-calm",
+        "title": {
+          "en": "Complete Guide to Calm Coloring for Big Feelings",
+          "es": "Guia completa para usar colorear con emociones grandes"
+        },
+        "primaryKeyword": {
+          "en": "calm coloring for kids emotions",
+          "es": "colorear para calmar emociones en ninos"
+        }
+      },
+      "recommendedBooks": ["coloring-emotions", "cozy-kids-club", "easy-animals"]
+    },
+    {
+      "id": "screen-free-travel",
+      "label": {
+        "en": "Screen-Free Travel & Analog Activities",
+        "es": "Viajes sin pantallas y actividades analogicas"
+      },
+      "primaryArticleCategory": "activities",
+      "searchIntents": ["informational", "commercial"],
+      "pillar": {
+        "postId": "screen-free-activities-guide",
+        "articleCategory": "activities",
+        "title": {
+          "en": "The Complete Screen-Free Activity Guide for Busy Families",
+          "es": "Guia completa de actividades sin pantallas para familias ocupadas"
+        },
+        "primaryKeyword": {
+          "en": "screen-free activities for kids",
+          "es": "actividades sin pantallas para ninos"
+        }
+      },
+      "recommendedBooks": ["awesome-airplanes", "easy-animals", "awesome-boys", "awesome-girls"]
+    },
+    {
+      "id": "developmental-learning",
+      "label": {
+        "en": "Developmental Learning & School Readiness",
+        "es": "Aprendizaje, desarrollo y preparacion escolar"
+      },
+      "primaryArticleCategory": "learning",
+      "searchIntents": ["informational", "commercial"],
+      "pillar": {
+        "postId": "coloring-learning-fine-motor-guide",
+        "articleCategory": "learning",
+        "title": {
+          "en": "How Coloring Supports Early Learning and Fine Motor Skills",
+          "es": "Como colorear apoya el aprendizaje temprano y la motricidad fina"
+        },
+        "primaryKeyword": {
+          "en": "coloring fine motor skills early learning",
+          "es": "colorear motricidad fina aprendizaje temprano"
+        }
+      },
+      "recommendedBooks": ["alphabet-coloring-book", "blast-off-space", "mighty-machines", "awesome-airplanes"]
+    },
+    {
+      "id": "parent-wellbeing",
+      "label": {
+        "en": "Parent Wellbeing & Family Dynamics",
+        "es": "Bienestar parental y dinamica familiar"
+      },
+      "primaryArticleCategory": "guides",
+      "searchIntents": ["informational"],
+      "pillar": {
+        "postId": "parent-wellbeing-creative-pauses-guide",
+        "articleCategory": "guides",
+        "title": {
+          "en": "Parent Wellbeing: Small Creative Pauses That Help the Whole Family",
+          "es": "Bienestar parental: pausas creativas pequenas que ayudan a toda la familia"
+        },
+        "primaryKeyword": {
+          "en": "creative breaks for parents",
+          "es": "pausas creativas para padres"
+        }
+      },
+      "recommendedBooks": ["cozy-kids-club", "coloring-emotions", "easy-animals"]
+    },
+    {
+      "id": "routines-early-education",
+      "label": {
+        "en": "Visual Routines & Early Education",
+        "es": "Rutinas visuales y educacion temprana"
+      },
+      "primaryArticleCategory": "focus-calm",
+      "secondaryArticleCategory": "learning",
+      "searchIntents": ["informational", "commercial"],
+      "pillar": {
+        "postId": "visual-routines-calm-transitions-guide",
+        "articleCategory": "focus-calm",
+        "title": {
+          "en": "Visual Routines and Calm Transitions for Young Kids",
+          "es": "Rutinas visuales y transiciones calmadas para peques"
+        },
+        "primaryKeyword": {
+          "en": "visual routines for kids transitions",
+          "es": "rutinas visuales para transiciones en ninos"
+        }
+      },
+      "recommendedBooks": ["alphabet-coloring-book", "coloring-emotions", "cozy-kids-club"]
+    },
+    {
+      "id": "slow-parenting-nostalgia",
+      "label": {
+        "en": "Slow Parenting & Analog Childhood",
+        "es": "Slow parenting e infancia analogica"
+      },
+      "primaryArticleCategory": "creativity",
+      "secondaryArticleCategory": "activities",
+      "searchIntents": ["informational", "lifestyle"],
+      "pillar": {
+        "postId": "slow-parenting-analog-childhood-guide",
+        "articleCategory": "creativity",
+        "title": {
+          "en": "Slow Parenting, Nostalgia, and the Return of Analog Childhood",
+          "es": "Slow parenting, nostalgia y el regreso de la infancia analogica"
+        },
+        "primaryKeyword": {
+          "en": "slow parenting analog childhood",
+          "es": "slow parenting infancia analogica"
+        }
+      },
+      "recommendedBooks": ["style-time-machine", "easy-animals", "magical-creatures"]
+    }
+  ]
+}

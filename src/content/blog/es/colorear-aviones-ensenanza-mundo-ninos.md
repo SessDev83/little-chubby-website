@@ -1,4 +1,4 @@
----
+﻿---
 postId: "aviones-mundo"
 title: "Como colorear aviones le ensena a tu hijo sobre el mundo"
 date: "2025-12-02"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "awesome-airplanes"
 image: "/images/blog/airplanes-world.webp"
 tags: ["education", "book-review", "stem", "imagination"]
+articleCategory: "learning"
 ---
 
 "¿A donde va ese avion?" Esa pregunta simple esconde una oportunidad enorme. Tu peque quiere conocer el mundo pero su universo se limita a la escuela y la casa. **El papel puede abrir la puerta.**

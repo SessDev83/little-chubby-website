@@ -1,4 +1,4 @@
----
+﻿---
 postId: "materiales"
 title: "La guia definitiva de materiales para colorear (sin arruinar tu sofa)"
 date: "2026-01-30"
@@ -6,6 +6,7 @@ summary: "Crayones en las paredes, marcadores destapados y lapices rotos. Aqui e
 lang: "es"
 image: "/images/blog/coloring-supplies.webp"
 tags: ["tips", "parenting", "coloring", "gift-guide"]
+articleCategory: "guides"
 ---
 
 Compraste la caja de 64 crayones porque se veia increible. Dos dias despues: 8 rotos, 3 en el sofa, 1 derretido quien-sabe-donde, y tu hijo solo usa el azul. **Suena familiar?**

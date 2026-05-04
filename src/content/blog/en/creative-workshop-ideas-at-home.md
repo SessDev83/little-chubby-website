@@ -1,4 +1,4 @@
----
+﻿---
 postId: "taller-creativo"
 title: "3 ways to turn a boring afternoon into a creative workshop (for free)"
 date: "2026-03-12"
@@ -6,6 +6,7 @@ summary: "Your kid says 'I am bored' every afternoon. These 3 setups turn what y
 lang: "en"
 image: "/images/blog/creative-workshop.webp"
 tags: ["activities", "creativity", "screen-free", "coloring", "family-time"]
+articleCategory: "activities"
 ---
 
 "Mom, I am bored." It is Tuesday at 4pm, the tablet is off-limits, the rain is not letting anyone outside, and your kid is looking at you like you are the entertainment director of a cruise ship. **You need a plan, and you need it now.**

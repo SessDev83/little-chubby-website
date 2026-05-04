@@ -1,4 +1,4 @@
----
+﻿---
 postId: "summer-coloring-beat-boredom"
 title: "Actividades de colorear para el verano que vencen el aburrimiento"
 date: "2026-04-10"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "awesome-boys"
 image: "/images/blog/summer-coloring-activities.webp"
 tags: ["activities", "screen-free", "creativity", "family-time", "seasonal"]
+articleCategory: "activities"
 ---
 
 Conoces ese momento. Son las 10 de la manana de un martes de julio, y escuchas esas palabras temidas: "Mama, me aburro!" El verano se extiende interminablemente por delante, y ya te estas quedando sin ideas para mantener a tus peques comprometidos. Antes de rendirte a otra maraton de tiempo frente a pantallas, dejame compartir algo que ha salvado innumerables dias de verano en nuestra casa: actividades de colorear estrategicas que van mucho mas alla del tipico enfoque de "aqui tienes un libro para colorear, ve a sentarte en silencio".

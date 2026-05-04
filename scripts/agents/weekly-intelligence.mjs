@@ -134,12 +134,54 @@ async function fetchData(days) {
 
 // ─── Build analysis prompt ─────────────────────────────────────────────────
 
+function compactMetricValue(value) {
+  if (!value || typeof value !== "object") return value;
+
+  const compact = {};
+  for (const [key, raw] of Object.entries(value)) {
+    if (Array.isArray(raw)) {
+      compact[key] = raw.slice(0, 5).map((item) => {
+        if (!item || typeof item !== "object") return item;
+        return {
+          text: String(item.text || item.caption || item.title || "").slice(0, 140),
+          likes: item.likes || item.likeCount || 0,
+          comments: item.comments || item.replyCount || 0,
+          shares: item.shares || item.reposts || item.repostCount || 0,
+          clicks: item.clicks || 0,
+          at: item.indexedAt || item.created_time || item.timestamp || item.posted_at || null,
+        };
+      });
+    } else if (raw && typeof raw === "object") {
+      compact[key] = compactMetricValue(raw);
+    } else if (typeof raw === "string") {
+      compact[key] = raw.slice(0, 200);
+    } else {
+      compact[key] = raw;
+    }
+  }
+  return compact;
+}
+
 function buildAnalysisPrompt(data, days) {
   // Summarize social metrics by platform
   const socialByPlatform = {};
   for (const m of data.socialMetrics) {
-    if (!socialByPlatform[m.platform]) socialByPlatform[m.platform] = [];
-    socialByPlatform[m.platform].push({ type: m.metric_type, value: m.value, date: m.collected_at });
+    const platform = m.platform || "unknown";
+    const metricType = m.metric_type || "unknown";
+    if (!socialByPlatform[platform]) socialByPlatform[platform] = {};
+    if (!socialByPlatform[platform][metricType]) {
+      socialByPlatform[platform][metricType] = {
+        samples: 0,
+        latest_at: null,
+        latest_value: null,
+      };
+    }
+    const bucket = socialByPlatform[platform][metricType];
+    bucket.samples++;
+    if (!bucket.latest_at || new Date(m.collected_at) > new Date(bucket.latest_at)) {
+      bucket.latest_at = m.collected_at;
+      bucket.latest_value = compactMetricValue(m.value);
+    }
   }
 
   // Summarize traffic by source
@@ -463,7 +505,7 @@ async function sendEmailReport(analysis, days) {
       console.log("\n⚠️  Risk alerts:");
       for (const alert of analysis.risk_alerts) console.log(`  - ${alert}`);
     }
-    if (!RESEND_API_KEY) return;
+    if (DRY_RUN || !RESEND_API_KEY) return;
   }
 
   const html = `

@@ -1,4 +1,4 @@
----
+﻿---
 postId: "primer-cuaderno-peque"
 title: "Your toddler's first coloring book: what to look for and what to avoid"
 date: "2025-12-10"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "easy-animals"
 image: "/images/blog/first-coloring-book.webp"
 tags: ["tips", "book-review", "toddler", "coloring"]
+articleCategory: "guides"
 ---
 
 You bought a "children's" coloring book and your 3-year-old got frustrated in 2 minutes. The shapes were too small, the details too many, and the book ended up on the floor. **It was not their fault.**

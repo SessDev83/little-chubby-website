@@ -1,4 +1,4 @@
----
+﻿---
 postId: "vestir-confianza"
 title: "How dress-up coloring builds confidence and self-expression"
 date: "2026-03-15"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "dresses-and-dolls"
 image: "/images/blog/dress-confidence.webp"
 tags: ["parenting", "book-review", "fashion", "self-expression"]
+articleCategory: "creativity"
 ---
 
 Your daughter wants to pick her own outfits but ends up frustrated because "nothing matches." That frustration is normal — she just needs a safe space to experiment.

@@ -1,4 +1,4 @@
----
+﻿---
 postId: "camiones-habilidades"
 title: "Por que los ninos obsesionados con camiones estan desarrollando habilidades reales"
 date: "2025-12-18"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "mighty-machines"
 image: "/images/blog/trucks-skills.webp"
 tags: ["education", "book-review", "stem", "fine-motor"]
+articleCategory: "learning"
 ---
 
 Tu hijo no para de hablar de excavadoras. Tiene 47 camiones de juguete. Cada vez que pasan por una obra se queda hipnotizado. ¿Deberia preocuparte? **Todo lo contrario.**

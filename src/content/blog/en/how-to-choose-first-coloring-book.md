@@ -1,4 +1,4 @@
----
+﻿---
 postId: "primer-libro"
 title: "How to choose your kid's first coloring book (without wasting money)"
 date: "2026-03-28"
@@ -6,6 +6,7 @@ summary: "Bought a coloring book your kid ignored? The problem was not the child
 lang: "en"
 image: "/images/blog/choosing-coloring-book.webp"
 tags: ["parenting", "tips", "coloring", "gift-guide"]
+articleCategory: "guides"
 ---
 
 You bought a coloring book that looked perfect on Amazon. It arrived, your kid opened it… and abandoned it in 3 minutes. Now you have an unused book and the feeling that you wasted money. **It was not your child's fault — it was the wrong book.**

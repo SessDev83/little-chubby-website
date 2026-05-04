@@ -1,4 +1,4 @@
----
+﻿---
 postId: "space-birthday-party-coloring"
 title: "Actividades de Colorear para Cumpleanos Espacial que Lanzan Diversion Epica"
 date: "2026-04-13"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "blast-off-space"
 image: "/images/blog/space-birthday-party.webp"
 tags: ["activities", "creativity", "family-time", "book-review", "stem"]
+articleCategory: "activities"
 ---
 
 Imaginate esto: quince peques emocionados, llenos de pastel y listos para rebotar por las paredes en el cumpleanos espacial de tu hijo. Necesitas actividades que canalicen esa energia hacia algo creativo y entretenido — no otra ronda de carreras caoticas por tu sala.

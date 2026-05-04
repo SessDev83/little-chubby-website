@@ -1,4 +1,4 @@
----
+﻿---
 postId: "espacio-stem"
 title: "How space coloring turns curiosity into a STEM foundation"
 date: "2025-12-28"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "blast-off-space"
 image: "/images/blog/space-stem.webp"
 tags: ["education", "book-review", "stem", "imagination"]
+articleCategory: "learning"
 ---
 
 "Why don't stars fall down?" If your kid asks these kinds of questions, they have **natural scientific curiosity**. The worst mistake is wasting it with a "just because" or letting it die in front of a screen.

@@ -1,4 +1,4 @@
----
+﻿---
 postId: "fine-motor-skills-coloring"
 title: "Las habilidades motoras finas que tu peque desarrolla coloreando"
 date: "2026-04-17"
@@ -6,6 +6,7 @@ summary: "Descubre como colorear fortalece secretamente las habilidades motoras 
 lang: "es"
 image: "/images/blog/fine-motor-skills.webp"
 tags: ["fine-motor", "education", "parenting", "coloring", "wellness"]
+articleCategory: "learning"
 ---
 
 Le das un libro para colorear a tu peque de cuatro anos para mantenerlo ocupado por diez minutos, y de repente esta absorto por una hora, con la lengua asomando de concentracion. Lo que tal vez no sepas es que durante este momento pacifico, tu hijo esta construyendo habilidades motoras finas cruciales que le serviran por anos.

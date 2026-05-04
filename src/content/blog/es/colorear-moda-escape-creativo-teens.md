@@ -1,4 +1,4 @@
----
+﻿---
 postId: "moda-teens"
 title: "Por que colorear moda es el escape creativo perfecto para adolescentes"
 date: "2026-03-22"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "chic-styles"
 image: "/images/blog/fashion-teens.webp"
 tags: ["creativity", "book-review", "fashion", "self-expression"]
+articleCategory: "creativity"
 ---
 
 Tu adolescente esta estresado, pegado al telefono y "aburrido de todo". ¿Suena familiar? El problema no es falta de actividades, es falta de una salida creativa sin juicio.

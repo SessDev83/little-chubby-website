@@ -1,4 +1,4 @@
----
+﻿---
 postId: "taller-creativo"
 title: "3 ideas para transformar una tarde aburrida en taller creativo (sin gastar un centavo)"
 date: "2026-03-12"
@@ -6,6 +6,7 @@ summary: "Tu peque dice 'estoy aburrido' cada tarde. Estas 3 dinamicas convierte
 lang: "es"
 image: "/images/blog/creative-workshop.webp"
 tags: ["activities", "creativity", "screen-free", "coloring", "family-time"]
+articleCategory: "activities"
 ---
 
 "Mama, estoy aburrido." Es martes a las 4pm, la tablet esta prohibida, la lluvia no deja salir y tu peque te mira como si fueras la directora de entretenimiento de un crucero. **Necesitas un plan, y lo necesitas ya.**

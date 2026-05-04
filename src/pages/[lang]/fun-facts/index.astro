@@ -70,17 +70,17 @@ const collectionJsonLd = JSON.stringify({
       </div>
 
       <div class="fun-facts-overview" aria-label={lang === "es" ? "Resumen de datos curiosos" : "Fun facts summary"}>
-        <div>
-          <strong>{totalPosts}</strong>
-          <span>{lang === "es" ? "datos curiosos" : "fun facts"}</span>
+        <div class="fun-facts-overview-card">
+          <p class="fun-facts-overview-card-value">{totalPosts}</p>
+          <p class="fun-facts-overview-card-label">{lang === "es" ? "datos curiosos" : "fun facts"}</p>
         </div>
-        <div>
-          <strong>{funFactCategories.length}</strong>
-          <span>{lang === "es" ? "categorías" : "categories"}</span>
+        <div class="fun-facts-overview-card">
+          <p class="fun-facts-overview-card-value">{funFactCategories.length}</p>
+          <p class="fun-facts-overview-card-label">{lang === "es" ? "categorías" : "categories"}</p>
         </div>
-        <div>
-          <strong>2</strong>
-          <span>{lang === "es" ? "idiomas" : "languages"}</span>
+        <div class="fun-facts-overview-card">
+          <p class="fun-facts-overview-card-value">2</p>
+          <p class="fun-facts-overview-card-label">{lang === "es" ? "idiomas" : "languages"}</p>
         </div>
       </div>
 
@@ -88,11 +88,11 @@ const collectionJsonLd = JSON.stringify({
         {categoryGroups.map(({ category, posts }) => (
           <a class="fun-fact-category-card" href={`/${lang}/fun-facts/${category.slug}/`} style={`--category-color: ${category.color};`}>
             <span class="fun-fact-category-icon" aria-hidden="true">{category.icon}</span>
+            <h2 class="fun-fact-category-title">{category.label[lang]}</h2>
             <span class="fun-fact-category-count">
-              {posts.length} {lang === "es" ? "posts" : "posts"}
+              {posts.length} {lang === "es" ? "datos" : "facts"}
             </span>
-            <h2>{category.label[lang]}</h2>
-            <p>{category.description[lang]}</p>
+            <p class="fun-fact-category-description">{category.description[lang]}</p>
           </a>
         ))}
       </div>

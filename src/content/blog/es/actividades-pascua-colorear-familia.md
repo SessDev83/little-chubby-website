@@ -1,4 +1,4 @@
----
+﻿---
 postId: "pascua-familia"
 title: "5 actividades de Pascua con colorear que toda la familia disfrutara"
 date: "2026-02-05"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "enchanted-easter"
 image: "/images/blog/easter-family.webp"
 tags: ["activities", "book-review", "family-time", "coloring"]
+articleCategory: "activities"
 ---
 
 Otro ano, otra Pascua donde los ninos comen chocolate, buscan huevos y en 20 minutos "ya se aburrieron". ¿Y si este ano la celebracion durara toda la tarde?

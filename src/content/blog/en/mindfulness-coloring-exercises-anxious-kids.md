@@ -1,4 +1,4 @@
----
+﻿---
 postId: "mindfulness-coloring-exercises-anxious-kids"
 title: "Mindfulness Coloring Exercises That Actually Calm Anxious Kids"
 date: "2026-04-24"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "cozy-kids-club"
 image: "/images/blog/mindfulness-coloring-exercises.webp"
 tags: ["wellness", "emotional-development", "parenting", "activities", "coloring"]
+articleCategory: "focus-calm"
 ---
 
 Your kid is pacing around the living room, shoulders tight, telling you their stomach feels weird again. Maybe it is a big test tomorrow. Maybe a playdate that went sideways. Maybe nothing they can even put into words yet. You want to help, but the last thing they want is another conversation about feelings.

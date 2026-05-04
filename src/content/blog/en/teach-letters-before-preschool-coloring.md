@@ -1,4 +1,4 @@
----
+﻿---
 postId: "letras-preescolar"
 title: "The sneaky way to teach letters before preschool starts"
 date: "2025-11-25"
@@ -7,6 +7,7 @@ lang: "en"
 bookId: "alphabet-coloring-book"
 image: "/images/blog/letters-preschool.webp"
 tags: ["education", "book-review", "toddler", "fine-motor"]
+articleCategory: "learning"
 ---
 
 You want your child to start preschool knowing some letters, but every time you try with flashcards or apps, **they lose interest in 60 seconds**. The problem is not the child — it is the method.

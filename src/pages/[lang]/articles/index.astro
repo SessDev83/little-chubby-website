@@ -1,0 +1,121 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import PostCard from "../../../components/PostCard.astro";
+import { getCollection } from "astro:content";
+import { languages, getLangFromParam, ui } from "../../../data/i18n";
+import { articleCategories, getArticleCategoryBySlug } from "../../../data/articleCategories";
+import { siteConfig } from "../../../data/site";
+
+export function getStaticPaths() {
+  return languages.map((lang) => ({ params: { lang } }));
+}
+
+const lang = getLangFromParam(Astro.params.lang);
+const text = ui[lang];
+const pathname = `/${lang}/articles/`;
+const alternatePath = `/${lang === "es" ? "en" : "es"}/articles/`;
+const title = lang === "es"
+  ? "Artículos para padres sobre colorear | Little Chubby Press"
+  : "Parenting Articles About Coloring | Little Chubby Press";
+const description = lang === "es"
+  ? "Artículos prácticos para padres sobre cómo colorear ayuda con la calma, el aprendizaje, la creatividad y el desarrollo infantil."
+  : "Practical articles for parents on how coloring supports calm, learning, creativity, and child development.";
+const breadcrumbs = [
+  { name: lang === "es" ? "Inicio" : "Home", url: `/${lang}/` },
+  { name: lang === "es" ? "Artículos" : "Articles", url: pathname },
+];
+
+const allArticles = await getCollection("blog", (entry) =>
+  entry.data.lang === lang && entry.data.category === "article"
+);
+const sortedArticles = allArticles.sort((a, b) => b.data.date.localeCompare(a.data.date));
+
+const categoryGroups = articleCategories.map((cat) => {
+  const posts = sortedArticles.filter((post) => post.data.articleCategory === cat.slug);
+  return { cat, posts };
+});
+
+const latestPosts = sortedArticles.slice(0, 6);
+const totalPosts = sortedArticles.length;
+
+const collectionJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: title,
+  description,
+  url: new URL(pathname, siteConfig.siteUrl).toString(),
+  inLanguage: lang,
+  mainEntity: {
+    "@type": "ItemList",
+    itemListElement: categoryGroups.map(({ cat, posts }, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: cat.label[lang],
+      url: new URL(`/${lang}/articles/${cat.slug}/`, siteConfig.siteUrl).toString(),
+      numberOfItems: posts.length,
+    })),
+  },
+}).replace(/</g, "\\u003c");
+---
+
+<BaseLayout lang={lang} title={title} description={description} pathname={pathname} alternatePath={alternatePath} breadcrumbs={breadcrumbs}>
+  <section class="page-section fun-facts-page-head">
+    <div class="container">
+      <div class="section-head fun-facts-hero-copy">
+        <p class="eyebrow">{lang === "es" ? "Recursos para padres" : "Parent resources"}</p>
+        <h1>{lang === "es" ? "Artículos por categoría" : "Articles by category"}</h1>
+        <p>
+          {lang === "es"
+            ? "Guías prácticas sobre cómo colorear ayuda con la calma, el aprendizaje, la creatividad y el desarrollo de tus hijos."
+            : "Practical guides on how coloring supports calm, learning, creativity, and your child's development."}
+        </p>
+      </div>
+
+      <div class="fun-facts-overview" aria-label={lang === "es" ? "Resumen de artículos" : "Articles summary"}>
+        <div class="fun-facts-overview-card">
+          <p class="fun-facts-overview-card-value">{totalPosts}</p>
+          <p class="fun-facts-overview-card-label">{lang === "es" ? "artículos" : "articles"}</p>
+        </div>
+        <div class="fun-facts-overview-card">
+          <p class="fun-facts-overview-card-value">{articleCategories.length}</p>
+          <p class="fun-facts-overview-card-label">{lang === "es" ? "categorías" : "categories"}</p>
+        </div>
+        <div class="fun-facts-overview-card">
+          <p class="fun-facts-overview-card-value">2</p>
+          <p class="fun-facts-overview-card-label">{lang === "es" ? "idiomas" : "languages"}</p>
+        </div>
+      </div>
+
+      <div class="fun-fact-category-grid" aria-label={lang === "es" ? "Categorías de artículos" : "Article categories"}>
+        {categoryGroups.map(({ cat, posts }) => (
+          <a class="fun-fact-category-card" href={`/${lang}/articles/${cat.slug}/`} style={`--category-color: ${cat.color};`}>
+            <span class="fun-fact-category-icon" aria-hidden="true">{cat.icon}</span>
+            <h2 class="fun-fact-category-title">{cat.label[lang]}</h2>
+            <span class="fun-fact-category-count">
+              {posts.length} {lang === "es" ? "artículos" : "articles"}
+            </span>
+            <p class="fun-fact-category-description">{cat.description[lang]}</p>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section fun-facts-latest-section">
+    <div class="container">
+      <div class="section-head">
+        <h2>{lang === "es" ? "Artículos recientes" : "Latest articles"}</h2>
+        <p>
+          {lang === "es"
+            ? "Los últimos recursos publicados para ayudarte en el día a día con tus hijos."
+            : "The latest published resources to help you in your everyday life with your kids."}
+        </p>
+      </div>
+      <div class="grid-cards posts">
+        {latestPosts.map((post) => <PostCard post={post} lang={lang} readLabel={text.ctaReadPost} />)}
+      </div>
+    </div>
+  </section>
+
+  <script type="application/ld+json" is:inline set:html={collectionJsonLd}></script>
+</BaseLayout>

@@ -1,4 +1,4 @@
----
+﻿---
 postId: "construction-coloring-spatial-awareness"
 title: "Como Colorear Construccion Ensena Conciencia Espacial (Te Sorprenderan las Habilidades)"
 date: "2026-04-18"
@@ -7,6 +7,7 @@ lang: "es"
 bookId: "mighty-machines"
 image: "/images/blog/construction-coloring-teaches.webp"
 tags: ["education", "stem", "fine-motor", "creativity", "book-review"]
+articleCategory: "learning"
 ---
 
 Tu peque esta inclinado sobre una pagina de colorear de una excavadora, con la lengua asomando por la concentracion. Podrias pensar que esto es solo tiempo tranquilo, pero algo increible esta pasando en su cerebro. Esas escenas de construccion estan secretamente desarrollando una de las habilidades cognitivas mas importantes para el exito futuro: la conciencia espacial.

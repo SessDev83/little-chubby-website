@@ -1,4 +1,4 @@
----
+﻿---
 postId: "concentracion"
 title: "Tu hijo no se concentra? Colorear podria ser la solucion que no esperabas"
 date: "2026-02-25"
@@ -6,6 +6,7 @@ summary: "Antes de buscar diagnosticos, prueba esto: 15 minutos de color pueden 
 lang: "es"
 image: "/images/blog/focus-concentration.webp"
 tags: ["parenting", "education", "screen-free", "wellness"]
+articleCategory: "focus-calm"
 ---
 
 "No se queda quieto." "No termina nada." "En la escuela dicen que se distrae." Si alguna de estas frases te suena, probablemente ya buscaste en Google y terminaste asustado con siglas como TDAH. **Antes de correr al especialista, lee esto.**
