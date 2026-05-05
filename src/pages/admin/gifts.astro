@@ -1,0 +1,264 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { isAdmin, getServiceClient } from "../../lib/supabase";
+import { adminTimeZoneSummary, formatAdminDateTimeWithZone, formatAdminShortDateTime } from "../../lib/admin-time.mjs";
+import { describeGiftDeadline, fetchAdminGiftControl, filterAdminGiftRows, GIFT_FILTERS } from "../../lib/admin-gift-control.mjs";
+
+const user = Astro.locals.user;
+if (!user || !(await isAdmin(user))) {
+  return Astro.redirect("/es/login/");
+}
+
+const sc = getServiceClient();
+const now = new Date();
+const ownerTimeZone = adminTimeZoneSummary(now);
+const validFilterKeys = new Set(GIFT_FILTERS.map((filterItem) => filterItem.key));
+const status = validFilterKeys.has(Astro.url.searchParams.get("status") || "") ? Astro.url.searchParams.get("status")! : "all";
+const search = (Astro.url.searchParams.get("q") || "").trim().slice(0, 120);
+
+const giftControl = await fetchAdminGiftControl(sc, { limit: 500, now });
+const filteredRows = filterAdminGiftRows(giftControl.rows, { status, search }).slice(0, 250);
+const summary = giftControl.summary;
+const filterCounts: Record<string, number> = {
+  all: summary.totalGifts,
+  pending: summary.pendingActive,
+  claimed: summary.pendingClaimed,
+  expired: summary.pendingExpired,
+  refunded: summary.pendingRefunded,
+  direct: summary.directDelivered,
+};
+
+function filterUrl(filterKey: string) {
+  const params = new URLSearchParams();
+  if (filterKey !== "all") params.set("status", filterKey);
+  if (search) params.set("q", search);
+  return `?${params.toString()}`;
+}
+
+function clearSearchUrl() {
+  const params = new URLSearchParams();
+  if (status !== "all") params.set("status", status);
+  const query = params.toString();
+  return query ? `?${query}` : "/admin/gifts/";
+}
+
+function rowDate(value: string | null) {
+  return value ? formatAdminShortDateTime(value) : "-";
+}
+
+function rowDateTitle(value: string | null) {
+  return value ? formatAdminDateTimeWithZone(value) : undefined;
+}
+
+function recipientLabel(row: any) {
+  return row.recipient?.label || row.recipientEmail || "-";
+}
+---
+
+<AdminLayout title="Gift Tickets" current="gifts">
+  <div class="admin-page-head">
+    <div>
+      <h1>Gift Tickets Control</h1>
+      <p>Sender to recipient visibility for ticket gifts. Times use {ownerTimeZone}.</p>
+    </div>
+    <a href="/admin/economy/" class="btn btn-ghost">Economy</a>
+  </div>
+
+  {giftControl.errors.length > 0 && (
+    <p class="msg-err" role="alert">Some gift rows could not be loaded. Refresh or check Supabase logs.</p>
+  )}
+
+  <section class="stat-grid" aria-label="Gift ticket summary">
+    <div class="stat-card"><span>Total gifts</span><strong>{summary.totalGifts.toLocaleString()}</strong><small>{summary.totalQuantity.toLocaleString()} tickets sent</small></div>
+    <div class="stat-card warn"><span>Pending invites</span><strong>{summary.pendingActive.toLocaleString()}</strong><small>Unclaimed and active</small></div>
+    <div class="stat-card"><span>Activated</span><strong>{summary.pendingClaimed.toLocaleString()}</strong><small>{summary.pendingBonusPaid.toLocaleString()} bonuses paid</small></div>
+    <div class="stat-card"><span>Direct gifts</span><strong>{summary.directDelivered.toLocaleString()}</strong><small>Registered recipients</small></div>
+    <div class="stat-card danger"><span>Expired</span><strong>{summary.pendingExpired.toLocaleString()}</strong><small>{summary.pendingRefunded.toLocaleString()} refunded</small></div>
+  </section>
+
+  <section class="surface-card control-panel">
+    <div class="control-head">
+      <div class="filter-tabs" aria-label="Gift status filter">
+        {GIFT_FILTERS.map((filterItem) => (
+          <a href={filterUrl(filterItem.key)} class:list={["filter-tab", { active: status === filterItem.key }]}>
+            {filterItem.label} <span>{(filterCounts[filterItem.key] ?? 0).toLocaleString()}</span>
+          </a>
+        ))}
+      </div>
+      <form method="GET" class="search-form" aria-label="Search gift tickets">
+        {status !== "all" && <input type="hidden" name="status" value={status} />}
+        <input type="search" name="q" value={search} placeholder="Search sender, recipient, email..." />
+        <button type="submit" class="btn btn-ghost">Search</button>
+        {search && <a href={clearSearchUrl()} class="btn btn-ghost">Clear</a>}
+      </form>
+    </div>
+
+    <div class="table-meta">
+      <span>Showing {filteredRows.length.toLocaleString()} of the latest {giftControl.rows.length.toLocaleString()} loaded rows.</span>
+      <span>Recipient emails are for gift delivery and transactional follow-up, not newsletter marketing.</span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Sent</th>
+            <th>Sender</th>
+            <th>Recipient</th>
+            <th class="admin-number">Qty</th>
+            <th>Status</th>
+            <th>Activation / expiry</th>
+            <th>Bonus</th>
+            <th>Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredRows.length === 0 && (
+            <tr><td colspan="8"><p class="admin-empty-state">No gift tickets match this view.</p></td></tr>
+          )}
+          {filteredRows.map((row: any) => (
+            <tr>
+              <td class="nowrap" title={rowDateTitle(row.sentAt)}>{rowDate(row.sentAt)}</td>
+              <td>
+                {row.sender.href
+                  ? <a href={row.sender.href}><strong>{row.sender.label}</strong></a>
+                  : <strong>{row.sender.label}</strong>}
+                {row.sender.email && <small>{row.sender.email}</small>}
+              </td>
+              <td>
+                {row.recipient.href
+                  ? <a href={row.recipient.href}><strong>{recipientLabel(row)}</strong></a>
+                  : <strong>{recipientLabel(row)}</strong>}
+                {row.recipientEmail && row.recipientEmail !== recipientLabel(row) && <small>{row.recipientEmail}</small>}
+              </td>
+              <td class="admin-number"><strong>{row.quantity.toLocaleString()}</strong></td>
+              <td><span class:list={["badge", `badge-${row.statusTone}`]}>{row.statusLabel}</span></td>
+              <td>
+                <strong>{describeGiftDeadline(row, now)}</strong>
+                {row.claimedAt && <small title={rowDateTitle(row.claimedAt)}>Activated {rowDate(row.claimedAt)}</small>}
+                {!row.claimedAt && row.expiresAt && <small title={rowDateTitle(row.expiresAt)}>Expires {rowDate(row.expiresAt)}</small>}
+                {row.refundedAt && <small title={rowDateTitle(row.refundedAt)}>Refunded {rowDate(row.refundedAt)}</small>}
+              </td>
+              <td>{row.bonusAt ? <span class="bonus" title={rowDateTitle(row.bonusAt)}>Paid {rowDate(row.bonusAt)}</span> : <span class="muted">-</span>}</td>
+              <td><code>{row.transactionId || row.giftId}</code></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .admin-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+  }
+  h1 { margin: 0; font-size: 1.6rem; }
+  .admin-page-head p { margin: 0.3rem 0 0; color: var(--ink-soft); font-size: 0.9rem; }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card, .control-panel {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 0.95rem;
+  }
+  .stat-card span { display: block; color: var(--ink-soft); font-size: 0.78rem; font-weight: 700; }
+  .stat-card strong { display: block; margin-top: 0.2rem; color: var(--brand-blue); font-size: 1.3rem; }
+  .stat-card small { color: var(--ink-soft); font-weight: 700; }
+  .stat-card.warn { border-color: rgba(220,150,50,0.45); background: rgba(220,150,50,0.06); }
+  .stat-card.danger { border-color: rgba(153,27,27,0.2); background: rgba(153,27,27,0.04); }
+  .control-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .filter-tabs, .search-form, .table-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: center;
+  }
+  .filter-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2rem;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 800;
+    background: var(--surface-strong, #f8f8f8);
+  }
+  .filter-tab span { color: inherit; opacity: 0.8; }
+  .filter-tab.active { background: var(--brand-blue); border-color: var(--brand-blue); color: #fff; }
+  .search-form input {
+    min-height: 2.2rem;
+    width: min(100%, 18rem);
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    background: var(--surface);
+  }
+  .table-meta {
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+  .msg-err {
+    border: 1px solid rgba(153,27,27,0.2);
+    border-radius: var(--radius-sm);
+    background: rgba(153,27,27,0.06);
+    color: #991b1b;
+    padding: 0.7rem 0.85rem;
+    font-weight: 700;
+  }
+  .table-wrap { overflow-x: auto; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+  .admin-table th, .admin-table td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  .admin-table th { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0; white-space: nowrap; }
+  .admin-table a { color: var(--brand-blue); text-decoration: none; }
+  .admin-table a:hover { text-decoration: underline; }
+  .admin-table small { display: block; margin-top: 0.15rem; color: var(--ink-soft); font-size: 0.76rem; font-weight: 700; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.55rem;
+    padding: 0.18rem 0.48rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.76rem;
+    font-weight: 800;
+  }
+  .badge-green { color: #166534; background: rgba(22,101,52,0.09); border: 1px solid rgba(22,101,52,0.2); }
+  .badge-yellow { color: #92400e; background: rgba(146,64,14,0.08); border: 1px solid rgba(146,64,14,0.22); }
+  .badge-red { color: #991b1b; background: rgba(153,27,27,0.08); border: 1px solid rgba(153,27,27,0.2); }
+  .badge-blue { color: var(--brand-blue); background: rgba(37,99,235,0.08); border: 1px solid rgba(37,99,235,0.18); }
+  .bonus { color: #166534; font-weight: 800; }
+  .muted { color: var(--ink-soft); }
+  code { font-size: 0.76rem; background: var(--surface-strong, #f8f8f8); padding: 0.12rem 0.32rem; border-radius: 3px; overflow-wrap: anywhere; }
+  @media (max-width: 640px) {
+    .search-form, .search-form input, .search-form .btn { width: 100%; }
+    .filter-tabs { width: 100%; }
+    .filter-tab { flex: 1 1 calc(50% - 0.45rem); justify-content: center; }
+  }
+</style>
