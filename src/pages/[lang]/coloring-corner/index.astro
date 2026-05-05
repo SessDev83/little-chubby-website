@@ -109,6 +109,34 @@ function initColoringCorner() {
   var userBalance = 0;
   var userId = "";
 
+  function cleanUtmValue(value, fallback) {
+    var raw = String(value || "").trim().toLowerCase();
+    var cleaned = raw.normalize ? raw.normalize("NFKD").replace(/[\u0300-\u036f]/g, "") : raw;
+    cleaned = cleaned.replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
+    return cleaned || fallback || "share";
+  }
+  function shareSourceCode(platform) {
+    if (platform === "bluesky") return "b";
+    if (platform === "facebook") return "f";
+    if (platform === "whatsapp") return "wa";
+    if (platform === "copy-link") return "co";
+    return cleanUtmValue(platform, "s").slice(0, 2);
+  }
+  function buildTrackedShareUrl(url, platform, contentType, contentId, title) {
+    try {
+      var parsed = new URL(url, window.location.origin);
+      var date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      var creative = cleanUtmValue(contentType + "-" + (contentId || title || "item"), contentType || "share").slice(0, 70);
+      parsed.searchParams.set("utm_source", cleanUtmValue(platform, "social"));
+      parsed.searchParams.set("utm_medium", "social");
+      parsed.searchParams.set("utm_campaign", "sprint-user-share");
+      parsed.searchParams.set("utm_content", creative + "-" + date + "-" + shareSourceCode(platform) + "-" + cleanUtmValue(lang, "xx").slice(0, 5));
+      return parsed.toString();
+    } catch (e) {
+      return url;
+    }
+  }
+
   // Show login CTA if not logged in
   if (!isLoggedIn && ctaLogin) ctaLogin.style.display = "";
 
@@ -315,22 +343,29 @@ function initColoringCorner() {
     // Build per-artwork share URL
     var origin = window.location.origin;
     var artworkUrl = origin + "/" + lang + "/coloring-corner/" + artId + "/";
+    var trackedArtworkUrl = buildTrackedShareUrl(artworkUrl, platform, "coloring-page", artId, artTitle);
     var shareText = lang === "es"
       ? '🎨 ¡Mira qué lindo! "' + artTitle + '" — página para colorear gratis. ¡Descarga la tuya en Little Chubby Press! 🐘 '
       : '🎨 Look what I found! "' + artTitle + '" — a free coloring page so cute! Download yours at Little Chubby Press 🐘 ';
 
+    try {
+      if (typeof window.lcpTrack === "function") {
+        window.lcpTrack("share_click", { platform: platform, artwork_id: artId, shared_path: "/" + lang + "/coloring-corner/" + artId + "/" });
+      }
+    } catch (e) {}
+
     // Open share target
     if (platform === "whatsapp") {
-      window.open("https://wa.me/?text=" + encodeURIComponent(shareText + artworkUrl), "_blank");
+      window.open("https://wa.me/?text=" + encodeURIComponent(shareText + trackedArtworkUrl), "_blank");
     } else if (platform === "facebook") {
-      window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(artworkUrl) + "&quote=" + encodeURIComponent(shareText), "_blank", "width=600,height=400");
+      window.open("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(trackedArtworkUrl) + "&quote=" + encodeURIComponent(shareText), "_blank", "width=600,height=400");
     } else if (platform === "bluesky") {
-      window.open("https://bsky.app/intent/compose?text=" + encodeURIComponent(shareText + artworkUrl), "_blank");
+      window.open("https://bsky.app/intent/compose?text=" + encodeURIComponent(shareText + trackedArtworkUrl), "_blank");
     } else if (platform === "copy-link") {
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(artworkUrl);
+        navigator.clipboard.writeText(trackedArtworkUrl);
       } else {
-        var ta = document.createElement("textarea"); ta.value = artworkUrl;
+        var ta = document.createElement("textarea"); ta.value = trackedArtworkUrl;
         document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
       }
       var origHTML = btn.innerHTML;

@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { getServiceClient, supabase } from "../../lib/supabase";
 import { trackServerConversionEvent } from "../../lib/server-analytics";
 import { getPublicSiteUrl } from "../../lib/site-url";
+import { canonicalSharedUrl, sharedUrlHadTracking } from "../../lib/social-share-tracking.mjs";
 
 export const prerender = false;
 
@@ -51,12 +52,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const svc = getServiceClient();
+    const canonicalUrl = canonicalSharedUrl(shared_url, { siteUrl: getPublicSiteUrl() });
+    const wasTrackedShareUrl = sharedUrlHadTracking(shared_url, { siteUrl: getPublicSiteUrl() });
 
     // Insert the share record (unique constraint prevents duplicates per day/platform/url)
     const { error } = await svc.from("social_shares").insert({
       user_id,
       platform,
-      shared_url,
+      shared_url: canonicalUrl,
     });
 
     if (error) {
@@ -95,7 +98,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     let sharedPath = "";
     try {
-      const parsedShareUrl = new URL(shared_url);
+      const parsedShareUrl = new URL(canonicalUrl);
       const requestHost = new URL(request.url).hostname.replace(/^www\./, "").toLowerCase();
       const siteHost = new URL(getPublicSiteUrl()).hostname.replace(/^www\./, "").toLowerCase();
       const shareHost = parsedShareUrl.hostname.replace(/^www\./, "").toLowerCase();
@@ -111,6 +114,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       props: {
         platform,
         shared_path: sharedPath || undefined,
+        shared_url_had_tracking: wasTrackedShareUrl,
         credited,
         peanuts_awarded: credited ? 1 : 0,
         balance: typeof balance === "number" ? balance : 0,
