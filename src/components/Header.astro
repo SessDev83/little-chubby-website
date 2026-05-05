@@ -35,7 +35,10 @@ const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
       </a>
 
       <div class="header-actions">
-        <a href={`/${lang}/register/`} class="header-register" id="auth-register" data-astro-prefetch="false">{text.registerSubmit}</a>
+        <a href={`/${lang}/register/`} class="header-register" id="auth-register" data-astro-prefetch="false">
+          <span class="auth-label-full">{text.registerSubmit}</span>
+          <span class="auth-label-short">{lang === "es" ? "Crear" : "Join"}</span>
+        </a>
         <a href={`/${lang}/login/`} class="header-login" id="auth-login" data-astro-prefetch="false">{text.navLogin}</a>
         <span class="header-username" id="auth-username" style="display:none;"></span>
         <span class="header-currencies header-currencies--desktop" id="auth-currencies" style="display:none;">
@@ -483,7 +486,8 @@ const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
       syncHeaderH();
       window.addEventListener("resize", syncHeaderH);
 
-      // Desktop smart nav: smoother collapse on scroll-down, reveal on scroll-up/top hover.
+      // Desktop header stays height-stable so sticky in-page filters do not jump
+      // while the user scrolls through category menus.
       if (window.__lcpDesktopNavCleanup) {
         window.__lcpDesktopNavCleanup();
       }
@@ -511,6 +515,14 @@ const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
       }
 
       function evaluateDesktopSmartNav(currentY) {
+        if (desktopQuery.matches) {
+          setHeaderNavCollapsed(false);
+          scrollDownDistance = 0;
+          scrollUpDistance = 0;
+          lastScrollY = currentY;
+          return;
+        }
+
         if (!desktopQuery.matches || !smartHeaderIsEnabled()) {
           setHeaderNavCollapsed(false);
           scrollDownDistance = 0;
