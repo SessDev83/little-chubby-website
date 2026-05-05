@@ -460,6 +460,26 @@ function trackedSiteUrl(url, source, post, lang, postType) {
   });
 }
 
+function isMetaAuthError(error = "") {
+  return error.includes("Session has expired") ||
+    (error.includes("OAuthException") && error.includes("190"));
+}
+
+function isMetaMediaError(error = "") {
+  return error.includes("media could not be fetched") ||
+    error.includes("Media download has failed") ||
+    error.includes("2207052") ||
+    error.includes("media type");
+}
+
+function isMetaTransientError(error = "") {
+  return error.includes("Facebook post failed (500)") ||
+    error.includes("Facebook fallback post failed after photo error") ||
+    error.includes("Please reduce the amount of data") ||
+    /"code"\s*:\s*(1|2|4|17|32|613)/.test(error) ||
+    /\((429|500|502|503|504)\)/.test(error);
+}
+
 // ─── Publish to platforms ───────────────────────────────────────────────────
 
 async function publishPost(post, platform, imageData, data, lang, postType) {
@@ -965,26 +985,15 @@ async function main() {
     }
 
     // Fail CI for auth errors (token expired / permission revoked) — these need owner action.
-    // Media-download errors from Instagram are intermittent CDN issues; treat them as skips
-    // so a transient image-hosting failure does not fail the whole run.
+    // Transient Meta delivery errors should not wake the owner if another platform already posted.
     const metaFailures = results.filter(
       (r) => !r.success && (r.platform === "facebook" || r.platform === "instagram")
     );
     if (metaFailures.length > 0) {
-      let hasAuthError = false;
+      let hasBlockingMetaError = false;
       for (const f of metaFailures) {
-        const isExpired =
-          f.error &&
-          (f.error.includes("Session has expired") ||
-            (f.error.includes("OAuthException") && f.error.includes("190")));
-        const isMediaError =
-          f.error &&
-          (f.error.includes("media could not be fetched") ||
-            f.error.includes("Media download has failed") ||
-            f.error.includes("2207052") ||
-            f.error.includes("media type"));
-        if (isExpired) {
-          hasAuthError = true;
+        if (isMetaAuthError(f.error)) {
+          hasBlockingMetaError = true;
           console.error(`\n🔑 ACTION REQUIRED — META TOKEN EXPIRED`);
           console.error(`   The META_PAGE_ACCESS_TOKEN in your GitHub repository secrets has expired.`);
           console.error(`   To fix:`);
@@ -998,14 +1007,20 @@ async function main() {
           console.error(`         &fb_exchange_token=SHORT_LIVED_TOKEN`);
           console.error(`   4. Update the META_PAGE_ACCESS_TOKEN secret in:`);
           console.error(`      https://github.com/SessDev83/little-chubby-website/settings/secrets/actions\n`);
-        } else if (isMediaError) {
+        } else if (isMetaMediaError(f.error)) {
           console.warn(`  ⚠️  ${f.platform}: image URI rejected by platform (intermittent CDN issue) — skipping platform for this run.`);
+        } else if (isMetaTransientError(f.error) && anySuccess) {
+          console.warn(`  ⚠️  ${f.platform}: transient Meta API failure after another platform posted — skipping platform for this run.`);
         } else {
-          hasAuthError = true;
+          hasBlockingMetaError = true;
           console.error(`  ❌ ${f.platform}: unexpected failure — ${f.error}`);
         }
       }
-      if (hasAuthError) process.exit(1);
+      if (!anySuccess && metaFailures.length > 0) {
+        hasBlockingMetaError = true;
+        console.error("  ❌ No Meta/social platform published successfully; failing workflow.");
+      }
+      if (hasBlockingMetaError) process.exit(1);
     }
   }
 }

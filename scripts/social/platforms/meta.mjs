@@ -18,6 +18,25 @@
 
 const GRAPH_API = "https://graph.facebook.com/v21.0";
 
+function isMetaDataSizeError(status, body) {
+  return status >= 500 && /reduce the amount of data|"code"\s*:\s*1/i.test(body || "");
+}
+
+async function postForm(endpoint, params, failureLabel) {
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString(),
+  });
+
+  const body = await res.text();
+  if (!res.ok) {
+    throw new Error(`${failureLabel} (${res.status}): ${body}`);
+  }
+
+  return body ? JSON.parse(body) : {};
+}
+
 /**
  * Post a text (+ optional link/image) to your Facebook Page.
  * @param {string} message - Post text.
@@ -52,18 +71,22 @@ export async function postToFacebook(message, options = {}) {
     }
   }
 
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Facebook post failed (${res.status}): ${body}`);
+  try {
+    return await postForm(endpoint, params, "Facebook post failed");
+  } catch (err) {
+    if (options.imageUrl) {
+      const match = String(err.message || "").match(/Facebook post failed \((\d+)\): ([\s\S]*)$/);
+      const status = Number(match?.[1] || 0);
+      const body = match?.[2] || "";
+      if (isMetaDataSizeError(status, body)) {
+        console.warn("  ⚠️  Facebook photo upload hit a transient Meta data-size error; retrying as feed post without image.");
+        const fallbackParams = new URLSearchParams({ access_token: token, message });
+        if (options.link) fallbackParams.set("link", options.link);
+        return postForm(`${GRAPH_API}/${encodeURIComponent(pageId)}/feed`, fallbackParams, `Facebook fallback post failed after photo error (${status})`);
+      }
+    }
+    throw err;
   }
-
-  return res.json();
 }
 
 /**
@@ -177,18 +200,7 @@ export async function postToFacebookGroup(groupId, message, options = {}) {
     }
   }
 
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString(),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Facebook Group post failed (${res.status}): ${body}`);
-  }
-
-  return res.json();
+  return postForm(endpoint, params, "Facebook Group post failed");
 }
 
 // ─── Token diagnostics ── (original section) ───────────────────────────────
