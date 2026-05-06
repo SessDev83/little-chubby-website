@@ -139,7 +139,7 @@ function checkEnvVars() {
 async function checkToken() {
   printSection("2️⃣  META ACCESS TOKEN STATUS");
 
-  const status = await checkTokenStatus();
+  const status = await Promise.resolve(checkTokenStatus());
 
   if (status.valid) {
     console.log(`  ✅ Token is VALID`);
@@ -190,7 +190,7 @@ async function checkFacebookPosts(opts) {
 
   let posts;
   try {
-    const result = await getPagePosts(opts.limit);
+    const result = await Promise.resolve(getPagePosts(opts.limit));
     posts = result.data || [];
   } catch (err) {
     console.log(`  ❌ Could not fetch posts: ${err.message}`);
@@ -246,7 +246,7 @@ async function checkInstagramPosts(opts) {
 
   let media;
   try {
-    const result = await getIGMedia(opts.limit);
+    const result = await Promise.resolve(getIGMedia(opts.limit));
     media = result.data || [];
   } catch (err) {
     console.log(`  ❌ Could not fetch Instagram media: ${err.message}`);

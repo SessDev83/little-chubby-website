@@ -123,7 +123,7 @@ async function main() {
 
         // Re-post with corrected text using the postToBluesky function
         const { postToBluesky } = await import("./platforms/bluesky.mjs");
-        const result = await postToBluesky(fixed);
+        const result = await Promise.resolve(postToBluesky(fixed));
         console.log("New post created!", result.uri);
       } else {
         console.log("Run with --fix to delete and re-post.\n");

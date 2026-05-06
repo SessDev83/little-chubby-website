@@ -879,7 +879,7 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
           body: fd
         });
       })
-      .then(function(res) { return res.json().then(function(j){ return { ok: res.ok, body: j }; }); })
+      .then(async function(res) { return { ok: res.ok, body: await res.json() }; })
       .then(function(r) {
         if (!r.ok || !r.body.ok) throw new Error(r.body.error || "upload failed");
         preview.src = r.body.url;
@@ -903,7 +903,7 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         method: "DELETE",
         credentials: "same-origin"
       })
-      .then(function(res) { return res.json().then(function(j){ return { ok: res.ok, body: j }; }); })
+      .then(async function(res) { return { ok: res.ok, body: await res.json() }; })
       .then(function(r) {
         if (!r.ok || !r.body.ok) throw new Error(r.body.error || "remove failed");
         preview.src = "https://ui-avatars.com/api/?name=U&background=4a90d9&color=fff&size=128";
@@ -1996,7 +1996,7 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ badge_type: badge || null }),
       })
-        .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+        .then(async function(r){ return { ok: r.ok, j: await r.json() }; })
         .then(function(res){
           busy = false;
           if (!res.ok || !res.j || res.j.success === false) {

@@ -89,7 +89,7 @@ async function main() {
   console.log("🔍 Fetching latest Facebook posts...\n");
 
   try {
-    const result = await getPagePosts(3);
+    const result = await Promise.resolve(getPagePosts(3));
     if (!result.data || result.data.length === 0) {
       console.log("No posts found.");
       return;
@@ -128,7 +128,7 @@ async function main() {
   // Also check Instagram
   console.log("\n\n📸 Checking Instagram...\n");
   try {
-    const igResult = await getIGMedia(3);
+    const igResult = await Promise.resolve(getIGMedia(3));
     if (!igResult.data || igResult.data.length === 0) {
       console.log("No Instagram posts found.");
     } else {

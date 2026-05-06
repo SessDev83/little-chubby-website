@@ -175,8 +175,9 @@ function initLeadMagnet() {
         source: "popup",
         lang_pref: lang,
       })
-    }).then(function(res) {
-      return res.json().then(function(data) { return { res: res, data: data || {} }; });
+    }).then(async function(res) {
+      var data = await res.json();
+      return { res: res, data: data || {} };
     }).then(function(payload) {
       var res = payload.res;
       var data = payload.data;

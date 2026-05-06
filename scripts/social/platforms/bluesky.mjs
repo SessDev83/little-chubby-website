@@ -132,11 +132,11 @@ export async function postToBluesky(text, options = {}) {
 
   // Attach image embed if provided (overrides link card)
   if (options.imageBuffer) {
-    const blob = await uploadImage(
+    const blob = await Promise.resolve(uploadImage(
       accessJwt,
       options.imageBuffer,
       options.imageMimeType || "image/png"
-    );
+    ));
     record.embed = {
       $type: "app.bsky.embed.images",
       images: [{ alt: options.imageAlt || "", image: blob }],
@@ -198,7 +198,7 @@ export async function getNotifications() {
     process.env.BLUESKY_PASSWORD
   );
 
-  const data = await listNotifications(session.accessJwt);
+  const data = await Promise.resolve(listNotifications(session.accessJwt));
 
   // Filter to replies and mentions only
   const relevant = (data.notifications || []).filter(

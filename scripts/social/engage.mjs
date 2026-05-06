@@ -120,7 +120,7 @@ async function monitorBluesky(state, dryRun) {
   }
 
   console.log("  🦋 Checking Bluesky notifications...");
-  const { notifications, did } = await getNotifications();
+  const { notifications, did } = await Promise.resolve(getNotifications());
 
   // Filter out already-replied and own posts
   const pending = notifications.filter(
@@ -156,7 +156,7 @@ async function monitorBluesky(state, dryRun) {
         // Determine root and parent for the reply
         const root = notif.record?.reply?.root || { uri: notif.uri, cid: notif.cid };
         const parent = { uri: notif.uri, cid: notif.cid };
-        await replyToPost(reply, parent, root);
+        await Promise.resolve(replyToPost(reply, parent, root));
         state.repliedComments.push(notif.uri);
         console.log("        ✅ Replied!");
       } else {
@@ -182,7 +182,7 @@ async function monitorFacebook(state, dryRun) {
   console.log("  📘 Checking Facebook comments...");
   const pageId = process.env.META_PAGE_ID;
 
-  const { data: posts } = await getPagePosts(10);
+  const { data: posts } = await Promise.resolve(getPagePosts(10));
   if (!posts?.length) {
     console.log("     No recent posts found.");
     return 0;
@@ -193,7 +193,7 @@ async function monitorFacebook(state, dryRun) {
   for (const post of posts) {
     let commentsData;
     try {
-      commentsData = await getPostComments(post.id, 25);
+      commentsData = await Promise.resolve(getPostComments(post.id, 25));
     } catch (err) {
       console.log(`     ⚠️  Could not fetch comments for post ${post.id}: ${err.message}`);
       continue;
@@ -215,7 +215,7 @@ async function monitorFacebook(state, dryRun) {
         console.log(`        → "${reply}"`);
 
         if (!dryRun) {
-          await replyToFBComment(comment.id, reply);
+          await Promise.resolve(replyToFBComment(comment.id, reply));
           state.repliedComments.push(comment.id);
           console.log("        ✅ Replied!");
         } else {
@@ -242,7 +242,7 @@ async function monitorInstagram(state, dryRun) {
 
   console.log("  📸 Checking Instagram comments...");
 
-  const { data: media } = await getIGMedia(10);
+  const { data: media } = await Promise.resolve(getIGMedia(10));
   if (!media?.length) {
     console.log("     No recent media found.");
     return 0;
@@ -253,7 +253,7 @@ async function monitorInstagram(state, dryRun) {
   for (const item of media) {
     let commentsData;
     try {
-      commentsData = await getIGComments(item.id, 25);
+      commentsData = await Promise.resolve(getIGComments(item.id, 25));
     } catch (err) {
       console.log(`     ⚠️  Could not fetch comments for media ${item.id}: ${err.message}`);
       continue;
@@ -275,7 +275,7 @@ async function monitorInstagram(state, dryRun) {
         console.log(`        → "${reply}"`);
 
         if (!dryRun) {
-          await replyToIGComment(comment.id, reply);
+          await Promise.resolve(replyToIGComment(comment.id, reply));
           state.repliedComments.push(comment.id);
           console.log("        ✅ Replied!");
         } else {
@@ -388,7 +388,7 @@ async function runOutreach(opts) {
     console.log(`  🔎 Searching: "${query}"...`);
     let results;
     try {
-      results = await searchPosts(query, 15);
+      results = await Promise.resolve(searchPosts(query, 15));
     } catch (err) {
       console.log(`     ⚠️  Search failed: ${err.message}`);
       continue;
@@ -445,10 +445,10 @@ async function runOutreach(opts) {
       if (!opts.dryRun) {
         try {
           // Like the post
-          await likePost({ uri: post.uri, cid: post.cid });
+          await Promise.resolve(likePost({ uri: post.uri, cid: post.cid }));
           // Reply to the post
           const root = { uri: post.uri, cid: post.cid };
-          await replyToPost(comment, root, root);
+          await Promise.resolve(replyToPost(comment, root, root));
 
           state.engagedPosts.push(post.uri);
           if (post.author?.did) {

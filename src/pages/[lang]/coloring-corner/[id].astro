@@ -231,7 +231,7 @@ const shareUrls = {
         credentials: "same-origin",
         body: JSON.stringify({ artwork_id: artworkId, image_path: imagePath })
       })
-      .then(function(res) { return res.json().then(function(d) { return { status: res.status, data: d }; }); })
+      .then(async function(res) { return { status: res.status, data: await res.json() }; })
       .then(function(result) {
         if (result.status === 403 && isCreditBlock(result.data)) {
           trackDownloadEvent("download_blocked", artworkId, imagePath, { reason: "insufficient_credits" });

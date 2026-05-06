@@ -105,52 +105,52 @@ const text = ui[lang];
           source: "newsletter-page",
           lang_pref: currentLang,
         })
-      }).then(function(res) {
-        return res.json().then(function(data) {
-          if (submitBtn) { submitBtn.classList.remove('is-loading'); submitBtn.disabled = false; }
-          var showThankYou = false;
-          if (data.existing && data.confirmed) {
-            newsletterStatus.textContent = alreadyConfirmedMsg;
-            newsletterStatus.className = "status-msg status-info";
-            showThankYou = true;
-          } else if (data.existing) {
-            newsletterStatus.textContent = alreadyMsg;
-            newsletterStatus.className = "status-msg status-success";
-            showThankYou = true;
-          } else if (data.ok) {
-            newsletterStatus.textContent = successMsg;
-            newsletterStatus.className = "status-msg status-success";
-            newsletterForm.reset();
-            showThankYou = true;
-          } else {
-            newsletterStatus.textContent = errorMsg;
-          }
-          // P5-T1: track outcome
-          if (typeof window.lcpTrack === "function") {
-            if (showThankYou) {
-              window.lcpTrack("newsletter_inline_submit_success", {
-                existing: !!data.existing,
-                confirmed: !!data.confirmed,
-              });
-            } else {
-              window.lcpTrack("newsletter_inline_submit_error", {
-                status: (typeof res !== "undefined" && res) ? res.status : 0,
-              });
-            }
-          }
+      }).then(async function(res) {
+        var data = await res.json();
+        if (submitBtn) { submitBtn.classList.remove('is-loading'); submitBtn.disabled = false; }
+
+        var showThankYou = false;
+        if (data.existing && data.confirmed) {
+          newsletterStatus.textContent = alreadyConfirmedMsg;
+          newsletterStatus.className = "status-msg status-info";
+          showThankYou = true;
+        } else if (data.existing) {
+          newsletterStatus.textContent = alreadyMsg;
+          newsletterStatus.className = "status-msg status-success";
+          showThankYou = true;
+        } else if (data.ok) {
+          newsletterStatus.textContent = successMsg;
+          newsletterStatus.className = "status-msg status-success";
+          newsletterForm.reset();
+          showThankYou = true;
+        } else {
+          newsletterStatus.textContent = errorMsg;
+        }
+        // P5-T1: track outcome
+        if (typeof window.lcpTrack === "function") {
           if (showThankYou) {
-            // Show thank-you heading and hide form fields
-            var formGrid = newsletterForm.querySelector('.form-grid');
-            if (formGrid) {
-              var thankEl = document.createElement('div');
-              thankEl.className = 'newsletter-thankyou';
-              thankEl.innerHTML = '<p style="font-size:1.25rem;font-weight:700;color:#6b4c3b;margin:0 0 0.5rem;">' + thankYouMsg + '</p>';
-              formGrid.innerHTML = '';
-              formGrid.appendChild(thankEl);
-              formGrid.appendChild(newsletterStatus);
-            }
+            window.lcpTrack("newsletter_inline_submit_success", {
+              existing: !!data.existing,
+              confirmed: !!data.confirmed,
+            });
+          } else {
+            window.lcpTrack("newsletter_inline_submit_error", {
+              status: (typeof res !== "undefined" && res) ? res.status : 0,
+            });
           }
-        });
+        }
+        if (showThankYou) {
+          // Show thank-you heading and hide form fields
+          var formGrid = newsletterForm.querySelector('.form-grid');
+          if (formGrid) {
+            var thankEl = document.createElement('div');
+            thankEl.className = 'newsletter-thankyou';
+            thankEl.innerHTML = '<p style="font-size:1.25rem;font-weight:700;color:#6b4c3b;margin:0 0 0.5rem;">' + thankYouMsg + '</p>';
+            formGrid.innerHTML = '';
+            formGrid.appendChild(thankEl);
+            formGrid.appendChild(newsletterStatus);
+          }
+        }
       }).catch(function() {
         if (submitBtn) { submitBtn.classList.remove('is-loading'); submitBtn.disabled = false; }
         newsletterStatus.textContent = errorMsg;

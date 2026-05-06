@@ -537,7 +537,7 @@ async function publishPost(post, platform, imageData, data, lang, postType) {
             bskyOpts.imageAlt = post.concept || "Little Chubby Press";
           }
 
-          const result = await postToBluesky(bskyText, bskyOpts);
+          const result = await Promise.resolve(postToBluesky(bskyText, bskyOpts));
           results.push({ platform: "bluesky", success: true, result });
           console.log(`  ✅ Bluesky: posted successfully (${result.uri})`);
           break;
@@ -558,7 +558,7 @@ async function publishPost(post, platform, imageData, data, lang, postType) {
           }
           if (imageData?.url) fbOpts.imageUrl = imageData.url;
 
-          const result = await postToFacebook(fullText, fbOpts);
+          const result = await Promise.resolve(postToFacebook(fullText, fbOpts));
           results.push({ platform: "facebook", success: true, result });
           console.log(`  ✅ Facebook: posted successfully (${result.id})`);
           break;
@@ -576,7 +576,7 @@ async function publishPost(post, platform, imageData, data, lang, postType) {
             break;
           }
 
-          const result = await postToInstagram(fullText, imageData.url);
+          const result = await Promise.resolve(postToInstagram(fullText, imageData.url));
           results.push({ platform: "instagram", success: true, result });
           console.log(`  ✅ Instagram: posted successfully (${result.id})`);
           break;
@@ -700,7 +700,7 @@ async function publishPost(post, platform, imageData, data, lang, postType) {
 
           // 4. Publish
           try {
-            const pin = await createPin({
+            const pin = await Promise.resolve(createPin({
               boardId: board.id,
               title: pinTitle.slice(0, 100),
               description: pinDescription.slice(0, 500),
@@ -708,7 +708,7 @@ async function publishPost(post, platform, imageData, data, lang, postType) {
               altText: post.concept || pinTitle,
               imageBuffer: pinImage.buffer,
               imageMime: pinImage.mimeType,
-            });
+            }));
             results.push({ platform: "pinterest", success: true, result: pin });
             console.log(`  ✅ Pinterest: posted to "${board.name}" (${pin.url})`);
           } catch (err) {
@@ -958,7 +958,7 @@ async function main() {
             const fbOpts = {};
             if (data?.amazonUrl) fbOpts.link = data.amazonUrl;
             if (imageData?.url) fbOpts.imageUrl = imageData.url;
-            const result = await postToFacebookGroup(groupId, fullText, fbOpts);
+            const result = await Promise.resolve(postToFacebookGroup(groupId, fullText, fbOpts));
             results.push({ platform: `fb-group-${groupId}`, success: true, result });
             console.log(`  ✅ Group ${groupId}: posted successfully (${result.id})`);
           } catch (err) {
