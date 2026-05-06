@@ -68,8 +68,6 @@ const artworkCategories = [
           {lang === "es" ? "Cargando imagenes..." : "Loading images..."}
         </p>
       </div>
-
-      <!-- Empty state -->
       <p id="cc-empty" class="blog-empty-msg" style="display:none;">
         {lang === "es" ? "Aun no hay imagenes en esta categoria. ¡Pronto anadiremos mas!" : "No images in this category yet. More coming soon!"}
       </p>
@@ -135,6 +133,20 @@ function initColoringCorner() {
     } catch (e) {
       return url;
     }
+  }
+
+  function trackDownloadEvent(eventName, artworkId, imagePath, extraProps) {
+    try {
+      if (typeof window.lcpTrack !== "function") return;
+      var props = { artwork_id: artworkId || "", content_id: imagePath || "" };
+      extraProps = extraProps || {};
+      for (var key in extraProps) props[key] = extraProps[key];
+      window.lcpTrack(eventName, props);
+    } catch (e) {}
+  }
+
+  function isCreditBlock(data) {
+    return data && (data.error === "insufficient_credits" || data.error === "no_credits");
   }
 
   // Show login CTA if not logged in
@@ -256,7 +268,11 @@ function initColoringCorner() {
     // Download button handlers
     grid.querySelectorAll(".artwork-download-btn").forEach(function(btn) {
       btn.addEventListener("click", function() {
+        var artworkId = btn.getAttribute("data-artwork-id");
+        var imagePath = btn.getAttribute("data-image-path");
         if (!isLoggedIn) {
+          trackDownloadEvent("download_attempt", artworkId, imagePath, { gated: "login" });
+          trackDownloadEvent("download_blocked", artworkId, imagePath, { reason: "login_required" });
           if (ctaLogin) { ctaLogin.style.display = ""; ctaLogin.scrollIntoView({ behavior: "smooth" }); }
           return;
         }
@@ -284,13 +300,20 @@ function initColoringCorner() {
   }
 
   function handleDownload(btn) {
-    if (!userId) return;
     var artworkId = btn.getAttribute("data-artwork-id");
     var imagePath = btn.getAttribute("data-image-path");
+
+    if (!userId) {
+      trackDownloadEvent("download_attempt", artworkId, imagePath, { gated: "session_not_ready" });
+      trackDownloadEvent("download_blocked", artworkId, imagePath, { reason: "session_not_ready" });
+      if (ctaLogin) { ctaLogin.style.display = ""; ctaLogin.scrollIntoView({ behavior: "smooth" }); }
+      return;
+    }
 
     btn.disabled = true;
     var origHTML = btn.innerHTML;
     btn.textContent = "...";
+    trackDownloadEvent("download_attempt", artworkId, imagePath);
 
     // Server-side credit check + download via API
     fetch("/api/download-artwork/", {
@@ -301,16 +324,19 @@ function initColoringCorner() {
     })
     .then(function(res) { return res.json().then(function(d) { return { status: res.status, data: d }; }); })
     .then(function(result) {
-      if (result.status === 403 && result.data.error === "no_credits") {
+      if (result.status === 403 && isCreditBlock(result.data)) {
+        trackDownloadEvent("download_blocked", artworkId, imagePath, { reason: "insufficient_credits" });
         btn.innerHTML = lang === "es" ? "🥜 Sin Peanuts" : "🥜 No Peanuts";
         setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 2500);
         return;
       }
       if (result.status !== 200 || !result.data.ok) {
+        trackDownloadEvent("download_error", artworkId, imagePath, { status: result.status, reason: result.data && result.data.error ? result.data.error : "api_error" });
         btn.textContent = "Error";
         setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 2000);
         return;
       }
+      trackDownloadEvent("download_success", artworkId, imagePath, { client_confirmed: true });
 
       // Download as blob to force actual file save (signed URLs are cross-origin)
       fetch(result.data.signedUrl)
@@ -334,6 +360,7 @@ function initColoringCorner() {
       setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 2000);
     })
     .catch(function() {
+      trackDownloadEvent("download_error", artworkId, imagePath, { network: true });
       btn.textContent = "Error";
       setTimeout(function() { btn.innerHTML = origHTML; btn.disabled = false; }, 2000);
     });

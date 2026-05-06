@@ -33,6 +33,8 @@
     "ratings:preview": "node scripts/sync-amazon-ratings.mjs --dry-run",
     "funnel:report": "node --env-file=.env scripts/funnel-report.mjs",
     "funnel:report:30d": "node --env-file=.env scripts/funnel-report.mjs --days 30",
+    "behavior:report": "node --env-file=.env scripts/behavior-report.mjs",
+    "behavior:report:30d": "node --env-file=.env scripts/behavior-report.mjs --days 30",
     "growth:assets": "node scripts/growth/linkable-assets-report.mjs",
     "blog:learn": "node scripts/agents/blog-seo-intelligence.mjs --days 30",
     "blog:learn:dry": "node scripts/agents/blog-seo-intelligence.mjs --days 30 --dry-run --offline",

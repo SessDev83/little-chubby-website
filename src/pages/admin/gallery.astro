@@ -4,6 +4,7 @@ export const prerender = false;
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
 import { validateOrigin } from "../../lib/csrf";
+import { normalizeAnalyticsEvents } from "../../lib/analytics-event-contract.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -140,6 +141,12 @@ const { data: allDownloads } = await sc
   .select("artwork_id, user_id")
   .limit(50000);
 
+const { data: downloadEventRows } = await (sc as any)
+  .from("conversion_events")
+  .select("event_name,path,props,created_at")
+  .in("event_name", ["download_attempt", "download_completed", "download_success", "download_blocked", "download_error"])
+  .limit(50000);
+
 // Count downloads per artwork + unique users per artwork
 const dlMap: Record<string, number> = {};
 const uniqueUsersMap: Record<string, Set<string>> = {};
@@ -149,12 +156,53 @@ for (const d of allDownloads ?? []) {
   uniqueUsersMap[d.artwork_id].add(d.user_id);
 }
 
+type DownloadSignalStats = {
+  attempts: number;
+  completedEvents: number;
+  blockedLogin: number;
+  blockedCredits: number;
+  blockedOther: number;
+  errors: number;
+};
+
+function blankDownloadSignalStats(): DownloadSignalStats {
+  return { attempts: 0, completedEvents: 0, blockedLogin: 0, blockedCredits: 0, blockedOther: 0, errors: 0 };
+}
+
+function ensureDownloadSignalStats(map: Record<string, DownloadSignalStats>, artworkId: string): DownloadSignalStats {
+  if (!map[artworkId]) map[artworkId] = blankDownloadSignalStats();
+  return map[artworkId];
+}
+
+function signalReason(event: any) {
+  return String(event?.props?.reason || event?.props?.gated || "");
+}
+
+const signalMap: Record<string, DownloadSignalStats> = {};
+for (const event of normalizeAnalyticsEvents(downloadEventRows ?? []) as any[]) {
+  const artworkId = typeof event?.props?.artwork_id === "string" ? event.props.artwork_id : "";
+  if (!artworkId) continue;
+  const stats = ensureDownloadSignalStats(signalMap, artworkId);
+  if (event.event_name === "download_attempt") stats.attempts += 1;
+  else if (event.event_name === "download_completed") stats.completedEvents += 1;
+  else if (event.event_name === "download_error") stats.errors += 1;
+  else if (event.event_name === "download_blocked") {
+    const reason = signalReason(event);
+    if (reason === "login_required") stats.blockedLogin += 1;
+    else if (reason === "insufficient_credits" || reason === "no_credits") stats.blockedCredits += 1;
+    else stats.blockedOther += 1;
+  }
+}
+
 const items = artworks ?? [];
 const categories = [...new Set(items.map(a => a.category))].sort();
 
 // Revenue per artwork = downloads × peanut_cost
 const totalRevenue = items.reduce((s, a) => s + (dlMap[a.id] || 0) * (a.peanut_cost ?? 0), 0);
 const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
+const totalTrackedAttempts = Object.values(signalMap).reduce((s, c) => s + c.attempts, 0);
+const totalTrackedBlocked = Object.values(signalMap).reduce((s, c) => s + c.blockedLogin + c.blockedCredits + c.blockedOther, 0);
+const totalTrackedErrors = Object.values(signalMap).reduce((s, c) => s + c.errors, 0);
 ---
 
 <AdminLayout title="Gallery" current="gallery">
@@ -179,7 +227,19 @@ const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
     </div>
     <div class="stat-card">
       <div class="stat-value">{totalDownloads.toLocaleString()}</div>
-      <div class="stat-label">Total Downloads</div>
+      <div class="stat-label">Real Downloads</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{totalTrackedAttempts.toLocaleString()}</div>
+      <div class="stat-label">Tracked Attempts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{totalTrackedBlocked.toLocaleString()}</div>
+      <div class="stat-label">Blocked Attempts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{totalTrackedErrors.toLocaleString()}</div>
+      <div class="stat-label">Download Errors</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">{totalRevenue.toLocaleString()}</div>
@@ -224,8 +284,11 @@ const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
           <th>Title</th>
           <th>Category</th>
           <th>Cost</th>
-          <th>Downloads</th>
+          <th>Real Downloads</th>
           <th>Unique Users</th>
+          <th>Attempts</th>
+          <th>Blocked</th>
+          <th>Errors</th>
           <th>Revenue</th>
           <th>Premium</th>
           <th>Active</th>
@@ -234,11 +297,13 @@ const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
       </thead>
       <tbody>
         {items.length === 0 && (
-          <tr><td colspan="9"><p class="admin-empty-state">No artworks in gallery yet.</p></td></tr>
+          <tr><td colspan="12"><p class="admin-empty-state">No artworks in gallery yet.</p></td></tr>
         )}
         {items.map(a => {
           const dl = dlMap[a.id] || 0;
           const unique = uniqueUsersMap[a.id]?.size || 0;
+          const signals = signalMap[a.id] || blankDownloadSignalStats();
+          const blocked = signals.blockedLogin + signals.blockedCredits + signals.blockedOther;
           const rev = dl * (a.peanut_cost ?? 0);
           return (
             <tr class={a.active ? "" : "inactive-row"}>
@@ -257,6 +322,9 @@ const totalDownloads = Object.values(dlMap).reduce((s, c) => s + c, 0);
               </td>
               <td>{dl}</td>
               <td>{unique}</td>
+              <td title={`${signals.completedEvents} completed events`}>{signals.attempts}</td>
+              <td title={`${signals.blockedLogin} login, ${signals.blockedCredits} credits, ${signals.blockedOther} other`}>{blocked}</td>
+              <td>{signals.errors}</td>
               <td>{rev > 0 ? `🥜 ${rev}` : "—"}</td>
               <td>{a.is_premium ? "⭐" : "—"}</td>
               <td>

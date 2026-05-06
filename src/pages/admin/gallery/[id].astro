@@ -3,6 +3,7 @@ export const prerender = false;
 
 import AdminLayout from "../../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../../lib/supabase";
+import { normalizeAnalyticsEvents } from "../../../lib/analytics-event-contract.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -32,6 +33,35 @@ const { data: downloads } = await sc
 const allDl = downloads ?? [];
 const uniqueUsers = new Set(allDl.map(d => d.user_id));
 const revenue = allDl.length * (artwork.peanut_cost ?? 0);
+
+const { data: downloadEventRows } = await (sc as any)
+  .from("conversion_events")
+  .select("event_name,path,props,lang,created_at")
+  .in("event_name", ["download_attempt", "download_completed", "download_success", "download_blocked", "download_error"])
+  .order("created_at", { ascending: false })
+  .limit(10000);
+
+const downloadSignals = (normalizeAnalyticsEvents(downloadEventRows ?? []) as any[])
+  .filter((event) => event?.props?.artwork_id === artworkId);
+
+function reasonFor(event: any) {
+  return String(event?.props?.reason || event?.props?.gated || "");
+}
+
+const signalStats = downloadSignals.reduce((stats: any, event: any) => {
+  if (event.event_name === "download_attempt") stats.attempts += 1;
+  else if (event.event_name === "download_completed") stats.completedEvents += 1;
+  else if (event.event_name === "download_error") stats.errors += 1;
+  else if (event.event_name === "download_blocked") {
+    const reason = reasonFor(event);
+    if (reason === "login_required") stats.blockedLogin += 1;
+    else if (reason === "insufficient_credits" || reason === "no_credits") stats.blockedCredits += 1;
+    else stats.blockedOther += 1;
+  }
+  return stats;
+}, { attempts: 0, completedEvents: 0, blockedLogin: 0, blockedCredits: 0, blockedOther: 0, errors: 0 });
+
+const recentSignals = downloadSignals.slice(0, 40);
 
 // Get user display names for recent downloads
 const recentDl = allDl.slice(0, 50);
@@ -70,7 +100,7 @@ const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("en", { mon
   <div class="stat-grid">
     <div class="stat-card">
       <div class="stat-value">{allDl.length}</div>
-      <div class="stat-label">Total Downloads</div>
+      <div class="stat-label">Real Downloads</div>
     </div>
     <div class="stat-card">
       <div class="stat-value">{uniqueUsers.size}</div>
@@ -84,7 +114,32 @@ const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("en", { mon
       <div class="stat-value">🥜 {revenue.toLocaleString()}</div>
       <div class="stat-label">Revenue (Peanuts)</div>
     </div>
+    <div class="stat-card">
+      <div class="stat-value">{signalStats.attempts.toLocaleString()}</div>
+      <div class="stat-label">Tracked Attempts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{(signalStats.blockedLogin + signalStats.blockedCredits + signalStats.blockedOther).toLocaleString()}</div>
+      <div class="stat-label">Blocked Attempts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{signalStats.errors.toLocaleString()}</div>
+      <div class="stat-label">Download Errors</div>
+    </div>
   </div>
+
+  <h2>Download Funnel Signals</h2>
+  <table class="admin-table">
+    <thead><tr><th>Signal</th><th>Count</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Attempts</td><td>{signalStats.attempts}</td><td>Visitors who clicked download.</td></tr>
+      <tr><td>Completed events</td><td>{signalStats.completedEvents}</td><td>Client/server analytics confirmations; real downloads above remain the source of truth.</td></tr>
+      <tr><td>Blocked by login</td><td>{signalStats.blockedLogin}</td><td>Anonymous visitors asked to log in or register.</td></tr>
+      <tr><td>Blocked by credits</td><td>{signalStats.blockedCredits}</td><td>Logged-in users without enough Peanuts.</td></tr>
+      <tr><td>Other blocked</td><td>{signalStats.blockedOther}</td><td>Session/rate-limit/other non-download outcomes.</td></tr>
+      <tr><td>Errors</td><td>{signalStats.errors}</td><td>Network/API failures after a download click.</td></tr>
+    </tbody>
+  </table>
 
   {/* ── Daily Downloads (last 30 days) ── */}
   {Object.keys(dailyCounts).length > 0 && (
@@ -122,6 +177,25 @@ const fmt = (d: string | null) => d ? new Date(d).toLocaleDateString("en", { mon
         <tr>
           <td>{fmt(d.downloaded_at)}</td>
           <td><a href={`/admin/users/${d.user_id}/`}>{profileMap[d.user_id] || d.user_id.slice(0, 8)}</a></td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2>Recent Download Signals ({recentSignals.length} shown)</h2>
+  <table class="admin-table">
+    <thead><tr><th>Date</th><th>Event</th><th>Reason</th><th>Lang</th><th>Path</th></tr></thead>
+    <tbody>
+      {recentSignals.length === 0 && (
+        <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">No download signals yet.</td></tr>
+      )}
+      {recentSignals.map((event: any) => (
+        <tr>
+          <td>{fmt(event.created_at)}</td>
+          <td><code>{event.event_name}</code></td>
+          <td>{reasonFor(event) || "—"}</td>
+          <td>{event.lang || "—"}</td>
+          <td>{event.path || "—"}</td>
         </tr>
       ))}
     </tbody>

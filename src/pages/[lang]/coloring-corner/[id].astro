@@ -170,45 +170,60 @@ const shareUrls = {
   var userBalance = 0;
   var sharedPlatform = "";
 
+  function trackDownloadEvent(eventName, artworkId, imagePath, extraProps) {
+    try {
+      if (typeof window.lcpTrack !== "function") return;
+      var props = { artwork_id: artworkId || "", content_id: imagePath || "" };
+      extraProps = extraProps || {};
+      for (var key in extraProps) props[key] = extraProps[key];
+      window.lcpTrack(eventName, props);
+    } catch (e) {}
+  }
+
+  function isCreditBlock(data) {
+    return data && (data.error === "insufficient_credits" || data.error === "no_credits");
+  }
+
   // Show login CTA if not logged in
   if (!isLoggedIn) {
     if (ctaLogin) ctaLogin.style.display = "";
-    // Hide download button and share section for non-logged-in
-    if (downloadBtn) downloadBtn.style.display = "none";
     var shareSection = document.querySelector(".artwork-detail-share");
     if (shareSection) shareSection.style.display = "none";
-    return;
   }
 
   // Fetch user info
-  fetch("/api/me/", { credentials: "same-origin" })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data.user && data.user.id) {
-        userId = data.user.id;
-        userBalance = data.balance || 0;
-        if (pointsBanner && pointsValue) {
-          pointsValue.textContent = userBalance;
-          pointsBanner.style.display = "";
+  if (isLoggedIn) {
+    fetch("/api/me/", { credentials: "same-origin" })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.user && data.user.id) {
+          userId = data.user.id;
+          userBalance = data.balance || 0;
+          if (pointsBanner && pointsValue) {
+            pointsValue.textContent = userBalance;
+            pointsBanner.style.display = "";
+          }
         }
-      }
-    })
-    .catch(function() {});
+      })
+      .catch(function() {});
+  }
 
   // Download handler
   if (downloadBtn) {
     downloadBtn.addEventListener("click", function() {
-      if (!userId) return;
       var artworkId = downloadBtn.getAttribute("data-artwork-id");
       var imagePath = downloadBtn.getAttribute("data-image-path");
+      if (!isLoggedIn || !userId) {
+        var reason = isLoggedIn ? "session_not_ready" : "login_required";
+        trackDownloadEvent("download_attempt", artworkId, imagePath, { gated: reason });
+        trackDownloadEvent("download_blocked", artworkId, imagePath, { reason: reason });
+        if (ctaLogin) { ctaLogin.style.display = ""; ctaLogin.scrollIntoView({ behavior: "smooth" }); }
+        return;
+      }
       downloadBtn.disabled = true;
       var origHTML = downloadBtn.innerHTML;
       downloadBtn.textContent = "...";
-      try {
-        if (typeof window.lcpTrack === "function") {
-          window.lcpTrack("download_attempt", { artwork_id: artworkId, content_id: imagePath || "" });
-        }
-      } catch (e) {}
+      trackDownloadEvent("download_attempt", artworkId, imagePath);
 
       fetch("/api/download-artwork/", {
         method: "POST",
@@ -218,19 +233,19 @@ const shareUrls = {
       })
       .then(function(res) { return res.json().then(function(d) { return { status: res.status, data: d }; }); })
       .then(function(result) {
-        if (result.status === 403 && result.data.error === "no_credits") {
-          try { if (typeof window.lcpTrack === "function") window.lcpTrack("download_blocked", { artwork_id: artworkId, reason: "no_credits" }); } catch (e) {}
+        if (result.status === 403 && isCreditBlock(result.data)) {
+          trackDownloadEvent("download_blocked", artworkId, imagePath, { reason: "insufficient_credits" });
           downloadBtn.innerHTML = lang === "es" ? "🥜 Sin Peanuts" : "🥜 No Peanuts";
           setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2500);
           return;
         }
         if (result.status !== 200 || !result.data.ok) {
-          try { if (typeof window.lcpTrack === "function") window.lcpTrack("download_error", { artwork_id: artworkId, status: result.status }); } catch (e) {}
+          trackDownloadEvent("download_error", artworkId, imagePath, { status: result.status, reason: result.data && result.data.error ? result.data.error : "api_error" });
           downloadBtn.textContent = "Error";
           setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2000);
           return;
         }
-        try { if (typeof window.lcpTrack === "function") window.lcpTrack("download_success", { artwork_id: artworkId, content_id: imagePath || "" }); } catch (e) {}
+        trackDownloadEvent("download_success", artworkId, imagePath, { client_confirmed: true });
         // Blob download
         fetch(result.data.signedUrl)
           .then(function(r) { return r.blob(); })
@@ -250,7 +265,7 @@ const shareUrls = {
         setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2000);
       })
       .catch(function() {
-        try { if (typeof window.lcpTrack === "function") window.lcpTrack("download_error", { artwork_id: artworkId, network: true }); } catch (e) {}
+        trackDownloadEvent("download_error", artworkId, imagePath, { network: true });
         downloadBtn.textContent = "Error";
         setTimeout(function() { downloadBtn.innerHTML = origHTML; downloadBtn.disabled = false; }, 2000);
       });
@@ -276,7 +291,6 @@ const shareUrls = {
       if (!userId) return;
       sharedPlatform = platform;
 
-      // Show claim button after share dialog opens
       if (claimBtn) {
         claimBtn.style.display = "";
         claimBtn.classList.add("artwork-claim-btn--pulse");
