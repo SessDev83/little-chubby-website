@@ -1,7 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import Button from "../../components/Button.astro";
-import BookCard from "../../components/BookCard.astro";
 import PostCard from "../../components/PostCard.astro";
 import NewsletterForm from "../../components/NewsletterForm.astro";
 import HeroCarousel from "../../components/HeroCarousel.astro";
@@ -16,21 +15,13 @@ export function getStaticPaths() {
 
 const lang = getLangFromParam(Astro.params.lang);
 const text = ui[lang];
-const featuredBooks = booksByNewest.slice(0, 3);
+const featuredBooks = booksByNewest.slice(0, 4);
 const heroBooks = booksByNewest.slice(0, 5);
 const allPosts = await getCollection("blog", (entry) => entry.data.lang === lang);
 const featuredPosts = allPosts.sort((a, b) => b.data.date.localeCompare(a.data.date)).slice(0, 2);
 const pathname = `/${lang}/`;
 const heroCtaLabel = lang === "es" ? "Ver en Amazon" : "View on Amazon";
-const bookCardLabels = {
-  buy: text.ctaBuyOnAmazon,
-  leaveReview: text.ctaLeaveReview,
-  noReviews: text.ratingNoReviews,
-  outOfFive: text.ratingOutOfFive,
-  reviewSingular: text.ratingReviewSingular,
-  reviewPlural: text.ratingReviewPlural,
-  copyLink: text.copyLink
-};
+const featuredBookCta = lang === "es" ? "Ver libro" : "See book";
 ---
 
 <BaseLayout lang={lang} title={text.homeMetaTitle} description={text.homeMetaDescription} pathname={pathname}>
@@ -86,10 +77,26 @@ const bookCardLabels = {
     <div class="container">
       <div class="section-head">
         <h2>{text.homeFeaturedBooks}</h2>
-        <p>{siteConfig.longBio[lang]}</p>
       </div>
-      <div class="grid-cards books">
-        {featuredBooks.map((book) => <BookCard book={book} lang={lang} labels={bookCardLabels} />)}
+      <div class="featured-books-grid">
+        {featuredBooks.map((book) => (
+          <article class="featured-book-card" aria-labelledby={`home-book-${book.id}`}>
+            <a href={`/${lang}/books/${book.id}/`} class="featured-book-cover-link" aria-hidden="true" tabindex="-1">
+              <img
+                src={book.coverSrc}
+                alt={book.coverAlt[lang]}
+                loading="lazy"
+                decoding="async"
+                width="600"
+                height="600"
+              />
+            </a>
+            <h3 id={`home-book-${book.id}`}>
+              <a href={`/${lang}/books/${book.id}/`} class="featured-book-title-link">{book.title[lang]}</a>
+            </h3>
+            <a href={`/${lang}/books/${book.id}/`} class="featured-book-link">{featuredBookCta}</a>
+          </article>
+        ))}
       </div>
     </div>
   </section>
@@ -159,6 +166,78 @@ const bookCardLabels = {
   </script>
 
   <style>
+    .featured-books-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.9rem;
+    }
+    .featured-book-card {
+      padding: 0.75rem;
+      border: 1px solid var(--line, #d9cdbd);
+      border-radius: 14px;
+      background: var(--surface, #fffdf7);
+      display: grid;
+      gap: 0.55rem;
+      align-content: start;
+    }
+    .featured-book-cover-link {
+      display: block;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line, #d9cdbd);
+      background: linear-gradient(180deg, #fffefb 0%, #f9f2e8 100%);
+      aspect-ratio: 1 / 1;
+    }
+    .featured-book-cover-link img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      transition: transform 0.2s ease;
+    }
+    .featured-book-cover-link:hover img,
+    .featured-book-cover-link:focus-visible img {
+      transform: scale(1.03);
+    }
+    .featured-book-card h3 {
+      margin: 0;
+      font-size: clamp(1rem, 1.2vw, 1.15rem);
+      line-height: 1.25;
+      color: var(--brand-brown, #6b3f1f);
+      min-height: 2.5em;
+    }
+    .featured-book-title-link {
+      color: inherit;
+      text-decoration: none;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .featured-book-title-link:hover,
+    .featured-book-title-link:focus-visible {
+      color: var(--brand-blue, #1f4f86);
+    }
+    .featured-book-link {
+      font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--brand-blue, #1f4f86);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      justify-self: start;
+    }
+    .featured-book-link:hover,
+    .featured-book-link:focus-visible {
+      color: var(--brand-green, #3d7a32);
+    }
+    @media (min-width: 64rem) {
+      .featured-books-grid {
+        max-width: 48rem;
+        margin-inline: auto;
+      }
+    }
+
     #home-pins-section .home-pins-strip {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
