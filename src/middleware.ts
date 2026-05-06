@@ -6,6 +6,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
   context.locals.user = null;
   context.locals.parentConsentAt = null;
 
+  // IMPORTANT: this guard must stay above any `context.cookies` or request-bound
+  // auth/session logic. During static prerender there is no real incoming
+  // request context, and touching headers/cookies there is an Astro antipattern
+  // that triggers build-time warnings.
+  if (context.isPrerendered) {
+    return next();
+  }
+
   const accessToken = context.cookies.get("sb-access-token")?.value;
   const refreshToken = context.cookies.get("sb-refresh-token")?.value;
 

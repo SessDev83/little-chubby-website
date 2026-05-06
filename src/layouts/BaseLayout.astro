@@ -168,7 +168,7 @@ const eventContractJson = JSON.stringify({
       rel="preload"
       as="style"
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&family=Lora:wght@400&display=swap"
-      onload="this.rel='stylesheet'"
+      onload="this.setAttribute('rel','stylesheet')"
     />
     <noscript>
       <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700&family=Lora:wght@400&display=swap" rel="stylesheet" />
@@ -202,12 +202,13 @@ const eventContractJson = JSON.stringify({
 
     <ClientRouter />
 
-    <script type="application/ld+json" set:html={organizationJsonLd}></script>
-    <script type="application/ld+json" set:html={websiteJsonLd}></script>
-    {breadcrumbJsonLd && <script type="application/ld+json" set:html={breadcrumbJsonLd}></script>}
-    {articleJsonLd && <script type="application/ld+json" set:html={articleJsonLd}></script>}
+    <script is:inline type="application/ld+json" set:html={organizationJsonLd}></script>
+    <script is:inline type="application/ld+json" set:html={websiteJsonLd}></script>
+    {breadcrumbJsonLd && <script is:inline type="application/ld+json" set:html={breadcrumbJsonLd}></script>}
+    {articleJsonLd && <script is:inline type="application/ld+json" set:html={articleJsonLd}></script>}
   </head>
   <body>
+    <script is:inline src="/scripts/clipboard-helper.js"></script>
     <a class="skip-link" href="#contenido-principal">{skipLabel}</a>
     <!-- SPA route-change announcer for screen readers (a11y). Updated by
          astro:after-swap hook below; aria-live=polite avoids interrupting AT. -->

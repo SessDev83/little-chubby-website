@@ -45,7 +45,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 // ─── Date helpers ──────────────────────────────────────────────────────────
 
 function getTargetDate() {
-  const dateArg = process.argv.find((a, i) => process.argv[i - 1] === "--date");
+  const dateArg = process.argv.find((_, i) => process.argv[i - 1] === "--date");
   if (dateArg && /^\d{4}-\d{2}-\d{2}$/.test(dateArg)) return dateArg;
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - 1);

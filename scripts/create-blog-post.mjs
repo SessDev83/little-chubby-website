@@ -60,8 +60,6 @@ const IMG_MODEL = process.env.NANO_BANANA_BLOG_MODEL || "gemini-2.5-flash-image-
 const IMG_SIZE = 800;
 const WEBP_QUALITY = 80;
 
-const SITE_URL = "https://www.littlechubbypress.com";
-
 // ─── Read existing posts for internal linking ───────────────────────────────
 
 function readExistingPosts(lang) {

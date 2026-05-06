@@ -6,7 +6,7 @@
  * Note: Enabling/disabling these features must be done in the Vercel Dashboard.
  * The REST API does not expose a public endpoint for toggling them.
  */
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 

@@ -202,7 +202,6 @@ const updateBooksFile = (ratings) => {
     }
 
     const pagesLine = match[2];
-    const trailingComma = match[3];
     const existingRating = match[4] || "";
 
     const newRatingBlock = `,\n    ratingValue: ${ratingValue},\n    ratingCount: ${ratingCount}`;

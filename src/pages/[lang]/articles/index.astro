@@ -3,7 +3,7 @@ import BaseLayout from "../../../layouts/BaseLayout.astro";
 import PostCard from "../../../components/PostCard.astro";
 import { getCollection } from "astro:content";
 import { languages, getLangFromParam, ui } from "../../../data/i18n";
-import { articleCategories, getArticleCategoryBySlug } from "../../../data/articleCategories";
+import { articleCategories } from "../../../data/articleCategories";
 import { siteConfig } from "../../../data/site";
 
 export function getStaticPaths() {

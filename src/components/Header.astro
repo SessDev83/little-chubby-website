@@ -213,9 +213,7 @@ const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
     var usernameEl = document.getElementById("auth-username");
     var settingsAuthItems = document.getElementById("settings-auth-items");
     var settingsLoginHint = document.getElementById("settings-login-hint");
-    var peanutsEl = document.getElementById("auth-peanuts");
     var peanutsCount = document.getElementById("peanuts-count");
-    var ticketsEl = document.getElementById("auth-tickets");
     var ticketsCount = document.getElementById("tickets-count");
     var currenciesEl = document.getElementById("auth-currencies");
     var currenciesMobileEl = document.getElementById("auth-currencies-mobile");
@@ -599,6 +597,8 @@ const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
         refreshDesktopNavBehavior();
       }
 
+      var desktopQueryAny = /** @type {any} */ (desktopQuery);
+
       refreshDesktopNavBehavior();
       window.addEventListener("scroll", onDesktopScroll, { passive: true });
       window.addEventListener("mousemove", onTopEdgeHover, { passive: true });
@@ -606,8 +606,11 @@ const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
       window.addEventListener("resize", onDesktopModeChange);
       if (desktopQuery.addEventListener) {
         desktopQuery.addEventListener("change", onDesktopModeChange);
-      } else if (desktopQuery.addListener) {
-        desktopQuery.addListener(onDesktopModeChange);
+      } else {
+        var legacyAddListener = desktopQueryAny["addListener"];
+        if (typeof legacyAddListener === "function") {
+          legacyAddListener.call(desktopQuery, onDesktopModeChange);
+        }
       }
 
       window.__lcpDesktopNavRefresh = refreshDesktopNavBehavior;
@@ -618,8 +621,11 @@ const navItems: Array<{ href: string; label: string; ssr?: boolean }> = [
         window.removeEventListener("resize", onDesktopModeChange);
         if (desktopQuery.removeEventListener) {
           desktopQuery.removeEventListener("change", onDesktopModeChange);
-        } else if (desktopQuery.removeListener) {
-          desktopQuery.removeListener(onDesktopModeChange);
+        } else {
+          var legacyRemoveListener = desktopQueryAny["removeListener"];
+          if (typeof legacyRemoveListener === "function") {
+            legacyRemoveListener.call(desktopQuery, onDesktopModeChange);
+          }
         }
         if (window.__lcpDesktopNavRefresh === refreshDesktopNavBehavior) {
           window.__lcpDesktopNavRefresh = null;

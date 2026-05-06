@@ -65,7 +65,7 @@ const booksJsonLd = JSON.stringify({
 ---
 
 <BaseLayout lang={lang} title={text.booksMetaTitle} description={text.booksMetaDescription} pathname={pathname} breadcrumbs={breadcrumbs}>
-  <script type="application/ld+json" set:html={booksJsonLd}></script>
+  <script is:inline type="application/ld+json" set:html={booksJsonLd}></script>
   <section class="page-section">
     <div class="container">
       <div class="section-head">

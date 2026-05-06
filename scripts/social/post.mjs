@@ -27,12 +27,12 @@
  *   node scripts/social/post.mjs post --platform all --type book-promo --dry-run
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, unlinkSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generatePost, generateWeeklyCalendar, buildSocialCampaign, buildUtmContent, buildUtmUrl } from "./content-templates.mjs";
 import { generateAIPost } from "./ai-generate.mjs";
-import { validatePost, injectUtms, formatReport } from "./validate-post.mjs";
+import { validatePost, injectUtms } from "./validate-post.mjs";
 import { generateImage, downloadImage } from "./image-generate.mjs";
 import { postToBluesky } from "./platforms/bluesky.mjs";
 import { postToFacebook, postToInstagram, postToFacebookGroup } from "./platforms/meta.mjs";
@@ -301,7 +301,7 @@ function parseArgs() {
 
 // ─── Adapt static template to per-platform format ─────────────────────────
 
-function adaptToPlatforms(post, data, lang) {
+function adaptToPlatforms(post, lang) {
   // Bluesky: short text, no URLs, 2-3 hashtags — total must be ≤300 chars
   let bskyText = post.text;
   // Strip any URLs from bluesky text

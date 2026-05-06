@@ -389,11 +389,8 @@ function initColoringCorner() {
     } else if (platform === "bluesky") {
       window.open("https://bsky.app/intent/compose?text=" + encodeURIComponent(shareText + trackedArtworkUrl), "_blank");
     } else if (platform === "copy-link") {
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(trackedArtworkUrl);
-      } else {
-        var ta = document.createElement("textarea"); ta.value = trackedArtworkUrl;
-        document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+      if (typeof window.lcpCopyTextToClipboard === "function") {
+        void window.lcpCopyTextToClipboard(trackedArtworkUrl);
       }
       var origHTML = btn.innerHTML;
       btn.innerHTML = '✓';

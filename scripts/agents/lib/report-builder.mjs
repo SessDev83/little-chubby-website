@@ -387,7 +387,6 @@ export function renderReportText(label, startISO, endISO, report, recs) {
  * Render HTML version (used for email body).
  */
 export function renderReportHtml(label, startISO, endISO, report, recs) {
-  const pct = (v, t) => t > 0 ? ((v / t) * 100).toFixed(1) + "%" : "0%";
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const row = (cells) => `<tr>${cells.map((c) => `<td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:13px">${c}</td>`).join("")}</tr>`;
   const h2 = (t) => `<h2 style="font-size:16px;margin:22px 0 6px;color:#2a3d66">${esc(t)}</h2>`;

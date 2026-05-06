@@ -236,35 +236,13 @@ const bookCardLabels = {
 </BaseLayout>
 
 <script>
-  function fallbackCopy(text: string): boolean {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.left = "-9999px";
-    document.body.appendChild(ta);
-    ta.select();
-    let ok = false;
-    try { ok = document.execCommand("copy"); } catch {}
-    document.body.removeChild(ta);
-    return ok;
-  }
-
   function initCopyLinks() {
     document.querySelectorAll("[data-copy-url]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const url = btn.getAttribute("data-copy-url");
         if (!url) return;
-        let copied = false;
-        try {
-          if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(url);
-            copied = true;
-          } else {
-            copied = fallbackCopy(url);
-          }
-        } catch {
-          copied = fallbackCopy(url);
-        }
+        const copyFn = (window as any).lcpCopyTextToClipboard;
+        const copied = typeof copyFn === "function" ? await copyFn(url) : false;
         const label = btn.querySelector(".copy-label");
         if (label) {
           const original = label.textContent;

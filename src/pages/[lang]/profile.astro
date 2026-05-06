@@ -1045,13 +1045,18 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
       }
     }
 
+    var mobileQueryAny = /** @type {any} */ (mobileQuery);
+
     onModeChange();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onModeChange);
     if (mobileQuery.addEventListener) {
       mobileQuery.addEventListener("change", onModeChange);
-    } else if (mobileQuery.addListener) {
-      mobileQuery.addListener(onModeChange);
+    } else {
+      var legacyAddListener = mobileQueryAny["addListener"];
+      if (typeof legacyAddListener === "function") {
+        legacyAddListener.call(mobileQuery, onModeChange);
+      }
     }
     tabs.addEventListener("touchstart", onTabsTouch, { passive: true });
 
@@ -1060,8 +1065,11 @@ const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
       window.removeEventListener("resize", onModeChange);
       if (mobileQuery.removeEventListener) {
         mobileQuery.removeEventListener("change", onModeChange);
-      } else if (mobileQuery.removeListener) {
-        mobileQuery.removeListener(onModeChange);
+      } else {
+        var legacyRemoveListener = mobileQueryAny["removeListener"];
+        if (typeof legacyRemoveListener === "function") {
+          legacyRemoveListener.call(mobileQuery, onModeChange);
+        }
       }
       tabs.removeEventListener("touchstart", onTabsTouch);
     };

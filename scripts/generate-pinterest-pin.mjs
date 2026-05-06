@@ -25,7 +25,6 @@ const H = 1500;
 // ── Brand palette (matches generate-mini-book.mjs) ────────
 const CREAM = "#f6f1e7";
 const BROWN = "#754624";
-const GOLD = "#d3a442";
 const INK = "#2f261f";
 const CORAL = "#e9605a";
 

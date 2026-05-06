@@ -191,3 +191,55 @@ Mientras existan placeholders, el frontend muestra un aviso visible de configura
 Guia de endurecimiento y operacion segura:
 
 - `SECURITY.md`
+
+## Decision Arquitectonica: Middleware + Prerender en Astro
+
+### Contexto
+
+En Astro, las rutas prerenderizadas se construyen en build-time. En ese momento
+no existe un request real de usuario. Por eso, leer headers/cookies/sesion en
+middleware durante prerender es un antipatron.
+
+### Sintoma observado
+
+- Warnings masivos en build del tipo: uso de request headers en rutas
+	prerenderizadas.
+
+### Solucion aplicada
+
+Se agrego un guard temprano en middleware para cortar cualquier logica de auth
+durante prerender:
+
+```ts
+if (context.isPrerendered) {
+	return next();
+}
+```
+
+Referencia: `src/middleware.ts`.
+
+### Por que funciona
+
+- Evita tocar `context.cookies` y sesion cuando no hay request real.
+- Mantiene la auth en runtime (SSR/API), que es donde si existe contexto.
+- Elimina warnings de build y reduce riesgo de regresiones por mezcla de capas
+	(build-time vs request-time).
+
+### Impacto funcional esperado
+
+- Rutas estaticas: se renderizan como contenido anonimo (esperado).
+- Rutas con auth real: deben seguir marcadas como `prerender = false`.
+- Hidratacion cliente: sigue usando cookie/API runtime para mostrar estado de
+	usuario despues de cargar la pagina.
+
+### Guardrails obligatorios para cambios futuros
+
+1. En middleware, nunca leer `context.cookies` ni request headers antes del
+	 guard `context.isPrerendered`.
+2. Toda ruta que dependa de sesion en servidor debe declarar
+	 `export const prerender = false;`.
+3. Mantener auth server-side en runtime; evitar personalizacion por usuario en
+	 paginas estaticas prerenderizadas.
+4. Si aparece nuevamente un warning de headers en prerender, revisar primero
+	 middleware y cualquier utilidad llamada por middleware.
+

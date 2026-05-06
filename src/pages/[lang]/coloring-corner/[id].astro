@@ -302,11 +302,8 @@ const shareUrls = {
   if (copyBtn) {
     copyBtn.addEventListener("click", function() {
       var url = copyBtn.getAttribute("data-share-url") || window.location.href;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(url);
-      } else {
-        var ta = document.createElement("textarea"); ta.value = url;
-        document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+      if (typeof window.lcpCopyTextToClipboard === "function") {
+        void window.lcpCopyTextToClipboard(url);
       }
     });
   }

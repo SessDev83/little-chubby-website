@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync } from "fs";
 import { join } from "path";
 
 const EN_DIR = join(process.cwd(), "src/content/blog/en");

@@ -1,16 +1,11 @@
 ---
 export const prerender = false;
 
-import { getLangFromParam } from "../../data/i18n";
-import type { Lang } from "../../data/i18n";
-
-const lang = getLangFromParam(Astro.params.lang) as Lang;
-
 // Clear auth cookies
 Astro.cookies.delete("sb-access-token", { path: "/" });
 Astro.cookies.delete("sb-refresh-token", { path: "/" });
 Astro.cookies.delete("sb-logged-in", { path: "/" });
 
 // Redirect to home with a query param that triggers localStorage cleanup
-return Astro.redirect(`/${lang}/?logged-out=1`);
+return Astro.redirect(`/${Astro.params.lang === "en" ? "en" : "es"}/?logged-out=1`);
 ---

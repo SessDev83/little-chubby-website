@@ -2,13 +2,12 @@
 export const prerender = false;
 
 import BaseLayout from "../../../layouts/BaseLayout.astro";
-import { getLangFromParam, ui } from "../../../data/i18n";
+import { getLangFromParam } from "../../../data/i18n";
 import type { Lang } from "../../../data/i18n";
 import { getServiceClient } from "../../../lib/supabase";
 import { books } from "../../../data/books";
 
 const lang = getLangFromParam(Astro.params.lang) as Lang;
-const text = ui[lang];
 const pathname = `/${lang}/books/early-access/`;
 
 // Signals to the platform: do not index, do not cache (master plan D-R3, D-R4).

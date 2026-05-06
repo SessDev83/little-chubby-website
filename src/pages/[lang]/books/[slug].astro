@@ -168,8 +168,8 @@ const bookJsonLd = {
   breadcrumbs={breadcrumbs}
   ogImage={ogImageUrl}
 >
-  <script type="application/ld+json" set:html={JSON.stringify(bookJsonLd)}></script>
-  <script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)}></script>
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(bookJsonLd)}></script>
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)}></script>
 
   <section class="page-section book-detail-section">
     <div class="container">

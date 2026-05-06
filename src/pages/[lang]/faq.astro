@@ -1,14 +1,13 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { siteConfig } from "../../data/site";
-import { languages, getLangFromParam, ui } from "../../data/i18n";
+import { languages, getLangFromParam } from "../../data/i18n";
 
 export function getStaticPaths() {
   return languages.map((lang) => ({ params: { lang } }));
 }
 
 const lang = getLangFromParam(Astro.params.lang);
-const text = ui[lang];
 const pathname = `/${lang}/faq/`;
 
 // Last updated — kept in sync with privacy + docs/LEGAL_MAINTENANCE.md (bi-weekly review).
@@ -331,7 +330,7 @@ const introEN = "All answers in alphabetical order from A to Z. Click any questi
           {letters.map((l) => (
             <section class="faq-group" id={`faq-letter-${l}`}>
               <h2 class="faq-letter-heading">{l}</h2>
-              {groups[l].map((item, idx) => (
+              {groups[l].map((item) => (
                 <details class="faq-item">
                   <summary class="faq-q">
                     <span class="faq-q-text">{item.q}</span>
