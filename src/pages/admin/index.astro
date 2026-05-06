@@ -5,6 +5,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
 import { buildFunnelCommandCenter, buildPageviewGeoTimeSummary, buildTrafficQualitySummary, fetchAdminKpiWindow, pct, shortText } from "../../lib/admin-kpis.mjs";
 import { adminTimeZoneSummary, formatAdminDateTimeWithZone, formatAdminShortDateTime } from "../../lib/admin-time.mjs";
+import { describeGiftDeadline, fetchAdminGiftControl } from "../../lib/admin-gift-control.mjs";
 
 const user = Astro.locals.user;
 if (!user || !(await isAdmin(user))) {
@@ -27,6 +28,7 @@ const [
   { data: monthEntries },
   { data: recentAudit },
   kpiWindow,
+  giftControl,
 ] = await Promise.all([
   sc.from("profiles").select("*", { count: "exact", head: true }),
   sc.from("book_reviews").select("*", { count: "exact", head: true }).eq("status", "pending"),
@@ -37,6 +39,7 @@ const [
   sc.from("lottery_entries").select("entry_count").eq("month", currentMonth),
   sc.from("admin_audit_log").select("action, target_type, target_id, created_at, admin_id").order("created_at", { ascending: false }).limit(10),
   fetchAdminKpiWindow(sc as any, { rangeParam: ownerRange, limit: 5000 }),
+  fetchAdminGiftControl(sc as any, { limit: 6 }),
 ]);
 
 const peanutsInCirculation = (creditRows ?? []).reduce((sum, c) => sum + (c.amount ?? 0), 0);
@@ -54,6 +57,8 @@ const dataHealthLabel = dataHealthStatus === "green" ? "Healthy" : dataHealthSta
 const freshnessMinutes = kpiWindow.eventContractHealth?.metrics?.freshnessMinutes;
 const freshnessLabel = typeof freshnessMinutes === "number" ? `${freshnessMinutes.toLocaleString()} min freshness` : "No event freshness yet";
 const short = shortText;
+const giftSummary = giftControl.summary;
+const recentGiftRows = giftControl.rows.slice(0, 5);
 const ownerSteps = [
   {
     href: `/admin/traffic/?range=${ownerRange}`,
@@ -80,6 +85,10 @@ const ownerSteps = [
     meta: `${peakLocalHour ? `${peakLocalHour.label} peak visitor hour` : "No local hour yet"}${topTimezone ? ` - ${short(topTimezone.label, 26)}` : ""}`,
   },
 ];
+
+function giftRecipientLabel(row: any) {
+  return row.recipient?.label || row.recipientEmail || "-";
+}
 ---
 
 <AdminLayout title="Dashboard" current="dashboard">
@@ -151,7 +160,45 @@ const ownerSteps = [
       <div class="stat-number" style="color:var(--brand-blue);">{monthlyTickets}</div>
       <div class="stat-label">🎟️ Tickets This Month</div>
     </a>
+
+    <a href="/admin/gifts/" class="stat-card stat-alert">
+      <div class="stat-number" style="color:var(--brand-brown);">{giftSummary.pendingActive.toLocaleString()}</div>
+      <div class="stat-label">Pending Gift Invites</div>
+    </a>
   </div>
+
+  <section class="surface-card gift-control-panel" aria-labelledby="gift-control-title">
+    <div class="gift-control-head">
+      <div>
+        <span class="eyebrow">Gift ticket control</span>
+        <h2 id="gift-control-title">Sent tickets, pending friends, and activations</h2>
+      </div>
+      <a href="/admin/gifts/" class="health-badge">Open gifts</a>
+    </div>
+    <div class="gift-metrics">
+      <div><span>Total gifts</span><strong>{giftSummary.totalGifts.toLocaleString()}</strong><small>{giftSummary.totalQuantity.toLocaleString()} tickets</small></div>
+      <div><span>Pending</span><strong>{giftSummary.pendingActive.toLocaleString()}</strong><small>Need owner eyes</small></div>
+      <div><span>Activated</span><strong>{giftSummary.pendingClaimed.toLocaleString()}</strong><small>{giftSummary.pendingBonusPaid.toLocaleString()} bonus paid</small></div>
+      <div><span>Expired/refunded</span><strong>{giftSummary.pendingExpired.toLocaleString()}</strong><small>{giftSummary.pendingRefunded.toLocaleString()} refunded</small></div>
+    </div>
+    <div class="table-wrap compact-gift-table">
+      <table class="admin-table">
+        <thead><tr><th>When</th><th>Sender</th><th>Recipient</th><th>Status</th><th>Qty</th></tr></thead>
+        <tbody>
+          {recentGiftRows.length === 0 && <tr><td colspan="5"><p class="admin-empty-state">No gift tickets yet.</p></td></tr>}
+          {recentGiftRows.map((row: any) => (
+            <tr>
+              <td class="nowrap" title={formatAdminDateTimeWithZone(row.sentAt)}>{formatAdminShortDateTime(row.sentAt)}</td>
+              <td>{row.sender.href ? <a href={row.sender.href}>{row.sender.label}</a> : row.sender.label}</td>
+              <td>{row.recipient.href ? <a href={row.recipient.href}>{giftRecipientLabel(row)}</a> : giftRecipientLabel(row)}</td>
+              <td><strong>{row.statusLabel}</strong><small>{describeGiftDeadline(row, new Date())}</small></td>
+              <td>{row.quantity.toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
   {/* ── Recent Audit Log ── */}
   {recentAudit && recentAudit.length > 0 && (
@@ -329,6 +376,67 @@ const ownerSteps = [
     font-size: 0.88rem;
     margin-top: 0.2rem;
   }
+  .gift-control-panel {
+    margin-top: 1.2rem;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+  }
+  .gift-control-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.9rem;
+  }
+  .gift-control-head h2 {
+    margin: 0.15rem 0 0;
+    font-size: 1.18rem;
+    line-height: 1.2;
+  }
+  .gift-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: 0.7rem;
+    margin-bottom: 0.85rem;
+  }
+  .gift-metrics div {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-strong, #f8f8f8);
+    padding: 0.7rem;
+  }
+  .gift-metrics span {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 0.73rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0;
+  }
+  .gift-metrics strong {
+    display: block;
+    color: var(--brand-blue);
+    font-size: 1.2rem;
+    margin-top: 0.15rem;
+  }
+  .gift-metrics small,
+  .compact-gift-table small {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+  .compact-gift-table {
+    margin-top: 0.2rem;
+  }
+  .compact-gift-table a {
+    color: var(--brand-blue);
+    text-decoration: none;
+  }
+  .compact-gift-table a:hover { text-decoration: underline; }
   .admin-table {
     width: 100%;
     border-collapse: collapse;

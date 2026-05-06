@@ -4,6 +4,7 @@ export const prerender = false;
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { isAdmin, getServiceClient } from "../../lib/supabase";
 import { buildPageviewGeoTimeSummary, buildTrafficQualitySummary, classifyAdminSource, pageviewGeoLabel, pct as formatRate, resolveAdminRange } from "../../lib/admin-kpis.mjs";
+import { buildSocialAttributionSummary } from "../../lib/admin-social-attribution.mjs";
 import { ADMIN_OWNER_TIME_ZONE_LABEL, adminTimeZoneSummary, formatAdminDateKey, formatAdminDateLabel, formatAdminDateTimeWithZone, formatAdminHourLabel, formatAdminShortDateTime, formatVisitorDateTime } from "../../lib/admin-time.mjs";
 
 const user = Astro.locals.user;
@@ -37,6 +38,7 @@ const [
   pageviewResult,
   { count: todayPv },
   { data: utmClicks },
+  { data: socialShares },
   { data: weekly },
 ] = await Promise.all([
   buildPageviewQuery(pageviewGeoSelect),
@@ -50,6 +52,12 @@ const [
     .gte("created_at", sinceIso)
     .not("utm_source", "is", null)
     .limit(2000),
+  sc
+    .from("social_shares")
+    .select("platform, shared_url, created_at")
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(5000),
   sc
     .from("weekly_reports")
     .select("week_start, week_end, total_pageviews, unique_visitors, total_clicks, new_subscribers, summary, recommendations")
@@ -79,6 +87,11 @@ const { data: conversionEvents } = await (sc as any)
 const { sourceQualityRows, landingQualityRows, utmQualityRows } = buildTrafficQualitySummary({
   pageviews: rows,
   events: conversionEvents ?? [],
+});
+const socialAttribution = buildSocialAttributionSummary({
+  pageviews: rows as any[],
+  events: (conversionEvents ?? []) as any[],
+  shares: (socialShares ?? []) as any[],
 });
 
 // ── Derived metrics ──────────────────────────────
@@ -239,6 +252,56 @@ function fmtTime(iso: string) {
       <div class="stat-label">Top source</div>
     </div>
   </div>
+
+  <section class="surface-card social-attribution" style="padding:1.4rem; margin-top:1.5rem;">
+    <div class="quality-head">
+      <div>
+        <h2 style="margin:0;">Social Attribution Phases</h2>
+        <p>Separates in-app shares from measurable return traffic, so Bluesky/Instagram are not hidden inside direct traffic.</p>
+      </div>
+      <a class="quality-link" href={`/admin/channel-scorecard/?range=${rangeParam}`}>Open scorecard</a>
+    </div>
+    <div class="phase-grid">
+      {socialAttribution.phaseRows.map((row: any) => (
+        <div class="phase-card">
+          <span>{row.phase}</span>
+          <strong>{row.count.toLocaleString()}</strong>
+          <small>{row.detail}</small>
+        </div>
+      ))}
+    </div>
+    <div class="table-wrap-social">
+      <table class="admin-table quality-table social-table" style="width:100%; margin-top:1rem;">
+        <thead>
+          <tr>
+            <th>Platform</th>
+            <th>Share intents</th>
+            <th>Claims</th>
+            <th>UTM returns</th>
+            <th>Referrer-only</th>
+            <th>Total inbound</th>
+            <th>Tracked share</th>
+            <th>Top landing</th>
+          </tr>
+        </thead>
+        <tbody>
+          {socialAttribution.platformRows.length === 0 && <tr><td colspan="8" style="text-align:center; color:var(--ink-soft);">No social attribution rows in this window.</td></tr>}
+          {socialAttribution.platformRows.map((row: any) => (
+            <tr>
+              <td><strong>{row.label}</strong><small>{row.platform}</small></td>
+              <td class="admin-number">{row.shareClicks.toLocaleString()}</td>
+              <td class="admin-number">{row.shareClaims.toLocaleString()}</td>
+              <td class="admin-number">{row.utmPageviews.toLocaleString()}</td>
+              <td class="admin-number">{row.referrerPageviews.toLocaleString()}</td>
+              <td class="admin-number">{row.totalInbound.toLocaleString()}<small>{row.inboundPerClaim} / claim</small></td>
+              <td class="admin-number">{row.trackedShareRate}</td>
+              <td class="admin-wrap admin-code-cell" title={row.topLanding}>{short(row.topLanding)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
   <section class="surface-card traffic-quality" style="padding:1.4rem; margin-top:1.5rem;">
     <div class="quality-head">
@@ -749,6 +812,37 @@ function fmtTime(iso: string) {
     text-decoration: none;
     font-size: 0.85rem;
     font-weight: 700;
+  }
+  .phase-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.75rem;
+  }
+  .phase-card {
+    border: 1px solid var(--border-soft);
+    border-radius: 0.65rem;
+    background: var(--surface-card);
+    padding: 0.85rem;
+  }
+  .phase-card span,
+  .phase-card small {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+  }
+  .phase-card strong {
+    display: block;
+    margin: 0.15rem 0;
+    color: var(--brand-blue);
+    font-size: 1.25rem;
+    line-height: 1.1;
+  }
+  .table-wrap-social { overflow-x: auto; }
+  .social-table small {
+    display: block;
+    margin-top: 0.12rem;
+    color: var(--ink-soft);
+    font-size: 0.72rem;
   }
   .time-pulse {
     margin: 0.8rem 0 0;

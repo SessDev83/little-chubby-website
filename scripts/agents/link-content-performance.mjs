@@ -69,12 +69,19 @@ async function querySupabase(table, params) {
   return res.json();
 }
 
-async function upsertPerformance(row) {
-  if (DRY_RUN) {
-    console.log(`  [DRY RUN] ${row.platform}/${row.post_type}: ${row.likes}L ${row.comments}C ${row.shares}S ${row.clicks} clicks`);
-    return;
-  }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/content_performance?on_conflict=post_id,platform`, {
+function legacyPerformanceRow(row) {
+  const legacyRow = { ...row };
+  delete legacyRow.utm_source;
+  delete legacyRow.utm_content;
+  return legacyRow;
+}
+
+function isMissingAttributionColumn(body) {
+  return /utm_source|utm_content|schema cache|could not find/i.test(body || "");
+}
+
+async function postPerformanceRow(row) {
+  return fetch(`${SUPABASE_URL}/rest/v1/content_performance?on_conflict=post_id,platform`, {
     method: "POST",
     headers: {
       apikey: SUPABASE_KEY,
@@ -84,33 +91,80 @@ async function upsertPerformance(row) {
     },
     body: JSON.stringify({ ...row, updated_at: new Date().toISOString() }),
   });
-  if (res.ok) return;
+}
 
-  // 409 = duplicate key — fall back to PATCH to update existing row
-  if (res.status === 409) {
-    const filter =
-      `post_id=eq.${encodeURIComponent(row.post_id)}&platform=eq.${encodeURIComponent(row.platform)}`;
-    const { post_id, platform, ...updates } = row;
-    updates.updated_at = new Date().toISOString();
-    const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/content_performance?${filter}`, {
-      method: "PATCH",
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      },
-      body: JSON.stringify(updates),
-    });
-    if (!patchRes.ok) {
-      const body = await patchRes.text();
-      throw new Error(`PATCH fallback failed (${patchRes.status}): ${body}`);
-    }
+async function patchPerformanceRow(row) {
+  const filter =
+    `post_id=eq.${encodeURIComponent(row.post_id)}&platform=eq.${encodeURIComponent(row.platform)}`;
+  const { post_id, platform, ...updates } = row;
+  updates.updated_at = new Date().toISOString();
+  return fetch(`${SUPABASE_URL}/rest/v1/content_performance?${filter}`, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(updates),
+  });
+}
+
+async function patchExistingPerformance(row) {
+  const patchRes = await patchPerformanceRow(row);
+  if (patchRes.ok) {
     console.log(`  ↻ Updated existing row for ${row.platform}/${row.post_id}`);
     return;
   }
+  const body = await patchRes.text();
+  throw new Error(`PATCH fallback failed (${patchRes.status}): ${body}`);
+}
+
+async function upsertLegacyPerformance(row) {
+  const legacyRow = legacyPerformanceRow(row);
+  const legacyRes = await postPerformanceRow(legacyRow);
+  if (legacyRes.ok) return;
+
+  const body = await legacyRes.text();
+  if (legacyRes.status === 409) {
+    await patchExistingPerformance(legacyRow);
+    return;
+  }
+  throw new Error(`Legacy upsert failed (${legacyRes.status}): ${body}`);
+}
+
+async function upsertPerformance(row) {
+  if (DRY_RUN) {
+    const creative = row.utm_content ? ` | ${row.utm_content}` : "";
+    console.log(`  [DRY RUN] ${row.platform}/${row.post_type}${creative}: ${row.likes}L ${row.comments}C ${row.shares}S ${row.clicks} clicks`);
+    return;
+  }
+  const res = await postPerformanceRow(row);
+  if (res.ok) return;
 
   const body = await res.text();
+  if (isMissingAttributionColumn(body)) {
+    console.log("  ⚠️  content_performance UTM columns missing; retrying with legacy payload.");
+    await upsertLegacyPerformance(row);
+    return;
+  }
+
+  // 409 = duplicate key — fall back to PATCH to update existing row
+  if (res.status === 409) {
+    const patchRes = await patchPerformanceRow(row);
+    if (patchRes.ok) {
+      console.log(`  ↻ Updated existing row for ${row.platform}/${row.post_id}`);
+      return;
+    }
+    const patchBody = await patchRes.text();
+    if (isMissingAttributionColumn(patchBody)) {
+      console.log("  ⚠️  content_performance UTM columns missing; patching with legacy payload.");
+      await upsertLegacyPerformance(row);
+      return;
+    }
+    throw new Error(`PATCH fallback failed (${patchRes.status}): ${patchBody}`);
+  }
+
   throw new Error(`Upsert failed (${res.status}): ${body}`);
 }
 
@@ -136,7 +190,6 @@ async function fetchUtmClicks(daysBack) {
 
   for (const row of rows) {
     let source = row.utm_source || null;
-    let medium = row.utm_medium || null;
     let campaign = row.utm_campaign || null;
     let content = row.utm_content || null;
 
@@ -145,7 +198,6 @@ async function fetchUtmClicks(daysBack) {
       try {
         const u = new URL(row.referrer);
         source = u.searchParams.get("utm_source");
-        medium = u.searchParams.get("utm_medium");
         campaign = u.searchParams.get("utm_campaign");
         content = u.searchParams.get("utm_content");
       } catch { /* not a URL */ }
@@ -407,7 +459,9 @@ async function main() {
       reach: post.reach || 0,
       impressions: post.impressions || 0,
       content_url: embedded?.canonical || null,
+      utm_source: embedded?.source || post.platform,
       utm_campaign: campaign,
+      utm_content: embedded?.content || null,
     });
     linked++;
   }

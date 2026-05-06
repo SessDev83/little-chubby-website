@@ -63,6 +63,9 @@ docs/*.pdf
 # Internal planning / operations docs (not for public repo)
 docs-internal/
 
+# local reference/training PDFs; public PDFs belong under public/downloads when intentional
+/*.pdf
+
 i18n.log
 check.log
 

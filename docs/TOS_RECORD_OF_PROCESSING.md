@@ -28,12 +28,14 @@
 | P6 | Security, abuse prevention, rate limiting, suspension | 6(1)(f) — legitimate interest |
 | P7 | Aggregated, cookie-free analytics (Vercel) | 6(1)(f) — legitimate interest |
 | P8 | Legal / tax record-keeping | 6(1)(c) — legal obligation |
+| P9 | Gift-ticket invitations and transactional status emails | 6(1)(b) account service / 6(1)(f) legitimate interest |
 
 ## 3. Categories of data subjects
 
 - Adult account holders (18+, self-confirmed via `profiles.parent_consent_at`)
 - Newsletter subscribers (adults)
 - Contact-form / email correspondents
+- Gift-ticket invitation recipients (email-only until account creation)
 
 We do NOT knowingly collect data about children. Children appear only as
 audience of the content consumed by the adult account holder; no child data
@@ -48,6 +50,7 @@ is stored.
 | Consent | parent_consent_at, newsletter opt-in | `profiles`, `newsletter_subscribers` | Life of account / opt-out + 30d |
 | Content | reviews, gallery uploads, forum posts | `reviews`, `gallery_*`, `forum_*` | Life of account (user can delete) |
 | Economy | peanuts/tickets ledger | `credit_transactions` | Life of account + 12 months |
+| Gift invites | sender_id, recipient_email, quantity, invite token, claimed/refunded/expiry timestamps | `pending_gifts` | Life of sender account + 12 months |
 | Security | rate-limit counters, suspension flag | `rate_limits`, `profiles.suspended` | 90 days rolling |
 | Analytics | aggregated page views (no cookies, no PII) | Vercel Web Analytics | 30d (Hobby) / 12mo (Pro) |
 
@@ -104,6 +107,7 @@ is stored.
 | Date | Change | Author |
 |---|---|---|
 | 2026-04-22 | Initial stub created (gap #7 closure) | Ivan C. |
+| 2026-05-05 | Added gift-ticket invitation recipient processing and transactional-only boundary | Ivan C. |
 
 ---
 

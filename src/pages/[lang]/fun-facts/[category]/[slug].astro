@@ -8,6 +8,7 @@ import { languages, getLangFromParam, ui, formatDate } from "../../../../data/i1
 import { siteConfig } from "../../../../data/site";
 import { funFactCategories, getPrimaryFunFactCategory, getFunFactCategoryMatches, type FunFactCategory } from "../../../../data/funFactCategories";
 import { getPostUrl } from "../../../../data/postUrl";
+import { buildTrackedShareUrl } from "../../../../lib/social-share-tracking.mjs";
 
 export async function getStaticPaths() {
   const allPosts = await getCollection("blog");
@@ -78,8 +79,11 @@ const articleSchema = {
   ogImage: post.data.image,
 };
 
-const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`;
-const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(post.data.title + " " + fullUrl)}`;
+const trackedFacebookUrl = buildTrackedShareUrl(fullUrl, { platform: "facebook", lang, contentType: "fun-fact", contentId: slug, title: post.data.title });
+const trackedBlueskyUrl = buildTrackedShareUrl(fullUrl, { platform: "bluesky", lang, contentType: "fun-fact", contentId: slug, title: post.data.title });
+const trackedCopyUrl = buildTrackedShareUrl(fullUrl, { platform: "copy-link", lang, contentType: "fun-fact", contentId: slug, title: post.data.title });
+const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(trackedFacebookUrl)}`;
+const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(post.data.title + " " + trackedBlueskyUrl)}`;
 ---
 
 <BaseLayout
@@ -126,15 +130,15 @@ const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
             {text.followInstagram}
           </a>
-          <a href={fbShareUrl} target="_blank" rel="noopener noreferrer" class="social-share-btn">
+          <a href={fbShareUrl} target="_blank" rel="noopener noreferrer" class="social-share-btn" data-share-platform="facebook" data-shared-path={pathname}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
             {text.shareOnFacebook}
           </a>
-          <a href={bskyShareUrl} target="_blank" rel="noopener noreferrer" class="social-share-btn">
+          <a href={bskyShareUrl} target="_blank" rel="noopener noreferrer" class="social-share-btn" data-share-platform="bluesky" data-shared-path={pathname}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.785 2.643 3.593 3.519 6.173 3.175-.375.52-1.611 1.753-.875 3.613C7.182 20.756 12 18.906 12 18.906s4.818 1.85 6.078-1.871c.736-1.86-.5-3.093-.875-3.613 2.58.344 5.388-.532 6.173-3.175C23.622 9.418 24 4.458 24 3.768c0-.69-.139-1.86-.902-2.203-.659-.3-1.664-.62-4.3 1.24C16.046 4.747 13.087 8.686 12 10.8"/></svg>
             {text.shareOnBluesky}
           </a>
-          <button class="social-share-btn" data-copy-url={fullUrl} aria-label={text.copyLink}>
+          <button class="social-share-btn" data-copy-url={trackedCopyUrl} data-share-platform="copy-link" data-shared-path={pathname} aria-label={text.copyLink}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             <span class="copy-label">{text.copyLink}</span>
           </button>
@@ -191,6 +195,17 @@ const bskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(
     document.body.removeChild(ta);
     return ok;
   }
+
+  document.querySelectorAll("[data-share-platform]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const platform = btn.getAttribute("data-share-platform") || "";
+      const sharedPath = btn.getAttribute("data-shared-path") || location.pathname;
+      try {
+        const tracker = (window as any).lcpTrack;
+        if (typeof tracker === "function") tracker("share_click", { platform, shared_path: sharedPath });
+      } catch {}
+    });
+  });
 
   document.querySelectorAll("[data-copy-url]").forEach((btn) => {
     btn.addEventListener("click", async () => {

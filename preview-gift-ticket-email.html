@@ -3,148 +3,113 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Email Preview — Gift Tickets Received</title>
+<title>Email Preview - Gift Tickets</title>
 <style>
-  body { margin: 0; padding: 2rem 1rem; background: #e8e0d4; font-family: system-ui, sans-serif; color: #3a2a1a; }
-  h1 { text-align: center; margin: 0 0 1.5rem; font-size: 1.3rem; color: #6b4c3b; }
-  .preview-bar { max-width: 680px; margin: 0 auto 1rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
-  .preview-bar button { padding: 0.45rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.88rem; }
-  .preview-bar button.active { background: #d3a442; color: #fff; }
-  .preview-bar button:not(.active) { background: #fff; color: #6b4c3b; border: 1px solid #cbbfa8; }
-  .preview-bar span { font-size: 0.85rem; color: #6b4c3b; }
-
-  /* Gmail-ish wrapper */
-  .inbox-wrap { max-width: 680px; margin: 0 auto; }
-  .inbox-row {
-    background: #fff; border: 1px solid #d9cdb4; border-radius: 8px;
-    overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-  }
-  .inbox-head {
-    padding: 0.8rem 1rem; background: #faf5e9; border-bottom: 1px solid #e8ddbf;
-    font-size: 0.82rem; color: #6b4c3b;
-  }
-  .inbox-head b { color: #3a2a1a; }
-  .email-body {
-    padding: 1.5rem 1.3rem;
-    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-    font-size: 15px; line-height: 1.55; color: #222;
-  }
-  .email-body p { margin: 0 0 0.9rem; }
-
-  .flow {
-    max-width: 680px; margin: 2rem auto 0;
-    background: #fff; border: 1px solid #d9cdb4; border-radius: 10px; padding: 1.2rem 1.4rem;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-  }
-  .flow h2 { margin: 0 0 0.8rem; font-size: 1.05rem; color: #6b4c3b; }
-  .flow ol { margin: 0 0 0.3rem 1.1rem; padding: 0; }
-  .flow li { margin-bottom: 0.55rem; font-size: 0.93rem; }
-  .flow .note {
-    margin-top: 0.9rem; padding: 0.7rem 0.9rem; background: #fff8ec;
-    border-left: 3px solid #d3a442; border-radius: 4px; font-size: 0.85rem; color: #6b4c3b;
-  }
-  .tag {
-    display: inline-block; padding: 0.08rem 0.5rem; border-radius: 4px;
-    background: #f3e7c9; color: #6b4c3b; font-size: 0.78rem; font-weight: 700;
-    vertical-align: middle;
+  body { margin:0; padding:2rem 1rem; background:#e8e0d4; font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif; color:#3f3329; overflow-x:hidden; }
+  h1 { max-width:900px; margin:0 auto 1rem; font-size:1.25rem; color:#6b4c3b; }
+  .note { max-width:900px; margin:0 auto 1.4rem; color:#6b4c3b; font-size:0.92rem; line-height:1.5; }
+  .grid { max-width:900px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:1.2rem; align-items:start; }
+  section { min-width:0; }
+  .label { margin:0 0 0.5rem; font-size:0.82rem; color:#6b4c3b; font-weight:700; }
+  .phone { min-width:0; background:#f6f1e7; border-radius:18px; padding:0.8rem; box-shadow:0 12px 34px rgba(60,42,26,0.18); }
+  .gmail-head { background:#fff; border-radius:12px 12px 0 0; padding:0.7rem 0.9rem; border-bottom:1px solid #eee; font-size:0.78rem; color:#555; overflow-wrap:anywhere; }
+  .gmail-head b { color:#222; }
+  .email { max-width:100%; background:#f6f1e7; border-radius:0 0 12px 12px; overflow:hidden; }
+  .preheader { display:none; max-height:0; overflow:hidden; opacity:0; color:transparent; line-height:1px; }
+  table { border-collapse:collapse; }
+  img { max-width:100%; height:auto; }
+  @media (max-width:640px) {
+    body { padding:1rem 0.6rem; }
+    .grid { display:block; }
+    section + section { margin-top:1.2rem; }
   }
 </style>
 </head>
 <body>
+<h1>Gift ticket email preview</h1>
+<p class="note">Updated version: branded header, clearer transactional wording, no emoji-heavy subject, and a plain-text alternative in the real Resend payload.</p>
 
-<h1>🎁 Gift-ticket email — preview & flow</h1>
-
-<div class="preview-bar">
-  <span>Language:</span>
-  <button id="btn-es" class="active" onclick="show('es')">Español</button>
-  <button id="btn-en" onclick="show('en')">English</button>
-  <span style="margin-left:auto;">From: hello@littlechubbypress.com</span>
-</div>
-
-<!-- ────── ES ────── -->
-<div id="inbox-es" class="inbox-wrap">
-  <div class="inbox-row">
-    <div class="inbox-head">
-      <div><b>De:</b> Little Chubby Press &lt;hello@littlechubbypress.com&gt;</div>
-      <div><b>Para:</b> amiga@ejemplo.com</div>
-      <div><b>Asunto:</b> 🎁 ¡Ivan te regaló 2 tickets del sorteo!</div>
+<div class="grid">
+  <section>
+    <p class="label">Pending recipient - creates an account to receive tickets</p>
+    <div class="phone">
+      <div class="gmail-head">
+        <div><b>From:</b> Little Chubby Press &lt;hello@littlechubbypress.com&gt;</div>
+        <div><b>Subject:</b> Ivan sent you 2 tickets on Little Chubby Press</div>
+      </div>
+      <div class="email">
+        <div class="preheader">Create your account with this same email so the tickets are credited automatically.</div>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f1e7;">
+          <tr><td align="center" style="padding:18px 10px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:540px;background:#ffffff;border:1px solid #eadfcd;border-radius:8px;overflow:hidden;border-collapse:separate;">
+              <tr><td align="center" style="background:#fffaf2;border-bottom:1px solid #eadfcd;padding:20px 24px;">
+                <img src="./public/images/brand/logo-lockup.png" alt="Little Chubby Press" width="176" style="display:block;margin:0 auto;border:0;max-width:176px;height:auto;" />
+              </td></tr>
+              <tr><td style="padding:26px 24px 22px;color:#3f3329;font-size:15px;line-height:1.58;">
+                <h2 style="margin:0 0 12px;color:#6b4c3b;font-size:21px;line-height:1.25;">You have tickets waiting</h2>
+                <p style="margin:0 0 14px;color:#4b4239;">Ivan sent you tickets for the Little Chubby Press monthly book draw.</p>
+                <div style="border:1px solid #eadfcd;border-left:4px solid #d3a442;border-radius:7px;padding:16px 18px;margin:18px 0;background:#fffaf2;">
+                  <p style="margin:0 0 8px;color:#6b4c3b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Tickets sent</p>
+                  <p style="margin:0;color:#2f261f;font-size:30px;line-height:1.1;font-weight:800;">2 tickets</p>
+                  <p style="margin:8px 0 0;color:#6b4c3b;font-size:14px;">From: <b>Ivan</b></p>
+                </div>
+                <p style="margin:0 0 12px;color:#4b4239;">To receive them, create your account using this same email. The tickets are credited automatically when registration is complete.</p>
+                <div style="text-align:center;margin:22px 0 20px;"><a href="#" style="display:inline-block;background:#5c9650;color:#ffffff;font-weight:700;padding:12px 22px;border-radius:7px;text-decoration:none;font-size:15px;line-height:1.2;">Create account</a></div>
+                <div style="background:#f3f8f0;border:1px solid #d9ead3;border-radius:7px;padding:14px 16px;margin:18px 0;color:#3f3329;">
+                  <p style="margin:0 0 6px;font-weight:700;color:#4c7a3f;">Note for the sender</p>
+                  <p style="margin:0;font-size:14px;line-height:1.55;">If you create your account before May 12, Ivan also receives 2 tickets as a thank-you credit. Your tickets stay the same.</p>
+                </div>
+                <p style="margin:0 0 8px;color:#4b4239;font-size:14px;">This invitation expires on June 4, 2026. If it is not claimed, the tickets return to the sender.</p>
+                <p style="margin:16px 0 0;color:#8b7d6c;font-size:13px;">Little Chubby Press will never ask for payment details to receive these tickets.</p>
+              </td></tr>
+              <tr><td style="background:#fffaf2;border-top:1px solid #eadfcd;padding:15px 24px;text-align:center;color:#6b4c3b;font-size:12px;line-height:1.5;">
+                <p style="margin:0 0 4px;font-weight:700;color:#6b4c3b;">Little Chubby Press</p>
+                <p style="margin:0;"><a href="https://www.littlechubbypress.com" style="color:#1f4f86;text-decoration:underline;">littlechubbypress.com</a></p>
+                <p style="margin:8px 0 0;color:#8b7d6c;">Transactional email sent because of an account action.</p>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </div>
     </div>
-    <div class="email-body">
-      <p><b>¡Recibiste un regalo!</b></p>
-      <p>
-        <b>De parte de:</b> Ivan<br>
-        <b>Regalo:</b> 🎟️ 2 tickets<br>
-        <b>Cómo usarlos:</b> Inicia sesión, ve a la página del Sorteo y entra al sorteo del mes con tus tickets nuevos.<br>
-        <b>Entrar al sorteo:</b> <a href="https://littlechubbypress.com/es/lottery/" style="color:#6b4c3b;font-weight:700">https://littlechubbypress.com/es/lottery/</a>
-      </p>
-      <br><span style="color:#999;font-size:12px">Los tickets ya están en tu cuenta. Úsalos antes del sorteo del próximo mes para maximizar tus chances.</span>
-      <br><span style="color:#aaa;font-size:11px">2026-04-21 18:30 UTC</span>
+  </section>
+
+  <section>
+    <p class="label">Registered recipient - tickets already in account</p>
+    <div class="phone">
+      <div class="gmail-head">
+        <div><b>From:</b> Little Chubby Press &lt;hello@littlechubbypress.com&gt;</div>
+        <div><b>Subject:</b> Ivan sent you 2 tickets on Little Chubby Press</div>
+      </div>
+      <div class="email">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f1e7;">
+          <tr><td align="center" style="padding:18px 10px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:540px;background:#ffffff;border:1px solid #eadfcd;border-radius:8px;overflow:hidden;border-collapse:separate;">
+              <tr><td align="center" style="background:#fffaf2;border-bottom:1px solid #eadfcd;padding:20px 24px;">
+                <img src="./public/images/brand/logo-lockup.png" alt="Little Chubby Press" width="176" style="display:block;margin:0 auto;border:0;max-width:176px;height:auto;" />
+              </td></tr>
+              <tr><td style="padding:26px 24px 22px;color:#3f3329;font-size:15px;line-height:1.58;">
+                <h2 style="margin:0 0 12px;color:#6b4c3b;font-size:21px;line-height:1.25;">You have new tickets</h2>
+                <p style="margin:0 0 14px;color:#4b4239;">Ivan sent you tickets for the Little Chubby Press monthly book draw.</p>
+                <div style="border:1px solid #eadfcd;border-left:4px solid #d3a442;border-radius:7px;padding:16px 18px;margin:18px 0;background:#fffaf2;">
+                  <p style="margin:0 0 8px;color:#6b4c3b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Tickets sent</p>
+                  <p style="margin:0;color:#2f261f;font-size:30px;line-height:1.1;font-weight:800;">2 tickets</p>
+                  <p style="margin:8px 0 0;color:#6b4c3b;font-size:14px;">From: <b>Ivan</b></p>
+                </div>
+                <p style="margin:0 0 12px;color:#4b4239;">They are already credited to your account. Log in and choose how many you want to use for this month's entry.</p>
+                <div style="text-align:center;margin:22px 0 20px;"><a href="#" style="display:inline-block;background:#5c9650;color:#ffffff;font-weight:700;padding:12px 22px;border-radius:7px;text-decoration:none;font-size:15px;line-height:1.2;">View my tickets</a></div>
+              </td></tr>
+              <tr><td style="background:#fffaf2;border-top:1px solid #eadfcd;padding:15px 24px;text-align:center;color:#6b4c3b;font-size:12px;line-height:1.5;">
+                <p style="margin:0 0 4px;font-weight:700;color:#6b4c3b;">Little Chubby Press</p>
+                <p style="margin:0;"><a href="https://www.littlechubbypress.com" style="color:#1f4f86;text-decoration:underline;">littlechubbypress.com</a></p>
+                <p style="margin:8px 0 0;color:#8b7d6c;">Transactional email sent because of an account action.</p>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </div>
     </div>
-  </div>
+  </section>
 </div>
-
-<!-- ────── EN ────── -->
-<div id="inbox-en" class="inbox-wrap" style="display:none;">
-  <div class="inbox-row">
-    <div class="inbox-head">
-      <div><b>From:</b> Little Chubby Press &lt;hello@littlechubbypress.com&gt;</div>
-      <div><b>To:</b> friend@example.com</div>
-      <div><b>Subject:</b> 🎁 Ivan gifted you 2 giveaway tickets!</div>
-    </div>
-    <div class="email-body">
-      <p><b>You got a gift!</b></p>
-      <p>
-        <b>From:</b> Ivan<br>
-        <b>Gift:</b> 🎟️ 2 tickets<br>
-        <b>How to use them:</b> Log in, go to the Giveaway page and enter this month's draw with your new tickets.<br>
-        <b>Enter the giveaway:</b> <a href="https://littlechubbypress.com/en/lottery/" style="color:#6b4c3b;font-weight:700">https://littlechubbypress.com/en/lottery/</a>
-      </p>
-      <br><span style="color:#999;font-size:12px">The tickets are already in your account. Use them before next month's draw to maximize your chances.</span>
-      <br><span style="color:#aaa;font-size:11px">2026-04-21 18:30 UTC</span>
-    </div>
-  </div>
-</div>
-
-<!-- ────── FLOW ────── -->
-<div class="flow">
-  <h2>📬 Flujo del destinatario — paso a paso</h2>
-  <ol>
-    <li>
-      <b>Recibe el email</b> <span class="tag">inmediato</span> en el idioma de su cuenta
-      (<code>profiles.lang_pref</code>) — no el del remitente.
-    </li>
-    <li>
-      <b>Los tickets ya están en su balance</b> antes de abrir el email (la RPC los acredita dentro de la misma transacción que descontó al remitente). No hay "aceptar regalo".
-    </li>
-    <li>
-      Hace click en <b>"Entrar al sorteo"</b> → aterriza en <code>/es/lottery/</code> o <code>/en/lottery/</code>.
-    </li>
-    <li>
-      Si ya tiene sesión, ve su balance actualizado en la tarjeta "Tickets disponibles" (ej: 3 → 5 tickets). Si no, hace login y vuelve automáticamente.
-    </li>
-    <li>
-      Usa el stepper <b>"¿Cuántos tickets quieres usar?"</b> y presiona <b>"Entrar al sorteo"</b> para reservar entradas al sorteo del mes.
-    </li>
-    <li>
-      También puede <b>re-regalar tickets</b> a otra persona desde la misma página (mismo panel 🎁 "Gift tickets to a friend").
-    </li>
-  </ol>
-  <div class="note">
-    <b>Notas técnicas:</b>
-    Email enviado fire-and-forget vía Resend → si Resend cae, el regalo NO se revierte.
-    Asunto y contenido bilingües según <code>lang_pref</code> del destinatario.
-    Nombre del remitente = <code>display_name</code> → local-part del email → "A friend" como fallback.
-  </div>
-</div>
-
-<script>
-  function show(lang) {
-    document.getElementById('inbox-es').style.display = lang === 'es' ? '' : 'none';
-    document.getElementById('inbox-en').style.display = lang === 'en' ? '' : 'none';
-    document.getElementById('btn-es').classList.toggle('active', lang === 'es');
-    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
-  }
-</script>
-
 </body>
 </html>

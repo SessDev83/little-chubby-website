@@ -57,12 +57,12 @@ async function fetchSmartContext() {
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [recentDecisions, contentPerf, trafficInsights, socialMetrics, topPages, peanutShares, newsletterSubs, latestWeekly] = await Promise.all([
+  const [recentDecisions, contentPerf, trafficInsights, socialMetrics, topPages, peanutShares, newsletterSubs, latestWeekly, validationFailures] = await Promise.all([
     // Latest agent decisions (recommendations from weekly intelligence)
     querySupabase("agent_decisions", `select=decision_type,recommended_action,reasoning,confidence_score,created_at&created_at=gte.${since7d}&order=created_at.desc&limit=20`),
 
     // Content performance last 30 days (what works)
-    querySupabase("content_performance", `select=post_type,platform,likes,comments,shares,clicks,reach,posted_at,content_url&created_at=gte.${since30d}&order=created_at.desc&limit=200`),
+    querySupabase("content_performance", `select=post_type,platform,likes,comments,shares,clicks,reach,impressions,posted_at,content_url,utm_campaign,created_at&created_at=gte.${since30d}&order=created_at.desc&limit=200`),
 
     // Traffic insights last 7 days (where visitors come from)
     querySupabase("traffic_insights", `select=source_category,source_detail,pageviews,unique_visitors,date&created_at=gte.${since7d}&order=date.desc&limit=50`),
@@ -81,14 +81,54 @@ async function fetchSmartContext() {
 
     // Latest weekly_report — structured recommendations + best post types from the analytics agent
     querySupabase("weekly_reports", `select=week_start,week_end,summary,best_post_types,best_posting_hours,recommendations,top_posts&order=week_start.desc&limit=1`),
+
+    // Validator drift: post types that repeatedly fail deterministic QA should be de-prioritised.
+    querySupabase("validation_failures", `select=post_type,lang,ts,reason&ts=gte.${since30d}&order=ts.desc&limit=200`),
   ]);
 
-  return { recentDecisions, contentPerf, trafficInsights, socialMetrics, topPages, peanutShares, newsletterSubs, latestWeekly: latestWeekly?.[0] || null };
+  return { recentDecisions, contentPerf, trafficInsights, socialMetrics, topPages, peanutShares, newsletterSubs, latestWeekly: latestWeekly?.[0] || null, validationFailures };
 }
 
-// ─── Scoring v2 — playbook §12 ─────────────────────────────────────────────
-// score = 0.55*click_rate_z + 0.30*peanut_share_rate_z + 0.10*comment_rate_z + 0.05*like_rate_z
-// All z-scored per post type across the last 30 days.
+// ─── Scoring v2 — playbook §12 + PDF closed-loop refinements ──────────────
+// The PDF's useful idea for the current app is not heavy RL; it is disciplined
+// reward timing plus controlled exploration. Keep this deterministic and cheap.
+const REWARD_WINDOW_HOURS = 72;
+const MIN_REWARD_AGE_HOURS = 24;
+const EXPLORATION_WEIGHT = 0.02;
+const VALIDATION_FAILURE_PENALTY = 0.015;
+
+function hoursSince(value) {
+  const timestamp = value ? Date.parse(value) : NaN;
+  if (Number.isNaN(timestamp)) return Infinity;
+  return (Date.now() - timestamp) / (60 * 60 * 1000);
+}
+
+function isWithinWindow(value, startValue, hours) {
+  const timestamp = value ? Date.parse(value) : NaN;
+  const start = startValue ? Date.parse(startValue) : NaN;
+  if (Number.isNaN(timestamp) || Number.isNaN(start)) return false;
+  return timestamp >= start && timestamp <= start + hours * 60 * 60 * 1000;
+}
+
+function safeDenominator(row) {
+  return Math.max(1, row.reach || row.impressions || 50);
+}
+
+function confidenceFor(count) {
+  if (count >= 10) return "high";
+  if (count >= 5) return "medium";
+  return "exploratory";
+}
+
+function validationPenaltyFor(type, failures) {
+  const count = (failures || []).filter((failure) => failure.post_type === type).length;
+  return Math.min(0.06, count * VALIDATION_FAILURE_PENALTY);
+}
+
+function ucbExplorationBonus(count, total) {
+  if (total <= 1) return EXPLORATION_WEIGHT;
+  return EXPLORATION_WEIGHT * Math.sqrt(Math.log(total + 1) / Math.max(1, count));
+}
 
 function zScore(values) {
   if (!values.length) return {};
@@ -103,26 +143,30 @@ function computeScoringV2(context) {
   const perf = context.contentPerf || [];
   if (perf.length === 0) return null;
 
-  // 48h attribution window: map peanut shares to posts (rough — by daily bucket).
-  const shareDays = {};
-  for (const s of context.peanutShares || []) {
-    const d = (s.created_at || "").slice(0, 10);
-    if (d) shareDays[d] = (shareDays[d] || 0) + (s.amount || 1);
-  }
+  // Aggregate rates per post. Peanut shares / newsletter signups are temporal
+  // proxy rewards because current rows do not yet carry exact utm_content.
+  const records = perf.map((post) => {
+    const denominator = safeDenominator(post);
+    const postedAt = post.posted_at || post.created_at;
+    const mature = hoursSince(postedAt) >= MIN_REWARD_AGE_HOURS;
+    const peanutSharesInWindow = (context.peanutShares || []).reduce((sum, share) => {
+      if (!isWithinWindow(share.created_at, postedAt, REWARD_WINDOW_HOURS)) return sum;
+      return sum + (share.amount || 1);
+    }, 0);
+    const newsletterSubsInWindow = (context.newsletterSubs || []).filter((subscriber) => (
+      isWithinWindow(subscriber.created_at, postedAt, REWARD_WINDOW_HOURS)
+    )).length;
 
-  // Aggregate rates per post
-  const records = perf.map((p) => {
-    const imp = Math.max(1, p.reach || 50); // floor to avoid div-by-zero; 50 = conservative default
-    const day = (p.posted_at || "").slice(0, 10);
-    // Attribute same-day + next-day shares as "post-driven" signal (approximate).
-    const peanutsToday = shareDays[day] || 0;
     return {
-      post_type: p.post_type,
-      click_rate: (p.clicks || 0) / imp,
-      peanut_share_rate: peanutsToday / imp,
-      comment_rate: (p.comments || 0) / imp,
-      like_rate: (p.likes || 0) / imp,
-      raw: p,
+      post_type: post.post_type,
+      platform: post.platform,
+      mature,
+      click_rate: (post.clicks || 0) / denominator,
+      peanut_share_rate: peanutSharesInWindow / denominator,
+      newsletter_rate: newsletterSubsInWindow / denominator,
+      comment_rate: (post.comments || 0) / denominator,
+      like_rate: (post.likes || 0) / denominator,
+      raw: post,
     };
   });
 
@@ -134,37 +178,56 @@ function computeScoringV2(context) {
   }
 
   const scoresByType = {};
+  const totalMature = Math.max(1, records.filter((record) => record.mature).length);
   for (const [type, rows] of Object.entries(byType)) {
-    const clickStats = zScore(rows.map((r) => r.click_rate));
-    const peanutStats = zScore(rows.map((r) => r.peanut_share_rate));
-    const commentStats = zScore(rows.map((r) => r.comment_rate));
-    const likeStats = zScore(rows.map((r) => r.like_rate));
+    const matureRows = rows.filter((row) => row.mature);
+    const scoringRows = matureRows.length > 0 ? matureRows : rows;
+    const clickStats = zScore(scoringRows.map((row) => row.click_rate));
+    const peanutStats = zScore(scoringRows.map((row) => row.peanut_share_rate));
+    const newsletterStats = zScore(scoringRows.map((row) => row.newsletter_rate));
+    const commentStats = zScore(scoringRows.map((row) => row.comment_rate));
+    const likeStats = zScore(scoringRows.map((row) => row.like_rate));
 
-    // Mean score = how this type performs on average vs itself.
-    // We surface the type-level average rate (useful signal) + volume.
-    const avgClick = rows.reduce((a, r) => a + r.click_rate, 0) / rows.length;
-    const avgPeanut = rows.reduce((a, r) => a + r.peanut_share_rate, 0) / rows.length;
-    const avgComment = rows.reduce((a, r) => a + r.comment_rate, 0) / rows.length;
-    const avgLike = rows.reduce((a, r) => a + r.like_rate, 0) / rows.length;
+    const avgClick = scoringRows.reduce((sum, row) => sum + row.click_rate, 0) / scoringRows.length;
+    const avgPeanut = scoringRows.reduce((sum, row) => sum + row.peanut_share_rate, 0) / scoringRows.length;
+    const avgNewsletter = scoringRows.reduce((sum, row) => sum + row.newsletter_rate, 0) / scoringRows.length;
+    const avgComment = scoringRows.reduce((sum, row) => sum + row.comment_rate, 0) / scoringRows.length;
+    const avgLike = scoringRows.reduce((sum, row) => sum + row.like_rate, 0) / scoringRows.length;
+    const validationPenalty = validationPenaltyFor(type, context.validationFailures);
+    const composite = Math.max(0,
+      0.45 * avgClick +
+      0.25 * avgPeanut +
+      0.15 * avgComment +
+      0.10 * avgNewsletter +
+      0.05 * avgLike -
+      validationPenalty
+    );
+    const explorationBonus = ucbExplorationBonus(scoringRows.length, totalMature);
 
     scoresByType[type] = {
       count: rows.length,
+      mature_count: matureRows.length,
+      young_count: rows.length - matureRows.length,
       avg_click_rate: avgClick,
       avg_peanut_share_rate: avgPeanut,
+      avg_newsletter_rate: avgNewsletter,
       avg_comment_rate: avgComment,
       avg_like_rate: avgLike,
-      // Composite score per playbook §12 (using raw rates since all are z-normed relative to noise).
-      composite: 0.55 * avgClick + 0.30 * avgPeanut + 0.10 * avgComment + 0.05 * avgLike,
-      stats: { clickStats, peanutStats, commentStats, likeStats },
+      validation_penalty: validationPenalty,
+      exploration_bonus: explorationBonus,
+      composite,
+      bandit_score: composite + explorationBonus,
+      confidence: confidenceFor(scoringRows.length),
+      stats: { clickStats, peanutStats, newsletterStats, commentStats, likeStats },
     };
   }
 
-  // Rank by composite.
+  // Rank by base reward plus a small UCB-style exploration bonus.
   const ranked = Object.entries(scoresByType)
     .map(([type, s]) => ({ type, ...s }))
-    .sort((a, b) => b.composite - a.composite);
+    .sort((a, b) => b.bandit_score - a.bandit_score);
 
-  return { scoresByType, ranked, sampleSize: records.length };
+  return { scoresByType, ranked, sampleSize: records.length, rewardWindowHours: REWARD_WINDOW_HOURS, minRewardAgeHours: MIN_REWARD_AGE_HOURS };
 }
 
 // ─── Build performance summary for AI prompt injection ─────────────────────
@@ -202,14 +265,16 @@ function buildPerformanceSummary(context) {
   const scoring = computeScoringV2(context);
   if (scoring && scoring.ranked.length > 0) {
     lines.push("GROWTH SCORING v2 (last 30 days, playbook §12):");
-    lines.push("  Formula: 0.55*click_rate + 0.30*peanut_share_rate + 0.10*comment_rate + 0.05*like_rate");
+    lines.push(`  Reward window: ${scoring.rewardWindowHours}h; immature posts <${scoring.minRewardAgeHours}h are guarded.`);
+    lines.push("  Formula: 0.45*click + 0.25*peanut-share + 0.15*comment + 0.10*newsletter + 0.05*like - validation drift + exploration bonus");
     for (const r of scoring.ranked) {
-      const guard = r.count < 5 ? " (⚠ low sample)" : "";
+      const guard = r.confidence === "exploratory" ? " (explore carefully)" : r.confidence === "medium" ? " (medium sample)" : "";
       lines.push(
-        `  ${r.type}: score=${r.composite.toFixed(4)}, ` +
+        `  ${r.type}: bandit=${r.bandit_score.toFixed(4)}, base=${r.composite.toFixed(4)}, ` +
         `click=${(r.avg_click_rate * 100).toFixed(2)}%, ` +
         `peanut=${(r.avg_peanut_share_rate * 100).toFixed(3)}%, ` +
-        `n=${r.count}${guard}`
+        `newsletter=${(r.avg_newsletter_rate * 100).toFixed(3)}%, ` +
+        `mature=${r.mature_count}/${r.count}, confidence=${r.confidence}${guard}`
       );
     }
     // Peanut-share context
@@ -219,6 +284,8 @@ function buildPerformanceSummary(context) {
     // Newsletter context
     const subCount = (context.newsletterSubs || []).length;
     lines.push(`  → Newsletter confirmed signups (30d): ${subCount}`);
+    const failureCount = (context.validationFailures || []).length;
+    if (failureCount > 0) lines.push(`  → Validator drift penalty source: ${failureCount} blocked retry failure(s) in 30d`);
   }
 
   // Content performance by type (legacy engagement view — kept for operator context)

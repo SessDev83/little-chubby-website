@@ -63,7 +63,6 @@ const itemListJsonLd = JSON.stringify({
   <section class="page-section fun-fact-category-page">
     <div class="container">
       <div class="fun-fact-category-header" style={`--category-color: ${category.color};`}>
-        <a class="fun-fact-back-link" href={`/${lang}/fun-facts/`}>{lang === "es" ? "Todos los datos curiosos" : "All fun facts"}</a>
         <div class="section-head">
           <p class="eyebrow"><span aria-hidden="true">{category.icon}</span> {text.navFunFacts}</p>
           <h1>{category.label[lang]}</h1>
@@ -74,14 +73,19 @@ const itemListJsonLd = JSON.stringify({
         </p>
       </div>
 
-      <nav class="fun-fact-topic-nav" aria-label={lang === "es" ? "Otras categorías" : "Other categories"}>
-        {funFactCategories.map((item) => (
-          <a class="fun-fact-topic-btn" href={`/${lang}/fun-facts/${item.slug}/`} aria-current={item.slug === category.slug ? "page" : undefined}>
-            <span aria-hidden="true">{item.icon}</span>
-            {item.shortLabel[lang]}
-          </a>
-        ))}
-      </nav>
+      <div class="fun-fact-category-nav-shell">
+        <a class="fun-fact-back-link fun-fact-back-link--nav" href={`/${lang}/fun-facts/`}>
+          ← {lang === "es" ? "Datos curiosos" : "All facts"}
+        </a>
+        <nav class="fun-fact-topic-nav" aria-label={lang === "es" ? "Otras categorías" : "Other categories"}>
+          {funFactCategories.map((item) => (
+            <a class="fun-fact-topic-btn" href={`/${lang}/fun-facts/${item.slug}/`} aria-current={item.slug === category.slug ? "page" : undefined}>
+              <span aria-hidden="true">{item.icon}</span>
+              {item.shortLabel[lang]}
+            </a>
+          ))}
+        </nav>
+      </div>
 
       {posts.length > 0 ? (
         <div class="grid-cards posts">

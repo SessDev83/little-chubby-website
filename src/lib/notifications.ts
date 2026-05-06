@@ -63,16 +63,37 @@ const FROM_USER = "Little Chubby Press <hello@littlechubbypress.com>";
 const SITE_URL = getPublicSiteUrl();
 const LOGO_URL = `${SITE_URL}/images/brand/logo-lockup.png`;
 
-export async function sendToUser(to: string, subject: string, html: string): Promise<boolean> {
+type UserEmailOptions = {
+  text?: string;
+  replyTo?: string;
+  tags?: { name: string; value: string }[];
+};
+
+export async function sendToUser(
+  to: string,
+  subject: string,
+  html: string,
+  options: UserEmailOptions = {},
+): Promise<boolean> {
   if (!RESEND_API_KEY) return false;
   try {
+    const payload: Record<string, unknown> = {
+      from: FROM_USER,
+      to: [to],
+      subject,
+      html,
+      reply_to: options.replyTo || "hello@littlechubbypress.com",
+    };
+    if (options.text) payload.text = options.text.trim();
+    if (options.tags?.length) payload.tags = options.tags;
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from: FROM_USER, to: [to], subject, html }),
+      body: JSON.stringify(payload),
     });
     return res.ok;
   } catch {
@@ -152,6 +173,77 @@ function subscriberEmail(lang: string, bodyContent: string, confirmToken?: strin
   </div>
 </body>
 </html>`;
+}
+
+function transactionalEmail(lang: string, preheader: string, bodyContent: string): string {
+  const isEs = lang === "es";
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:'Segoe UI',Arial,sans-serif;background:#f6f1e7;margin:0;padding:0;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;line-height:1px;">${escapeHtml(preheader)}</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f1e7;border-collapse:collapse;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:540px;background:#ffffff;border:1px solid #eadfcd;border-radius:8px;overflow:hidden;border-collapse:separate;">
+          <tr>
+            <td align="center" style="background:#fffaf2;border-bottom:1px solid #eadfcd;padding:20px 24px;">
+              <a href="${SITE_URL}" style="text-decoration:none;">
+                <img src="${LOGO_URL}" alt="Little Chubby Press" width="176" style="display:block;margin:0 auto;border:0;max-width:176px;height:auto;" />
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:26px 24px 22px;color:#3f3329;font-size:15px;line-height:1.58;">
+              ${bodyContent}
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#fffaf2;border-top:1px solid #eadfcd;padding:15px 24px;text-align:center;color:#6b4c3b;font-size:12px;line-height:1.5;">
+              <p style="margin:0 0 4px;font-weight:700;color:#6b4c3b;">Little Chubby Press</p>
+              <p style="margin:0;"><a href="${SITE_URL}" style="color:#1f4f86;text-decoration:underline;">${escapeHtml(new URL(SITE_URL).hostname.replace(/^www\./, ""))}</a></p>
+              <p style="margin:8px 0 0;color:#8b7d6c;">${isEs ? "Email transaccional enviado por una acción en tu cuenta." : "Transactional email sent because of an account action."}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function emailButton(href: string, label: string): string {
+  return `<div style="text-align:center;margin:22px 0 20px;">
+    <a href="${escapeHtml(href)}" style="display:inline-block;background:#5c9650;color:#ffffff;font-weight:700;padding:12px 22px;border-radius:7px;text-decoration:none;font-size:15px;line-height:1.2;">${escapeHtml(label)}</a>
+  </div>`;
+}
+
+function ticketWord(quantity: number) {
+  return quantity === 1 ? "ticket" : "tickets";
+}
+
+function ticketCount(quantity: number) {
+  return `${quantity} ${ticketWord(quantity)}`;
+}
+
+function emailDateLabel(value: string | Date, lang: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString(lang === "es" ? "es-ES" : "en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function giftSummary(senderDisplay: string, quantity: number, lang: string): string {
+  const isEs = lang === "es";
+  return `<div style="border:1px solid #eadfcd;border-left:4px solid #d3a442;border-radius:7px;padding:16px 18px;margin:18px 0;background:#fffaf2;">
+    <p style="margin:0 0 8px;color:#6b4c3b;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">${isEs ? "Tickets enviados" : "Tickets sent"}</p>
+    <p style="margin:0;color:#2f261f;font-size:30px;line-height:1.1;font-weight:800;">${escapeHtml(ticketCount(quantity))}</p>
+    <p style="margin:8px 0 0;color:#6b4c3b;font-size:14px;">${isEs ? "De parte de" : "From"}: <b>${escapeHtml(senderDisplay)}</b></p>
+  </div>`;
 }
 
 function confirmButton(confirmUrl: string, lang: string): string {
@@ -536,29 +628,33 @@ export async function emailUserGiftReceived(
 ): Promise<void> {
   const isEs = lang === "es";
   const lotteryUrl = `https://littlechubbypress.com/${lang}/lottery/`;
-  const ticketWord = quantity === 1
-    ? (isEs ? "ticket" : "ticket")
-    : (isEs ? "tickets" : "tickets");
   const subject = isEs
-    ? `🎁 ¡${senderDisplay} te regaló ${quantity} ${ticketWord} del sorteo!`
-    : `🎁 ${senderDisplay} gifted you ${quantity} giveaway ${ticketWord}!`;
-  const rows: [string, string | { raw: string }][] = [
-    [isEs ? "De parte de" : "From", senderDisplay],
-    [isEs ? "Regalo" : "Gift", `🎟️ ${quantity} ${ticketWord}`],
-    [isEs ? "Cómo usarlos" : "How to use them", isEs
-      ? "Inicia sesión, ve a la página del Sorteo y entra al sorteo del mes con tus tickets nuevos."
-      : "Log in, go to the Giveaway page and enter this month's draw with your new tickets."],
-    [isEs ? "Entrar al sorteo" : "Enter the giveaway", { raw: `<a href="${lotteryUrl}" style="color:#6b4c3b;font-weight:700">${escapeHtml(lotteryUrl)}</a>` }],
-  ];
-  const html = card(
-    "🎁",
-    isEs ? "¡Recibiste un regalo!" : "You got a gift!",
-    rows,
-    isEs
-      ? "Los tickets ya están en tu cuenta. Úsalos antes del sorteo del próximo mes para maximizar tus chances."
-      : "The tickets are already in your account. Use them before next month's draw to maximize your chances."
-  );
-  await sendToUser(recipientEmail, subject, html);
+    ? `${senderDisplay} te envió ${ticketCount(quantity)} de Little Chubby Press`
+    : `${senderDisplay} sent you ${ticketCount(quantity)} on Little Chubby Press`;
+  const preheader = isEs
+    ? "Los tickets ya están en tu cuenta. Entra al sorteo mensual cuando quieras."
+    : "The tickets are already in your account. You can enter the monthly draw anytime.";
+  const body = `
+    <h1 style="margin:0 0 12px;color:#6b4c3b;font-size:21px;line-height:1.25;">${isEs ? "Tienes tickets nuevos" : "You have new tickets"}</h1>
+    <p style="margin:0 0 14px;color:#4b4239;">${isEs
+      ? `${escapeHtml(senderDisplay)} te envió tickets para el sorteo mensual de libros de Little Chubby Press.`
+      : `${escapeHtml(senderDisplay)} sent you tickets for the Little Chubby Press monthly book draw.`}</p>
+    ${giftSummary(senderDisplay, quantity, lang)}
+    <p style="margin:0 0 12px;color:#4b4239;">${isEs
+      ? "Ya están acreditados en tu cuenta. Inicia sesión y elige cuántos quieres usar para participar este mes."
+      : "They are already credited to your account. Log in and choose how many you want to use for this month's entry."}</p>
+    ${emailButton(lotteryUrl, isEs ? "Ver mis tickets" : "View my tickets")}
+    <p style="margin:16px 0 0;color:#8b7d6c;font-size:13px;">${isEs
+      ? "Si no esperabas este email, no tienes que hacer nada. Tus datos de pago nunca se solicitan para reclamar tickets."
+      : "If you were not expecting this email, no action is needed. Payment details are never requested to use tickets."}</p>`;
+  const html = transactionalEmail(lang, preheader, body);
+  const text = isEs
+    ? `${senderDisplay} te envió ${ticketCount(quantity)} de Little Chubby Press. Los tickets ya están en tu cuenta. Verlos: ${lotteryUrl}`
+    : `${senderDisplay} sent you ${ticketCount(quantity)} on Little Chubby Press. The tickets are already in your account. View them: ${lotteryUrl}`;
+  await sendToUser(recipientEmail, subject, html, {
+    text,
+    tags: [{ name: "category", value: "gift_ticket_received" }],
+  });
 }
 
 /** Invite a non-registered recipient to create an account and claim gifted tickets */
@@ -571,37 +667,49 @@ export async function emailUserGiftInvite(
 ): Promise<void> {
   const isEs = lang === "es";
   const signupUrl = `https://littlechubbypress.com/${lang}/register/?email=${encodeURIComponent(recipientEmail)}`;
-  const ticketWord = "tickets";
   const expDate = new Date(expiresAt);
-  const expLabel = expDate.toLocaleDateString(isEs ? "es-ES" : "en-US", { year: "numeric", month: "long", day: "numeric" });
-  const bonusDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  const bonusLabel = bonusDeadline.toLocaleDateString(isEs ? "es-ES" : "en-US", { year: "numeric", month: "long", day: "numeric" });
+  const expLabel = emailDateLabel(expiresAt, lang);
+  const bonusDeadline = Number.isNaN(expDate.getTime())
+    ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    : new Date(expDate.getTime() - 23 * 24 * 60 * 60 * 1000);
+  const bonusLabel = emailDateLabel(bonusDeadline, lang);
 
   const subject = isEs
-    ? `🎁 ${senderDisplay} te regaló ${quantity} ${ticketWord} — crea tu cuenta para reclamarlos`
-    : `🎁 ${senderDisplay} sent you ${quantity} ${ticketWord} — create an account to claim them`;
-
-  const rows: [string, string | { raw: string }][] = [
-    [isEs ? "De parte de" : "From", senderDisplay],
-    [isEs ? "Regalo" : "Gift", `🎟️ ${quantity} ${ticketWord}`],
-    [isEs ? "Cómo reclamarlos" : "How to claim", isEs
-      ? "Crea una cuenta gratis con ESTE email y los tickets se acreditan automáticamente."
-      : "Create a free account with THIS email and the tickets are credited automatically."],
-    [isEs ? "Crear cuenta" : "Create account", { raw: `<a href="${signupUrl}" style="color:#6b4c3b;font-weight:700">${escapeHtml(signupUrl)}</a>` }],
-    [isEs ? "🎉 Bonus para tu amigo" : "🎉 Bonus for your friend", isEs
-      ? `Si creas tu cuenta antes del ${bonusLabel} (7 días), ${senderDisplay} recibirá de vuelta los mismos ${quantity} tickets como premio por invitarte. ¡Es gratis para ti!`
-      : `If you sign up before ${bonusLabel} (within 7 days), ${senderDisplay} gets the same ${quantity} tickets back as a thank-you reward. Free for you!`],
-    [isEs ? "Fecha límite" : "Claim by", expLabel],
-  ];
-  const html = card(
-    "🎁",
-    isEs ? "¡Tienes un regalo esperando!" : "You have a gift waiting!",
-    rows,
-    isEs
-      ? "Si no creas una cuenta antes de la fecha límite, los tickets se devuelven al remitente. Registrarse es gratis y sin compromiso."
-      : "If you don't create an account before the deadline, the tickets go back to the sender. Signing up is free — no strings attached."
-  );
-  await sendToUser(recipientEmail, subject, html);
+    ? `${senderDisplay} te envió ${ticketCount(quantity)} de Little Chubby Press`
+    : `${senderDisplay} sent you ${ticketCount(quantity)} on Little Chubby Press`;
+  const preheader = isEs
+    ? "Crea tu cuenta con este mismo email para que los tickets se acrediten automáticamente."
+    : "Create your account with this same email so the tickets are credited automatically.";
+  const body = `
+    <h1 style="margin:0 0 12px;color:#6b4c3b;font-size:21px;line-height:1.25;">${isEs ? "Tienes tickets esperando" : "You have tickets waiting"}</h1>
+    <p style="margin:0 0 14px;color:#4b4239;">${isEs
+      ? `${escapeHtml(senderDisplay)} te envió tickets para el sorteo mensual de libros de Little Chubby Press.`
+      : `${escapeHtml(senderDisplay)} sent you tickets for the Little Chubby Press monthly book draw.`}</p>
+    ${giftSummary(senderDisplay, quantity, lang)}
+    <p style="margin:0 0 12px;color:#4b4239;">${isEs
+      ? "Para recibirlos, crea tu cuenta usando este mismo email. Los tickets se acreditan automaticamente al terminar el registro."
+      : "To receive them, create your account using this same email. The tickets are credited automatically when registration is complete."}</p>
+    ${emailButton(signupUrl, isEs ? "Crear cuenta" : "Create account")}
+    <div style="background:#f3f8f0;border:1px solid #d9ead3;border-radius:7px;padding:14px 16px;margin:18px 0;color:#3f3329;">
+      <p style="margin:0 0 6px;font-weight:700;color:#4c7a3f;">${isEs ? "Nota para quien te invitó" : "Note for the sender"}</p>
+      <p style="margin:0;font-size:14px;line-height:1.55;">${isEs
+        ? `Si creas tu cuenta antes del ${bonusLabel}, ${escapeHtml(senderDisplay)} también recibe ${ticketCount(quantity)} como crédito de agradecimiento. Tus tickets no cambian.`
+        : `If you create your account before ${bonusLabel}, ${escapeHtml(senderDisplay)} also receives ${ticketCount(quantity)} as a thank-you credit. Your tickets stay the same.`}</p>
+    </div>
+    <p style="margin:0 0 8px;color:#4b4239;font-size:14px;">${isEs
+      ? `Esta invitación vence el ${expLabel}. Si no se reclama, los tickets regresan al remitente.`
+      : `This invitation expires on ${expLabel}. If it is not claimed, the tickets return to the sender.`}</p>
+    <p style="margin:16px 0 0;color:#8b7d6c;font-size:13px;">${isEs
+      ? "Little Chubby Press nunca te pedirá datos de pago para recibir estos tickets."
+      : "Little Chubby Press will never ask for payment details to receive these tickets."}</p>`;
+  const html = transactionalEmail(lang, preheader, body);
+  const text = isEs
+    ? `${senderDisplay} te envió ${ticketCount(quantity)} de Little Chubby Press. Crea tu cuenta con este mismo email para recibirlos: ${signupUrl}. La invitación vence el ${expLabel}.`
+    : `${senderDisplay} sent you ${ticketCount(quantity)} on Little Chubby Press. Create your account with this same email to receive them: ${signupUrl}. The invitation expires on ${expLabel}.`;
+  await sendToUser(recipientEmail, subject, html, {
+    text,
+    tags: [{ name: "category", value: "gift_ticket_invite" }],
+  });
 }
 
 interface MonthlyDrawReport {

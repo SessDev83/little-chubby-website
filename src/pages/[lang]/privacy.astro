@@ -12,8 +12,8 @@ const text = ui[lang];
 const pathname = `/${lang}/privacy/`;
 
 // Last updated date — keep in sync with docs/LEGAL_MAINTENANCE.md bi-weekly review.
-const lastUpdatedES = "22 de abril de 2026";
-const lastUpdatedEN = "April 22, 2026";
+const lastUpdatedES = "5 de mayo de 2026";
+const lastUpdatedEN = "May 5, 2026";
 ---
 
 <BaseLayout lang={lang} title={text.privacyMetaTitle} description={text.privacyMetaDescription} pathname={pathname}>
@@ -45,6 +45,7 @@ const lastUpdatedEN = "April 22, 2026";
                 <li>Direccion postal o telefono <em>solo</em> si te toca un premio fisico.</li>
                 <li>Tus resenas, fotos de los libros, puntuacion y mensajes que nos envias.</li>
                 <li>Si te suscribes al newsletter: email, nombre e idioma.</li>
+                <li>Si usas regalos de tickets: email del destinatario, cantidad y estado de la invitacion.</li>
               </ul>
               <p><strong>Lo que se apunta solo al usar la app:</strong></p>
               <ul>
@@ -65,6 +66,7 @@ const lastUpdatedEN = "April 22, 2026";
                 <li>Para que puedas entrar a tu cuenta y ver tu perfil.</li>
                 <li>Para publicar tus resenas y contarte los cacahuetes/tickets.</li>
                 <li>Para enviarte los emails basicos (confirmar cuenta, avisar si ganas un sorteo).</li>
+                <li>Para entregar tickets regalados, avisar al destinatario y devolverlos si expiran.</li>
                 <li>Para mandarte el newsletter <em>si te suscribes</em> (y darte de baja en un clic cuando te apetezca).</li>
                 <li>Para moderar fotos antes de que se vean en la galeria y evitar abusos.</li>
                 <li>Para entender que contenido gusta (con numeros agregados, nunca persona a persona).</li>
@@ -139,6 +141,7 @@ const lastUpdatedEN = "April 22, 2026";
               <ul>
                 <li><strong>Mientras tengas la cuenta abierta:</strong> todo lo que necesitamos para el servicio.</li>
                 <li><strong>Si borras la cuenta:</strong> tu perfil, resenas, fotos y saldos <strong>desaparecen al instante</strong> de la app; las copias de seguridad se purgan en un plazo maximo de <strong>30 dias</strong>. Solo conservamos estadisticas anonimas agregadas y algun registro tecnico si la ley nos obliga.</li>
+                <li><strong>Invitaciones de tickets:</strong> se guardan como parte del historial de la economia; no usamos esos emails para newsletter si la persona no se suscribe.</li>
                 <li><strong>Newsletter:</strong> hasta que te das de baja. Despues guardamos solo una marca para respetar que no quieres mas.</li>
               </ul>
 
@@ -182,6 +185,7 @@ const lastUpdatedEN = "April 22, 2026";
                 <li>Postal address or phone <em>only</em> if you win a physical prize.</li>
                 <li>Your reviews, book photos, rating, and any messages you send us.</li>
                 <li>If you join the newsletter: email, name, language.</li>
+                <li>If you use ticket gifts: recipient email, quantity, and invitation status.</li>
               </ul>
               <p><strong>What gets logged automatically as you use the app:</strong></p>
               <ul>
@@ -202,6 +206,7 @@ const lastUpdatedEN = "April 22, 2026";
                 <li>So you can sign in and see your profile.</li>
                 <li>So we can publish your reviews and count your peanuts/tickets.</li>
                 <li>To send the essential emails (account confirmation, giveaway winner notice).</li>
+                <li>To deliver gifted tickets, notify the recipient, and refund gifts if they expire.</li>
                 <li>To send the newsletter <em>only if you subscribe</em> (one-click unsubscribe, always).</li>
                 <li>To moderate photos before they hit the public gallery and keep the place safe.</li>
                 <li>To understand which content lands (aggregate numbers, never person by person).</li>
@@ -275,6 +280,7 @@ const lastUpdatedEN = "April 22, 2026";
               <ul>
                 <li><strong>While your account is open:</strong> everything the service needs.</li>
                 <li><strong>If you delete your account:</strong> your profile, reviews, photos and balances <strong>vanish immediately</strong> from the app; backup copies are purged within a maximum of <strong>30 days</strong>. We keep only aggregated anonymous stats and any technical logs the law requires.</li>
+                <li><strong>Ticket invitations:</strong> kept as part of the economy history; we do not use those emails for newsletters unless the person subscribes.</li>
                 <li><strong>Newsletter:</strong> until you unsubscribe. After that we only keep a flag so we remember not to email you again.</li>
               </ul>
 
