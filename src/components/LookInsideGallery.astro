@@ -1,0 +1,133 @@
+---
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+interface Props {
+  title?: string;
+  folder?: string;
+  emptyMessage?: string;
+}
+
+const {
+  title = "Look Inside",
+  folder = "",
+  emptyMessage = "No preview pages available yet.",
+} = Astro.props;
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(__dirname, "..", "..");
+
+const cleanFolder = folder.trim().replace(/^[/\\]+|[/\\]+$/g, "");
+const folderParts = cleanFolder ? cleanFolder.split(/[\\/]+/) : [];
+const isSafeFolder = folderParts.every((part) => part !== ".." && part !== "");
+
+const targetDir = path.join(
+  projectRoot,
+  "public",
+  "look-inside",
+  ...(isSafeFolder ? folderParts : []),
+);
+
+const titleId =
+  "look-inside-" +
+  (folderParts.join("-") || "all").replace(/[^a-z0-9_-]+/gi, "-").toLowerCase();
+
+async function collectImageFiles(dir: string, relativeDir = ""): Promise<string[]> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const files: string[] = [];
+
+  for (const entry of entries) {
+    const entryRelative = relativeDir
+      ? path.join(relativeDir, entry.name)
+      : entry.name;
+    const entryFull = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      files.push(...await collectImageFiles(entryFull, entryRelative));
+      continue;
+    }
+
+    if (entry.isFile() && /\.webp$/i.test(entry.name)) {
+      files.push(entryRelative);
+    }
+  }
+
+  return files;
+}
+
+let images: string[] = [];
+
+try {
+  const relativeImages = await collectImageFiles(targetDir);
+  images = relativeImages
+    .sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+    )
+    .map((rel) => {
+      const src = "/" + ["look-inside", ...folderParts, rel].join("/");
+      return src.replace(/\\/g, "/");
+    });
+} catch {
+  images = [];
+}
+---
+
+<section class="look-inside-gallery" aria-labelledby={titleId}>
+  <h2 id={titleId}>{title}</h2>
+
+  {images.length === 0 ? (
+    <p class="empty">{emptyMessage}</p>
+  ) : (
+    <div class="grid">
+      {images.map((src, index) => (
+        <figure class="tile">
+          <img
+            src={src}
+            alt={"Preview page " + (index + 1)}
+            loading="lazy"
+            decoding="async"
+            width="1200"
+            height="1600"
+          />
+        </figure>
+      ))}
+    </div>
+  )}
+</section>
+
+<style>
+  .look-inside-gallery {
+    margin-block: 2rem;
+  }
+
+  .look-inside-gallery h2 {
+    margin: 0 0 1rem;
+    font-size: clamp(1.25rem, 1rem + 1vw, 2rem);
+    line-height: 1.2;
+  }
+
+  .look-inside-gallery .empty {
+    color: #655d56;
+  }
+
+  .look-inside-gallery .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.9rem;
+  }
+
+  .look-inside-gallery .tile {
+    margin: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #f7f1e8;
+    box-shadow: 0 8px 20px rgba(48, 40, 34, 0.12);
+  }
+
+  .look-inside-gallery .tile img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+</style>

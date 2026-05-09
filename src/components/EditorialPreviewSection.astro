@@ -1,0 +1,1495 @@
+﻿---
+type Lang = "en" | "es";
+
+type Author = {
+  id: string;
+  name: string;
+  avatarSrc: string;
+  href: string;
+  bio?: string;
+};
+
+type MediaItem = {
+  src: string;
+  alt: string;
+  label: string;
+};
+
+type ManuscriptSampleType = "cover" | "front-matter" | "interior" | "back-matter" | "back-cover";
+type ManuscriptWatermarkStyle = "none" | "logo" | "text";
+
+type ManuscriptSampleItem = MediaItem & {
+  type: ManuscriptSampleType;
+  watermarkStyle?: ManuscriptWatermarkStyle;
+  pageNumber?: number;
+};
+
+type IndexedSampleItem = ManuscriptSampleItem & {
+  sampleIndex: number;
+  isEager: boolean;
+};
+
+type SampleSpread = {
+  pages: IndexedSampleItem[];
+  isSingle: boolean;
+};
+
+interface Props {
+  lang: Lang;
+  bookId: string;
+  bookTitle: string;
+  coverSrc: string;
+  coverAlt: string;
+  previewImages: string[];
+  manuscriptSample?: ManuscriptSampleItem[];
+  amazonUrl: string;
+  author: Author;
+}
+
+const {
+  lang,
+  bookId,
+  bookTitle,
+  coverSrc,
+  coverAlt,
+  previewImages,
+  manuscriptSample = [],
+  author,
+} = Astro.props;
+
+const copy = lang === "es"
+  ? {
+      heading: "Mira dentro",
+      sampleCta: "Leer muestra",
+      sampleViewerTitle: "Vista previa del libro",
+      closeSample: "Cerrar vista previa",
+      previousPage: "Pagina anterior",
+      nextPage: "Pagina siguiente",
+      authorTitle: "Sigue al autor",
+      authorPage: "Pagina de autor",
+      follow: "Seguir",
+      openViewer: "Abrir visor de muestra",
+      note: "Muestra protegida: portada limpia y paginas interiores con proteccion.",
+      coverLabel: "Portada",
+      backCoverLabel: "Contraportada",
+      previewAlt: (index: number) => `Pagina ${index + 1} de ${bookTitle} (vista previa con marca de agua)`,
+      pageLabel: (index: number) => `Pagina ${index + 1}`,
+      counter: (index: number, total: number) => `${index + 1} de ${total}`,
+      thumbLabel: (label: string) => `Mostrar ${label}`,
+      morePagesLabel: (count: number) => `Abrir muestra con ${count} paginas mas`,
+      reading: (label: string) => `Viendo: ${label}`,
+      fallbackSampleLabel: (type: ManuscriptSampleType) =>
+        ({
+          cover: "Portada",
+          "front-matter": "Paginas iniciales",
+          interior: "Pagina para colorear",
+          "back-matter": "Paginas finales",
+          "back-cover": "Contraportada",
+        })[type],
+    }
+  : {
+      heading: "Look Inside",
+      sampleCta: "Read sample",
+      sampleViewerTitle: "Book sample preview",
+      closeSample: "Close sample preview",
+      previousPage: "Previous page",
+      nextPage: "Next page",
+      authorTitle: "Follow the author",
+      authorPage: "Author page",
+      follow: "Follow",
+      openViewer: "Open sample viewer",
+      note: "Protected sample: clean covers and protected interior pages.",
+      coverLabel: "Cover",
+      backCoverLabel: "Back cover",
+      previewAlt: (index: number) => `Page ${index + 1} of ${bookTitle} (watermarked preview)`,
+      pageLabel: (index: number) => `Page ${index + 1}`,
+      counter: (index: number, total: number) => `${index + 1} of ${total}`,
+      thumbLabel: (label: string) => `Show ${label}`,
+      morePagesLabel: (count: number) => `Open sample with ${count} more pages`,
+      reading: (label: string) => `Viewing: ${label}`,
+      fallbackSampleLabel: (type: ManuscriptSampleType) =>
+        ({
+          cover: "Cover",
+          "front-matter": "Front matter",
+          interior: "Coloring page",
+          "back-matter": "Back matter",
+          "back-cover": "Back cover",
+        })[type],
+    };
+
+const allInteriorPages = previewImages.filter((src): src is string =>
+  typeof src === "string" && src.trim().length > 0
+);
+
+const lookInsideBackCover = manuscriptSample.find((item) =>
+  item?.type === "back-cover" &&
+  typeof item.src === "string" &&
+  item.src.trim().length > 0 &&
+  typeof item.alt === "string" &&
+  item.alt.trim().length > 0
+);
+
+const previewItems: MediaItem[] = [
+  {
+    src: coverSrc,
+    alt: coverAlt,
+    label: copy.coverLabel,
+  },
+  ...(
+    lookInsideBackCover
+      ? [{ src: lookInsideBackCover.src, alt: lookInsideBackCover.alt, label: copy.backCoverLabel }]
+      : []
+  ),
+  ...allInteriorPages.map((src, index) => ({
+    src,
+    alt: copy.previewAlt(index),
+    label: copy.pageLabel(index),
+  })),
+];
+
+const watermarkText = lang === "es"
+  ? "PROPIEDAD DE LITTLE CHUBBY PRESS"
+  : "PROPERTY OF LITTLE CHUBBY PRESS";
+
+const VISIBLE_PREVIEW_THUMB_COUNT = 5;
+const visiblePreviewItems = previewItems.slice(0, VISIBLE_PREVIEW_THUMB_COUNT);
+const hiddenPreviewCount = Math.max(0, previewItems.length - visiblePreviewItems.length);
+const firstHiddenPreviewItem = hiddenPreviewCount > 0 ? previewItems[visiblePreviewItems.length] : null;
+
+const samplePages: IndexedSampleItem[] = previewItems.map((item, index) => ({
+  ...item,
+  type: index === 0 ? "cover" : lookInsideBackCover && index === 1 ? "back-cover" : "interior",
+  watermarkStyle: "none",
+  pageNumber: index === 0 ? undefined : index,
+  sampleIndex: index,
+  isEager: index < 2,
+}));
+
+const validWatermarkStyles = new Set<ManuscriptWatermarkStyle>(["none", "logo", "text"]);
+
+function defaultWatermarkStyle(type: ManuscriptSampleType): ManuscriptWatermarkStyle {
+  if (type === "cover" || type === "back-cover") return "none";
+  if (type === "interior") return "logo";
+  return "text";
+}
+
+const fallbackBookSampleItems: ManuscriptSampleItem[] = previewItems.map((item, index) => ({
+  ...item,
+  type: index === 0 ? "cover" : lookInsideBackCover && index === 1 ? "back-cover" : "interior",
+  watermarkStyle: index === 0 || (lookInsideBackCover && index === 1) ? "none" : "logo",
+  pageNumber: index === 0 ? undefined : index,
+}));
+
+const bookSamplePages: IndexedSampleItem[] = (
+  manuscriptSample.length > 0 ? manuscriptSample : fallbackBookSampleItems
+)
+  .filter((item) => item.src?.trim() && item.alt?.trim() && item.label?.trim())
+  .map((item, index) => {
+    const watermarkStyle = item.watermarkStyle && validWatermarkStyles.has(item.watermarkStyle)
+      ? item.watermarkStyle
+      : defaultWatermarkStyle(item.type);
+
+    return {
+      ...item,
+      watermarkStyle,
+      label: item.label?.trim() || copy.fallbackSampleLabel(item.type),
+      sampleIndex: index,
+      isEager: index < 2,
+    };
+  });
+
+const bookSampleSpreads: SampleSpread[] = bookSamplePages.map((page) => ({
+  pages: [page],
+  isSingle: true,
+}));
+
+const safePreviewItemsJson = JSON.stringify(previewItems).replace(/</g, "\\u003c");
+const safeReadingText = copy.reading(samplePages[0]?.label ?? copy.coverLabel).replace(/</g, "\\u003c");
+const safeBookSampleReadingText = copy.reading(bookSamplePages[0]?.label ?? copy.coverLabel).replace(/</g, "\\u003c");
+
+const authorFollowHref = author.id.trim()
+  ? `https://www.amazon.com/stores/Little-Chubby-Press/author/${encodeURIComponent(author.id.trim())}`
+  : author.href;
+---
+
+<section
+  class="editorial-media"
+  data-editorial-preview
+  aria-labelledby={`editorial-media-${bookId}`}
+>
+  <h2 id={`editorial-media-${bookId}`} class="editorial-media__sr-only">{copy.heading}</h2>
+
+  <button class="editorial-media__stage" type="button" data-preview-open aria-label={copy.openViewer}>
+    <img
+      src={previewItems[0].src}
+      alt={previewItems[0].alt}
+      width="420"
+      height="420"
+      fetchpriority="high"
+      decoding="async"
+      data-preview-main
+    />
+  </button>
+
+  <div class="editorial-media__label-row">
+    <span>{copy.heading}</span>
+    <span data-preview-counter aria-live="polite">{copy.counter(0, previewItems.length)}</span>
+  </div>
+
+  <div class="editorial-media__thumbs" role="listbox" aria-label={copy.heading}>
+    {visiblePreviewItems.map((item, index) => (
+      <button
+        class="editorial-media__thumb"
+        type="button"
+        role="option"
+        aria-label={copy.thumbLabel(item.label)}
+        aria-selected={index === 0 ? "true" : "false"}
+        data-preview-thumb={String(index)}
+      >
+        <img
+          src={item.src}
+          alt={item.alt}
+          width="88"
+          height="114"
+          loading={index === 0 ? "eager" : "lazy"}
+          decoding="async"
+        />
+      </button>
+    ))}
+    {hiddenPreviewCount > 0 && firstHiddenPreviewItem && (
+      <button
+        class="editorial-media__thumb editorial-media__thumb--more"
+        type="button"
+        role="option"
+        aria-label={copy.morePagesLabel(hiddenPreviewCount)}
+        aria-selected="false"
+        data-preview-thumb={String(visiblePreviewItems.length)}
+        data-preview-more="true"
+      >
+        <img
+          src={firstHiddenPreviewItem.src}
+          alt=""
+          width="88"
+          height="114"
+          loading="lazy"
+          decoding="async"
+        />
+        <span class="editorial-media__thumb-more-count" aria-hidden="true">+{hiddenPreviewCount}</span>
+      </button>
+    )}
+  </div>
+
+  <button
+    class="editorial-media__sample"
+    type="button"
+    data-sample-open
+    aria-haspopup="dialog"
+    aria-controls={`editorial-book-sample-modal-${bookId}`}
+  >
+    {copy.sampleCta}
+  </button>
+
+  <p class="editorial-media__note">{copy.note}</p>
+
+  <div
+    class="editorial-sample-modal"
+    id={`editorial-sample-modal-${bookId}`}
+    data-sample-modal
+    aria-hidden="true"
+  >
+    <div class="editorial-sample-modal__backdrop" data-sample-backdrop></div>
+
+    <div
+      class="editorial-sample-modal__panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`editorial-sample-title-${bookId}`}
+      tabindex="-1"
+      data-sample-panel
+    >
+      <button
+        class="editorial-sample-modal__close"
+        type="button"
+        data-sample-close
+        aria-label={copy.closeSample}
+      >
+        X
+      </button>
+
+      <p class="editorial-sample-modal__title" id={`editorial-sample-title-${bookId}`}>
+        {copy.sampleViewerTitle}
+      </p>
+
+      <div class="editorial-sample-modal__scroll" data-sample-scroll>
+        <div class="editorial-sample-modal__pages">
+          {samplePages.map((item) => (
+            <figure
+              class={`editorial-sample-modal__page${item.sampleIndex === 0 ? " is-active" : ""}`}
+              data-sample-page
+              data-sample-index={String(item.sampleIndex)}
+              data-sample-label={item.label}
+              data-sample-type={item.type}
+              data-sample-watermark-style={item.watermarkStyle}
+              hidden={item.sampleIndex !== 0}
+            >
+              <div class="editorial-sample-modal__page-artboard">
+                <img
+                  src={item.src}
+                  alt={item.alt}
+                  width="1200"
+                  height="1600"
+                  loading={item.isEager ? "eager" : "lazy"}
+                  decoding="async"
+                />
+                {item.watermarkStyle === "logo" && (
+                  <span class="editorial-sample-modal__wm-logo editorial-look-inside-modal__wm-logo" aria-hidden="true"></span>
+                )}
+                {item.watermarkStyle === "text" && (
+                  <span class="editorial-sample-modal__wm-text" aria-hidden="true">
+                    <span class="editorial-sample-modal__wm-line editorial-sample-modal__wm-line--top">{watermarkText}</span>
+                    <span class="editorial-sample-modal__wm-line editorial-sample-modal__wm-line--bottom">{watermarkText}</span>
+                  </span>
+                )}
+              </div>
+              <figcaption>{item.label}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+
+      <div class="editorial-sample-modal__controls">
+        <button class="editorial-sample-modal__nav" type="button" data-sample-prev aria-label={copy.previousPage}>&lt;</button>
+        <p class="editorial-sample-modal__indicator" data-sample-indicator aria-live="polite" set:html={safeReadingText}></p>
+        <button class="editorial-sample-modal__nav" type="button" data-sample-next aria-label={copy.nextPage}>&gt;</button>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="editorial-sample-modal editorial-book-sample-modal"
+    id={`editorial-book-sample-modal-${bookId}`}
+    data-book-sample-modal
+    aria-hidden="true"
+  >
+    <div class="editorial-sample-modal__backdrop" data-book-sample-backdrop></div>
+
+    <div
+      class="editorial-sample-modal__panel editorial-book-sample-modal__panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`editorial-book-sample-title-${bookId}`}
+      tabindex="-1"
+      data-book-sample-panel
+    >
+      <button
+        class="editorial-sample-modal__close"
+        type="button"
+        data-book-sample-close
+        aria-label={copy.closeSample}
+      >
+        X
+      </button>
+
+      <p class="editorial-sample-modal__title" id={`editorial-book-sample-title-${bookId}`}>
+        {copy.sampleViewerTitle}
+      </p>
+
+      <div class="editorial-sample-modal__scroll editorial-book-sample-modal__scroll" data-book-sample-scroll>
+        <div class="editorial-sample-modal__pages editorial-book-sample-modal__pages">
+          {bookSampleSpreads.map((spread) => (
+            <div
+              class:list={[
+                "editorial-book-sample-modal__spread",
+                spread.isSingle && "editorial-book-sample-modal__spread--single",
+              ]}
+            >
+              {spread.pages.map((item) => (
+                <figure
+                  class="editorial-sample-modal__page editorial-book-sample-modal__page"
+                  data-book-sample-page
+                  data-book-sample-index={String(item.sampleIndex)}
+                  data-book-sample-label={item.label}
+                  data-book-sample-type={item.type}
+                  data-book-sample-watermark-style={item.watermarkStyle}
+                >
+                  <div class="editorial-sample-modal__page-artboard editorial-book-sample-modal__page-artboard">
+                    <img
+                      src={item.src}
+                      alt={item.alt}
+                      width="1200"
+                      height="1600"
+                      loading={item.isEager ? "eager" : "lazy"}
+                      decoding="async"
+                    />
+                    {item.watermarkStyle === "logo" && (
+                      <span class="editorial-sample-modal__wm-logo editorial-book-sample-modal__wm-logo" aria-hidden="true"></span>
+                    )}
+                    {item.watermarkStyle === "text" && (
+                      <span class="editorial-sample-modal__wm-text" aria-hidden="true">
+                        <span class="editorial-sample-modal__wm-line editorial-sample-modal__wm-line--top">{watermarkText}</span>
+                        <span class="editorial-sample-modal__wm-line editorial-sample-modal__wm-line--bottom">{watermarkText}</span>
+                      </span>
+                    )}
+                  </div>
+                  <figcaption>{item.label}</figcaption>
+                </figure>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="editorial-sample-modal__controls">
+        <button class="editorial-sample-modal__nav" type="button" data-book-sample-prev aria-label={copy.previousPage}>&lt;</button>
+        <p class="editorial-sample-modal__indicator" data-book-sample-indicator aria-live="polite" set:html={safeBookSampleReadingText}></p>
+        <button class="editorial-sample-modal__nav" type="button" data-book-sample-next aria-label={copy.nextPage}>&gt;</button>
+      </div>
+    </div>
+  </div>
+
+  <aside class="editorial-author" aria-labelledby={`editorial-author-${bookId}`}>
+    <p class="editorial-author__label">{copy.authorTitle}</p>
+    <div class="editorial-author__row">
+      <img
+        src={author.avatarSrc}
+        alt=""
+        width="44"
+        height="44"
+        loading="lazy"
+        decoding="async"
+        class="editorial-author__avatar"
+      />
+      <a id={`editorial-author-${bookId}`} class="editorial-author__name" href={author.href} target="_blank" rel="noopener noreferrer">
+        {author.name}
+      </a>
+      <a class="editorial-author__follow" href={authorFollowHref} target="_blank" rel="noopener noreferrer">
+        {copy.follow}
+      </a>
+    </div>
+    {author.bio && <p class="editorial-author__bio">{author.bio}</p>}
+    <a class="editorial-author__page" href={author.href} target="_blank" rel="noopener noreferrer">
+      {copy.authorPage}
+    </a>
+  </aside>
+
+  <script type="application/json" data-preview-items is:inline set:html={safePreviewItemsJson}></script>
+</section>
+
+<script>
+  const initialized = new WeakSet<Element>();
+
+  type MediaItem = {
+    src: string;
+    alt: string;
+    label: string;
+  };
+
+  function initEditorialPreview(root: Element) {
+    if (initialized.has(root)) return;
+    initialized.add(root);
+
+    const itemsNode = root.querySelector("[data-preview-items]");
+    const mainImage = root.querySelector<HTMLImageElement>("[data-preview-main]");
+    const counter = root.querySelector<HTMLElement>("[data-preview-counter]");
+    const stageButton = root.querySelector<HTMLButtonElement>("[data-preview-open]");
+    const thumbs = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-preview-thumb]"));
+
+    const sampleOpenButton = root.querySelector<HTMLButtonElement>("[data-sample-open]");
+    const sampleModal = root.querySelector<HTMLElement>("[data-sample-modal]");
+    const samplePanel = root.querySelector<HTMLElement>("[data-sample-panel]");
+    const sampleBackdrop = root.querySelector<HTMLElement>("[data-sample-backdrop]");
+    const sampleCloseButton = root.querySelector<HTMLButtonElement>("[data-sample-close]");
+    const samplePrevButton = root.querySelector<HTMLButtonElement>("[data-sample-prev]");
+    const sampleNextButton = root.querySelector<HTMLButtonElement>("[data-sample-next]");
+    const sampleScroll = root.querySelector<HTMLElement>("[data-sample-scroll]");
+    const sampleIndicator = root.querySelector<HTMLElement>("[data-sample-indicator]");
+    const samplePages = Array.from(root.querySelectorAll<HTMLElement>("[data-sample-page]"));
+
+    const bookSampleModal = root.querySelector<HTMLElement>("[data-book-sample-modal]");
+    const bookSamplePanel = root.querySelector<HTMLElement>("[data-book-sample-panel]");
+    const bookSampleBackdrop = root.querySelector<HTMLElement>("[data-book-sample-backdrop]");
+    const bookSampleCloseButton = root.querySelector<HTMLButtonElement>("[data-book-sample-close]");
+    const bookSamplePrevButton = root.querySelector<HTMLButtonElement>("[data-book-sample-prev]");
+    const bookSampleNextButton = root.querySelector<HTMLButtonElement>("[data-book-sample-next]");
+    const bookSampleScroll = root.querySelector<HTMLElement>("[data-book-sample-scroll]");
+    const bookSampleIndicator = root.querySelector<HTMLElement>("[data-book-sample-indicator]");
+    const bookSamplePages = Array.from(root.querySelectorAll<HTMLElement>("[data-book-sample-page]"));
+
+    if (!itemsNode || !mainImage || !counter || thumbs.length === 0) return;
+
+    let items: MediaItem[] = [];
+    try {
+      const parsed = JSON.parse(itemsNode.textContent || "[]");
+      items = Array.isArray(parsed)
+        ? parsed.filter((item): item is MediaItem =>
+            item &&
+            typeof item.src === "string" &&
+            typeof item.alt === "string" &&
+            typeof item.label === "string"
+          )
+        : [];
+    } catch {
+      items = [];
+    }
+
+    if (items.length === 0) return;
+
+    let previewCurrent = 0;
+    let sampleCurrent = 0;
+    let bookSampleCurrent = 0;
+    let modalOpen = false;
+    let bookSampleModalOpen = false;
+    let restoreFocusTo: HTMLElement | null = null;
+    let bookSampleRestoreFocusTo: HTMLElement | null = null;
+    let bookSampleScrollFrame = 0;
+
+    const hasModal =
+      !!sampleModal &&
+      !!samplePanel &&
+      !!sampleBackdrop &&
+      !!sampleCloseButton &&
+      !!samplePrevButton &&
+      !!sampleNextButton &&
+      !!sampleScroll &&
+      !!sampleIndicator &&
+      samplePages.length > 0;
+    const hasBookSampleModal =
+      !!sampleOpenButton &&
+      !!bookSampleModal &&
+      !!bookSamplePanel &&
+      !!bookSampleBackdrop &&
+      !!bookSampleCloseButton &&
+      !!bookSamplePrevButton &&
+      !!bookSampleNextButton &&
+      !!bookSampleScroll &&
+      !!bookSampleIndicator &&
+      bookSamplePages.length > 0;
+    const visibleThumbCount = thumbs.filter((thumb) => thumb.dataset.previewMore !== "true").length;
+    const moreThumb = thumbs.find((thumb) => thumb.dataset.previewMore === "true") ?? null;
+
+    function labelFor(index: number) {
+      const isSpanish = document.documentElement.lang === "es";
+      return isSpanish ? `${index + 1} de ${items.length}` : `${index + 1} of ${items.length}`;
+    }
+
+    function readingText(label: string) {
+      const isSpanish = document.documentElement.lang === "es";
+      return isSpanish ? `Viendo: ${label}` : `Viewing: ${label}`;
+    }
+
+    function samplePositionText(index: number) {
+      const isSpanish = document.documentElement.lang === "es";
+      return isSpanish ? `${index + 1} de ${samplePages.length}` : `${index + 1} of ${samplePages.length}`;
+    }
+
+    function bookSamplePositionText(index: number) {
+      const isSpanish = document.documentElement.lang === "es";
+      return isSpanish ? `${index + 1} de ${bookSamplePages.length}` : `${index + 1} of ${bookSamplePages.length}`;
+    }
+
+    function syncThumbs(focusThumb = false) {
+      thumbs.forEach((thumb) => {
+        const thumbIndex = Number.parseInt(thumb.dataset.previewThumb || "0", 10);
+        const isMoreThumb = thumb.dataset.previewMore === "true";
+        const isActive = isMoreThumb ? previewCurrent >= visibleThumbCount : thumbIndex === previewCurrent;
+        thumb.setAttribute("aria-selected", String(isActive));
+        thumb.setAttribute("tabindex", isActive ? "0" : "-1");
+      });
+
+      if (focusThumb) {
+        const target = previewCurrent >= visibleThumbCount
+          ? moreThumb
+          : thumbs.find((thumb) => Number.parseInt(thumb.dataset.previewThumb || "0", 10) === previewCurrent);
+        target?.focus();
+      }
+    }
+
+    function updateMainPreview(focusThumb = false) {
+      mainImage!.src = items[previewCurrent].src;
+      mainImage!.alt = items[previewCurrent].alt;
+      counter!.textContent = labelFor(previewCurrent);
+      syncThumbs(focusThumb);
+    }
+
+    function setIndicator(index: number) {
+      if (!sampleIndicator) return;
+      const label = samplePages[index]?.dataset.sampleLabel || items[0]?.label || labelFor(0);
+      sampleIndicator.textContent = `${samplePositionText(index)} - ${readingText(label)}`;
+      if (samplePrevButton) samplePrevButton.disabled = index <= 0;
+      if (sampleNextButton) sampleNextButton.disabled = index >= samplePages.length - 1;
+    }
+
+    function setPreviewActive(index: number, focusThumb = false) {
+      previewCurrent = (index + items.length) % items.length;
+      updateMainPreview(focusThumb);
+    }
+
+    function setSampleActive(index: number) {
+      sampleCurrent = Math.max(0, Math.min(samplePages.length - 1, index));
+      samplePages.forEach((page, pageIndex) => {
+        const isActive = pageIndex === sampleCurrent;
+        page.hidden = !isActive;
+        page.classList.toggle("is-active", isActive);
+      });
+      setIndicator(sampleCurrent);
+    }
+
+    function setBookSampleIndicator(index: number) {
+      if (!bookSampleIndicator) return;
+      const label = bookSamplePages[index]?.dataset.bookSampleLabel || bookSamplePages[0]?.dataset.bookSampleLabel || "";
+      bookSampleIndicator.textContent = `${bookSamplePositionText(index)} - ${readingText(label)}`;
+      if (bookSamplePrevButton) bookSamplePrevButton.disabled = index <= 0;
+      if (bookSampleNextButton) bookSampleNextButton.disabled = index >= bookSamplePages.length - 1;
+    }
+
+    function setBookSampleActive(index: number, scrollIntoView = false) {
+      bookSampleCurrent = Math.max(0, Math.min(bookSamplePages.length - 1, index));
+      bookSamplePages.forEach((page, pageIndex) => {
+        page.classList.toggle("is-active", pageIndex === bookSampleCurrent);
+      });
+      setBookSampleIndicator(bookSampleCurrent);
+
+      if (scrollIntoView && bookSampleModalOpen) {
+        bookSamplePages[bookSampleCurrent]?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+      }
+    }
+
+    function getModalFocusableElements() {
+      if (!hasModal) return [] as HTMLElement[];
+      return Array.from(
+        samplePanel!.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => !element.closest("[hidden]"));
+    }
+
+    function getBookSampleFocusableElements() {
+      if (!hasBookSampleModal) return [] as HTMLElement[];
+      return Array.from(
+        bookSamplePanel!.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => !element.closest("[hidden]"));
+    }
+
+    function syncBookSampleFromScroll() {
+      bookSampleScrollFrame = 0;
+      if (!hasBookSampleModal || !bookSampleModalOpen) return;
+
+      const scrollRect = bookSampleScroll!.getBoundingClientRect();
+      const targetCenter = scrollRect.top + scrollRect.height * 0.45;
+      let bestIndex = bookSampleCurrent;
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      bookSamplePages.forEach((page, index) => {
+        const rect = page.getBoundingClientRect();
+        const pageCenter = rect.top + rect.height / 2;
+        const distance = Math.abs(pageCenter - targetCenter);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = index;
+        }
+      });
+
+      setBookSampleActive(bestIndex);
+    }
+
+    function scheduleBookSampleScrollSync() {
+      if (bookSampleScrollFrame) return;
+      bookSampleScrollFrame = window.requestAnimationFrame(syncBookSampleFromScroll);
+    }
+
+    function openModal(startIndex = previewCurrent) {
+      if (!hasModal) return;
+
+      if (modalOpen) {
+        setSampleActive(startIndex);
+        return;
+      }
+
+      modalOpen = true;
+      restoreFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      sampleModal!.classList.add("is-open");
+      sampleModal!.setAttribute("aria-hidden", "false");
+      document.body.classList.add("editorial-no-scroll");
+
+      setSampleActive(startIndex);
+
+      sampleCloseButton!.focus();
+    }
+
+    function closeModal() {
+      if (!hasModal || !modalOpen) return;
+
+      modalOpen = false;
+
+      const fallbackTrigger = stageButton ?? null;
+      const focusTarget =
+        restoreFocusTo && !sampleModal!.contains(restoreFocusTo)
+          ? restoreFocusTo
+          : fallbackTrigger;
+      focusTarget?.focus();
+
+      sampleModal!.classList.remove("is-open");
+      sampleModal!.setAttribute("aria-hidden", "true");
+      if (!bookSampleModalOpen) document.body.classList.remove("editorial-no-scroll");
+    }
+
+    function openBookSampleModal(startIndex = 0) {
+      if (!hasBookSampleModal) return;
+
+      if (modalOpen) closeModal();
+
+      bookSampleModalOpen = true;
+      bookSampleRestoreFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      bookSampleModal!.classList.add("is-open");
+      bookSampleModal!.setAttribute("aria-hidden", "false");
+      document.body.classList.add("editorial-no-scroll");
+
+      setBookSampleActive(startIndex);
+      bookSampleScroll!.scrollTop = 0;
+      window.requestAnimationFrame(() => setBookSampleActive(startIndex));
+      bookSampleCloseButton!.focus();
+    }
+
+    function closeBookSampleModal() {
+      if (!hasBookSampleModal || !bookSampleModalOpen) return;
+
+      bookSampleModalOpen = false;
+      const focusTarget =
+        bookSampleRestoreFocusTo && !bookSampleModal!.contains(bookSampleRestoreFocusTo)
+          ? bookSampleRestoreFocusTo
+          : sampleOpenButton;
+      focusTarget?.focus();
+
+      bookSampleModal!.classList.remove("is-open");
+      bookSampleModal!.setAttribute("aria-hidden", "true");
+      if (!modalOpen) document.body.classList.remove("editorial-no-scroll");
+    }
+
+    thumbs.forEach((thumb, index) => {
+      thumb.setAttribute("tabindex", index === 0 ? "0" : "-1");
+      thumb.addEventListener("click", () => {
+        const targetIndex = Number.parseInt(thumb.dataset.previewThumb || String(index), 10);
+        setPreviewActive(targetIndex);
+        openModal(targetIndex);
+      });
+      thumb.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+          event.preventDefault();
+          setPreviewActive(previewCurrent + 1, true);
+        }
+        if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+          event.preventDefault();
+          setPreviewActive(previewCurrent - 1, true);
+        }
+        if (event.key === "Home") {
+          event.preventDefault();
+          setPreviewActive(0, true);
+        }
+        if (event.key === "End") {
+          event.preventDefault();
+          setPreviewActive(items.length - 1, true);
+        }
+      });
+    });
+
+    stageButton?.addEventListener("click", () => openModal(previewCurrent));
+    sampleOpenButton?.addEventListener("click", () => openBookSampleModal(0));
+
+    if (hasModal) {
+      sampleCloseButton!.addEventListener("click", closeModal);
+      sampleBackdrop!.addEventListener("click", closeModal);
+      samplePrevButton!.addEventListener("click", () => setSampleActive(sampleCurrent - 1));
+      sampleNextButton!.addEventListener("click", () => setSampleActive(sampleCurrent + 1));
+
+      samplePanel!.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (!modalOpen) return;
+
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeModal();
+          return;
+        }
+
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          setSampleActive(sampleCurrent - 1);
+          return;
+        }
+
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          setSampleActive(sampleCurrent + 1);
+          return;
+        }
+
+        if (event.key === "Tab") {
+          const focusable = getModalFocusableElements();
+          if (focusable.length === 0) {
+            event.preventDefault();
+            samplePanel!.focus();
+            return;
+          }
+
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          const activeEl = document.activeElement;
+
+          if (event.shiftKey && activeEl === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && activeEl === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      });
+    }
+
+    if (hasBookSampleModal) {
+      bookSampleCloseButton!.addEventListener("click", closeBookSampleModal);
+      bookSampleBackdrop!.addEventListener("click", closeBookSampleModal);
+      bookSamplePrevButton!.addEventListener("click", () => setBookSampleActive(bookSampleCurrent - 1, true));
+      bookSampleNextButton!.addEventListener("click", () => setBookSampleActive(bookSampleCurrent + 1, true));
+      bookSampleScroll!.addEventListener("scroll", scheduleBookSampleScrollSync, { passive: true });
+
+      bookSamplePanel!.addEventListener("keydown", (event: KeyboardEvent) => {
+        if (!bookSampleModalOpen) return;
+
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeBookSampleModal();
+          return;
+        }
+
+        if (event.key === "ArrowLeft" || event.key === "PageUp") {
+          event.preventDefault();
+          setBookSampleActive(bookSampleCurrent - 1, true);
+          return;
+        }
+
+        if (event.key === "ArrowRight" || event.key === "PageDown") {
+          event.preventDefault();
+          setBookSampleActive(bookSampleCurrent + 1, true);
+          return;
+        }
+
+        if (event.key === "Tab") {
+          const focusable = getBookSampleFocusableElements();
+          if (focusable.length === 0) {
+            event.preventDefault();
+            bookSamplePanel!.focus();
+            return;
+          }
+
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          const activeEl = document.activeElement;
+
+          if (event.shiftKey && activeEl === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && activeEl === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      });
+    }
+
+    setPreviewActive(0);
+    setIndicator(0);
+    setBookSampleIndicator(0);
+  }
+
+  document.querySelectorAll("[data-editorial-preview]").forEach(initEditorialPreview);
+</script>
+
+<style>
+  .editorial-media,
+  .editorial-media * {
+    box-sizing: border-box;
+  }
+
+  .editorial-media {
+    display: grid;
+    gap: 0.65rem;
+    width: min(100%, 360px);
+    margin-inline: auto;
+  }
+
+  .editorial-media__sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .editorial-media__stage {
+    display: grid;
+    place-items: center;
+    position: relative;
+    isolation: isolate;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border: 0;
+    border-radius: var(--radius-md, 1rem);
+    padding: 0;
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow: 0 8px 32px rgba(71, 52, 33, 0.18);
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .editorial-media__stage img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: relative;
+    z-index: 1;
+  }
+
+  .editorial-media__label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--ink-soft, #6b6258);
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-size: 0.84rem;
+    font-weight: 800;
+  }
+
+  .editorial-media__label-row span:first-child {
+    color: var(--brand-brown, #6b3d1f);
+  }
+
+  .editorial-media__thumbs {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.32rem;
+    min-width: 0;
+    overflow: visible;
+    padding: 0.1rem 0 0.2rem;
+  }
+
+  .editorial-media__thumb {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    position: relative;
+    isolation: isolate;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: #fff;
+    padding: 0.16rem;
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  .editorial-media__thumb[aria-selected="true"],
+  .editorial-media__thumb:focus-visible {
+    border-color: var(--brand-blue, #1f4f86);
+    outline: 0;
+  }
+
+  .editorial-media__thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    object-fit: cover;
+    position: relative;
+    z-index: 1;
+  }
+
+  .editorial-media__thumb--more img {
+    filter: saturate(0.25) brightness(0.62);
+  }
+
+  .editorial-media__thumb--more::after {
+    content: "";
+    position: absolute;
+    inset: 0.16rem;
+    border-radius: 6px;
+    background: rgba(24, 22, 20, 0.46);
+    z-index: 2;
+  }
+
+  .editorial-media__thumb-more-count {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-size: clamp(0.78rem, 4.2vw, 1.05rem);
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+  }
+
+  .editorial-media__sample,
+  .editorial-author__follow,
+  .editorial-author__page {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.45rem;
+    border-radius: 999px;
+    padding: 0.65rem 1rem;
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-weight: 800;
+    text-align: center;
+    text-decoration: none;
+    line-height: 1;
+  }
+
+  .editorial-media__sample {
+    width: 100%;
+    border: 1.5px solid rgba(71, 52, 33, 0.28);
+    background: rgba(255, 255, 255, 0.74);
+    color: var(--ink, #2c241f);
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .editorial-media__note {
+    margin: -0.2rem 0 0;
+    color: var(--ink-soft, #6b6258);
+    font-size: 0.78rem;
+    font-style: italic;
+    text-align: center;
+  }
+
+  :global(body.editorial-no-scroll) {
+    overflow: hidden;
+  }
+
+  .editorial-sample-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: grid;
+    place-items: center;
+    padding: 0.6rem;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .editorial-sample-modal.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .editorial-sample-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(16, 12, 8, 0.82);
+    backdrop-filter: blur(2px);
+  }
+
+  .editorial-sample-modal__panel {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 76rem);
+    height: min(100dvh - 1.2rem, 66rem);
+    border-radius: 16px;
+    border: 1px solid rgba(71, 52, 33, 0.22);
+    background: linear-gradient(180deg, #fcf8f0 0%, #f5ebdd 100%);
+    box-shadow: 0 28px 64px rgba(0, 0, 0, 0.38);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .editorial-sample-modal__close {
+    position: fixed;
+    top: max(0.7rem, env(safe-area-inset-top));
+    right: max(0.7rem, env(safe-area-inset-right));
+    width: 2.85rem;
+    height: 2.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 999px;
+    background: rgba(16, 12, 8, 0.8);
+    color: #fff;
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-size: 1.02rem;
+    font-weight: 800;
+    cursor: pointer;
+    z-index: 3;
+  }
+
+  .editorial-sample-modal__title {
+    margin: 0;
+    padding: 0.95rem 1rem 0.7rem;
+    text-align: center;
+    color: var(--ink, #2c241f);
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  .editorial-sample-modal__scroll {
+    overflow: hidden;
+    padding: 0.5rem 0.75rem 0.25rem;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+  }
+
+  .editorial-sample-modal__pages {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .editorial-book-sample-modal__scroll {
+    overflow: auto;
+    place-items: start center;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+  }
+
+  .editorial-book-sample-modal__pages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.15rem;
+    height: auto;
+    min-height: 100%;
+    padding-bottom: 0.75rem;
+  }
+
+  .editorial-book-sample-modal__spread {
+    width: min(100%, 38rem);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 0.9rem;
+  }
+
+  .editorial-book-sample-modal__spread--single {
+    width: min(100%, 38rem);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editorial-sample-modal__page {
+    margin: 0;
+    width: min(100%, 42rem);
+    height: 100%;
+    display: grid;
+    gap: 0.45rem;
+    justify-items: center;
+    align-content: center;
+  }
+
+  .editorial-book-sample-modal__page {
+    width: 100%;
+    height: auto;
+    align-content: start;
+  }
+
+  .editorial-sample-modal__page[hidden] {
+    display: none;
+  }
+
+  .editorial-sample-modal__page-artboard {
+    width: 100%;
+    max-height: calc(100dvh - 10.5rem);
+    position: relative;
+    isolation: isolate;
+    border-radius: 10px;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+  }
+
+  .editorial-sample-modal__page-artboard img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: calc(100dvh - 10.5rem);
+    border-radius: 10px;
+    border: 1px solid rgba(71, 52, 33, 0.15);
+    background: #fff;
+    box-shadow: 0 14px 34px rgba(50, 37, 25, 0.24);
+    position: relative;
+    z-index: 1;
+  }
+
+  .editorial-book-sample-modal__page-artboard,
+  .editorial-book-sample-modal__page-artboard img {
+    max-height: min(70vh, 760px);
+  }
+
+  .editorial-book-sample-modal__page-artboard {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  .editorial-sample-modal__page figcaption {
+    color: var(--ink-soft, #6b6258);
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    position: relative;
+    z-index: 3;
+  }
+
+  .editorial-sample-modal__wm-logo,
+  .editorial-sample-modal__wm-text {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .editorial-sample-modal__wm-logo {
+    background: center / 100% no-repeat url("/images/brand/logo-mark-transparent.png");
+    filter: grayscale(1) saturate(0);
+    opacity: 0.12;
+  }
+
+  .editorial-look-inside-modal__wm-logo {
+    background-size: 104%;
+  }
+
+  .editorial-book-sample-modal__wm-logo {
+    inset: auto;
+    left: 50%;
+    top: 50%;
+    width: 118%;
+    aspect-ratio: 1 / 1;
+    transform: translate(-48%, -53.2%);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.14;
+  }
+
+  .editorial-sample-modal__wm-text {
+    inset: 0.75rem 0.55rem;
+  }
+
+  .editorial-sample-modal__wm-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-size: clamp(0.62rem, 1.05vw, 0.8rem);
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    color: rgba(44, 36, 31, 0.24);
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1;
+    padding-inline: 0.4rem;
+    white-space: normal;
+  }
+
+  .editorial-sample-modal__wm-line--top {
+    top: 0;
+  }
+
+  .editorial-sample-modal__wm-line--bottom {
+    bottom: 0;
+  }
+
+  .editorial-sample-modal__controls {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.55rem 0.8rem 0.85rem;
+  }
+
+  .editorial-sample-modal__nav {
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid rgba(71, 52, 33, 0.2);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--brand-blue, #1f4f86);
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-size: 1.45rem;
+    font-weight: 900;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .editorial-sample-modal__nav:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
+
+  .editorial-sample-modal__indicator {
+    margin: 0;
+    padding: 0.42rem 0.74rem;
+    border-radius: 999px;
+    background: rgba(16, 12, 8, 0.84);
+    color: #fff;
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    min-width: 0;
+  }
+
+  .editorial-author {
+    display: grid;
+    gap: 0.55rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line, #e8e0d3);
+  }
+
+  .editorial-author__label {
+    margin: 0;
+    color: var(--ink, #2c241f);
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  .editorial-author__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+  }
+
+  .editorial-author__avatar {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    border: 1px solid rgba(71, 52, 33, 0.14);
+    background: color-mix(in srgb, var(--brand-yellow, #f5c842) 18%, #fff 82%);
+    object-fit: cover;
+  }
+
+  .editorial-author__name {
+    min-width: 0;
+    color: var(--brand-blue, #1f4f86);
+    font-family: "Baloo 2", "Trebuchet MS", sans-serif;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .editorial-author__bio {
+    margin: 0;
+    color: var(--ink-soft, #6b6258);
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .editorial-author__follow {
+    min-width: 5.35rem;
+    border: 1.5px solid var(--brand-blue, #1f4f86);
+    background: #fff;
+    color: var(--brand-blue, #1f4f86);
+    cursor: pointer;
+  }
+
+  .editorial-author__page {
+    justify-self: start;
+    min-height: 0;
+    padding: 0;
+    color: var(--brand-brown, #6b3d1f);
+    font-size: 0.82rem;
+  }
+
+  .editorial-media__stage:focus-visible,
+  .editorial-media__sample:focus-visible,
+  .editorial-author__follow:focus-visible,
+  .editorial-author__name:focus-visible,
+  .editorial-author__page:focus-visible,
+  .editorial-sample-modal__nav:focus-visible,
+  .editorial-sample-modal__close:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--brand-yellow, #f5c842) 72%, #fff 28%);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 48rem) {
+    .editorial-sample-modal {
+      padding: 0.25rem;
+    }
+
+    .editorial-sample-modal__panel {
+      width: 100%;
+      height: calc(100dvh - 0.5rem);
+      border-radius: 12px;
+    }
+
+    .editorial-sample-modal__scroll {
+      padding: 0.4rem 0.35rem 0.2rem;
+    }
+
+    .editorial-sample-modal__page {
+      width: 100%;
+    }
+
+    .editorial-book-sample-modal__spread,
+    .editorial-book-sample-modal__spread--single {
+      width: 100%;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .editorial-sample-modal__page-artboard,
+    .editorial-sample-modal__page-artboard img {
+      max-height: calc(100dvh - 9.75rem);
+    }
+
+    .editorial-book-sample-modal__page-artboard,
+    .editorial-book-sample-modal__page-artboard img {
+      max-height: min(68vh, 680px);
+    }
+
+    .editorial-book-sample-modal__wm-logo {
+      width: 112%;
+    }
+
+    .editorial-sample-modal__controls {
+      padding: 0.45rem 0.55rem 0.7rem;
+      gap: 0.45rem;
+    }
+
+    .editorial-sample-modal__indicator {
+      font-size: 0.72rem;
+    }
+  }
+
+  @media (max-width: 25rem) {
+    .editorial-author__row {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .editorial-author__follow {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .editorial-sample-modal,
+    .editorial-sample-modal__scroll {
+      transition: none;
+      scroll-behavior: auto;
+    }
+  }
+</style>

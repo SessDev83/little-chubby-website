@@ -12,6 +12,28 @@ export type BookTestimonial = {
   attribution: string;
 };
 
+export type BookManuscriptSampleType =
+  | "cover"
+  | "front-matter"
+  | "interior"
+  | "back-matter"
+  | "back-cover";
+
+export type BookManuscriptSampleItem = {
+  /** Visual page asset, relative to /public/. */
+  src: string;
+  /** Localized alt text for the page image. */
+  alt: { en: string; es: string };
+  /** Localized reading label shown in the sample viewer. */
+  label: { en: string; es: string };
+  /** Page role in the mini-book sample. */
+  type: BookManuscriptSampleType;
+  /** Watermark rendering mode in the modal: none for covers, logo for interiors, text for legal/front/back matter. */
+  watermarkStyle?: "none" | "logo" | "text";
+  /** Optional real manuscript page number when relevant. */
+  pageNumber?: number;
+};
+
 export type BookSeoEntry = {
   /** Appended to the visible <h1> as a keyword tail (e.g. " — Coloring Book for Kids Ages 4-8"). */
   h1Keyword: { en: string; es: string };
@@ -30,6 +52,11 @@ export type BookSeoEntry = {
    * When absent, the Look Inside section is skipped (graceful fallback).
    */
   previewImages?: string[];
+  /**
+   * Optional — ordered mini-book sample for the Read sample modal.
+   * Keep previewImages focused on visible Look Inside thumbnails; this field is modal-only.
+   */
+  manuscriptSample?: BookManuscriptSampleItem[];
   /**
    * Optional — bilingual testimonial quotes.
    * en.length === es.length (parity enforced).
@@ -73,6 +100,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Es adecuado para un niño de 4 años, o demasiado detallado?", a: "Las líneas son deliberadamente grandes y simples. La mayoría de niños de 4 años colorean solos; los de 7-8 añaden sus propios detalles. No es un libro de detalle fino para adultos." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/magical-creatures/01.webp",
+      "/images/books/previews/magical-creatures/02.webp",
+      "/images/books/previews/magical-creatures/03.webp",
+      "/images/books/previews/magical-creatures/04.webp",
+      "/images/books/previews/magical-creatures/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/magical-creatures.webp",
+        alt: {
+          en: "Magical Creatures book cover",
+          es: "Portada del libro Magical Creatures",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/magical-creatures/01-front-title.webp",
+        alt: {
+          en: "Magical Creatures title page sample",
+          es: "Muestra de la pagina de titulo de Magical Creatures",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/magical-creatures/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Magical Creatures",
+          es: "Muestra de la pagina de copyright de Magical Creatures",
+        },
+        label: { en: "Copyright page", es: "Pagina de copyright" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/magical-creatures/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page sample from Magical Creatures",
+          es: "Muestra de la pagina este libro pertenece a de Magical Creatures",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/magical-creatures/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Magical Creatures",
+          es: "Muestra de la pagina de prueba de color de Magical Creatures",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/magical-creatures/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Magical Creatures",
+          es: "Primera pagina de colorear de muestra de Magical Creatures",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/magical-creatures/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Magical Creatures",
+          es: "Muestra de pagina final sobre la autora de Magical Creatures",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/magical-creatures/12-back-cover.webp",
+        alt: {
+          en: "Magical Creatures back cover",
+          es: "Contraportada de Magical Creatures",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "chic-styles": {
@@ -100,6 +222,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Incluye caras, o solo outfits y accesorios?", a: "La mayoría de páginas se enfocan en outfits, zapatos, bolsos y detalles de estilismo. Algunas páginas incluyen figuras estilizadas con caras limpias que puedes personalizar con cualquier tono de piel, color de pelo o expresión." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/chic-styles/01.webp",
+      "/images/books/previews/chic-styles/02.webp",
+      "/images/books/previews/chic-styles/03.webp",
+      "/images/books/previews/chic-styles/04.webp",
+      "/images/books/previews/chic-styles/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/chic-styles.webp",
+        alt: {
+          en: "Chic Styles book cover",
+          es: "Portada de Chic Styles",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/chic-styles/01-front-title.webp",
+        alt: {
+          en: "Title page sample from Chic Styles",
+          es: "Muestra de pagina de titulo de Chic Styles",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/chic-styles/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Chic Styles",
+          es: "Muestra de pagina de derechos de autor de Chic Styles",
+        },
+        label: { en: "Copyright page", es: "Pagina de derechos" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/chic-styles/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page from Chic Styles",
+          es: "Pagina Este libro pertenece a de Chic Styles",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/chic-styles/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Chic Styles",
+          es: "Muestra de pagina de prueba de color de Chic Styles",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba de color" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/chic-styles/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Chic Styles",
+          es: "Muestra de primera pagina para colorear de Chic Styles",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/chic-styles/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Chic Styles",
+          es: "Muestra de pagina final sobre la autora de Chic Styles",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/chic-styles/12-back-cover.webp",
+        alt: {
+          en: "Chic Styles back cover",
+          es: "Contraportada de Chic Styles",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "dresses-and-dolls": {
@@ -127,6 +344,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Es apto como primer libro de colorear?", a: "Sí — las muñecas tienen líneas grandes y amigables. La mayoría de niños de 4 años las colorean solos. Ideal para niños que están desarrollando el control de la mano." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/dresses-and-dolls/01.webp",
+      "/images/books/previews/dresses-and-dolls/02.webp",
+      "/images/books/previews/dresses-and-dolls/03.webp",
+      "/images/books/previews/dresses-and-dolls/04.webp",
+      "/images/books/previews/dresses-and-dolls/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/dresses-and-dolls.webp",
+        alt: {
+          en: "Dresses and Dolls book cover",
+          es: "Portada de Dresses and Dolls",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/dresses-and-dolls/01-front-title.webp",
+        alt: {
+          en: "Title page sample from Dresses and Dolls",
+          es: "Muestra de pagina de titulo de Dresses and Dolls",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/dresses-and-dolls/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Dresses and Dolls",
+          es: "Muestra de pagina de derechos de autor de Dresses and Dolls",
+        },
+        label: { en: "Copyright page", es: "Pagina de derechos" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/dresses-and-dolls/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page from Dresses and Dolls",
+          es: "Pagina Este libro pertenece a de Dresses and Dolls",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/dresses-and-dolls/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Dresses and Dolls",
+          es: "Muestra de pagina de prueba de color de Dresses and Dolls",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba de color" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/dresses-and-dolls/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Dresses and Dolls",
+          es: "Muestra de primera pagina para colorear de Dresses and Dolls",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/dresses-and-dolls/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Dresses and Dolls",
+          es: "Muestra de pagina final sobre la autora de Dresses and Dolls",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/dresses-and-dolls/12-back-cover.webp",
+        alt: {
+          en: "Dresses and Dolls back cover",
+          es: "Contraportada de Dresses and Dolls",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "style-time-machine": {
@@ -154,6 +466,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Puedo arrancar páginas para repartir entre la familia?", a: "Sí. Cada página es a una sola cara, así que puedes sacar una página y dársela a otro miembro de la familia sin arruinar el diseño de atrás." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/style-time-machine/01.webp",
+      "/images/books/previews/style-time-machine/02.webp",
+      "/images/books/previews/style-time-machine/03.webp",
+      "/images/books/previews/style-time-machine/04.webp",
+      "/images/books/previews/style-time-machine/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/style-time-machine.webp",
+        alt: {
+          en: "Style Time Machine book cover",
+          es: "Portada de Style Time Machine",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/style-time-machine/01-front-title.webp",
+        alt: {
+          en: "Title page sample from Style Time Machine",
+          es: "Muestra de pagina de titulo de Style Time Machine",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/style-time-machine/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Style Time Machine",
+          es: "Muestra de pagina de derechos de autor de Style Time Machine",
+        },
+        label: { en: "Copyright page", es: "Pagina de derechos" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/style-time-machine/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page from Style Time Machine",
+          es: "Pagina Este libro pertenece a de Style Time Machine",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/style-time-machine/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Style Time Machine",
+          es: "Muestra de pagina de prueba de color de Style Time Machine",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba de color" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/style-time-machine/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Style Time Machine",
+          es: "Muestra de primera pagina para colorear de Style Time Machine",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/style-time-machine/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Style Time Machine",
+          es: "Muestra de pagina final sobre la autora de Style Time Machine",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/style-time-machine/12-back-cover.webp",
+        alt: {
+          en: "Style Time Machine back cover",
+          es: "Contraportada de Style Time Machine",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "cozy-kids-club": {
@@ -208,6 +615,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Las líneas son suficientemente gruesas para crayones?", a: "Sí — las líneas son deliberadamente gruesas y marcadas, ideal para crayones, lápices de colores y marcadores. Los niños pequeños se mantienen dentro de las líneas fácilmente." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/awesome-boys/01.webp",
+      "/images/books/previews/awesome-boys/02.webp",
+      "/images/books/previews/awesome-boys/03.webp",
+      "/images/books/previews/awesome-boys/04.webp",
+      "/images/books/previews/awesome-boys/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/awesome-boys.webp",
+        alt: {
+          en: "Awesome Boys Coloring Book front cover",
+          es: "Portada del libro de colorear Awesome Boys",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-boys/01-front-title.webp",
+        alt: {
+          en: "Awesome Boys title page sample",
+          es: "Muestra de la pagina de titulo de Awesome Boys",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-boys/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Awesome Boys",
+          es: "Muestra de la pagina de copyright de Awesome Boys",
+        },
+        label: { en: "Copyright page", es: "Pagina de copyright" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-boys/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page sample",
+          es: "Muestra de la pagina este libro pertenece a",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-boys/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Awesome Boys",
+          es: "Muestra de la pagina de prueba de color de Awesome Boys",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-boys/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Awesome Boys",
+          es: "Primera pagina de colorear de muestra de Awesome Boys",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-boys/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Awesome Boys",
+          es: "Muestra de pagina final sobre la autora de Awesome Boys",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-boys/12-back-cover.webp",
+        alt: {
+          en: "Awesome Boys Coloring Book back cover",
+          es: "Contraportada del libro de colorear Awesome Boys",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "enchanted-easter": {
@@ -235,6 +737,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Es adecuado como regalo de cesta de Pascua para un niño de 4 años?", a: "Sí — ese es uno de sus usos principales. El papel es suficientemente grueso para crayones y lápices de colores, las líneas son grandes, y el libro es ligero como para entrar en una cesta." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/enchanted-easter/01.webp",
+      "/images/books/previews/enchanted-easter/02.webp",
+      "/images/books/previews/enchanted-easter/03.webp",
+      "/images/books/previews/enchanted-easter/04.webp",
+      "/images/books/previews/enchanted-easter/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/enchanted-easter.webp",
+        alt: {
+          en: "Enchanted Easter book cover",
+          es: "Portada del libro Enchanted Easter",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/enchanted-easter/01-front-title.webp",
+        alt: {
+          en: "Enchanted Easter title page sample",
+          es: "Muestra de la pagina de titulo de Enchanted Easter",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/enchanted-easter/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Enchanted Easter",
+          es: "Muestra de la pagina de copyright de Enchanted Easter",
+        },
+        label: { en: "Copyright page", es: "Pagina de copyright" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/enchanted-easter/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page sample from Enchanted Easter",
+          es: "Muestra de la pagina este libro pertenece a de Enchanted Easter",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/enchanted-easter/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Enchanted Easter",
+          es: "Muestra de la pagina de prueba de color de Enchanted Easter",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/enchanted-easter/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Enchanted Easter",
+          es: "Primera pagina de colorear de muestra de Enchanted Easter",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/enchanted-easter/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Enchanted Easter",
+          es: "Muestra de pagina final sobre la autora de Enchanted Easter",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/enchanted-easter/12-back-cover.webp",
+        alt: {
+          en: "Enchanted Easter back cover",
+          es: "Contraportada de Enchanted Easter",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "coloring-emotions": {
@@ -262,6 +859,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Qué edad es la ideal?", a: "Ideal para 4 a 8 años. Los más pequeños (3-4) colorean mientras un adulto nombra la emoción. Los mayores (9+) pueden preferir libros SEL con más texto, pero aún así se benefician del ritual de colorear." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/coloring-emotions/01.webp",
+      "/images/books/previews/coloring-emotions/02.webp",
+      "/images/books/previews/coloring-emotions/03.webp",
+      "/images/books/previews/coloring-emotions/04.webp",
+      "/images/books/previews/coloring-emotions/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/coloring-emotions.webp",
+        alt: {
+          en: "Coloring Emotions book cover",
+          es: "Portada del libro Coloring Emotions",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/coloring-emotions/01-front-title.webp",
+        alt: {
+          en: "Coloring Emotions title page sample",
+          es: "Muestra de la pagina de titulo de Coloring Emotions",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/coloring-emotions/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Coloring Emotions",
+          es: "Muestra de la pagina de copyright de Coloring Emotions",
+        },
+        label: { en: "Copyright page", es: "Pagina de copyright" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/coloring-emotions/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page sample from Coloring Emotions",
+          es: "Muestra de la pagina este libro pertenece a de Coloring Emotions",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/coloring-emotions/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Coloring Emotions",
+          es: "Muestra de la pagina de prueba de color de Coloring Emotions",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/coloring-emotions/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Coloring Emotions",
+          es: "Primera pagina de colorear de muestra de Coloring Emotions",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/coloring-emotions/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Coloring Emotions",
+          es: "Muestra de pagina final sobre la autora de Coloring Emotions",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/coloring-emotions/12-back-cover.webp",
+        alt: {
+          en: "Coloring Emotions back cover",
+          es: "Contraportada de Coloring Emotions",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "pizza-sweet-treats": {
@@ -289,6 +981,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Es una buena actividad de fiesta o cumpleaños?", a: "Sí — las páginas a una cara facilitan arrancar una página por niño como actividad de mesa o recuerdo de fiesta sin arruinar el libro." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/pizza-sweet-treats/01.webp",
+      "/images/books/previews/pizza-sweet-treats/02.webp",
+      "/images/books/previews/pizza-sweet-treats/03.webp",
+      "/images/books/previews/pizza-sweet-treats/04.webp",
+      "/images/books/previews/pizza-sweet-treats/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/pizza-sweet-treats.webp",
+        alt: {
+          en: "Pizza & Sweet Treats book cover",
+          es: "Portada del libro Pizza & Sweet Treats",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/pizza-sweet-treats/01-front-title.webp",
+        alt: {
+          en: "Pizza & Sweet Treats title page sample",
+          es: "Muestra de la pagina de titulo de Pizza & Sweet Treats",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/pizza-sweet-treats/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Pizza & Sweet Treats",
+          es: "Muestra de la pagina de copyright de Pizza & Sweet Treats",
+        },
+        label: { en: "Copyright page", es: "Pagina de copyright" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/pizza-sweet-treats/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page sample from Pizza & Sweet Treats",
+          es: "Muestra de la pagina este libro pertenece a de Pizza & Sweet Treats",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/pizza-sweet-treats/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Pizza & Sweet Treats",
+          es: "Muestra de la pagina de prueba de color de Pizza & Sweet Treats",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/pizza-sweet-treats/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Pizza & Sweet Treats",
+          es: "Primera pagina de colorear de muestra de Pizza & Sweet Treats",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/pizza-sweet-treats/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Pizza & Sweet Treats",
+          es: "Muestra de pagina final sobre la autora de Pizza & Sweet Treats",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/pizza-sweet-treats/12-back-cover.webp",
+        alt: {
+          en: "Pizza & Sweet Treats back cover",
+          es: "Contraportada de Pizza & Sweet Treats",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "awesome-girls": {
@@ -316,6 +1103,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Los personajes son diversos?", a: "Sí — incluimos deliberadamente una variedad de peinados, líneas de tono de piel neutras (el niño elige), expresiones e intereses para que cada niña o niño pueda reconocerse en alguna parte del libro." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/awesome-girls/01.webp",
+      "/images/books/previews/awesome-girls/02.webp",
+      "/images/books/previews/awesome-girls/03.webp",
+      "/images/books/previews/awesome-girls/04.webp",
+      "/images/books/previews/awesome-girls/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/awesome-girls.webp",
+        alt: {
+          en: "Awesome Girls Coloring Book front cover",
+          es: "Portada del libro de colorear Awesome Girls",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-girls/01-front-title.webp",
+        alt: {
+          en: "Awesome Girls title page sample",
+          es: "Muestra de la pagina de titulo de Awesome Girls",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-girls/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Awesome Girls",
+          es: "Muestra de la pagina de copyright de Awesome Girls",
+        },
+        label: { en: "Copyright page", es: "Pagina de copyright" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-girls/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page sample from Awesome Girls",
+          es: "Muestra de la pagina este libro pertenece a de Awesome Girls",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-girls/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Awesome Girls",
+          es: "Muestra de la pagina de prueba de color de Awesome Girls",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-girls/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Awesome Girls",
+          es: "Primera pagina de colorear de muestra de Awesome Girls",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-girls/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Awesome Girls",
+          es: "Muestra de pagina final sobre la autora de Awesome Girls",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-girls/12-back-cover.webp",
+        alt: {
+          en: "Awesome Girls Coloring Book back cover",
+          es: "Contraportada del libro de colorear Awesome Girls",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "blast-off-space": {
@@ -343,6 +1225,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Combina bien con Mighty Machines?", a: "Sí — muchos padres compran ambos para niños que aman los vehículos. Blast Off cubre vehículos espaciales; Mighty Machines cubre construcción y vehículos terrestres. Juntos cubren la mayoría de intereses en vehículos para 4-8 años." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/blast-off-space/01.webp",
+      "/images/books/previews/blast-off-space/02.webp",
+      "/images/books/previews/blast-off-space/03.webp",
+      "/images/books/previews/blast-off-space/04.webp",
+      "/images/books/previews/blast-off-space/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/blast-off-space.webp",
+        alt: {
+          en: "Blast Off! Space Coloring Book cover",
+          es: "Portada del libro Blast Off! Space Coloring Book",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/blast-off-space/01-front-title.webp",
+        alt: {
+          en: "Blast Off title page sample",
+          es: "Muestra de la pagina de titulo de Blast Off",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/blast-off-space/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Blast Off",
+          es: "Muestra de la pagina de copyright de Blast Off",
+        },
+        label: { en: "Copyright page", es: "Pagina de copyright" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/blast-off-space/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page sample from Blast Off",
+          es: "Muestra de la pagina este libro pertenece a de Blast Off",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/blast-off-space/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Blast Off",
+          es: "Muestra de la pagina de prueba de color de Blast Off",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/blast-off-space/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Blast Off",
+          es: "Primera pagina de colorear de muestra de Blast Off",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/blast-off-space/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Blast Off",
+          es: "Muestra de pagina final sobre la autora de Blast Off",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/blast-off-space/12-back-cover.webp",
+        alt: {
+          en: "Blast Off back cover",
+          es: "Contraportada de Blast Off",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "mighty-machines": {
@@ -370,6 +1347,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Incluye maquinaria agrícola?", a: "El enfoque es construcción y maquinaria de obra. Algunos vehículos cercanos al mundo agrícola como tractores pueden aparecer, pero no es principalmente un libro de granja." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/mighty-machines/01.webp",
+      "/images/books/previews/mighty-machines/02.webp",
+      "/images/books/previews/mighty-machines/03.webp",
+      "/images/books/previews/mighty-machines/04.webp",
+      "/images/books/previews/mighty-machines/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/mighty-machines.webp",
+        alt: {
+          en: "Mighty Machines book cover",
+          es: "Portada del libro Mighty Machines",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/mighty-machines/01-front-title.webp",
+        alt: {
+          en: "Mighty Machines title page sample",
+          es: "Muestra de la pagina de titulo de Mighty Machines",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/mighty-machines/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Mighty Machines",
+          es: "Muestra de la pagina de copyright de Mighty Machines",
+        },
+        label: { en: "Copyright page", es: "Pagina de copyright" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/mighty-machines/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page sample from Mighty Machines",
+          es: "Muestra de la pagina este libro pertenece a de Mighty Machines",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/mighty-machines/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Mighty Machines",
+          es: "Muestra de la pagina de prueba de color de Mighty Machines",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/mighty-machines/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Mighty Machines",
+          es: "Primera pagina de colorear de muestra de Mighty Machines",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/mighty-machines/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Mighty Machines",
+          es: "Muestra de pagina final sobre la autora de Mighty Machines",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 99,
+      },
+      {
+        src: "/images/books/manuscript-samples/mighty-machines/12-back-cover.webp",
+        alt: {
+          en: "Mighty Machines back cover",
+          es: "Contraportada de Mighty Machines",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "easy-animals": {
@@ -397,6 +1469,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Los animales son anatómicamente exactos?", a: "Reconocibles y proporcionalmente correctos, pero suavemente estilizados — no fotorrealistas. Útiles para aprender a identificar animales sin ser clínicos ni científicos." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/easy-animals/01.webp",
+      "/images/books/previews/easy-animals/02.webp",
+      "/images/books/previews/easy-animals/03.webp",
+      "/images/books/previews/easy-animals/04.webp",
+      "/images/books/previews/easy-animals/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/manuscript-samples/easy-animals/00-front-cover.webp",
+        alt: {
+          en: "Easy Animals book cover",
+          es: "Portada de Easy Animals",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/easy-animals/01-front-title.webp",
+        alt: {
+          en: "Title page sample from Easy Animals",
+          es: "Muestra de pagina de titulo de Easy Animals",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/easy-animals/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Easy Animals",
+          es: "Muestra de pagina de derechos de autor de Easy Animals",
+        },
+        label: { en: "Copyright page", es: "Pagina de derechos" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/easy-animals/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page from Easy Animals",
+          es: "Pagina Este libro pertenece a de Easy Animals",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/easy-animals/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Easy Animals",
+          es: "Muestra de pagina de prueba de color de Easy Animals",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba de color" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/easy-animals/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Easy Animals",
+          es: "Muestra de primera pagina para colorear de Easy Animals",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/easy-animals/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Easy Animals",
+          es: "Muestra de pagina final sobre la autora de Easy Animals",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 109,
+      },
+      {
+        src: "/images/books/manuscript-samples/easy-animals/12-back-cover.webp",
+        alt: {
+          en: "Easy Animals back cover",
+          es: "Contraportada de Easy Animals",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "awesome-airplanes": {
@@ -424,6 +1591,101 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Cómo se compara con Mighty Machines?", a: "Awesome Airplanes se enfoca en vuelo: aviones, helicópteros, escenas de aviación. Mighty Machines se enfoca en vehículos de tierra y construcción. Combinan bien para un niño obsesionado con todo lo que se mueve." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/awesome-airplanes/01.webp",
+      "/images/books/previews/awesome-airplanes/02.webp",
+      "/images/books/previews/awesome-airplanes/03.webp",
+      "/images/books/previews/awesome-airplanes/04.webp",
+      "/images/books/previews/awesome-airplanes/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/manuscript-samples/awesome-airplanes/00-front-cover.webp",
+        alt: {
+          en: "Awesome Airplanes book cover",
+          es: "Portada de Awesome Airplanes",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-airplanes/01-front-title.webp",
+        alt: {
+          en: "Title page sample from Awesome Airplanes",
+          es: "Muestra de pagina de titulo de Awesome Airplanes",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-airplanes/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Awesome Airplanes",
+          es: "Muestra de pagina de derechos de autor de Awesome Airplanes",
+        },
+        label: { en: "Copyright page", es: "Pagina de derechos" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-airplanes/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page from Awesome Airplanes",
+          es: "Pagina Este libro pertenece a de Awesome Airplanes",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-airplanes/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Awesome Airplanes",
+          es: "Muestra de pagina de prueba de color de Awesome Airplanes",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba de color" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-airplanes/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Awesome Airplanes",
+          es: "Muestra de primera pagina para colorear de Awesome Airplanes",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-airplanes/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Awesome Airplanes",
+          es: "Muestra de pagina final sobre la autora de Awesome Airplanes",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/awesome-airplanes/12-back-cover.webp",
+        alt: {
+          en: "Awesome Airplanes back cover",
+          es: "Contraportada de Awesome Airplanes",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 
   "alphabet-coloring-book": {
@@ -451,8 +1713,111 @@ export const bookSeo: Record<string, BookSeoEntry> = {
         { q: "¿Los niños en edad preescolar pueden usarlo solos?", a: "La mayoría de niños de 4-5 años necesitan que un adulto nombre la letra la primera vez, luego empiezan a reconocer letras solos después de unas cuantas sesiones. Es un libro para colorear, no un cuaderno, así que no hay ejercicios de escritura obligatorios." },
       ],
     },
+    previewImages: [
+      "/images/books/previews/alphabet-coloring-book/01.webp",
+      "/images/books/previews/alphabet-coloring-book/02.webp",
+      "/images/books/previews/alphabet-coloring-book/03.webp",
+      "/images/books/previews/alphabet-coloring-book/04.webp",
+      "/images/books/previews/alphabet-coloring-book/05.webp",
+    ],
+    manuscriptSample: [
+      {
+        src: "/images/books/manuscript-samples/alphabet-coloring-book/00-front-cover.webp",
+        alt: {
+          en: "Alphabet Coloring Book cover",
+          es: "Portada de Alphabet Coloring Book",
+        },
+        label: { en: "Cover", es: "Portada" },
+        type: "cover",
+        watermarkStyle: "none",
+      },
+      {
+        src: "/images/books/manuscript-samples/alphabet-coloring-book/01-front-title.webp",
+        alt: {
+          en: "Title page sample from Alphabet Coloring Book",
+          es: "Muestra de pagina de titulo de Alphabet Coloring Book",
+        },
+        label: { en: "Title page", es: "Pagina de titulo" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 1,
+      },
+      {
+        src: "/images/books/manuscript-samples/alphabet-coloring-book/03-front-copyright.webp",
+        alt: {
+          en: "Copyright page sample from Alphabet Coloring Book",
+          es: "Muestra de pagina de derechos de autor de Alphabet Coloring Book",
+        },
+        label: { en: "Copyright page", es: "Pagina de derechos" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 3,
+      },
+      {
+        src: "/images/books/manuscript-samples/alphabet-coloring-book/05-front-belongs.webp",
+        alt: {
+          en: "This book belongs to page from Alphabet Coloring Book",
+          es: "Pagina Este libro pertenece a de Alphabet Coloring Book",
+        },
+        label: { en: "This book belongs to", es: "Este libro pertenece a" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 5,
+      },
+      {
+        src: "/images/books/manuscript-samples/alphabet-coloring-book/07-front-color-test.webp",
+        alt: {
+          en: "Color test page sample from Alphabet Coloring Book",
+          es: "Muestra de pagina de prueba de color de Alphabet Coloring Book",
+        },
+        label: { en: "Color test page", es: "Pagina de prueba de color" },
+        type: "front-matter",
+        watermarkStyle: "text",
+        pageNumber: 7,
+      },
+      {
+        src: "/images/books/manuscript-samples/alphabet-coloring-book/09-interior-001.webp",
+        alt: {
+          en: "First coloring page sample from Alphabet Coloring Book",
+          es: "Muestra de primera pagina para colorear de Alphabet Coloring Book",
+        },
+        label: { en: "First coloring page", es: "Primera pagina para colorear" },
+        type: "interior",
+        watermarkStyle: "logo",
+        pageNumber: 9,
+      },
+      {
+        src: "/images/books/manuscript-samples/alphabet-coloring-book/10-back-about-author.webp",
+        alt: {
+          en: "About the Author back matter sample from Alphabet Coloring Book",
+          es: "Muestra de pagina final sobre la autora de Alphabet Coloring Book",
+        },
+        label: { en: "About the Author", es: "Sobre la autora" },
+        type: "back-matter",
+        watermarkStyle: "text",
+        pageNumber: 89,
+      },
+      {
+        src: "/images/books/manuscript-samples/alphabet-coloring-book/12-back-cover.webp",
+        alt: {
+          en: "Alphabet Coloring Book back cover",
+          es: "Contraportada de Alphabet Coloring Book",
+        },
+        label: { en: "Back cover", es: "Contraportada" },
+        type: "back-cover",
+        watermarkStyle: "none",
+      },
+    ],
   },
 };
+
+const manuscriptSampleTypes = new Set<BookManuscriptSampleType>([
+  "cover",
+  "front-matter",
+  "interior",
+  "back-matter",
+  "back-cover",
+]);
 
 /**
  * Build-time parity check.
@@ -513,6 +1878,25 @@ function assertBookSeoParity(): void {
         }
         if (q.attribution.includes("@")) {
           throw new Error(`[books-seo] testimonials attribution must not contain "@" for "${id}"`);
+        }
+      }
+    }
+
+    if (entry.manuscriptSample) {
+      if (entry.manuscriptSample.length === 0) {
+        throw new Error(`[books-seo] manuscriptSample for "${id}" must not be empty when present`);
+      }
+      const first = entry.manuscriptSample[0];
+      const last = entry.manuscriptSample[entry.manuscriptSample.length - 1];
+      if (first?.type !== "cover" || last?.type !== "back-cover") {
+        throw new Error(`[books-seo] manuscriptSample for "${id}" must start with cover and end with back-cover`);
+      }
+      for (const page of entry.manuscriptSample) {
+        if (!page?.src || !page.alt?.en || !page.alt?.es || !page.label?.en || !page.label?.es) {
+          throw new Error(`[books-seo] manuscriptSample for "${id}" has missing src, alt, or label`);
+        }
+        if (!manuscriptSampleTypes.has(page.type)) {
+          throw new Error(`[books-seo] manuscriptSample for "${id}" has invalid type: ${page.type}`);
         }
       }
     }

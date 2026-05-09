@@ -15,7 +15,8 @@ pnpm-debug.log*
 
 # environment variables
 .env
-.env.production
+.env.*
+!.env.example
 
 # macOS-specific files
 .DS_Store
@@ -27,7 +28,6 @@ pnpm-debug.log*
 .claude/settings.local.json
 
 .vercel
-.env*.local
 
 # social engagement state files
 scripts/social/.post-state.json
@@ -44,6 +44,8 @@ _APPLY_*.sql
 
 # local-only PowerShell helpers (contain env-specific refs / credential interop)
 scripts/_*.ps1
+scripts/temp-inputs/
+scripts/temp-manuscripts/
 _PIN_POSTS_*.txt
 PIN_TO_COPY/
 .commit-msg.tmp
@@ -68,5 +70,3 @@ docs-internal/
 
 i18n.log
 check.log
-
-.env*.local
