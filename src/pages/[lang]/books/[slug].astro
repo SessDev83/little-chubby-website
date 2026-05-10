@@ -7,6 +7,7 @@ import { books, booksByNewest } from "../../../data/books";
 import { getBookSeo } from "../../../data/books-seo";
 import { languages, getLangFromParam, ui } from "../../../data/i18n";
 import { siteConfig } from "../../../data/site";
+import { buildTrackedShareUrl } from "../../../lib/social-share-tracking.mjs";
 
 export function getStaticPaths() {
   return languages.flatMap((lang) =>
@@ -106,6 +107,40 @@ const ogImageUrl = seo?.ogImage
   ? new URL(seo.ogImage, siteConfig.siteUrl).toString()
   : coverUrl;
 
+const fullUrl = new URL(pathname, siteConfig.siteUrl).toString();
+const shareTitle = `${book.title[lang]} - ${book.subtitle[lang]}`;
+const trackedWhatsappUrl = buildTrackedShareUrl(fullUrl, {
+  platform: "whatsapp",
+  lang,
+  contentType: "book",
+  contentId: book.id,
+  title: book.title[lang],
+});
+const trackedFacebookUrl = buildTrackedShareUrl(fullUrl, {
+  platform: "facebook",
+  lang,
+  contentType: "book",
+  contentId: book.id,
+  title: book.title[lang],
+});
+const trackedBlueskyUrl = buildTrackedShareUrl(fullUrl, {
+  platform: "bluesky",
+  lang,
+  contentType: "book",
+  contentId: book.id,
+  title: book.title[lang],
+});
+const trackedCopyUrl = buildTrackedShareUrl(fullUrl, {
+  platform: "copy-link",
+  lang,
+  contentType: "book",
+  contentId: book.id,
+  title: book.title[lang],
+});
+const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(`${shareTitle} ${trackedWhatsappUrl}`)}`;
+const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(trackedFacebookUrl)}`;
+const blueskyShareUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(`${shareTitle} ${trackedBlueskyUrl}`)}`;
+
 // Unique FAQ per book if available; otherwise fall back to generic 3-entry i18n FAQ.
 const faqEntries: { q: string; a: string }[] = seo?.faq?.[lang] ?? [
   { q: text.bookDetailFaqQ1, a: text.bookDetailFaqA1 },
@@ -178,6 +213,7 @@ const bookJsonLd = {
   pathname={pathname}
   breadcrumbs={breadcrumbs}
   ogImage={ogImageUrl}
+  ogType="book"
 >
   <script is:inline type="application/ld+json" set:html={JSON.stringify(bookJsonLd)}></script>
   <script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)}></script>
@@ -251,6 +287,64 @@ const bookJsonLd = {
               label={text.bookDetailCtaInAppReview}
               variant="ghost"
             />
+          </div>
+
+          <div class="book-detail-share" aria-label={lang === "es" ? "Compartir libro" : "Share book"}>
+            <p class="book-detail-share-label">
+              {lang === "es" ? "Comparte este libro" : "Share this book"}
+            </p>
+            <div class="social-share-row">
+              <a
+                href={whatsappShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-share-btn share-whatsapp"
+                data-share-platform="whatsapp"
+                data-shared-path={pathname}
+                data-reward-eligible="true"
+              >
+                {text.shareOnWhatsApp}
+              </a>
+              <a
+                href={facebookShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-share-btn"
+                data-share-platform="facebook"
+                data-shared-path={pathname}
+                data-reward-eligible="true"
+              >
+                {text.shareOnFacebook}
+              </a>
+              <a
+                href={blueskyShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-share-btn"
+                data-share-platform="bluesky"
+                data-shared-path={pathname}
+                data-reward-eligible="true"
+              >
+                {text.shareOnBluesky}
+              </a>
+              <button
+                class="social-share-btn"
+                data-copy-url={trackedCopyUrl}
+                data-share-platform="copy-link"
+                data-shared-path={pathname}
+                data-copied-label={lang === "es" ? "Copiado" : "Copied"}
+                data-error-label={lang === "es" ? "Error" : "Error"}
+                aria-label={text.copyLink}
+                type="button"
+              >
+                <span class="copy-label">{text.copyLink}</span>
+              </button>
+            </div>
+            <p class="book-detail-share-hint" data-share-reward-feedback>
+              {lang === "es"
+                ? "WhatsApp/Facebook/Bluesky: +1 🥜 por compartir (máx 3 al día, requiere sesión)."
+                : "WhatsApp/Facebook/Bluesky: +1 🥜 per share (max 3/day, requires login)."}
+            </p>
           </div>
         </div>
       </div>
@@ -419,6 +513,199 @@ const bookJsonLd = {
 
     </div>
   </section>
+
+  <script>
+    const isLoggedIn = document.cookie.indexOf("sb-logged-in=") !== -1;
+    const rewardFeedback = document.querySelector<HTMLElement>("[data-share-reward-feedback]");
+
+    function setRewardFeedback(message: string, tone: "success" | "error" | "neutral" = "neutral") {
+      if (!rewardFeedback) return;
+      rewardFeedback.textContent = message;
+      rewardFeedback.classList.remove("is-success", "is-error");
+      if (tone === "success") rewardFeedback.classList.add("is-success");
+      if (tone === "error") rewardFeedback.classList.add("is-error");
+    }
+
+    function updatePeanutBadge(balance: number) {
+      const headerCount = document.getElementById("peanuts-count");
+      if (!headerCount) return;
+      headerCount.textContent = String(balance);
+      sessionStorage.setItem("lcp-peanuts", String(balance));
+    }
+
+    async function creditShareReward(platform: string, sharedPath: string) {
+      try {
+        const response = await fetch("/api/track-share/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            platform,
+            shared_url: window.location.href,
+          }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.status === 401) {
+          setRewardFeedback(
+            document.documentElement.lang === "es"
+              ? "Inicia sesión para reclamar el peanut de share."
+              : "Log in to claim the share peanut.",
+            "error"
+          );
+          try {
+            const tracker = (window as any).lcpTrack;
+            if (typeof tracker === "function") {
+              tracker("share_credit_error", {
+                platform,
+                shared_path: sharedPath,
+                reason: "unauthorized",
+              });
+            }
+          } catch {}
+          return;
+        }
+
+        if (data && data.credited) {
+          if (typeof data.balance === "number") updatePeanutBadge(data.balance);
+          setRewardFeedback(
+            document.documentElement.lang === "es"
+              ? "✅ +1 🥜 acreditado por compartir."
+              : "✅ +1 🥜 credited for sharing.",
+            "success"
+          );
+          try {
+            const tracker = (window as any).lcpTrack;
+            if (typeof tracker === "function") {
+              tracker("share_credit_success", {
+                platform,
+                shared_path: sharedPath,
+                peanuts_awarded: 1,
+              });
+            }
+          } catch {}
+          return;
+        }
+
+        if (data && data.duplicate) {
+          setRewardFeedback(
+            document.documentElement.lang === "es"
+              ? "Ya acreditado hoy para esta plataforma/libro."
+              : "Already credited today for this platform/book.",
+            "neutral"
+          );
+          try {
+            const tracker = (window as any).lcpTrack;
+            if (typeof tracker === "function") {
+              tracker("share_credit_error", {
+                platform,
+                shared_path: sharedPath,
+                reason: "duplicate",
+              });
+            }
+          } catch {}
+          return;
+        }
+
+        setRewardFeedback(
+          document.documentElement.lang === "es"
+            ? "Máximo diario de peanuts por share alcanzado."
+            : "Daily share peanut limit reached.",
+          "neutral"
+        );
+        try {
+          const tracker = (window as any).lcpTrack;
+          if (typeof tracker === "function") {
+            tracker("share_credit_error", {
+              platform,
+              shared_path: sharedPath,
+              reason: "daily_limit",
+            });
+          }
+        } catch {}
+      } catch {
+        setRewardFeedback(
+          document.documentElement.lang === "es"
+            ? "Error al acreditar el peanut de share."
+            : "Error crediting share peanut.",
+          "error"
+        );
+        try {
+          const tracker = (window as any).lcpTrack;
+          if (typeof tracker === "function") {
+            tracker("share_credit_error", {
+              platform,
+              shared_path: sharedPath,
+              reason: "network",
+            });
+          }
+        } catch {}
+      }
+    }
+
+    document.querySelectorAll("[data-share-platform]").forEach((btn) => {
+      btn.addEventListener("click", (event) => {
+        const platform = btn.getAttribute("data-share-platform") || "";
+        const sharedPath = btn.getAttribute("data-shared-path") || location.pathname;
+        try {
+          const tracker = (window as any).lcpTrack;
+          if (typeof tracker === "function") tracker("share_click", { platform, shared_path: sharedPath });
+        } catch {}
+
+        if (platform === "copy-link") return;
+
+        // Keep external share navigation instant on desktop; reward runs in background.
+        if (btn instanceof HTMLAnchorElement && btn.href) {
+          event.preventDefault();
+          const shareWindow = window.open(btn.href, "_blank", "noopener,noreferrer");
+          if (!shareWindow) window.location.href = btn.href;
+        }
+
+        if (!isLoggedIn) {
+          setRewardFeedback(
+            document.documentElement.lang === "es"
+              ? "Inicia sesión para ganar +1 🥜 al compartir libros."
+              : "Log in to earn +1 🥜 when sharing books.",
+            "error"
+          );
+          try {
+            const tracker = (window as any).lcpTrack;
+            if (typeof tracker === "function") {
+              tracker("share_credit_error", {
+                platform,
+                shared_path: sharedPath,
+                reason: "login_required",
+              });
+            }
+          } catch {}
+          return;
+        }
+
+        void creditShareReward(platform, sharedPath);
+      });
+    });
+
+    document.querySelectorAll("[data-copy-url]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const url = btn.getAttribute("data-copy-url");
+        if (!url) return;
+
+        const copyFn = (window as any).lcpCopyTextToClipboard;
+        const copied = typeof copyFn === "function" ? await copyFn(url) : false;
+        const label = btn.querySelector(".copy-label");
+        if (!label) return;
+
+        const original = label.textContent;
+        const copiedLabel = btn.getAttribute("data-copied-label") || "Copied";
+        const errorLabel = btn.getAttribute("data-error-label") || "Error";
+        label.textContent = copied ? copiedLabel : errorLabel;
+        setTimeout(() => {
+          label.textContent = original;
+        }, 2000);
+      });
+    });
+  </script>
 </BaseLayout>
 
 <style>
@@ -515,6 +802,30 @@ const bookJsonLd = {
   flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
+}
+.book-detail-share {
+  margin-top: 1rem;
+}
+.book-detail-share-label {
+  margin: 0 0 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.book-detail-share .social-share-row {
+  margin-top: 0;
+}
+.book-detail-share-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.book-detail-share-hint.is-success {
+  color: var(--brand-green, #4a7c59);
+}
+.book-detail-share-hint.is-error {
+  color: #a23b2a;
 }
 
 /* Shared section heading */
