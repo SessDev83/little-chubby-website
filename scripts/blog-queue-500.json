@@ -168,7 +168,7 @@
   },
   {
     "id": "screen-free-restaurant-waiting",
-    "status": "pending",
+    "status": "done",
     "priority": 20,
     "contentRole": "spoke",
     "pillarId": "screen-free-activities-guide",
